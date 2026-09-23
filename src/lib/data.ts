@@ -150,4 +150,3 @@ export const filterLabels: Array<'All' | LaunchStatus> = [
   'Recently launched',
   'Completed',
 ]
-
