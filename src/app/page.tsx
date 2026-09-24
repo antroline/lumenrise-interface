@@ -81,7 +81,7 @@ export default function DiscoverPage() {
             <LaunchRow key={launch.slug} launch={launch} />
           ))}
           {filteredLaunches.length === 0 && (
-            <div className="grid min-h-[250px] place-items-center content-center gap-2 border-b border-line text-center text-muted">
+            <div className="grid min-h-[250px] place-items-center content-center gap-2 border-b border-line text-center text-slate">
               <Icon name="search" size={24} />
               <h3 className="m-0 text-ink">No matching launches</h3>
               <p className="m-0">Try another token name or reset the current filter.</p>

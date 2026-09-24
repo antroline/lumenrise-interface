@@ -105,7 +105,7 @@ export default function SettingsPage() {
                 </button>
               </div>
             ))}
-            <p className="mt-3.5 text-[10px] text-muted">
+            <p className="mt-3.5 text-[10px] text-slate">
               OAuth linking is represented as a frontend prototype until the backend is connected.
             </p>
           </SettingsSection>

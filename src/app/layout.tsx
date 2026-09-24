@@ -30,7 +30,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${manrope.variable} ${newsreader.variable}`} data-scroll-behavior="smooth">
+    <html lang="en" className={`${manrope.variable} ${newsreader.variable} font-sans`} data-scroll-behavior="smooth">
       <body>
         <Providers>{children}</Providers>
       </body>
