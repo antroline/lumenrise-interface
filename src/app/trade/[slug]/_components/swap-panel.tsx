@@ -99,7 +99,7 @@ export function SwapPanel({
         <div className="flex items-center gap-2">
           <Badge variant="net" size="sm">
             <StatusDot />
-            Mainnet
+            Testnet
           </Badge>
           <Button
             variant="outline"
