@@ -16,20 +16,20 @@ const bluxConfig: Parameters<typeof BluxProvider>[0]['config'] = {
   loginMethods: ['wallet', 'email', 'passkey', 'twitter', 'github', 'gitlab'],
   appearance: {
     background: '#ffffff',
-    fieldBackground: '#f5f6f8',
-    accentColor: '#1455ee',
-    textColor: '#111318',
-    fontFamily: 'Manrope Variable, sans-serif',
+    fieldBackground: '#f7f7f5',
+    accentColor: '#0b0b0b',
+    textColor: '#0b0b0b',
+    fontFamily: 'Bricolage Grotesque, ui-sans-serif, system-ui, sans-serif',
     borderRadius: '12px',
-    borderColor: '#dfe2e8',
+    borderColor: '#e5e5e5',
     borderWidth: '1px',
-    outlineColor: '#1455ee',
+    outlineColor: '#0b0b0b',
     outlineWidth: '2px',
     outlineRadius: '14px',
-    logo: `${window.location.origin}/favicon.svg`,
+    logo: `${window.location.origin}/branding/lumenrise-symbol-for-light-background.svg`,
     backdropBlur: '4px',
-    backdropColor: 'rgba(17, 19, 24, 0.28)',
-    boxShadow: '0 24px 70px rgba(17, 19, 24, 0.18)',
+    backdropColor: 'rgba(11, 11, 11, 0.28)',
+    boxShadow: '0 24px 70px rgba(11, 11, 11, 0.18)',
   },
 }
 
@@ -104,12 +104,20 @@ function LaunchpadProvider({ children }: { children: ReactNode }) {
 
   return (
     <LaunchpadContext.Provider value={value}>
-      <div className="app-shell">
+      <div className="min-h-screen">
         {children}
         {notice && (
-          <div className="toast" role="status">
+          <div
+            role="status"
+            className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-xl bg-ink px-4 py-3 font-mono text-[12px] text-white shadow-[0_18px_50px_rgba(11,11,11,0.35)] dark:bg-foreground dark:text-background"
+          >
             <span>{notice}</span>
-            <button type="button" aria-label="Dismiss message" onClick={() => setNotice(null)}>
+            <button
+              type="button"
+              aria-label="Dismiss message"
+              onClick={() => setNotice(null)}
+              className="cursor-pointer text-white/70 transition-colors hover:text-white dark:text-background/70 dark:hover:text-background"
+            >
               ×
             </button>
           </div>
