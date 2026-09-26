@@ -147,7 +147,7 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Sea
       {(shows('launched') || shows('completed')) && (
         <div className="mt-12 grid gap-6 xl:grid-cols-[1.25fr_1fr]">
           {shows('launched') && (
-            <section className={view === 'launched' ? 'xl:col-span-2' : undefined}>
+            <section className={view === 'launched' ? 'min-w-0 xl:col-span-2' : 'min-w-0'}>
               <SectionHeader
                 title="Recently launched"
                 description="Tokens now trading through Stellar liquidity."
@@ -157,7 +157,7 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Sea
             </section>
           )}
           {shows('completed') && (
-            <section className={view === 'completed' ? 'xl:col-span-2' : undefined}>
+            <section className={view === 'completed' ? 'min-w-0 xl:col-span-2' : 'min-w-0'}>
               <SectionHeader
                 title="Completed"
                 description="Closed raises and their outcome."

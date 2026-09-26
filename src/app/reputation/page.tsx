@@ -106,7 +106,9 @@ export default async function ReputationPage({ searchParams }: { searchParams: S
         }
       />
 
-      <Card className="relative mt-8 grid gap-8 overflow-hidden p-7 xl:grid-cols-[minmax(0,1fr)_1px_360px]">
+      <p className="mt-5 text-small text-muted-foreground">This reputation profile and its connection statuses are illustrative. Live profile data is not connected yet.</p>
+
+      <Card className="relative mt-5 grid gap-8 overflow-hidden p-7 xl:grid-cols-[minmax(0,1fr)_1px_360px]">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           <Blockie seed={profile.address} size={84} radius={22} className="shrink-0" />
           <div className="flex min-w-0 flex-col gap-2">
