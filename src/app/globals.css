@@ -6,7 +6,7 @@
 
 @theme {
   --font-sans: var(--font-bricolage), Inter, ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-plex), "IBM Plex Mono", Consolas, ui-monospace, monospace;
+  --font-mono: var(--font-sans);
   --font-heading: var(--font-sans);
 
   /* Brand constants: identical in light and dark. */
@@ -136,7 +136,7 @@
   --secondary-foreground: #2e2e2c;
   --muted: #f7f7f5;
   --muted-foreground: #62625e;
-  --faint: #8e8e89;
+  --faint: #70706b;
   --accent: #f4ffc2;
   --accent-foreground: #0b0b0b;
   --destructive: #b42318;
@@ -183,22 +183,22 @@
 .dark {
   --background: #0e0e0d;
   --foreground: #f4f4ef;
-  --card: #141413;
+  --card: #1a1a18;
   --card-foreground: #f4f4ef;
   --popover: #181817;
   --popover-foreground: #f4f4ef;
   --primary: #d6ff00;
   --primary-foreground: #0b0b0b;
-  --secondary: #232321;
+  --secondary: #292926;
   --secondary-foreground: #d9d9d3;
-  --muted: #191918;
+  --muted: #22221f;
   --muted-foreground: #a3a39e;
-  --faint: #7a7a75;
+  --faint: #999993;
   --accent: rgba(214, 255, 0, 0.1);
   --accent-foreground: #f4f4ef;
   --destructive: #f58f86;
-  --border: #2a2a28;
-  --divider: #20201e;
+  --border: #383834;
+  --divider: #2d2d29;
   --input: #2f2f2c;
   --ring: #d6ff00;
 
@@ -331,7 +331,42 @@
   animation: settle-page 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Mono uppercase caption used for field labels, table heads and nav groups. */
+@keyframes results-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes results-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Results wait behind the skeleton for a short hold so fast loads still read as one smooth swap. */
+@utility animate-results-in {
+  animation: results-fade-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+
+@utility animate-results-out {
+  animation: results-fade-out 0.18s ease-out both;
+}
+
+@utility animate-skeleton-in {
+  animation: results-fade-in 0.18s ease-out both;
+}
+
+@utility animate-skeleton-out {
+  animation: results-fade-out 0.32s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+
+/* Uppercase caption used for field labels, table heads and nav groups. */
 @utility caps {
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
@@ -354,6 +389,26 @@
     linear-gradient(90deg, var(--divider) 1px, transparent 1px);
   background-size: 40px 40px;
   mask-image: linear-gradient(90deg, transparent 45%, #000 90%);
+}
+
+/* The coordinate field is reserved for page specimens and diagrams. */
+.coordinate-field {
+  background-image:
+    linear-gradient(var(--divider) 1px, transparent 1px),
+    linear-gradient(90deg, var(--divider) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: linear-gradient(90deg, transparent, #000 38%, #000 85%, transparent);
+}
+
+.coordinate-field::after {
+  content: '';
+  position: absolute;
+  top: 38px;
+  right: 39px;
+  width: 5px;
+  height: 5px;
+  border: 1px solid var(--muted-foreground);
+  border-radius: 50%;
 }
 
 @utility bar-estimate {

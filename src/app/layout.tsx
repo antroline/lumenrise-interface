@@ -16,12 +16,6 @@ const bricolage = localFont({
   display: 'swap',
 })
 
-const plexMono = localFont({
-  src: [{ path: '../../public/fonts/IBMPlexMono-Regular.ttf', weight: '400', style: 'normal' }],
-  variable: '--font-plex',
-  display: 'swap',
-})
-
 export const metadata: Metadata = {
   title: {
     default: 'LumenRise — Identity, reputation, and launch infrastructure for Stellar',
@@ -47,7 +41,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${bricolage.variable} ${plexMono.variable} font-sans`}
+      className={`${bricolage.variable} font-sans`}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
