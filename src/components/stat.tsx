@@ -53,9 +53,8 @@ export function StatBar({ columns: count, className, children }: { columns: keyo
   return (
     <div
       className={cn(
-        'grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3 [&>*:last-child:nth-child(odd)]:col-span-2 sm:[&>*:last-child:nth-child(odd)]:col-span-1',
+        'grid grid-cols-2 gap-px overflow-hidden border-y border-divider bg-divider sm:grid-cols-2 [&>*:last-child:nth-child(odd)]:col-span-2 lg:[&>*:last-child:nth-child(odd)]:col-span-1',
         columns[count],
-        count === 4 && 'sm:grid-cols-2 sm:[&>*:last-child:nth-child(odd)]:col-span-2',
         className,
       )}
     >
