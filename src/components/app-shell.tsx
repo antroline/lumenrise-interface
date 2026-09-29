@@ -51,7 +51,8 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
   {
     label: 'Explore',
     items: [
-      { label: 'Discover', href: '/', icon: Compass, match: ['/launch', '/trade', '/auction', '/launches'] },
+      { label: 'Discover', href: '/', icon: Compass, match: ['/launch', '/trade', '/auction'] },
+      { label: 'Projects', href: '/launches', icon: LayoutGrid },
       { label: 'Reputation explorer', href: '/explorer', icon: Trophy },
     ],
   },
@@ -155,8 +156,9 @@ function crumbsFor(pathname: string): Crumb[] {
   const [first, second, third] = pathname.split('/').filter(Boolean)
   switch (first) {
     case undefined:
-    case 'launches':
       return [{ label: 'Explore' }, { label: 'Discover' }]
+    case 'launches':
+      return [{ label: 'Explore' }, { label: 'Projects' }]
     case 'launch':
     case 'trade':
     case 'auction': {
@@ -184,8 +186,9 @@ function crumbsFor(pathname: string): Crumb[] {
     case 'campaigns':
       return [{ label: 'For projects' }, { label: 'Campaigns' }]
     case 'developers':
-    case 'cli':
       return [{ label: 'Developers' }, { label: 'API & SDK' }]
+    case 'cli':
+      return [{ label: 'Developers' }, { label: 'CLI & agents' }]
     default:
       return [{ label: 'LumenRise' }]
   }
