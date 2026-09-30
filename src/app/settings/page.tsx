@@ -12,6 +12,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/ca
 import { Switch } from '@/components/ui/switch'
 import { loadConnections, randomScore, saveConnections, shortAddress, type ConnectionKey, type Connections } from '@/lib/connections'
 import { useLaunchpad } from '@/lib/launchpad'
+import { RuledPanel, Trajectory } from '@/components/visual-system'
 
 const providers: { key: ConnectionKey; label: string; Icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
   { key: 'x', label: 'X', Icon: XLogoIcon }, { key: 'github', label: 'GitHub', Icon: GithubIcon }, { key: 'gitlab', label: 'GitLab', Icon: GitFork },
@@ -49,6 +50,7 @@ function SettingsContent({ address, logout }: { address?: string; logout: () => 
 
   return <div className="flex flex-col gap-7">
     <PageHeader eyebrow="Account" title="Account and connections" description="Manage the wallets and accounts behind your reputation, and decide what is public." />
+    <RuledPanel><Trajectory label="Identity evidence path" active={1} steps={[{label:'Wallet'},{label:'Connected identities'},{label:'Reputation signals'},{label:'Launch eligibility'}]} /></RuledPanel>
     <div className="grid items-start gap-6 lg:grid-cols-[190px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)]"><aside className="flex flex-col gap-1 text-ui font-medium lg:sticky lg:top-6">{[['Wallets','wallets'],['Linked accounts','linked'],['Privacy','privacy'],['Notifications','notifications'],['API permissions','permissions'],['Security','security']].map(([label,id],index)=><a key={id} href={`#${id}`} className={`rounded-lg px-3 py-2 ${index===0?'bg-secondary':'text-muted-foreground hover:bg-muted'}`}>{label}</a>)}<div className="mt-4 rounded-xl bg-muted p-4"><Wallet className="size-5" /><b className="mt-2 block">{shortAddress(address)}</b><span className="text-small text-muted-foreground">Stellar Testnet · Blux</span></div></aside>
       <div className="flex min-w-0 flex-col gap-5">
         <SettingsCard id="wallets" title="Wallets" description="Wallets you prove ownership of by signing a message. No funds move."><div className="flex flex-wrap items-center gap-3 border-t py-4"><span className="grid size-10 place-items-center rounded-lg bg-muted"><Wallet className="size-5" /></span><div className="grow"><b className="font-mono text-ui">{shortAddress(address)}</b><span className="block text-small text-muted-foreground">Connected through Blux</span></div><Badge variant="lime">Primary</Badge><Badge variant="net">TESTNET</Badge><Button variant="outline" size="sm" onClick={() => router.push('/portfolio')}>Portfolio</Button></div><p className="text-small text-muted-foreground">Additional wallet linking is not available through the current Blux integration.</p></SettingsCard>
@@ -63,7 +65,7 @@ function SettingsContent({ address, logout }: { address?: string; logout: () => 
 }
 
 function SettingsCard({ id, title, description, children }: { id: string; title: string; description: string; children: ReactNode }) {
-  return <Card id={id}><CardHeader><CardTitle className="text-title">{title}</CardTitle><CardDescription>{description}</CardDescription></CardHeader>{children}</Card>
+  return <Card id={id} variant={id === 'permissions' ? 'ruled' : 'default'}><CardHeader><CardTitle className="text-title">{title}</CardTitle><CardDescription>{description}</CardDescription></CardHeader>{children}</Card>
 }
 
 function ToggleRow({ label, description, value, onChange }: { label: string; description: string; value: boolean; onChange: (value: boolean) => void }) {
