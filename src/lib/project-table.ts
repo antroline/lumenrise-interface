@@ -19,6 +19,10 @@ export type ProjectTableRow = {
   participants: number | null
   date: string
   dateLabel?: string
+  model?: string
+  snapshot?: string
+  snapshotContext?: string
+  snapshotDirection?: 'up' | 'down'
 }
 
 export const projectColumns: { key: ProjectColumn; label: string }[] = [

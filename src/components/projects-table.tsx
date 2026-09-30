@@ -37,25 +37,43 @@ const tableClass = 'min-w-[880px] table-fixed text-sm'
 const headClass = 'border-0 bg-muted py-3 align-middle first:rounded-l-lg first:pl-4 last:rounded-r-lg last:pr-4'
 const cellClass = 'py-2.5 first:pl-4 last:pr-4'
 const nameClass = 'flex min-w-0 items-center gap-3'
+const directoryTableClass = 'min-w-[1120px] table-fixed bg-muted text-[15px]'
+const directoryHeadClass = 'border-0 bg-secondary py-4 align-middle font-sans! text-sm! font-bold! tracking-normal! text-muted-foreground first:pl-4 last:pr-4'
+const directoryCellClass = 'bg-muted py-3.5 whitespace-nowrap first:pl-4 last:pr-4'
+const directoryColumns: { key: ProjectColumn | 'snapshot'; label: string }[] = [
+  ...projectColumns.slice(0, 4),
+  { key: 'snapshot', label: 'Snapshot' },
+  ...projectColumns.slice(4),
+]
 
-function ProjectColumns() {
+function ProjectColumns({ directory = false }: { directory?: boolean }) {
   return (
     <colgroup>
-      <col className="w-[27%]" />
-      <col className="w-[12%]" />
-      <col className="w-[14%]" />
-      <col className="w-[19%]" />
-      <col className="w-[12%]" />
-      <col className="w-[16%]" />
+      {directory ? <>
+        <col className="w-[190px] xl:w-[22%]" />
+        <col className="w-[205px] xl:w-[19%]" />
+        <col className="w-[110px] xl:w-[10%]" />
+        <col className="w-[150px] xl:w-[14%]" />
+        <col className="w-[185px] xl:w-[14%]" />
+        <col className="w-[125px] xl:w-[9%]" />
+        <col className="w-[155px] xl:w-[12%]" />
+      </> : <>
+        <col className="w-[27%]" />
+        <col className="w-[12%]" />
+        <col className="w-[14%]" />
+        <col className="w-[19%]" />
+        <col className="w-[12%]" />
+        <col className="w-[16%]" />
+      </>}
     </colgroup>
   )
 }
 
-function ProjectName({ row }: { row: ProjectTableRow }) {
+function ProjectName({ row, directory = false }: { row: ProjectTableRow; directory?: boolean }) {
   return (
     <>
-      <ProjectMark name={row.name} size={36} />
-      <span className="truncate font-medium">{row.title ?? row.name}</span>
+      <ProjectMark name={row.name} size={directory ? 42 : 36} />
+      <span className={cn('truncate font-medium', directory && 'text-base')}>{row.title ?? row.name}</span>
       {row.ticker && <span className="shrink-0 text-small text-muted-foreground">{row.ticker}</span>}
     </>
   )
@@ -65,26 +83,29 @@ export function ProjectsTable({
   rows,
   caption,
   sorting,
+  directory = false,
 }: {
   rows: ProjectTableRow[]
   caption: string
   sorting?: ProjectTableSorting
+  directory?: boolean
 }) {
   return (
-    <Table className={tableClass}>
+    <Table className={directory ? directoryTableClass : tableClass}>
       <caption className="sr-only">{caption}</caption>
-      <ProjectColumns />
+      <ProjectColumns directory={directory} />
       <TableHeader>
         <TableRow>
-          {projectColumns.map((column) => {
+          {(directory ? directoryColumns : projectColumns).map((column) => {
+            const sortable = column.key !== 'snapshot'
             const active = sorting?.column === column.key
-            const link = sorting?.link(column.key)
+            const link = column.key === 'snapshot' ? undefined : sorting?.link(column.key)
             return (
               <TableHead
                 key={column.key}
                 scope="col"
-                aria-sort={sorting ? active ? sorting.direction === 'asc' ? 'ascending' : 'descending' : 'none' : undefined}
-                className={cn(headClass, column.key === 'name' && 'sticky left-0 z-10')}
+                aria-sort={sortable && sorting ? active ? sorting.direction === 'asc' ? 'ascending' : 'descending' : 'none' : undefined}
+                className={cn(directory ? directoryHeadClass : headClass, column.key === 'name' && 'sticky left-0 z-10')}
               >
                 {link ? (
                   <ResultsLink
@@ -113,21 +134,33 @@ export function ProjectsTable({
           return (
             <TableRow
               key={row.id}
-              className="relative [&>td]:transition-colors focus-within:[&>td]:bg-muted hover:[&>td]:bg-muted"
+              className={cn(
+                'relative [&>td]:transition-colors',
+                directory
+                  ? 'focus-within:[&>td]:bg-secondary hover:[&>td]:bg-secondary'
+                  : 'focus-within:[&>td]:bg-muted hover:[&>td]:bg-muted',
+              )}
             >
-              <TableCell className={cn(cellClass, 'sticky left-0 z-10 bg-background')}>
+              <TableCell className={cn(directory ? directoryCellClass : cellClass, 'sticky left-0 z-10', !directory && 'bg-background')}>
                 {row.href ? (
                   <Link href={row.href} className={cn(nameClass, "rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-lime")}>
-                    <ProjectName row={row} />
+                    <ProjectName row={row} directory={directory} />
                   </Link>
                 ) : (
                   <span className={nameClass}>
-                    <ProjectName row={row} />
+                    <ProjectName row={row} directory={directory} />
                   </span>
                 )}
               </TableCell>
-              <TableCell className={cellClass}>{row.category}</TableCell>
-              <TableCell className={cellClass}>
+              <TableCell className={directory ? directoryCellClass : cellClass}>
+                {directory ? (
+                  <div className="flex min-w-0 items-center gap-2 whitespace-nowrap">
+                    <span className="shrink-0">{row.category}</span>
+                    {row.model && <span className="truncate text-small text-muted-foreground" title={row.model}>· {row.model}</span>}
+                  </div>
+                ) : row.category}
+              </TableCell>
+              <TableCell className={directory ? directoryCellClass : cellClass}>
                 <span
                   className={cn(
                     'inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-small font-medium whitespace-nowrap',
@@ -140,15 +173,22 @@ export function ProjectsTable({
                   {status.label}
                 </span>
               </TableCell>
-              <TableCell className={cn(cellClass, 'whitespace-nowrap tabular-nums')}>
-                {row.figure} <span className="text-small text-muted-foreground">{row.figureContext}</span>
+              <TableCell className={cn(directory ? directoryCellClass : cellClass, 'tabular-nums', !directory && 'whitespace-nowrap')}>
+                <span className="whitespace-nowrap">{row.figure}</span>{' '}
+                <span className="text-small text-muted-foreground">{row.figureContext}</span>
               </TableCell>
-              <TableCell className={cn(cellClass, 'tabular-nums')}>
+              {directory && <TableCell className={cn(directoryCellClass, 'tabular-nums')}>
+                <div className="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
+                  <span className={cn('shrink-0 font-medium', row.snapshotDirection === 'up' && 'text-ok', row.snapshotDirection === 'down' && 'text-bad')}>{row.snapshot ?? '—'}</span>
+                  {row.snapshotContext && <span className="truncate text-small text-muted-foreground" title={row.snapshotContext}>{row.snapshotContext}</span>}
+                </div>
+              </TableCell>}
+              <TableCell className={cn(directory ? directoryCellClass : cellClass, 'tabular-nums')}>
                 {row.participants === null
                   ? <span className="text-muted-foreground">—</span>
                   : row.participants.toLocaleString('en-US')}
               </TableCell>
-              <TableCell className={cn(cellClass, 'whitespace-nowrap tabular-nums')}>
+              <TableCell className={cn(directory ? directoryCellClass : cellClass, 'tabular-nums', !directory && 'whitespace-nowrap')}>
                 {row.date}
                 {row.dateLabel && <span className="text-small text-muted-foreground"> {row.dateLabel}</span>}
               </TableCell>
@@ -172,14 +212,14 @@ function SkeletonBar({ className }: { className: string }) {
 }
 
 /** Mirrors `ProjectsTable` geometry so the two can cross-fade without shifting. */
-export function ProjectsTableSkeleton({ rows }: { rows: number }) {
+export function ProjectsTableSkeleton({ rows, directory = false }: { rows: number; directory?: boolean }) {
   return (
-    <Table className={tableClass} aria-hidden="true">
-      <ProjectColumns />
+    <Table className={directory ? directoryTableClass : tableClass} aria-hidden="true">
+      <ProjectColumns directory={directory} />
       <TableHeader>
         <TableRow>
-          {projectColumns.map((column) => (
-            <TableHead key={column.key} className={headClass}>{column.label}</TableHead>
+          {(directory ? directoryColumns : projectColumns).map((column) => (
+            <TableHead key={column.key} className={directory ? directoryHeadClass : headClass}>{column.label}</TableHead>
           ))}
         </TableRow>
       </TableHeader>
@@ -188,18 +228,19 @@ export function ProjectsTableSkeleton({ rows }: { rows: number }) {
           const [name, category, figure, participants, date] = skeletonWidths[row % skeletonWidths.length]
           return (
             <TableRow key={row}>
-              <TableCell className={cellClass}>
+              <TableCell className={directory ? directoryCellClass : cellClass}>
                 <div className="flex items-center gap-3">
-                  <SkeletonBar className="size-9 shrink-0 rounded-lg" />
+                  <SkeletonBar className={cn('shrink-0 rounded-lg', directory ? 'size-[42px]' : 'size-9')} />
                   <SkeletonBar className={cn('h-3', name)} />
                   <SkeletonBar className="h-2.5 w-9" />
                 </div>
               </TableCell>
-              <TableCell className={cellClass}><SkeletonBar className={cn('h-3', category)} /></TableCell>
-              <TableCell className={cellClass}><SkeletonBar className="h-6 w-18" /></TableCell>
-              <TableCell className={cellClass}><SkeletonBar className={cn('h-3', figure)} /></TableCell>
-              <TableCell className={cellClass}><SkeletonBar className={cn('h-3', participants)} /></TableCell>
-              <TableCell className={cellClass}><SkeletonBar className={cn('h-3', date)} /></TableCell>
+              <TableCell className={directory ? directoryCellClass : cellClass}><SkeletonBar className={cn('h-3', category)} /></TableCell>
+              <TableCell className={directory ? directoryCellClass : cellClass}><SkeletonBar className="h-6 w-18" /></TableCell>
+              <TableCell className={directory ? directoryCellClass : cellClass}><SkeletonBar className={cn('h-3', figure)} /></TableCell>
+              {directory && <TableCell className={directoryCellClass}><SkeletonBar className="h-3 w-16" /></TableCell>}
+              <TableCell className={directory ? directoryCellClass : cellClass}><SkeletonBar className={cn('h-3', participants)} /></TableCell>
+              <TableCell className={directory ? directoryCellClass : cellClass}><SkeletonBar className={cn('h-3', date)} /></TableCell>
             </TableRow>
           )
         })}

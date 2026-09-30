@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProjectsTable, ProjectsTableSkeleton } from '@/components/projects-table'
 import { ResultsLink, ResultsStack, ResultsTransition } from '@/components/results-transition'
 import { projectColumns, type ProjectColumn, type SortDirection } from '@/lib/project-table'
@@ -80,7 +80,10 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
   return (
     <ResultsTransition>
       <div className="w-full pb-12">
-        <h1 className="sr-only">Projects</h1>
+        <div className="mb-8">
+          <h1 className="text-[36px] leading-none font-bold tracking-[-0.04em] sm:text-[48px]">Projects</h1>
+          <p className="mt-3 text-body text-muted-foreground sm:text-base">Explore launches, auctions, and live markets on Stellar.</p>
+        </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <nav aria-label="Project category" className="-mx-4 max-w-[calc(100%+2rem)] overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:max-w-full sm:px-0">
@@ -108,27 +111,34 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
               })}
             </div>
           </nav>
-          <p className="caps tabular-nums">{projects.length} projects</p>
+          <p className="caps tabular-nums">{matching.length} projects</p>
         </div>
 
         <section className="mt-4" aria-label="Project results">
-          <ResultsStack skeleton={<ProjectsTableSkeleton rows={visible.length} />}>
-            <ProjectsTable
-              rows={visible}
-              caption={`Projects sorted by ${projectColumns.find((column) => column.key === sort)?.label} ${direction === 'asc' ? 'ascending' : 'descending'}`}
-              sorting={{
-                column: sort,
-                direction,
-                explicit: requestedSort !== undefined,
-                link: (column) => {
-                  const next = column === sort
-                    ? direction === 'asc' ? 'desc' : 'asc'
-                    : defaultDirection(column)
-                  return { href: projectsUrl(category, column, next, 1), direction: next }
-                },
-              }}
-            />
-          </ResultsStack>
+          <p className="mb-1 flex items-center justify-end gap-1 text-small text-muted-foreground xl:hidden">
+            Scroll to compare
+            <ArrowRight className="size-3.5" aria-hidden="true" />
+          </p>
+          <div className="overflow-hidden rounded-xl">
+            <ResultsStack skeleton={<ProjectsTableSkeleton rows={visible.length} directory />}>
+              <ProjectsTable
+                directory
+                rows={visible}
+                caption={`Projects sorted by ${projectColumns.find((column) => column.key === sort)?.label} ${direction === 'asc' ? 'ascending' : 'descending'}`}
+                sorting={{
+                  column: sort,
+                  direction,
+                  explicit: requestedSort !== undefined,
+                  link: (column) => {
+                    const next = column === sort
+                      ? direction === 'asc' ? 'desc' : 'asc'
+                      : defaultDirection(column)
+                    return { href: projectsUrl(category, column, next, 1), direction: next }
+                  },
+                }}
+              />
+            </ResultsStack>
+          </div>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <p className="caps tabular-nums">
@@ -152,7 +162,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
                   className={cn(
                     pagerItem,
                     'font-medium tabular-nums',
-                    number === page ? 'bg-orange text-ink' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+                    number === page ? 'bg-lime text-ink' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
                   )}
                 >
                   {number}

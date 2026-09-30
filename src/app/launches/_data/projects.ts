@@ -22,6 +22,10 @@ export type ProjectListing = {
   date: string
   dateLabel: string
   dateValue: number
+  model: string
+  snapshot: string
+  snapshotContext: string
+  snapshotDirection?: 'up' | 'down'
 }
 
 const monthIndex: Record<string, number> = {
@@ -57,6 +61,9 @@ export const projects: ProjectListing[] = [
     date: launch.date.split(' · ')[0],
     dateLabel: launch.dateLabel.toLowerCase(),
     dateValue: dateValue(launch.date),
+    model: launch.model,
+    snapshot: launch.phase === 'live' ? `${launch.progress}%` : launch.allocation,
+    snapshotContext: launch.phase === 'live' ? 'of target funded' : 'allocation',
   })),
   ...auctions.map((auction) => ({
     id: `auction-${auction.slug}`,
@@ -72,6 +79,9 @@ export const projects: ProjectListing[] = [
     date: auction.time.split(' · ')[0],
     dateLabel: auction.timeLabel.toLowerCase(),
     dateValue: dateValue(auction.time),
+    model: auction.model,
+    snapshot: auction.range ? `${auction.range.low}–${auction.range.high} USDC` : auction.supply,
+    snapshotContext: auction.range ? 'est. clearing' : 'supply',
   })),
   ...tradingTokens.map((token) => ({
     id: `trading-${token.slug}`,
@@ -87,5 +97,9 @@ export const projects: ProjectListing[] = [
     date: token.launched,
     dateLabel: 'launched',
     dateValue: dateValue(token.launched),
+    model: 'Spot market',
+    snapshot: token.change,
+    snapshotContext: '24h change',
+    snapshotDirection: token.direction,
   })),
 ]
