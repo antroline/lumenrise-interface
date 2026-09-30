@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { RuledPanel, Trajectory } from '@/components/visual-system'
 import { accounts, categories, profile, radarLabels, radarValues, type AccountIcon } from './_data'
 import { CategoryCard } from './_components/category-card'
 import { CategoryFilter, type CategoryView } from './_components/category-filter'
@@ -210,13 +211,15 @@ export default async function ReputationPage({ searchParams }: { searchParams: S
         </Card>
       </div>
 
+      <RuledPanel className="mt-8"><Trajectory label="How reputation informs eligibility" active={2} steps={[{label:'Connected sources'},{label:'Measured signals'},{label:'Reputation profile'},{label:'Launch rule'}]} /></RuledPanel>
+
       <section className="mt-10">
         <SectionHeader
           title="Categories"
           description="What contributes to each signal and what you can still add."
           action={<CategoryFilter view={view} />}
         />
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="border-t border-divider">
           {visible.map((category) => (
             <CategoryCard key={category.key} category={category} />
           ))}

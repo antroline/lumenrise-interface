@@ -61,7 +61,7 @@ export default function MissionsPage() {
           description="Created by projects. Credentials they issue appear on your profile as project-issued evidence."
           action={<Button variant="outline" size="sm" disabled title="Campaign creation is not connected"><Plus data-icon="inline-start" /> Create a campaign</Button>}
         />
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-5 border-t border-divider pt-5 md:grid-cols-2 xl:grid-cols-3">
           {campaigns.map((campaign) => (
             <Card key={campaign.key}>
               <CardHeader className="flex flex-row items-center gap-3">

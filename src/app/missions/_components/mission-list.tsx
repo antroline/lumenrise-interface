@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SignalNode } from '@/components/visual-system'
 import { missionCategories, missions, type MissionIcon, type MissionStatus } from '../_data'
 
 const icons: Record<MissionIcon, ComponentType<SVGProps<SVGSVGElement>>> = {
@@ -68,9 +69,9 @@ export function MissionList() {
           {shown.map((mission) => {
             const Icon = icons[mission.icon]
             return (
-              <Card key={mission.key} className={mission.status === 'done' ? 'bg-muted' : undefined}>
+              <Card key={mission.key} variant="ruled" className={mission.status === 'done' ? 'bg-muted' : undefined}>
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <IconTile><Icon /></IconTile>
+                  <span className="flex items-center gap-3"><SignalNode active={mission.status === 'progress'} /><IconTile><Icon /></IconTile></span>
                   <Badge variant="tag-outline">{mission.category}</Badge>
                 </CardHeader>
                 <CardContent className="flex flex-1 flex-col gap-4">
