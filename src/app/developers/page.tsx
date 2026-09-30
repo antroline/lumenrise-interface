@@ -8,6 +8,7 @@ export default function DevelopersPage() {
   return (
     <ComingSoon
       icon={Code}
+      kind="developers"
       title="Developer platform"
       description="API keys, SDK examples, policy tooling, webhooks and eligibility queries for other Stellar applications."
     />
