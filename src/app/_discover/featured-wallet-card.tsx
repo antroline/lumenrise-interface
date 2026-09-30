@@ -13,16 +13,16 @@ export function FeaturedWalletCard({ launch }: { launch: Launch }) {
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
-      <p className="text-small text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         {connected ? `Wallet ${shortAddress(address)}` : 'Check eligibility'}
       </p>
       {connected ? (
-        <Button className="w-full sm:w-fit" render={<Link href={`/launch/${launch.slug}`} />} nativeButton={false}>
+        <Button size="lg" className="w-full sm:w-fit" render={<Link href={`/launch/${launch.slug}`} />} nativeButton={false}>
           View launch
           <ArrowRight data-icon="inline-end" />
         </Button>
       ) : (
-        <Button className="w-full sm:w-fit" disabled={loginPending} onClick={() => void login(`/launch/${launch.slug}`)}>
+        <Button size="lg" className="w-full sm:w-fit" disabled={loginPending} onClick={() => void login(`/launch/${launch.slug}`)}>
           <Wallet data-icon="inline-start" />
           {loginPending ? 'Connecting…' : 'Connect wallet'}
         </Button>

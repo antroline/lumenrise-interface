@@ -138,8 +138,8 @@ export default async function DiscoverPage({
   const shown = rows.slice(0, DISCOVER_LIMIT);
 
   return (
-    <div className="max-w-5xl">
-      <h1 className="text-[34px] leading-none font-bold tracking-[-0.04em] sm:text-h1">
+    <div className="w-full">
+      <h1 className="text-[36px] leading-none font-bold tracking-[-0.04em] sm:text-[48px]">
         Launches
       </h1>
 

@@ -23,13 +23,15 @@ export function LogoSymbol({ className, size = 26 }: { className?: string; size?
   )
 }
 
-export function LogoHorizontal({ className, height = 20 }: { className?: string; height?: number }) {
+export function LogoHorizontal({ className, height = 20, variant = 'default' }: { className?: string; height?: number; variant?: 'default' | 'lime' }) {
   const width = Math.round((height * 481) / 100)
+  const lightSrc = variant === 'lime' ? '/branding/lumenrise-logo-lime-gray-ink.svg' : '/branding/lumenrise-logo-horizontal-for-light-background.svg'
+  const darkSrc = variant === 'lime' ? '/branding/lumenrise-logo-lime-gray-light.svg' : '/branding/lumenrise-logo-horizontal-for-dark-background.svg'
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/branding/lumenrise-logo-horizontal-for-light-background.svg"
+        src={lightSrc}
         alt="LumenRise"
         width={width}
         height={height}
@@ -37,7 +39,7 @@ export function LogoHorizontal({ className, height = 20 }: { className?: string;
       />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/branding/lumenrise-logo-horizontal-for-dark-background.svg"
+        src={darkSrc}
         alt="LumenRise"
         width={width}
         height={height}
