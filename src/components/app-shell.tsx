@@ -449,6 +449,11 @@ function WalletButton() {
 /** Routes that render as a focused flow without the site navigation. */
 const bareRoutes = new Set(['/onboarding'])
 
+/** Routes that use the full viewport width instead of the centred reading column. */
+function isFullWidth(pathname: string) {
+  return pathname === '/launches' || /^\/launch\/[^/]+$/.test(pathname)
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const [navOpen, setNavOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -464,7 +469,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (bareRoutes.has(pathname)) return children
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative isolate min-h-screen bg-background">
+      <div className="page-dot-field" aria-hidden="true" />
       <header className={cn('sticky top-0 z-30 transition-colors duration-200', scrolled && 'bg-background/95 backdrop-blur-sm')}>
         <div className="flex h-[68px] w-full items-center gap-2 px-4 sm:gap-3 sm:px-5 lg:px-6">
           <Sheet open={navOpen} onOpenChange={setNavOpen}>
@@ -496,8 +502,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       <main className={cn(
-        'animate-settle mx-auto w-full px-4 pt-6 pb-16 sm:pt-8 lg:pt-10 lg:pb-[72px]',
-        pathname === '/launches' ? 'sm:px-5 lg:px-6' : 'max-w-[1200px] sm:px-6 lg:px-10',
+        'animate-settle relative z-10 mx-auto w-full px-4 pt-6 pb-16 sm:pt-8 lg:pt-10 lg:pb-[72px]',
+        isFullWidth(pathname) ? 'sm:px-5 lg:px-6' : 'max-w-[1200px] sm:px-6 lg:px-10',
       )}>
         <Breadcrumbs />
         {children}
