@@ -89,10 +89,18 @@ const eligibility: Record<EligibilityState, { tone: 'ok' | 'bad' | 'warn' | 'mut
   na: { tone: 'muted', icon: Info, label: 'Check eligibility' },
 }
 
-export function Eligibility({ state, children }: { state: EligibilityState; children?: ReactNode }) {
+export function Eligibility({
+  state,
+  children,
+  className,
+}: {
+  state: EligibilityState
+  children?: ReactNode
+  className?: string
+}) {
   const config = eligibility[state]
   return (
-    <StatusText tone={config.tone} icon={config.icon}>
+    <StatusText tone={config.tone} icon={config.icon} className={className}>
       {children ?? config.label}
     </StatusText>
   )
