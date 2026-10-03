@@ -5,7 +5,7 @@ import { StatusDot } from '@/components/status'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import type { Launch } from '@/lib/data'
-import { FeaturedWalletCard } from './featured-wallet-card'
+import { FeaturedProjectLink } from './featured-project-link'
 
 export function FeaturedLaunch({ launch }: { launch: Launch }) {
   return (
@@ -52,7 +52,7 @@ export function FeaturedLaunch({ launch }: { launch: Launch }) {
       </div>
 
       <div className="lg:col-start-1 lg:row-start-2">
-        <FeaturedWalletCard launch={launch} />
+        <FeaturedProjectLink launch={launch} />
       </div>
     </DarkPanel>
   )
