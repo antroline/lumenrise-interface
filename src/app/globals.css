@@ -69,6 +69,8 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  /* Stone ground for card surfaces that sit directly on the page background. */
+  --color-surface: var(--surface);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
@@ -128,6 +130,9 @@
   --foreground: #0b0b0b;
   --card: #ffffff;
   --card-foreground: #0b0b0b;
+  --surface: #f0f0f1;
+  /* Hairlines need more separation on the stone ground than on the white page. */
+  --surface-divider: #dcdcdd;
   --popover: #ffffff;
   --popover-foreground: #0b0b0b;
   --primary: #d6ff00;
@@ -185,6 +190,8 @@
   --foreground: #f4f4ef;
   --card: #1a1a18;
   --card-foreground: #f4f4ef;
+  --surface: #19191a;
+  --surface-divider: #2f2f30;
   --popover: #181817;
   --popover-foreground: #f4f4ef;
   --primary: #d6ff00;
@@ -390,6 +397,47 @@
   background-size: 40px 40px;
   mask-image: linear-gradient(90deg, transparent 45%, #000 90%);
 }
+
+/* A quiet dot matrix behind the shared header and the start of each page. */
+.page-dot-field {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 440px;
+  pointer-events: none;
+  background-image: radial-gradient(circle at center, var(--header-dot) 1.4px, transparent 2px);
+  background-position: center top;
+  background-size: 38px 38px;
+  mask-image: linear-gradient(to bottom, #000 0%, #000 14%, rgb(0 0 0 / 85%) 36%, rgb(0 0 0 / 45%) 68%, transparent 100%);
+}
+
+.page-dot-field::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  --dot-lime: color-mix(in srgb, var(--color-lime) 68%, transparent);
+  --dot-orange: color-mix(in srgb, var(--color-orange) 62%, transparent);
+  /* Grid-aligned rows form a rising arrow with an orange trail. */
+  background-image:
+    radial-gradient(circle at 228px 57px, var(--dot-lime) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 190px 95px, var(--dot-lime) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 228px 95px, var(--dot-lime) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 266px 95px, var(--dot-lime) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 152px 133px, var(--dot-lime) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 190px 133px, var(--dot-lime) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 228px 133px, var(--dot-lime) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 152px 171px, var(--dot-lime) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 190px 171px, var(--dot-lime) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 114px 171px, var(--dot-orange) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 76px 209px, var(--dot-orange) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 114px 209px, var(--dot-orange) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 152px 209px, var(--dot-orange) 0 3px, transparent 4.2px);
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: 304px 342px;
+}
+
+:root { --header-dot: rgb(11 11 11 / 16%); }
+.dark { --header-dot: rgb(244 244 239 / 20%); }
 
 /* The coordinate field is reserved for page specimens and diagrams. */
 .coordinate-field {

@@ -1,8 +1,8 @@
 import { BackLink } from '@/components/page-header'
 import type { Launch } from '@/lib/data'
-import { LaunchHeader } from '../_components/launch-header'
 import type { LaunchContent } from '../_data/launch-content'
 import { CommitmentForm } from './commitment-form'
+import { ParticipationHeader } from './participation-header'
 
 export function ParticipationView({ launch, content }: { launch: Launch; content: LaunchContent }) {
   const live = launch.phase === 'live'
@@ -10,7 +10,7 @@ export function ParticipationView({ launch, content }: { launch: Launch; content
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 pb-12">
       <BackLink href={`/launch/${launch.slug}`}>{launch.name}</BackLink>
-      <LaunchHeader launch={launch} participation />
+      <ParticipationHeader launch={launch} />
 
       <div className="grid overflow-hidden rounded-2xl border bg-card lg:grid-cols-[minmax(0,1fr)_280px]">
         <aside className="border-b bg-muted/40 p-5 sm:p-7 lg:col-start-2 lg:row-start-1 lg:border-b-0 lg:border-l" aria-labelledby="terms-heading">

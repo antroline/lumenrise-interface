@@ -35,25 +35,31 @@ export function Trajectory({
   steps,
   active,
   label,
+  size = 'default',
   className,
 }: {
   steps: TrajectoryStep[]
   active: number
   label: string
+  size?: 'default' | 'lg'
   className?: string
 }) {
+  const large = size === 'lg'
   return (
     <div className={cn('min-w-0 overflow-x-auto [scrollbar-width:none]', className)}>
       <ol aria-label={label} className="flex min-w-[330px]">
         {steps.map((step, index) => (
           <li key={index} aria-current={index === active ? 'step' : undefined} className="min-w-0 flex-1">
             <div className="flex h-4 items-center">
-              <SignalNode active={index === active} className={index < active ? 'border-foreground bg-foreground' : undefined} />
+              <SignalNode
+                active={index === active}
+                className={cn(large && 'sm:size-3', index < active && 'border-foreground bg-foreground')}
+              />
               {index < steps.length - 1 && <span aria-hidden="true" className={cn('mx-1 h-px flex-1 bg-border', index < active && 'bg-foreground')} />}
             </div>
-            <div className="mt-2 pr-2">
-              <span className={cn('block text-small font-semibold', index > active && 'text-muted-foreground')}>{step.label}</span>
-              {step.detail && <span className="mt-0.5 block font-mono text-2xs text-muted-foreground">{step.detail}</span>}
+            <div className={cn('mt-2 pr-2', large && 'sm:mt-3 sm:pr-4')}>
+              <span className={cn('block text-small font-semibold', large && 'sm:text-[15px]', index > active && 'text-muted-foreground')}>{step.label}</span>
+              {step.detail && <span className={cn('mt-0.5 block font-mono text-2xs text-muted-foreground', large && 'sm:mt-1 sm:text-[13px]')}>{step.detail}</span>}
             </div>
           </li>
         ))}
@@ -64,15 +70,39 @@ export function Trajectory({
 
 export type EvidenceRow = { label: ReactNode; detail?: ReactNode; value?: ReactNode; source?: ReactNode; active?: boolean }
 
-export function EvidenceLedger({ rows, className }: { rows: EvidenceRow[]; className?: string }) {
+export function EvidenceLedger({
+  rows,
+  size = 'default',
+  className,
+}: {
+  rows: EvidenceRow[]
+  size?: 'default' | 'lg'
+  className?: string
+}) {
+  const large = size === 'lg'
+  // The value column is dropped entirely when no row carries one, so a source-only
+  // ledger does not leave a reserved gap before its provenance column.
+  const hasValues = rows.some((row) => row.value !== undefined)
   return (
     <ol className={cn('border-t border-divider', className)}>
       {rows.map((row, index) => (
-        <li key={index} className="grid grid-cols-[26px_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 border-b border-divider py-3.5 sm:grid-cols-[30px_minmax(0,1fr)_minmax(72px,auto)_minmax(90px,auto)] sm:gap-x-4">
-          <span className="font-mono text-2xs text-faint tabular-nums">{String(index + 1).padStart(2, '0')}</span>
-          <div className="min-w-0"><div className="flex items-center gap-2 text-ui font-semibold"><SignalNode active={row.active} className="size-2" />{row.label}</div>{row.detail && <div className="mt-1 pl-4 text-small text-muted-foreground">{row.detail}</div>}</div>
-          {row.value && <span className="text-right text-ui font-semibold tabular-nums">{row.value}</span>}
-          {row.source && <span className="col-start-2 font-mono text-2xs text-muted-foreground sm:col-auto sm:text-right">{row.source}</span>}
+        <li
+          key={index}
+          className={cn(
+            'grid grid-cols-[26px_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 border-b border-divider py-3.5 sm:gap-x-4',
+            hasValues
+              ? 'sm:grid-cols-[30px_minmax(0,1fr)_minmax(72px,auto)_minmax(90px,auto)]'
+              : 'sm:grid-cols-[30px_minmax(0,1fr)_minmax(90px,auto)]',
+            large && 'gap-y-2 py-5 sm:gap-x-6',
+            large && (hasValues
+              ? 'sm:grid-cols-[40px_minmax(0,1fr)_minmax(72px,auto)_minmax(132px,auto)]'
+              : 'sm:grid-cols-[40px_minmax(0,1fr)_minmax(132px,auto)]'),
+          )}
+        >
+          <span className={cn('font-mono text-2xs text-faint tabular-nums', large && 'text-[13px] text-muted-foreground')}>{String(index + 1).padStart(2, '0')}</span>
+          <div className="min-w-0"><div className={cn('flex items-center gap-2 text-ui font-semibold', large && 'gap-2.5 text-[17px]')}><SignalNode active={row.active} className={cn('size-2', large && 'size-2.5')} />{row.label}</div>{row.detail && <div className={cn('mt-1 pl-4 text-small text-muted-foreground', large && 'pl-5 text-[15px] leading-relaxed')}>{row.detail}</div>}</div>
+          {row.value && <span className={cn('text-right text-ui font-semibold tabular-nums', large && 'text-[17px]')}>{row.value}</span>}
+          {row.source && <span className={cn('col-start-2 font-mono text-2xs text-muted-foreground sm:col-auto sm:text-right', large && 'col-start-2 pl-5 sm:col-auto sm:pl-0')}>{row.source}</span>}
         </li>
       ))}
     </ol>
