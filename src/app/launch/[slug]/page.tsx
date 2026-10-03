@@ -5,15 +5,18 @@ import { cardVariants } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Trajectory } from '@/components/visual-system'
 import { getLaunch } from '@/lib/data'
+import { cn } from '@/lib/utils'
 import { LaunchExtraSections } from './_components/launch-extra-sections'
 import { LaunchSummary } from './_components/launch-summary'
 import { getLaunchContent } from './_data/launch-content'
 
 const panel = cardVariants({ variant: 'surface', size: 'lg' })
 
-function Figure({ label, children }: { label: string; children: ReactNode }) {
+/** `accent` carries the one figure the visitor is on a clock for; the box bleeds into the
+ *  surrounding gap so the label and value stay on the same grid as the plain figures. */
+function Figure({ label, accent = false, children }: { label: string; accent?: boolean; children: ReactNode }) {
   return (
-    <div className="min-w-0">
+    <div className={cn('min-w-0', accent && '-mx-4 -my-2.5 rounded-xl bg-accent px-4 py-2.5 ring-1 ring-foreground/12')}>
       <dt className="text-[13px] font-medium tracking-[0.08em] text-muted-foreground uppercase">{label}</dt>
       <dd className="mt-2.5 text-[20px] leading-tight font-semibold tracking-[-0.02em] tabular-nums sm:text-[22px]">
         {children}
@@ -31,7 +34,10 @@ export default async function LaunchDetailPage({ params }: { params: Promise<{ s
   const live = launch.phase === 'live'
 
   return (
-    <div className="w-full pb-8">
+    <div className={cn(
+      'w-full pb-8',
+      slug === 'northstar' && '[--surface:#ffffff] dark:[--surface:#1a1a1a] [&_.bg-surface]:border [&_.bg-surface]:border-border [&_.bg-accent]:bg-background'
+    )}>
       {/* The shell breadcrumb already carries this link from md up. */}
       <div className="md:hidden">
         <BackLink href="/">Discover</BackLink>
@@ -80,12 +86,13 @@ export default async function LaunchDetailPage({ params }: { params: Promise<{ s
                 value={launch.progress}
                 aria-label={`${launch.progress}% of the target raised`}
                 size="thick"
-                className="[&_[data-slot=progress-track]]:bg-foreground/15"
+                tone="lime"
+                className="[&_[data-slot=progress-track]]:bg-foreground dark:[&_[data-slot=progress-track]]:bg-foreground/20"
               />
             )}
 
             <dl className="grid grid-cols-2 gap-x-8 gap-y-7 border-t border-divider pt-7 sm:grid-cols-4">
-              <Figure label={`Sale ${launch.dateLabel.toLowerCase()}`}>{launch.date}</Figure>
+              <Figure label={`Sale ${launch.dateLabel.toLowerCase()}`} accent>{launch.date}</Figure>
               <Figure label="Allocation">{launch.allocation}</Figure>
               <Figure label="Model">{launch.model}</Figure>
               <Figure label="Participants">{launch.participants === '—' ? 'None yet' : launch.participants}</Figure>

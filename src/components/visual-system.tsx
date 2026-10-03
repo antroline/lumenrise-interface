@@ -7,13 +7,22 @@ export function CoordinateField({ className }: { className?: string }) {
   return <span aria-hidden="true" className={cn('coordinate-field pointer-events-none absolute inset-0', className)} />
 }
 
-export function SignalNode({ active = false, className }: { active?: boolean; className?: string }) {
+/** `ok` is for nodes that mark a verified record; lime stays the "current position" tone. */
+export function SignalNode({
+  active = false,
+  tone = 'lime',
+  className,
+}: {
+  active?: boolean
+  tone?: 'lime' | 'ok'
+  className?: string
+}) {
   return (
     <span
       aria-hidden="true"
       className={cn(
         'block size-2.5 shrink-0 rounded-full border border-foreground bg-background',
-        active && 'border-lime bg-lime ring-[3px] ring-lime/20',
+        active && (tone === 'ok' ? 'border-ok bg-ok ring-[3px] ring-ok/20' : 'border-lime bg-lime ring-[3px] ring-lime/20'),
         className,
       )}
     />
@@ -68,7 +77,7 @@ export function Trajectory({
   )
 }
 
-export type EvidenceRow = { label: ReactNode; detail?: ReactNode; value?: ReactNode; source?: ReactNode; active?: boolean }
+export type EvidenceRow = { label: ReactNode; detail?: ReactNode; value?: ReactNode; source?: ReactNode; active?: boolean; tone?: 'lime' | 'ok' }
 
 export function EvidenceLedger({
   rows,
@@ -100,7 +109,7 @@ export function EvidenceLedger({
           )}
         >
           <span className={cn('font-mono text-2xs text-faint tabular-nums', large && 'text-[13px] text-muted-foreground')}>{String(index + 1).padStart(2, '0')}</span>
-          <div className="min-w-0"><div className={cn('flex items-center gap-2 text-ui font-semibold', large && 'gap-2.5 text-[17px]')}><SignalNode active={row.active} className={cn('size-2', large && 'size-2.5')} />{row.label}</div>{row.detail && <div className={cn('mt-1 pl-4 text-small text-muted-foreground', large && 'pl-5 text-[15px] leading-relaxed')}>{row.detail}</div>}</div>
+          <div className="min-w-0"><div className={cn('flex items-center gap-2 text-ui font-semibold', large && 'gap-2.5 text-[17px]')}><SignalNode active={row.active} tone={row.tone} className={cn('size-2', large && 'size-2.5')} />{row.label}</div>{row.detail && <div className={cn('mt-1 pl-4 text-small text-muted-foreground', large && 'pl-5 text-[15px] leading-relaxed')}>{row.detail}</div>}</div>
           {row.value && <span className={cn('text-right text-ui font-semibold tabular-nums', large && 'text-[17px]')}>{row.value}</span>}
           {row.source && <span className={cn('col-start-2 font-mono text-2xs text-muted-foreground sm:col-auto sm:text-right', large && 'col-start-2 pl-5 sm:col-auto sm:pl-0')}>{row.source}</span>}
         </li>

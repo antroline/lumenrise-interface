@@ -7,7 +7,7 @@ export type LaunchContent = {
   /** Project-provided destinations. Preview entries use the reserved `.example` domain. */
   links?: LaunchLink[]
   facts?: { label: string; value: string }[]
-  team?: { name: string; role: string; source: 'verified' | 'project-provided'; image?: string }[]
+  team?: { name: string; role: string; source: 'verified' | 'project-provided' }[]
   evidence?: { label: string; detail: string; source: 'verified' | 'project-provided' }[]
   tokenomics?: {
     totalSupply: string
