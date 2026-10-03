@@ -112,6 +112,7 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -126,7 +127,7 @@
 /* `.theme-reset` restores the light tokens for surfaces nested inside a DarkPanel. */
 :root,
 :root:not(.dark) .theme-reset {
-  --background: #ffffff;
+  --background: #fafafa;
   --foreground: #0b0b0b;
   --card: #ffffff;
   --card-foreground: #0b0b0b;
@@ -172,6 +173,7 @@
   --chart-3: #8e8e89;
   --chart-4: #e5e5e5;
   --chart-5: #ff7315;
+  --chart-6: #3d6b8f;
 
   --sidebar: #ffffff;
   --sidebar-foreground: #0b0b0b;
@@ -231,6 +233,7 @@
   --chart-3: #7a7a75;
   --chart-4: #2a2a28;
   --chart-5: #ff7315;
+  --chart-6: #6f9cc0;
 
   --sidebar: #0e0e0d;
   --sidebar-foreground: #f4f4ef;
@@ -416,24 +419,26 @@
   inset: 0;
   --dot-lime: color-mix(in srgb, var(--color-lime) 68%, transparent);
   --dot-orange: color-mix(in srgb, var(--color-orange) 62%, transparent);
-  /* Grid-aligned rows form a rising arrow with an orange trail. */
+  /* A two-step rise with an orange trail. `--rise-y` keeps both rows inside the band
+     between the sticky header and the first panel, so neither edge ever crops them. */
+  --rise-y: 95px;
   background-image:
-    radial-gradient(circle at 228px 57px, var(--dot-lime) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 190px 95px, var(--dot-lime) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 228px 95px, var(--dot-lime) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 266px 95px, var(--dot-lime) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 152px 133px, var(--dot-lime) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 190px 133px, var(--dot-lime) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 228px 133px, var(--dot-lime) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 152px 171px, var(--dot-lime) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 190px 171px, var(--dot-lime) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 114px 171px, var(--dot-orange) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 76px 209px, var(--dot-orange) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 114px 209px, var(--dot-orange) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 152px 209px, var(--dot-orange) 0 3px, transparent 4.2px);
+    radial-gradient(circle at 38px calc(var(--rise-y) + 38px), var(--dot-orange) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 76px calc(var(--rise-y) + 38px), var(--dot-orange) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 114px calc(var(--rise-y) + 38px), var(--dot-orange) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 152px calc(var(--rise-y) + 38px), var(--dot-orange) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 190px var(--rise-y), var(--dot-lime) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 228px var(--rise-y), var(--dot-lime) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 266px var(--rise-y), var(--dot-lime) 0 3px, transparent 4.2px),
+    radial-gradient(circle at 304px var(--rise-y), var(--dot-lime) 0 3px, transparent 4.2px);
   background-position: center top;
   background-repeat: no-repeat;
-  background-size: 304px 342px;
+  background-size: 342px 342px;
+}
+
+/* The band is shorter on phones, where page content starts higher. */
+@media (max-width: 639px) {
+  .page-dot-field::after { --rise-y: 76px; }
 }
 
 :root { --header-dot: rgb(11 11 11 / 16%); }
