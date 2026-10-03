@@ -1,70 +1,114 @@
+import type { ComponentType, SVGProps } from 'react'
 import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, BadgeCheck, BookOpen, Globe } from 'lucide-react'
+import { DiscordIcon, TelegramIcon, XLogoIcon } from '@/components/brand-icons'
+import { ProjectMark } from '@/components/project-mark'
+import { Eligibility, StatusPill } from '@/components/status'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
+import { cardVariants } from '@/components/ui/card'
 import type { Launch } from '@/lib/data'
+import { cn } from '@/lib/utils'
+import type { LaunchContent, LaunchLinkKind } from '../_data/launch-content'
 
-export function LaunchSummary({ launch }: { launch: Launch }) {
+const linkKinds: Record<LaunchLinkKind, { name: string; Icon: ComponentType<SVGProps<SVGSVGElement>> }> = {
+  website: { name: 'Website', Icon: Globe },
+  docs: { name: 'Documentation', Icon: BookOpen },
+  x: { name: 'X', Icon: XLogoIcon },
+  discord: { name: 'Discord', Icon: DiscordIcon },
+  telegram: { name: 'Telegram', Icon: TelegramIcon },
+}
+
+/**
+ * Identity and decision panel. It stays beside the evaluation content while the page
+ * scrolls, so the project, the visitor's standing and the action never leave the view.
+ */
+export function LaunchSummary({
+  launch,
+  content,
+  className,
+}: {
+  launch: Launch
+  content: LaunchContent
+  className?: string
+}) {
   const live = launch.phase === 'live'
+  const verifiedRecords = content.evidence?.filter((item) => item.source === 'verified').length ?? 0
 
   return (
-    <section className="grid lg:grid-cols-[minmax(0,1fr)_300px]" aria-labelledby="sale-heading">
-      <div className="px-5 py-7 sm:px-8 sm:py-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2 id="sale-heading" className="text-[20px] font-semibold tracking-[-0.02em]">
-              {live ? 'Live sale' : 'Upcoming sale'}
-            </h2>
-            <p className="mt-4 text-small text-white/60">{live ? 'Raised so far' : 'Fundraising target'}</p>
-            <p className="mt-1 text-[38px] leading-none font-semibold tracking-[-0.035em] tabular-nums sm:text-[46px]">
-              {live ? launch.raised : launch.target}
-            </p>
+    <section
+      aria-labelledby="project-name"
+      className={cn(cardVariants({ variant: 'surface', size: 'none' }), className)}
+    >
+      <div className="px-6 py-6 sm:px-7">
+        <div className="flex items-start gap-4 sm:gap-5">
+          <ProjectMark name={launch.name} size={72} className="shrink-0" />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {verifiedRecords > 0 && (
+                <Badge variant="ok" size="sm">
+                  <BadgeCheck />
+                  {verifiedRecords} verified records
+                </Badge>
+              )}
+              <StatusPill status={launch.phase} />
+              <Badge variant="net" size="sm">TESTNET</Badge>
+            </div>
+            <h1 id="project-name" className="mt-2.5 text-[30px] leading-[1.05] font-semibold tracking-[-0.03em]">
+              {launch.name}
+            </h1>
+            <p className="mt-1.5 text-[16px] font-medium text-muted-foreground">${launch.ticker}</p>
           </div>
-          {live && <p className="pb-1 text-small text-white/65 tabular-nums">of {launch.target} target</p>}
         </div>
 
-        {live && (
-          <div className="mt-6">
-            <Progress
-              value={launch.progress}
-              aria-label={`${launch.progress}% of target raised`}
-              size="thick"
-              className="[&_[data-slot=progress-indicator]]:bg-orange [&_[data-slot=progress-track]]:bg-white/15"
-            />
-            <div className="mt-3 flex flex-wrap justify-between gap-x-4 gap-y-1 text-small text-white/70 tabular-nums">
-              <span><strong className="font-semibold text-orange">{launch.progress}%</strong> funded</span>
-              {launch.participants !== '—' && <span>{launch.participants} participants</span>}
-            </div>
-          </div>
-        )}
+        <p className="mt-5 text-[16px] leading-relaxed text-muted-foreground">{launch.description}</p>
 
-        <dl className="mt-7 grid grid-cols-2 gap-x-5 gap-y-4 border-t border-white/10 pt-5 text-ui sm:grid-cols-3 sm:gap-x-8">
-          <div>
-            <dt className="text-small text-white/55">Sale {live ? 'ends' : 'opens'}</dt>
-            <dd className="mt-1 font-medium">{launch.date}</dd>
-          </div>
-          <div>
-            <dt className="text-small text-white/55">Allocation</dt>
-            <dd className="mt-1 font-medium">{launch.allocation}</dd>
-          </div>
-          <div>
-            <dt className="text-small text-white/55">Network</dt>
-            <dd className="mt-1 font-medium">Stellar · Soroban</dd>
-          </div>
-        </dl>
+        {content.links && (
+          <ul className="mt-5 flex flex-wrap gap-2">
+            {content.links.map((link) => {
+              const { name, Icon } = linkKinds[link.kind]
+              return (
+                <li key={link.kind}>
+                  <a
+                    href={link.href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    aria-label={`${launch.name} ${name}`}
+                    className="grid size-10 place-items-center rounded-xl bg-background text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-lime/55 focus-visible:outline-none"
+                  >
+                    <Icon className="size-[17px]" />
+                  </a>
+                </li>
+              )
+            })}
+          </ul>
+        )}
       </div>
 
-      <div className="border-t border-white/10 bg-white/5 px-5 py-7 sm:px-8 lg:border-t-0 lg:border-l lg:border-white/10 lg:px-6 lg:py-8">
-        <h2 className="text-title font-semibold">Participation</h2>
-        <p className="mt-4 text-small text-white/60">Reference requirement</p>
-        <p className="mt-1 text-[15px] font-medium">{launch.requirement}</p>
-        <Button className="mt-6 w-full" render={<Link href={`/launch/${launch.slug}/participate`} />} nativeButton={false}>
+      <div className="border-t border-divider px-6 py-6 sm:px-7">
+        <h2 className="text-[20px] font-semibold tracking-[-0.02em]">Your eligibility</h2>
+        <dl className="mt-4">
+          <dt className="text-[13px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Requirement</dt>
+          <dd className="mt-2 text-[17px] font-medium">{launch.requirement}</dd>
+          <dt className="mt-5 text-[13px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Standing</dt>
+          <dd className="mt-2">
+            <Eligibility state={launch.eligibility.state} className="text-[17px] [&>svg]:size-[18px]">
+              {launch.eligibility.label}
+            </Eligibility>
+          </dd>
+        </dl>
+        <p className="mt-5 text-[14px] leading-relaxed text-muted-foreground">
+          Reference data for this testnet preview. Eligibility, project links and transactions are not connected.
+        </p>
+        <Button
+          size="lg"
+          className="mt-6 h-[52px] w-full text-[16px]"
+          render={<Link href={`/launch/${launch.slug}/participate`} />}
+          nativeButton={false}
+        >
           {live ? 'Review participation' : 'View participation terms'}
           <ArrowRight data-icon="inline-end" />
         </Button>
-        <p className="mt-3 text-small leading-relaxed text-white/60">
-          Testnet preview. Eligibility and transactions are not connected.
-        </p>
       </div>
     </section>
   )

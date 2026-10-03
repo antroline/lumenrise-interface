@@ -1,7 +1,13 @@
+export type LaunchLinkKind = 'website' | 'docs' | 'x' | 'discord' | 'telegram'
+
+export type LaunchLink = { kind: LaunchLinkKind; href: string }
+
 export type LaunchContent = {
   overview?: string
+  /** Project-provided destinations. Preview entries use the reserved `.example` domain. */
+  links?: LaunchLink[]
   facts?: { label: string; value: string }[]
-  team?: { name: string; role: string; source: 'verified' | 'project-provided' }[]
+  team?: { name: string; role: string; source: 'verified' | 'project-provided'; image?: string }[]
   evidence?: { label: string; detail: string; source: 'verified' | 'project-provided' }[]
   tokenomics?: {
     totalSupply: string
@@ -15,6 +21,13 @@ export type LaunchContent = {
 const contentBySlug: Record<string, LaunchContent> = {
   northstar: {
     overview: 'Northstar gives communities a shared place to run proposals, pay contributors and track commitments on Stellar. Groups create a space, set membership rules with Soroban contracts and pay out in any Stellar asset. NSTR is used for governance of the protocol treasury and to stake for hosted spaces.',
+    links: [
+      { kind: 'website', href: 'https://northstar.example' },
+      { kind: 'docs', href: 'https://northstar.example/docs' },
+      { kind: 'x', href: 'https://northstar.example/x' },
+      { kind: 'discord', href: 'https://northstar.example/discord' },
+      { kind: 'telegram', href: 'https://northstar.example/telegram' },
+    ],
     facts: [
       { label: 'Live product', value: 'Yes' },
       { label: 'Founded', value: '2024' },
