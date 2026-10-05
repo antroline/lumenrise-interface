@@ -51,7 +51,7 @@ function requireAccount(
   return result.data;
 }
 
-export function useLaunch() {
+export function useLaunch(resumeIssuer: string | null, initialInput: LaunchInput) {
   const { user, isReady, sendTransaction } = useBlux();
   const [record, setRecord] = useState<LaunchRecord | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -61,7 +61,8 @@ export function useLaunch() {
     { enabled: record?.stage === "issuerReady" },
   );
   const { mutateAsync: writeContract } = useWriteContract();
-  const [input, setInput] = useState<LaunchInput>({ name: "", code: "", amount: "" });
+  const initialInputRef = useRef(initialInput);
+  const [input, setInput] = useState<LaunchInput>(initialInput);
   const [working, setWorking] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3 | null>(null);
   const [activity, setActivity] = useState("");
@@ -69,16 +70,29 @@ export function useLaunch() {
   const autoAdvance = useRef(false);
   const [now, setNow] = useState(Date.now);
   const running = useRef(false);
+  const mounted = useRef(true);
 
   useEffect(() => {
-    const saved = loadLaunch();
-    setRecord(saved);
-    if (saved) setInput({ name: saved.name, code: saved.code, amount: saved.amount });
-    setHydrated(true);
+    mounted.current = true;
+    return () => { mounted.current = false; };
   }, []);
+
+  useEffect(() => {
+    const saved = resumeIssuer ? loadLaunch(resumeIssuer) : null;
+    setRecord(saved);
+    setInput(saved ? { name: saved.name, code: saved.code, amount: saved.amount } : initialInputRef.current);
+    setError(resumeIssuer && !saved ? "This launch is not saved in this browser. You can start a new token here." : "");
+    setHydrated(true);
+  }, [resumeIssuer]);
 
   const save = useCallback((next: LaunchRecord) => {
     saveLaunch(next);
+    if (!mounted.current) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("resume") !== next.issuer) {
+      url.searchParams.set("resume", next.issuer);
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    }
     setRecord(next);
   }, []);
 
@@ -256,7 +270,7 @@ export function useLaunch() {
   const launch = () =>
     execute(async () => {
       const values = validateInput(input);
-      if (record) throw new Error("Finish or discard the current launch before creating another token.");
+      if (record) throw new Error("Open Create token again to start a separate launch.");
       if (!user) throw new Error("Connect your wallet to create a token.");
       setStep(1);
       setActivity("Checking your testnet account...");
