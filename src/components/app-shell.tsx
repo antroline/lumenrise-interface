@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { NavigationMenu } from '@base-ui/react/navigation-menu'
 import {
   ArrowLeftRight,
   ChartPie,
@@ -48,24 +49,25 @@ import { cn } from '@/lib/utils'
 import { projects } from '@/app/launches/_data/projects'
 
 type NavItem = { label: string; href: string; icon: LucideIcon; count?: string; match?: string[] }
+type HeaderNavItem = NavItem & { description: string }
 
 const discoverItem: NavItem = { label: 'Discover', href: '/', icon: Compass }
-const projectBrowseItems: NavItem[] = [
-  { label: 'All projects', href: '/launches', icon: LayoutGrid },
-  { label: 'Launches', href: '/launches?category=launch', icon: Rocket, match: ['/launch'] },
-  { label: 'Auctions', href: '/launches?category=auction', icon: Gavel, match: ['/auction'] },
-  { label: 'Trading', href: '/launches?category=trading', icon: ArrowLeftRight, match: ['/trade'] },
+const projectBrowseItems: HeaderNavItem[] = [
+  { label: 'All projects', description: 'Browse projects across Stellar.', href: '/launches', icon: LayoutGrid },
+  { label: 'Launches', description: 'Explore token launches and raise details.', href: '/launches?category=launch', icon: Rocket, match: ['/launch'] },
+  { label: 'Auctions', description: 'View auctions and bidding terms.', href: '/launches?category=auction', icon: Gavel, match: ['/auction'] },
+  { label: 'Trading', description: 'Browse token markets and trade details.', href: '/launches?category=trading', icon: ArrowLeftRight, match: ['/trade'] },
 ]
-const explorerItem: NavItem = { label: 'Reputation explorer', href: '/explorer', icon: Trophy }
+const explorerItem: HeaderNavItem = { label: 'Reputation explorer', description: 'Explore reputation signals and policies.', href: '/explorer', icon: Trophy }
 const missionsItem: NavItem = { label: 'Missions', href: '/missions', icon: Target, count: '6' }
-const projectItems: NavItem[] = [
-  { label: 'Create launch', href: '/create', icon: Plus },
-  { label: 'Project dashboard', href: '/dashboard', icon: LayoutGrid, match: ['/campaigns'] },
+const projectItems: HeaderNavItem[] = [
+  { label: 'Create launch', description: 'Configure a new token launch.', href: '/create', icon: Plus },
+  { label: 'Project dashboard', description: 'Review and manage your projects.', href: '/dashboard', icon: LayoutGrid, match: ['/campaigns'] },
 ]
 const portfolioItem: NavItem = { label: 'Portfolio', href: '/portfolio', icon: ChartPie }
 const reputationItem: NavItem = { label: 'Reputation', href: '/reputation', icon: Hexagon }
-const reputationMenuItems: NavItem[] = [
-  { label: 'My reputation', href: '/reputation', icon: Hexagon },
+const reputationMenuItems: HeaderNavItem[] = [
+  { label: 'My reputation', description: 'Review your activity and reputation.', href: '/reputation', icon: Hexagon },
   explorerItem,
 ]
 const settingsItem: NavItem = { label: 'Account settings', href: '/settings', icon: Settings }
@@ -150,59 +152,49 @@ function MobileNavigation({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 const headerNavItem =
-  'inline-flex h-full items-center gap-1 whitespace-nowrap px-2.5 text-lg font-medium text-muted-foreground hover:text-foreground focus-visible:rounded-md focus-visible:ring-3 focus-visible:ring-lime/55 focus-visible:outline-none'
+  'inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-lg px-3 text-base font-medium text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-lime/55 focus-visible:outline-none'
 
-function HeaderDropdown({ label, href, items, active, pathname }: { label: string; href?: string; items: NavItem[]; active: boolean; pathname: string }) {
-  const [open, setOpen] = useState(false)
-  const menuId = `header-${label.toLowerCase().replaceAll(' ', '-')}-menu`
+function HeaderDropdown({ label, href, items, active, pathname }: { label: string; href?: string; items: HeaderNavItem[]; active: boolean; pathname: string }) {
+  const value = label.toLowerCase().replaceAll(' ', '-')
 
   return (
-    <div
-      className="relative flex h-full items-center"
-      onPointerEnter={(event) => { if (event.pointerType !== 'touch') setOpen(true) }}
-      onPointerLeave={(event) => { if (event.pointerType !== 'touch') setOpen(false) }}
-      onFocusCapture={() => setOpen(true)}
-      onBlurCapture={(event) => {
-        if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setOpen(false)
-      }}
-    >
-      {href ? (
-        <>
-          <Link href={href} aria-current={pathname === href ? 'page' : undefined} onClick={() => setOpen(false)} className={cn(headerNavItem, 'pr-1', active && 'text-foreground')}>
-            {label}
-          </Link>
-          <button type="button" aria-label={`Show ${label} links`} aria-expanded={open} aria-controls={menuId} onClick={() => setOpen(true)} className="mr-2 grid size-7 place-items-center rounded-md text-muted-foreground hover:text-foreground focus-visible:ring-3 focus-visible:ring-lime/55 focus-visible:outline-none">
-            <ChevronDown className={cn('size-3.5 transition-transform duration-200', open && 'rotate-180')} />
-          </button>
-        </>
-      ) : (
-        <button type="button" aria-expanded={open} aria-controls={menuId} onClick={() => setOpen(true)} className={cn(headerNavItem, active && 'text-foreground')}>
-          {label}
-          <ChevronDown className={cn('size-3.5 transition-transform duration-200', open && 'rotate-180')} />
-        </button>
-      )}
-      <div
-        id={menuId}
-        aria-label={`${label} links`}
-        className={cn(
-          'absolute top-full left-0 z-40 flex w-max origin-top-left flex-col gap-1 rounded-2xl bg-popover p-2 shadow-lg ring-1 ring-foreground/10 transition-[opacity,transform,visibility] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
-          open ? 'visible translate-y-0 scale-100 opacity-100' : 'pointer-events-none invisible translate-y-2 scale-[0.98] opacity-0',
-        )}
+    <NavigationMenu.Item value={value}>
+      <NavigationMenu.Trigger
+        render={href ? <Link href={href} /> : undefined}
+        nativeButton={!href}
+        role={href ? 'link' : undefined}
+        aria-current={href && pathname === href ? 'page' : undefined}
+        className={cn(headerNavItem, 'data-popup-open:bg-muted data-popup-open:text-foreground', active && 'text-foreground')}
       >
-        {items.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={!item.href.startsWith('/launches') && isActive(pathname, item) ? 'page' : undefined}
-            onClick={() => setOpen(false)}
-            className="group/item flex min-h-10 items-center gap-2.5 whitespace-nowrap rounded-xl bg-muted px-3 py-2 text-base font-medium text-popover-foreground transition-colors hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none"
-          >
-            <item.icon className="size-[18px] shrink-0 text-muted-foreground transition-colors group-hover/item:text-foreground group-focus-visible/item:text-foreground" aria-hidden="true" />
-            {item.label}
-          </Link>
-        ))}
-      </div>
-    </div>
+        {label}
+      </NavigationMenu.Trigger>
+      <NavigationMenu.Content
+        id={`header-${value}-menu`}
+        aria-label={`${label} links`}
+        className="w-88 max-w-(--available-width) p-1.5"
+      >
+        <ul className="flex flex-col gap-0.5">
+          {items.map((item) => (
+            <li key={item.href}>
+              <NavigationMenu.Link
+                render={<Link href={item.href} />}
+                active={!item.href.startsWith('/launches') && isActive(pathname, item)}
+                closeOnClick
+                className="group/item flex items-center gap-3 rounded-lg p-2.5 text-popover-foreground transition-colors duration-150 hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset focus-visible:outline-none aria-[current=page]:bg-muted"
+              >
+                <span className="grid size-9 shrink-0 place-items-center rounded-md bg-secondary text-foreground transition-colors duration-150 group-hover/item:bg-emphasis group-hover/item:text-emphasis-mark group-focus-visible/item:bg-emphasis group-focus-visible/item:text-emphasis-mark group-aria-[current=page]/item:bg-emphasis group-aria-[current=page]/item:text-emphasis-mark" aria-hidden="true">
+                  <item.icon className="size-4.5" />
+                </span>
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-sm leading-tight font-medium">{item.label}</span>
+                  <span className="text-small leading-snug text-muted-foreground">{item.description}</span>
+                </span>
+              </NavigationMenu.Link>
+            </li>
+          ))}
+        </ul>
+      </NavigationMenu.Content>
+    </NavigationMenu.Item>
   )
 }
 
@@ -213,24 +205,43 @@ function HeaderNavigation() {
   const reputationActive = isActive(pathname, reputationItem) || isActive(pathname, explorerItem)
 
   return (
-    <nav aria-label="Primary" className="hidden h-full items-center gap-1 xl:flex">
-      <Link
-        href={discoverItem.href}
-        aria-current={pathname === '/' ? 'page' : undefined}
-        className={cn(headerNavItem, pathname === '/' && 'text-foreground')}
-      >
-        Discover
-      </Link>
-      <HeaderDropdown label="Projects" items={projectBrowseItems} active={projectsActive} pathname={pathname} />
-      <HeaderDropdown label="Reputation" href="/reputation" items={reputationMenuItems} active={reputationActive} pathname={pathname} />
-      <Link href="/missions" aria-current={isActive(pathname, missionsItem) ? 'page' : undefined} className={cn(headerNavItem, isActive(pathname, missionsItem) && 'text-foreground')}>
-        Missions <span className="ml-1 font-mono text-caption text-faint">6</span>
-      </Link>
-      <Link href={portfolioItem.href} aria-current={isActive(pathname, portfolioItem) ? 'page' : undefined} className={cn(headerNavItem, isActive(pathname, portfolioItem) && 'text-foreground')}>
-        Portfolio
-      </Link>
-      <HeaderDropdown label="For projects" items={projectItems} active={forProjectsActive} pathname={pathname} />
-    </nav>
+    <NavigationMenu.Root key={pathname} aria-label="Primary" closeDelay={150} data-slot="header-navigation" className="hidden xl:block">
+      <NavigationMenu.List className="flex items-center gap-1">
+        <NavigationMenu.Item>
+          <NavigationMenu.Link
+            render={<Link href={discoverItem.href} />}
+            active={pathname === '/'}
+            closeOnClick
+            className={cn(headerNavItem, pathname === '/' && 'text-foreground')}
+          >
+            Discover
+          </NavigationMenu.Link>
+        </NavigationMenu.Item>
+        <HeaderDropdown label="Projects" items={projectBrowseItems} active={projectsActive} pathname={pathname} />
+        <HeaderDropdown label="Reputation" href="/reputation" items={reputationMenuItems} active={reputationActive} pathname={pathname} />
+        <NavigationMenu.Item>
+          <NavigationMenu.Link render={<Link href={missionsItem.href} />} active={isActive(pathname, missionsItem)} closeOnClick className={cn(headerNavItem, isActive(pathname, missionsItem) && 'text-foreground')}>
+            Missions <span className="ml-1 font-mono text-caption text-faint">6</span>
+          </NavigationMenu.Link>
+        </NavigationMenu.Item>
+        <NavigationMenu.Item>
+          <NavigationMenu.Link render={<Link href={portfolioItem.href} />} active={isActive(pathname, portfolioItem)} closeOnClick className={cn(headerNavItem, isActive(pathname, portfolioItem) && 'text-foreground')}>
+            Portfolio
+          </NavigationMenu.Link>
+        </NavigationMenu.Item>
+        <HeaderDropdown label="For projects" items={projectItems} active={forProjectsActive} pathname={pathname} />
+      </NavigationMenu.List>
+      <NavigationMenu.Portal>
+        <NavigationMenu.Positioner align="start" sideOffset={6} collisionPadding={12} className="isolate z-50 hidden outline-none xl:block">
+          <NavigationMenu.Popup
+            aria-label="Primary navigation links"
+            className="h-(--popup-height) w-(--popup-width) max-h-(--available-height) max-w-(--available-width) origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-2xl bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 transition-[opacity,transform,width,height] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] data-ending-style:-translate-y-1 data-ending-style:scale-98 data-ending-style:opacity-0 data-starting-style:-translate-y-1 data-starting-style:scale-98 data-starting-style:opacity-0"
+          >
+            <NavigationMenu.Viewport className="relative" />
+          </NavigationMenu.Popup>
+        </NavigationMenu.Positioner>
+      </NavigationMenu.Portal>
+    </NavigationMenu.Root>
   )
 }
 
@@ -470,7 +481,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative isolate min-h-screen bg-background">
-      <div className="page-dot-field" aria-hidden="true" />
+      {/* Dot-field background disabled for now. */}
+      {/* <div className="page-dot-field" aria-hidden="true" /> */}
       <header className={cn('sticky top-0 z-30 transition-colors duration-200', scrolled && 'bg-background/95 backdrop-blur-sm')}>
         <div className="flex h-[68px] w-full items-center gap-2 px-4 sm:gap-3 sm:px-5 lg:px-6">
           <Sheet open={navOpen} onOpenChange={setNavOpen}>

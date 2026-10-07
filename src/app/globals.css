@@ -1,11 +1,12 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-sans: var(--font-bricolage), Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-sans:
+    var(--font-bricolage), Inter, ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-sans);
   --font-heading: var(--font-sans);
 
@@ -127,9 +128,9 @@
 /* `.theme-reset` restores the light tokens for surfaces nested inside a DarkPanel. */
 :root,
 :root:not(.dark) .theme-reset {
-  --background: #fafafa;
+  --background: #fcfcfc;
   --foreground: #0b0b0b;
-  --card: #ffffff;
+  --card: #fff;
   --card-foreground: #0b0b0b;
   --surface: #f0f0f1;
   /* Hairlines need more separation on the stone ground than on the white page. */
@@ -388,14 +389,16 @@
 }
 
 @utility grid-lines-dark {
-  background-image: linear-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: linear-gradient(90deg, transparent 30%, #000 75%);
 }
 
 @utility grid-lines-light {
-  background-image: linear-gradient(var(--divider) 1px, transparent 1px),
+  background-image:
+    linear-gradient(var(--divider) 1px, transparent 1px),
     linear-gradient(90deg, var(--divider) 1px, transparent 1px);
   background-size: 40px 40px;
   mask-image: linear-gradient(90deg, transparent 45%, #000 90%);
@@ -407,10 +410,21 @@
   inset: 0 0 auto;
   height: 440px;
   pointer-events: none;
-  background-image: radial-gradient(circle at center, var(--header-dot) 1.4px, transparent 2px);
+  background-image: radial-gradient(
+    circle at center,
+    var(--header-dot) 1.4px,
+    transparent 2px
+  );
   background-position: center top;
   background-size: 38px 38px;
-  mask-image: linear-gradient(to bottom, #000 0%, #000 14%, rgb(0 0 0 / 85%) 36%, rgb(0 0 0 / 45%) 68%, transparent 100%);
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 14%,
+    rgb(0 0 0 / 85%) 36%,
+    rgb(0 0 0 / 45%) 68%,
+    transparent 100%
+  );
 }
 
 .page-dot-field::after {
@@ -423,14 +437,46 @@
      between the sticky header and the first panel, so neither edge ever crops them. */
   --rise-y: 95px;
   background-image:
-    radial-gradient(circle at 38px calc(var(--rise-y) + 38px), var(--dot-orange) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 76px calc(var(--rise-y) + 38px), var(--dot-orange) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 114px calc(var(--rise-y) + 38px), var(--dot-orange) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 152px calc(var(--rise-y) + 38px), var(--dot-orange) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 190px var(--rise-y), var(--dot-lime) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 228px var(--rise-y), var(--dot-lime) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 266px var(--rise-y), var(--dot-lime) 0 3px, transparent 4.2px),
-    radial-gradient(circle at 304px var(--rise-y), var(--dot-lime) 0 3px, transparent 4.2px);
+    radial-gradient(
+      circle at 38px calc(var(--rise-y) + 38px),
+      var(--dot-orange) 0 3px,
+      transparent 4.2px
+    ),
+    radial-gradient(
+      circle at 76px calc(var(--rise-y) + 38px),
+      var(--dot-orange) 0 3px,
+      transparent 4.2px
+    ),
+    radial-gradient(
+      circle at 114px calc(var(--rise-y) + 38px),
+      var(--dot-orange) 0 3px,
+      transparent 4.2px
+    ),
+    radial-gradient(
+      circle at 152px calc(var(--rise-y) + 38px),
+      var(--dot-orange) 0 3px,
+      transparent 4.2px
+    ),
+    radial-gradient(
+      circle at 190px var(--rise-y),
+      var(--dot-lime) 0 3px,
+      transparent 4.2px
+    ),
+    radial-gradient(
+      circle at 228px var(--rise-y),
+      var(--dot-lime) 0 3px,
+      transparent 4.2px
+    ),
+    radial-gradient(
+      circle at 266px var(--rise-y),
+      var(--dot-lime) 0 3px,
+      transparent 4.2px
+    ),
+    radial-gradient(
+      circle at 304px var(--rise-y),
+      var(--dot-lime) 0 3px,
+      transparent 4.2px
+    );
   background-position: center top;
   background-repeat: no-repeat;
   background-size: 342px 342px;
@@ -438,11 +484,17 @@
 
 /* The band is shorter on phones, where page content starts higher. */
 @media (max-width: 639px) {
-  .page-dot-field::after { --rise-y: 76px; }
+  .page-dot-field::after {
+    --rise-y: 76px;
+  }
 }
 
-:root { --header-dot: rgb(11 11 11 / 16%); }
-.dark { --header-dot: rgb(244 244 239 / 20%); }
+:root {
+  --header-dot: rgb(11 11 11 / 16%);
+}
+.dark {
+  --header-dot: rgb(244 244 239 / 20%);
+}
 
 /* The coordinate field is reserved for page specimens and diagrams. */
 .coordinate-field {
@@ -450,7 +502,13 @@
     linear-gradient(var(--divider) 1px, transparent 1px),
     linear-gradient(90deg, var(--divider) 1px, transparent 1px);
   background-size: 40px 40px;
-  mask-image: linear-gradient(90deg, transparent, #000 38%, #000 85%, transparent);
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 38%,
+    #000 85%,
+    transparent
+  );
 }
 
 .coordinate-field::after {
@@ -465,6 +523,55 @@
 }
 
 @utility bar-estimate {
-  background: repeating-linear-gradient(135deg, var(--faint) 0 2px, transparent 2px 5px);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--faint) 0 2px,
+    transparent 2px 5px
+  );
   opacity: 0.55;
+}
+
+/* Create Launch: moving forward and back keeps the wizard's direction legible. */
+@keyframes launch-step-forward {
+  from {
+    opacity: 0.45;
+    transform: translate3d(14px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes launch-step-back {
+  from {
+    opacity: 0.45;
+    transform: translate3d(-14px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.launch-step-panel {
+  animation: launch-step-forward 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.launch-step-panel[data-direction='back'] {
+  animation-name: launch-step-back;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes launch-step-reduced {
+    from {
+      opacity: 0.75;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .launch-step-panel,
+  .launch-step-panel[data-direction='back'] {
+    animation: launch-step-reduced 100ms ease-out both;
+  }
 }
