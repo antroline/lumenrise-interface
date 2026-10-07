@@ -1,15 +1,17 @@
-import { CreateLaunch } from './_components/create-launch'
+import { LaunchStudio } from './_components/launch-studio'
 
-export default function CreateLaunchPage() {
+export default async function CreateLaunchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ resume?: string | string[]; mode?: string | string[] }>
+}) {
+  const { resume, mode } = await searchParams
+  const resumeIssuer = typeof resume === 'string' && /^G[A-Z2-7]{55}$/.test(resume) ? resume : null
+
   return (
     <div className="w-full pb-8">
-      <div className="mb-6 sm:mb-7">
-        <div>
-          <h1 className="text-[38px] leading-[1.02] font-semibold tracking-[-0.035em] sm:text-[48px]">Create a token</h1>
-          <p className="mt-3 text-[16px] text-muted-foreground">Fixed supply on Stellar testnet.</p>
-        </div>
-      </div>
-      <CreateLaunch />
+      <h1 className="sr-only">Create launch</h1>
+      <LaunchStudio key={resumeIssuer ?? (mode === 'basic' ? 'basic' : 'new')} resumeIssuer={resumeIssuer} initialMode={mode === 'basic' ? 'basic' : null} />
     </div>
   )
 }
