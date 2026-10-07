@@ -20,32 +20,32 @@ export type LaunchDraft = {
   xAccount: string;
   quote: QuoteToken;
   supply: string;
-  bonding: LaunchSchedule & {
-    target: string;
-    curveShare: string;
+  allocation: {
+    saleShare: string;
     poolShare: string;
     teamShare: string;
-    creatorFee: boolean;
     cliffMonths: string;
     vestingMonths: string;
   };
+  bonding: LaunchSchedule & {
+    target: string;
+    creatorFee: boolean;
+  };
   fixed: LaunchSchedule & {
-    saleShare: string;
     price: string;
     walletCap: string;
   };
   auction: LaunchSchedule & {
-    saleShare: string;
     floorPrice: string;
     liquidityShare: string;
     threshold: string;
     timelockDays: string;
-    identificationMode: 'none' | 'required';
-    identificationRequirements: string;
   };
   eligibility: {
     mode: 'open' | 'allowlist' | 'reputation' | 'custom';
     requirements: string;
+    identificationMode: 'none' | 'required';
+    identificationRequirements: string;
   };
   participantVesting: {
     mode: 'immediate' | 'linear';
@@ -66,20 +66,21 @@ export const initialLaunchDraft: LaunchDraft = {
   xAccount: '',
   quote: 'XLM',
   supply: '100000000',
-  bonding: {
-    target: '',
-    curveShare: '80',
+  allocation: {
+    saleShare: '80',
     poolShare: '20',
     teamShare: '0',
-    creatorFee: false,
     cliffMonths: '0',
     vestingMonths: '0',
+  },
+  bonding: {
+    target: '',
+    creatorFee: false,
     startsAt: '',
     endsAt: '',
     durationDays: '14',
   },
   fixed: {
-    saleShare: '100',
     price: '',
     startsAt: '',
     endsAt: '',
@@ -87,7 +88,6 @@ export const initialLaunchDraft: LaunchDraft = {
     walletCap: '',
   },
   auction: {
-    saleShare: '25',
     floorPrice: '',
     startsAt: '',
     endsAt: '',
@@ -95,10 +95,13 @@ export const initialLaunchDraft: LaunchDraft = {
     liquidityShare: '50',
     threshold: '',
     timelockDays: '0',
+  },
+  eligibility: {
+    mode: 'open',
+    requirements: '',
     identificationMode: 'none',
     identificationRequirements: '',
   },
-  eligibility: { mode: 'open', requirements: '' },
   participantVesting: {
     mode: 'immediate',
     tgePercent: '25',
@@ -111,6 +114,13 @@ export const methodLabels: Record<LaunchMethod, string> = {
   basic: 'Basic',
   bonding: 'Bonding curve',
   fixed: 'Fixed price',
+  auction: 'Auction',
+};
+
+export const allocationLabels: Record<LaunchMethod, string> = {
+  basic: 'Launch',
+  bonding: 'Bonding curve',
+  fixed: 'Presale',
   auction: 'Auction',
 };
 
@@ -183,24 +193,6 @@ export function formatSupplyShare(supply: string, percent: string) {
   return allocatedFraction
     ? `${allocatedWhole.toLocaleString('en-US')}.${allocatedFraction}`
     : allocatedWhole.toLocaleString('en-US');
-}
-
-export function auctionSupplySplit(saleShare: string, liquidityShare: string) {
-  if (!validPercent(saleShare, false) || !validPercent(liquidityShare))
-    return null;
-  const depositedBasisPoints = Math.round(numberValue(saleShare) * 100);
-  const liquidityBasisPoints = Math.round(numberValue(liquidityShare) * 100);
-  // Estimate token-side liquidity at the same price as auction sales.
-  const reserveBasisPoints = Math.round(
-    (depositedBasisPoints * liquidityBasisPoints) /
-      (10_000 + liquidityBasisPoints),
-  );
-  const asPercent = (basisPoints: number) => String(basisPoints / 100);
-  return {
-    sold: asPercent(depositedBasisPoints - reserveBasisPoints),
-    reserve: asPercent(reserveBasisPoints),
-    outside: asPercent(10_000 - depositedBasisPoints),
-  };
 }
 
 export function localDateTimeToIso(value: string) {

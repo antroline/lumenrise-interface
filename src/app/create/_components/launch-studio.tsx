@@ -23,7 +23,6 @@ import {
 } from '../_launch/launch-state';
 import {
   basicSteps,
-  bondingAllocationError,
   bondingSteps,
   saleSteps,
   stepLabels,
@@ -113,10 +112,6 @@ export function LaunchStudio({
     : (visibleSteps[step] ?? 'project');
   const currentIndex = resumeIssuer ? 0 : step;
   const fieldErrors = showErrors ? validateLaunchStep(draft, currentStep) : {};
-  const allocationError =
-    currentStep === 'settings' && draft.method === 'bonding'
-      ? bondingAllocationError(draft.bonding)
-      : null;
   const MethodIcon =
     activeMethod === 'bonding'
       ? LineChart
@@ -153,13 +148,13 @@ export function LaunchStudio({
   }
 
   const heading: Record<WizardStep, string> = {
-    project: 'Tell us about your project',
+    project: 'Tell us about your token',
     method: 'How will you launch your token?',
-    token: 'Set token supply',
+    token: 'Set supply and allocation',
     sale: `Configure ${methodLabels[draft.method].toLowerCase()}`,
     settings:
       draft.method === 'bonding'
-        ? 'Allocation and timing'
+        ? 'Schedule the bonding curve'
         : draft.method === 'auction'
           ? 'Schedule the auction'
           : 'Schedule the sale',
@@ -377,7 +372,6 @@ export function LaunchStudio({
                 <Button
                   className="h-12 min-w-0 flex-1 rounded-2xl"
                   onClick={next}
-                  disabled={!!allocationError}
                 >
                   Continue
                 </Button>

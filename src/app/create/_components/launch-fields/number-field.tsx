@@ -20,6 +20,8 @@ export function NumberField({
   error,
   presets,
   groupThousands = false,
+  descriptionId,
+  invalid = false,
 }: {
   id: string;
   label: string;
@@ -32,6 +34,8 @@ export function NumberField({
   error?: string;
   presets?: Preset[];
   groupThousands?: boolean;
+  descriptionId?: string;
+  invalid?: boolean;
 }) {
   function changeValue(input: HTMLInputElement) {
     const nextValue = groupThousands
@@ -59,7 +63,7 @@ export function NumberField({
   }
 
   return (
-    <Field>
+    <Field data-invalid={!!error || invalid}>
       <div className="rounded-xl border border-border bg-muted px-4 py-3.5 transition-[border-color,box-shadow] duration-200 focus-within:border-foreground focus-within:ring-3 focus-within:ring-lime/40">
         <div className="flex min-h-7 min-w-0 items-center gap-1">
           <FieldLabel
@@ -78,9 +82,12 @@ export function NumberField({
             value={groupThousands ? formatSupply(value) : value}
             onChange={(event) => changeValue(event.currentTarget)}
             placeholder={placeholder || '0'}
-            aria-invalid={!!error}
+            aria-invalid={!!error || invalid}
             aria-describedby={
-              error ? `${id}-error` : hint ? `${id}-hint` : undefined
+              [
+                descriptionId,
+                error ? `${id}-error` : hint ? `${id}-hint` : undefined,
+              ].filter(Boolean).join(' ') || undefined
             }
             className="h-10 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-[23px] font-semibold tracking-[-0.025em] tabular-nums focus-visible:border-0 focus-visible:ring-0 aria-invalid:border-0 aria-invalid:ring-0 sm:text-[26px]"
           />

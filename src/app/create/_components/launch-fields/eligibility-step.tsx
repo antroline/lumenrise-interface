@@ -47,11 +47,7 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
   return (
     <FieldGroup>
       <ChoiceCards
-        title={
-          draft.method === 'auction'
-            ? 'Verification hook'
-            : 'Participation access'
-        }
+        title="Participation access"
         value={draft.eligibility.mode}
         options={choices}
         onChange={(mode) =>
@@ -62,7 +58,7 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
         }
       />
       {draft.eligibility.mode !== 'open' && (
-        <Field>
+        <Field data-invalid={!!errors['eligibility-requirements']}>
           <FieldLabel htmlFor="eligibility-requirements">
             Participation requirements *
           </FieldLabel>
@@ -101,76 +97,72 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
           </FieldDescription>
         </Field>
       )}
-      {draft.method === 'auction' && (
-        <>
-          <ChoiceCards
-            title="Identification hook"
-            value={draft.auction.identificationMode}
-            options={
-              [
-                {
-                  value: 'none',
-                  title: 'No identity check',
-                  detail: 'Wallet access rules are enough.',
-                  icon: Unlock,
-                },
-                {
-                  value: 'required',
-                  title: 'Require identification',
-                  detail: 'Set an identity rule for participants.',
-                  icon: ShieldCheck,
-                },
-              ] as const
-            }
-            onChange={(identificationMode) =>
+      <ChoiceCards
+        title="Identification hook"
+        value={draft.eligibility.identificationMode}
+        options={
+          [
+            {
+              value: 'none',
+              title: 'No identity check',
+              detail: 'Wallet access rules are enough.',
+              icon: Unlock,
+            },
+            {
+              value: 'required',
+              title: 'Require identification',
+              detail: 'Set an identity rule for participants.',
+              icon: ShieldCheck,
+            },
+          ] as const
+        }
+        onChange={(identificationMode) =>
+          setDraft((current) => ({
+            ...current,
+            eligibility: { ...current.eligibility, identificationMode },
+          }))
+        }
+      />
+      {draft.eligibility.identificationMode === 'required' && (
+        <Field data-invalid={!!errors['identification-requirements']}>
+          <FieldLabel htmlFor="identification-requirements">
+            Identification requirements *
+          </FieldLabel>
+          <Textarea
+            id="identification-requirements"
+            maxLength={600}
+            value={draft.eligibility.identificationRequirements}
+            onChange={(event) =>
               setDraft((current) => ({
                 ...current,
-                auction: { ...current.auction, identificationMode },
+                eligibility: {
+                  ...current.eligibility,
+                  identificationRequirements: event.target.value,
+                },
               }))
             }
+            placeholder="Describe the identity check and who will verify it."
+            aria-invalid={!!errors['identification-requirements']}
+            aria-describedby={
+              errors['identification-requirements']
+                ? 'identification-requirements-error'
+                : 'identification-requirements-hint'
+            }
+            className="aria-invalid:border-input aria-invalid:ring-0"
           />
-          {draft.auction.identificationMode === 'required' && (
-            <Field>
-              <FieldLabel htmlFor="identification-requirements">
-                Identification requirements *
-              </FieldLabel>
-              <Textarea
-                id="identification-requirements"
-                maxLength={600}
-                value={draft.auction.identificationRequirements}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    auction: {
-                      ...current.auction,
-                      identificationRequirements: event.target.value,
-                    },
-                  }))
-                }
-                placeholder="Describe the identity check and who will verify it."
-                aria-invalid={!!errors['identification-requirements']}
-                aria-describedby={
-                  errors['identification-requirements']
-                    ? 'identification-requirements-error'
-                    : 'identification-requirements-hint'
-                }
-                className="aria-invalid:border-input aria-invalid:ring-0"
-              />
-              {errors['identification-requirements'] && (
-                <p
-                  id="identification-requirements-error"
-                  className="text-small text-bad"
-                >
-                  {errors['identification-requirements']}
-                </p>
-              )}
-              <FieldDescription id="identification-requirements-hint">
-                This rule will need a connected verification service and
-                contract hook before launch.
-              </FieldDescription>
-            </Field>
+          {errors['identification-requirements'] && (
+            <p
+              id="identification-requirements-error"
+              className="text-small text-bad"
+            >
+              {errors['identification-requirements']}
+            </p>
           )}
-        </>
+          <FieldDescription id="identification-requirements-hint">
+            This rule will need a connected verification service and
+            contract hook before launch.
+          </FieldDescription>
+        </Field>
       )}
     </FieldGroup>
   );

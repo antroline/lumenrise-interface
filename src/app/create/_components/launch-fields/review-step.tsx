@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import {
-  auctionSupplySplit,
+  allocationLabels,
   formatAmount,
   formatSupplyShare,
   launchDurationLabel,
@@ -10,7 +10,7 @@ import {
   numberValue,
   type LaunchDraft,
 } from '../../_launch/launch-draft';
-import { AuctionReviewBreakdown } from './auction-review-breakdown';
+import { AllocationPreview } from './allocation-preview';
 import { QuoteIcon } from './quote-icon';
 import { ReviewHeading } from './review-heading';
 import { ReviewSection } from './review-section';
@@ -35,13 +35,6 @@ export function ReviewStep({
       : draft.method === 'fixed'
         ? draft.fixed
         : draft.auction;
-  const auctionSplit =
-    draft.method === 'auction'
-      ? auctionSupplySplit(
-          draft.auction.saleShare,
-          draft.auction.liquidityShare,
-        )
-      : null;
   const formatScheduleTime = (value: string) =>
     value
       ? new Intl.DateTimeFormat('en-US', {
@@ -143,14 +136,14 @@ export function ReviewStep({
               ? [
                   row(
                     'For sale',
-                    `${formatSupplyShare(draft.supply, draft.fixed.saleShare)} ${draft.symbol} (${draft.fixed.saleShare}%)`,
+                    `${formatSupplyShare(draft.supply, draft.allocation.saleShare)} ${draft.symbol} (${draft.allocation.saleShare}%)`,
                   ),
                   row('Price per token', `${draft.fixed.price} ${draft.quote}`),
                 ]
               : [
                   row(
-                    'Auction deposit',
-                    `${formatSupplyShare(draft.supply, draft.auction.saleShare)} ${draft.symbol} (${draft.auction.saleShare}%)`,
+                    'For bidders',
+                    `${formatSupplyShare(draft.supply, draft.allocation.saleShare)} ${draft.symbol} (${draft.allocation.saleShare}%)`,
                   ),
                   row(
                     'Floor price per token',
@@ -162,33 +155,35 @@ export function ReviewStep({
                   ),
                 ]),
         ]}
-        extra={
-          draft.method === 'auction' ? (
-            <AuctionReviewBreakdown draft={draft} />
-          ) : undefined
-        }
+      />
+      <ReviewSection
+        title="Supply & allocation"
+        actions={[{ label: 'Edit allocation', onClick: () => onEdit(2) }]}
+        rows={[
+          ['Total supply', `${formatAmount(draft.supply)} ${draft.symbol}`],
+          [allocationLabels[draft.method], `${draft.allocation.saleShare}%`],
+          ['Liquidity pool', `${draft.allocation.poolShare}%`],
+          ['Team allocation', `${draft.allocation.teamShare}%`],
+          ...(numberValue(draft.allocation.teamShare) > 0
+            ? [
+                row(
+                  'Team vesting',
+                  `${months(draft.allocation.cliffMonths)} cliff · ${months(draft.allocation.vestingMonths)} vesting`,
+                ),
+              ]
+            : []),
+        ]}
+        extra={<AllocationPreview draft={draft} />}
       />
       {draft.method === 'bonding' && (
         <ReviewSection
-          title="Allocation and fees"
-          actions={[{ label: 'Edit allocation', onClick: () => onEdit(4) }]}
+          title="Creator fees"
+          actions={[{ label: 'Edit settings', onClick: () => onEdit(4) }]}
           rows={[
-            [
-              'Curve / pool / team',
-              `${draft.bonding.curveShare}% / ${draft.bonding.poolShare}% / ${draft.bonding.teamShare}%`,
-            ],
             [
               'Creator fee share',
               draft.bonding.creatorFee ? 'Proposed 0.1%' : 'Off',
             ],
-            ...(numberValue(draft.bonding.teamShare) > 0
-              ? [
-                  row(
-                    'Team vesting',
-                    `${months(draft.bonding.cliffMonths)} cliff · ${months(draft.bonding.vestingMonths)} vesting`,
-                  ),
-                ]
-              : []),
           ]}
         />
       )}
@@ -198,7 +193,7 @@ export function ReviewStep({
           actions={
             draft.method === 'auction'
               ? [
-                  { label: 'Edit liquidity', onClick: () => onEdit(3) },
+                  { label: 'Edit proceeds', onClick: () => onEdit(3) },
                   { label: 'Edit lock', onClick: () => onEdit(4) },
                 ]
               : [{ label: 'Edit settings', onClick: () => onEdit(4) }]
@@ -219,12 +214,6 @@ export function ReviewStep({
                     `${draft.auction.liquidityShare}% of proceeds`,
                   ],
                   [
-                    'Estimated token reserve',
-                    auctionSplit
-                      ? `≈${formatSupplyShare(draft.supply, auctionSplit.reserve)} ${draft.symbol} (${auctionSplit.reserve}%)`
-                      : '—',
-                  ],
-                  [
                     'Liquidity lock',
                     draft.auction.timelockDays === '0'
                       ? 'No lock'
@@ -235,15 +224,11 @@ export function ReviewStep({
         />
       )}
       <ReviewSection
-        title={
-          draft.method === 'auction'
-            ? 'Verification and identification'
-            : 'Eligibility'
-        }
+        title="Eligibility"
         actions={[{ label: 'Edit eligibility', onClick: () => onEdit(5) }]}
         rows={[
           [
-            draft.method === 'auction' ? 'Verification hook' : 'Participation',
+            'Participation',
             {
               open: 'Open to everyone',
               allowlist: 'Allowlist',
@@ -254,23 +239,14 @@ export function ReviewStep({
           ...(draft.eligibility.mode === 'open'
             ? []
             : [row('Requirements', draft.eligibility.requirements)]),
-          ...(draft.method === 'auction'
-            ? [
-                row(
-                  'Identification hook',
-                  draft.auction.identificationMode === 'required'
-                    ? 'Required'
-                    : 'None',
-                ),
-                ...(draft.auction.identificationMode === 'required'
-                  ? [
-                      row(
-                        'Identity check',
-                        draft.auction.identificationRequirements,
-                      ),
-                    ]
-                  : []),
-              ]
+          row(
+            'Identification hook',
+            draft.eligibility.identificationMode === 'required'
+              ? 'Required'
+              : 'None',
+          ),
+          ...(draft.eligibility.identificationMode === 'required'
+            ? [row('Identity check', draft.eligibility.identificationRequirements)]
             : []),
         ]}
       />

@@ -18,9 +18,9 @@ export function LaunchStepper({
   method: LaunchMethod;
 }) {
   const labels: Partial<Record<WizardStep, string>> = {
-    project: 'Add token info',
+    project: 'Token info',
     method: 'Launch method',
-    token: 'Token supply',
+    token: 'Supply & allocation',
     sale: `Configure ${methodLabels[method].toLowerCase()}`,
     settings: method === 'auction' ? 'Schedule auction' : stepLabels.settings,
   };

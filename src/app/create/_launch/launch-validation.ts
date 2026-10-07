@@ -42,9 +42,9 @@ export const bondingSteps: WizardStep[] = [
 export const basicSteps: WizardStep[] = ['project', 'method', 'basic'];
 
 export const stepLabels: Record<WizardStep, string> = {
-  project: 'Project',
+  project: 'Token info',
   method: 'Launch method',
-  token: 'Token supply',
+  token: 'Supply & allocation',
   sale: 'Sale terms',
   settings: 'Launch settings',
   eligibility: 'Eligibility',
@@ -53,10 +53,14 @@ export const stepLabels: Record<WizardStep, string> = {
   basic: 'Create token',
 };
 
-export function bondingAllocationError(
-  bonding: LaunchDraft['bonding'],
+export function allocationError(
+  allocation: LaunchDraft['allocation'],
 ): string | null {
-  const shares = [bonding.curveShare, bonding.poolShare, bonding.teamShare];
+  const shares = [
+    allocation.saleShare,
+    allocation.poolShare,
+    allocation.teamShare,
+  ];
   if (!shares.every((value) => validPercent(value)))
     return 'Enter each share from 0% to 100%, with up to 2 decimal places.';
   const totalBasisPoints = shares.reduce(
@@ -65,7 +69,7 @@ export function bondingAllocationError(
   );
   return totalBasisPoints === 10_000
     ? null
-    : `${totalBasisPoints / 100}% allocated. Curve, pool and team must total 100%.`;
+    : `${totalBasisPoints / 100}% allocated. Launch, pool and team must total 100%.`;
 }
 
 export function validateLaunchStep(
@@ -99,6 +103,20 @@ export function validateLaunchStep(
     if (!validSupply(draft.supply))
       errors['launch-supply'] =
         'Enter a positive supply within Stellar’s limit, with up to 7 decimal places.';
+    const invalidAllocation = allocationError(draft.allocation);
+    if (invalidAllocation) errors['allocation-sale'] = invalidAllocation;
+    else if (!validPercent(draft.allocation.saleShare, false))
+      errors['allocation-sale'] = 'Allocate more than 0% to the launch.';
+    const { teamShare, cliffMonths, vestingMonths } = draft.allocation;
+    if (numberValue(teamShare) > 0) {
+      if (!validNonNegativeInteger(cliffMonths))
+        errors['team-cliff'] = 'Enter a whole number of months, starting at 0.';
+      if (
+        !validNonNegativeInteger(vestingMonths) ||
+        numberValue(vestingMonths) <= 0
+      )
+        errors['team-vesting'] = 'Enter a positive whole number of months.';
+    }
   }
 
   if (step === 'sale') {
@@ -106,16 +124,11 @@ export function validateLaunchStep(
       errors['curve-target'] =
         `Enter a positive graduation target in ${draft.quote}.`;
     if (draft.method === 'fixed') {
-      if (!validPercent(draft.fixed.saleShare, false))
-        errors['fixed-share'] = 'Enter a sale share above 0% and at most 100%.';
       if (!validPositive(draft.fixed.price))
         errors['fixed-price'] =
           `Enter a positive price in ${draft.quote} per token.`;
     }
     if (draft.method === 'auction') {
-      if (!validPercent(draft.auction.saleShare, false))
-        errors['auction-share'] =
-          'Enter an auction share above 0% and at most 100%.';
       if (!validPercent(draft.auction.liquidityShare))
         errors['auction-liquidity'] =
           'Enter 0–100% of the raised payment asset.';
@@ -127,9 +140,6 @@ export function validateLaunchStep(
 
   if (step === 'settings') {
     if (draft.method === 'bonding') {
-      const { teamShare, cliffMonths, vestingMonths } = draft.bonding;
-      const allocationError = bondingAllocationError(draft.bonding);
-      if (allocationError) errors['curve-share'] = allocationError;
       validateDates(
         draft.bonding.startsAt,
         draft.bonding.endsAt,
@@ -138,16 +148,6 @@ export function validateLaunchStep(
         errors,
         Number(draft.bonding.durationDays),
       );
-      if (numberValue(teamShare) > 0) {
-        if (!validNonNegativeInteger(cliffMonths))
-          errors['team-cliff'] =
-            'Enter a whole number of months, starting at 0.';
-        if (
-          !validNonNegativeInteger(vestingMonths) ||
-          numberValue(vestingMonths) <= 0
-        )
-          errors['team-vesting'] = 'Enter a positive whole number of months.';
-      }
     }
     if (draft.method === 'fixed') {
       validateDates(
@@ -187,12 +187,11 @@ export function validateLaunchStep(
         'Describe who qualifies and how the rule should be checked.';
     }
     if (
-      draft.method === 'auction' &&
-      draft.auction.identificationMode === 'required' &&
-      !draft.auction.identificationRequirements.trim()
+      draft.eligibility.identificationMode === 'required' &&
+      !draft.eligibility.identificationRequirements.trim()
     ) {
       errors['identification-requirements'] =
-        'Describe the identity check required for this auction.';
+        'Describe the identity check required for participants.';
     }
   }
 

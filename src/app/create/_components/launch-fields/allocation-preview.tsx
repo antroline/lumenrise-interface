@@ -9,76 +9,70 @@ import {
 } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import {
-  formatSupplyShare,
+  allocationLabels,
   numberValue,
   type LaunchDraft,
 } from '../../_launch/launch-draft';
+import { SupplyShare } from './supply-share';
 
 export function AllocationPreview({ draft }: { draft: LaunchDraft }) {
-  if (draft.method !== 'bonding') return null;
   const shares = [
     {
-      label: 'Curve',
-      value: numberValue(draft.bonding.curveShare),
+      label: allocationLabels[draft.method],
+      percent: draft.allocation.saleShare,
       color: 'bg-foreground',
     },
     {
       label: 'Pool',
-      value: numberValue(draft.bonding.poolShare),
+      percent: draft.allocation.poolShare,
       color: 'bg-lime',
     },
     {
       label: 'Team',
-      value: numberValue(draft.bonding.teamShare),
+      percent: draft.allocation.teamShare,
       color: 'bg-orange',
     },
   ];
   const total = shares.reduce(
-    (sum, item) => sum + (Number.isFinite(item.value) ? item.value : 0),
+    (sum, item) =>
+      sum + (Number.isFinite(numberValue(item.percent))
+        ? Math.round(numberValue(item.percent) * 100)
+        : 0),
     0,
   );
   return (
     <Card variant="surface" size="sm">
       <CardHeader>
         <CardTitle>Supply allocation</CardTitle>
-        <CardDescription>{total}% allocated · must equal 100%</CardDescription>
+        <CardDescription>{total / 100}% allocated · must equal 100%</CardDescription>
       </CardHeader>
       <CardContent>
         <div
           className="flex h-3 overflow-hidden rounded-full bg-border"
           role="img"
-          aria-label={`Curve ${draft.bonding.curveShare}%, pool ${draft.bonding.poolShare}%, team ${draft.bonding.teamShare}%`}
+          aria-label={shares.map((item) => `${item.label} ${item.percent}%`).join(', ')}
         >
           {shares.map(
             (item) =>
-              Number.isFinite(item.value) &&
-              item.value > 0 && (
+              Number.isFinite(numberValue(item.percent)) &&
+              numberValue(item.percent) > 0 && (
                 <span
                   key={item.label}
-                  className={cn(item.color)}
-                  style={{ width: `${Math.min(item.value, 100)}%` }}
+                  className={cn('shrink-0', item.color)}
+                  style={{ width: `${Math.min(numberValue(item.percent), 100)}%` }}
                 />
               ),
           )}
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {shares.map((item) => (
-            <div key={item.label}>
-              <p className="text-small text-muted-foreground">
-                {item.label} · {Number.isFinite(item.value) ? item.value : '—'}%
-              </p>
-              <p className="mt-1 text-ui font-semibold tabular-nums">
-                {formatSupplyShare(
-                  draft.supply,
-                  item.label === 'Curve'
-                    ? draft.bonding.curveShare
-                    : item.label === 'Pool'
-                      ? draft.bonding.poolShare
-                      : draft.bonding.teamShare,
-                )}{' '}
-                {draft.symbol || 'tokens'}
-              </p>
-            </div>
+            <SupplyShare
+              key={item.label}
+              label={item.label}
+              percent={item.percent}
+              supply={draft.supply}
+              symbol={draft.symbol}
+            />
           ))}
         </div>
       </CardContent>
