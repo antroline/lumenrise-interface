@@ -175,7 +175,7 @@ export function LaunchStudio({
         'grid w-full items-start gap-5 xl:gap-6',
         currentStep === 'review'
           ? 'lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)]'
-          : 'lg:grid-cols-[220px_minmax(0,1fr)_170px] xl:grid-cols-[250px_minmax(0,1fr)_210px]',
+          : 'lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)_210px]',
       )}
     >
       <aside className="hidden lg:sticky lg:top-24 lg:block lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto">
@@ -383,7 +383,9 @@ export function LaunchStudio({
                 </Button>
               )}
             {currentStep === 'review' && (
-              <Button disabled>Launch unavailable</Button>
+              <Button className="h-12 min-w-0 flex-1 rounded-2xl" disabled>
+                Launch unavailable
+              </Button>
             )}
             {currentStep === 'method' && (
               <p className="self-center text-small text-muted-foreground">
@@ -396,7 +398,7 @@ export function LaunchStudio({
 
       {currentStep !== 'review' && (
         <aside
-          className="hidden min-w-0 lg:sticky lg:top-24 lg:block"
+          className="hidden min-w-0 xl:sticky xl:top-24 xl:block"
           aria-label="Your launch summary"
         >
           <div className="rounded-[28px] border border-border bg-card p-4 xl:p-5">
