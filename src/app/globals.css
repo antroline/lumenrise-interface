@@ -4,6 +4,9 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Short viewports: compact density for tall sticky UI like the create stepper. */
+@custom-variant short (@media (max-height: 800px));
+
 @theme {
   --font-sans:
     var(--font-bricolage), Inter, ui-sans-serif, system-ui, sans-serif;
