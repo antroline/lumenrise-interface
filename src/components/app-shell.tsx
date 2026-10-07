@@ -152,7 +152,7 @@ function MobileNavigation({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 const headerNavItem =
-  'inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-lg px-3 text-base font-medium text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-lime/55 focus-visible:outline-none'
+  'inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-sm font-medium text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-lime/55 focus-visible:outline-none xl:px-3 xl:text-base'
 
 function HeaderDropdown({ label, href, items, active, pathname }: { label: string; href?: string; items: HeaderNavItem[]; active: boolean; pathname: string }) {
   const value = label.toLowerCase().replaceAll(' ', '-')
@@ -205,8 +205,8 @@ function HeaderNavigation() {
   const reputationActive = isActive(pathname, reputationItem) || isActive(pathname, explorerItem)
 
   return (
-    <NavigationMenu.Root key={pathname} aria-label="Primary" closeDelay={150} data-slot="header-navigation" className="hidden xl:block">
-      <NavigationMenu.List className="flex items-center gap-1">
+    <NavigationMenu.Root key={pathname} aria-label="Primary" closeDelay={150} data-slot="header-navigation" className="hidden lg:block">
+      <NavigationMenu.List className="flex items-center gap-0.5 xl:gap-1">
         <NavigationMenu.Item>
           <NavigationMenu.Link
             render={<Link href={discoverItem.href} />}
@@ -232,7 +232,7 @@ function HeaderNavigation() {
         <HeaderDropdown label="For projects" items={projectItems} active={forProjectsActive} pathname={pathname} />
       </NavigationMenu.List>
       <NavigationMenu.Portal>
-        <NavigationMenu.Positioner align="start" sideOffset={6} collisionPadding={12} className="isolate z-50 hidden outline-none xl:block">
+        <NavigationMenu.Positioner align="start" sideOffset={6} collisionPadding={12} className="isolate z-50 hidden outline-none lg:block">
           <NavigationMenu.Popup
             aria-label="Primary navigation links"
             className="h-(--popup-height) w-(--popup-width) max-h-(--available-height) max-w-(--available-width) origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-2xl bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 transition-[opacity,transform,width,height] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] data-ending-style:-translate-y-1 data-ending-style:scale-98 data-ending-style:opacity-0 data-starting-style:-translate-y-1 data-starting-style:scale-98 data-starting-style:opacity-0"
@@ -488,7 +488,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Sheet open={navOpen} onOpenChange={setNavOpen}>
             <SheetTrigger
               render={
-                <Button variant="ghost" size="icon" className="xl:hidden" aria-label="Open navigation">
+                <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation">
                   <Menu />
                 </Button>
               }
