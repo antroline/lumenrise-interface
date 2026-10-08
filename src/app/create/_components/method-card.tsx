@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { ArrowRight, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -8,6 +9,7 @@ export function MethodCard({
   icon: Icon,
   title,
   detail,
+  illustration,
   badge,
   selected,
   onClick,
@@ -15,6 +17,7 @@ export function MethodCard({
   icon: LucideIcon;
   title: string;
   detail: string;
+  illustration: string;
   badge: string;
   selected: boolean;
   onClick: () => void;
@@ -39,9 +42,20 @@ export function MethodCard({
       </div>
       <strong className="mt-5 text-[18px] font-semibold">{title}</strong>
       <span className="mt-1 text-ui text-muted-foreground">{detail}</span>
-      <span className="mt-auto pt-4 text-ui font-semibold group-hover:underline">
-        Select method{' '}
-        <ArrowRight className="inline size-4" aria-hidden="true" />
+      <span className="mt-auto flex w-full items-end justify-between gap-3 pt-4">
+        <span className="text-ui font-semibold group-hover:underline">
+          Select method{' '}
+          <ArrowRight className="inline size-4" aria-hidden="true" />
+        </span>
+        <Image
+          src={illustration}
+          alt=""
+          width={1254}
+          height={1254}
+          sizes="144px"
+          draggable={false}
+          className="pointer-events-none h-auto w-2/5 max-w-36 shrink-0 object-contain select-none"
+        />
       </span>
     </button>
   );

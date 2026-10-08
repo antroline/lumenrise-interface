@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
   Gavel,
@@ -40,17 +41,29 @@ import {
   TokenSetupStep,
 } from './launch-fields';
 import { LaunchStepper } from './launch-stepper';
+import {
+  LaunchMotionConfig,
+  LaunchReveal,
+  LaunchStepPanel,
+} from './launch-motion';
 import { MethodChoice } from './method-choice';
 
 const firstSteps: WizardStep[] = ['project', 'method'];
 
-export function LaunchStudio({
-  resumeIssuer,
-  initialMode,
-}: {
+type LaunchStudioProps = {
   resumeIssuer: string | null;
   initialMode: 'basic' | null;
-}) {
+};
+
+export function LaunchStudio(props: LaunchStudioProps) {
+  return (
+    <LaunchMotionConfig>
+      <LaunchStudioContent {...props} />
+    </LaunchMotionConfig>
+  );
+}
+
+function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
   const [draft, setDraft] = useState(initialLaunchDraft);
   const [step, setStep] = useState(
     resumeIssuer || initialMode === 'basic' ? 2 : 0,
@@ -126,7 +139,7 @@ export function LaunchStudio({
     setStep(nextStep);
     setShowErrors(false);
     requestAnimationFrame(() =>
-      document.getElementById('wizard-title')?.focus(),
+      document.getElementById('wizard-title')?.focus({ preventScroll: true }),
     );
   }
 
@@ -166,14 +179,10 @@ export function LaunchStudio({
 
   return (
     <div
-      className={cn(
-        'grid w-full items-start gap-5 xl:gap-6',
-        currentStep === 'review'
-          ? 'lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)]'
-          : 'lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)_210px]',
-      )}
+      data-launch-studio=""
+      className="relative grid w-full min-w-0 items-start gap-5 lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_200px] xl:gap-6"
     >
-      <aside className="hidden lg:sticky lg:top-24 lg:block lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto">
+      <aside className="hidden lg:sticky lg:top-24 lg:-ml-8 lg:block">
         <LaunchStepper
           steps={visibleSteps}
           currentIndex={currentIndex}
@@ -184,7 +193,7 @@ export function LaunchStudio({
       </aside>
 
       <section
-        className="min-w-0 rounded-[28px] border border-border bg-card p-5 sm:p-6 xl:p-8"
+        className="relative flex min-h-120 min-w-0 flex-col rounded-[28px] border border-border bg-card p-5 sm:p-6 xl:p-8"
         aria-labelledby="wizard-title"
       >
         <div className="mb-7 flex flex-wrap items-center justify-between gap-3 border-b border-divider pb-5 lg:hidden">
@@ -214,239 +223,232 @@ export function LaunchStudio({
             : ''}
           : {stepLabels[currentStep]}
         </p>
-        <div
-          key={`${currentStep}-${draft.method}`}
-          className="launch-step-panel"
-          data-direction={direction}
-        >
-          <div className="mb-6">
-            <h2
-              id="wizard-title"
-              tabIndex={-1}
-              className="text-[29px] font-semibold tracking-[-0.025em] outline-none sm:text-[36px]"
-            >
-              {heading[currentStep]}
-            </h2>
-            {(currentStep === 'method' || currentStep === 'basic') && (
-              <p className="mt-2 max-w-[65ch] text-ui text-muted-foreground">
-                {currentStep === 'method'
-                  ? 'Basic creates a token on testnet. The sale methods are setup previews until their contracts are connected.'
-                  : 'This is the live Stellar testnet token flow. Review the warning before connecting or signing.'}
-              </p>
-            )}
-          </div>
-
-          {currentStep === 'project' && (
-            <ProjectDetailsStep
-              draft={draft}
-              setDraft={setDraft}
-              errors={fieldErrors}
-            />
-          )}
-          {currentStep === 'method' && (
-            <MethodChoice
-              onChoose={choose}
-              selected={draft.methodSelected ? draft.method : null}
-            />
-          )}
-          {currentStep === 'token' && (
-            <TokenSetupStep
-              draft={draft}
-              setDraft={setDraft}
-              errors={fieldErrors}
-            />
-          )}
-          {currentStep === 'sale' && (
-            <EconomicsStep
-              draft={draft}
-              setDraft={setDraft}
-              errors={fieldErrors}
-            />
-          )}
-          {currentStep === 'settings' && (
-            <SettingsStep
-              draft={draft}
-              setDraft={setDraft}
-              errors={fieldErrors}
-            />
-          )}
-          {currentStep === 'eligibility' && (
-            <EligibilityStep
-              draft={draft}
-              setDraft={setDraft}
-              errors={fieldErrors}
-            />
-          )}
-          {currentStep === 'vesting' && (
-            <ParticipantVestingStep
-              draft={draft}
-              setDraft={setDraft}
-              errors={fieldErrors}
-            />
-          )}
-          {currentStep === 'review' && (
-            <ReviewStep draft={draft} onEdit={(index) => goToStep(index)} />
-          )}
-          {currentStep === 'basic' && (
-            <>
-              {!resumeIssuer && (
-                <div className="mb-6 flex items-center gap-4 rounded-xl bg-surface p-4">
-                  {draft.logo && (
-                    <img
-                      src={draft.logo}
-                      alt=""
-                      className="size-12 shrink-0 rounded-lg object-cover"
-                    />
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-ui font-semibold">
-                      {draft.name || 'Your token'}
-                    </p>
-                    <p className="text-small text-muted-foreground">
-                      Basic token creation uses the name, symbol and supply. The
-                      image and description are not included in the token
-                      transaction.
-                    </p>
-                  </div>
-                </div>
-              )}
-              {basicReturnReady && (
-                <CreateLaunchEntry
-                  initialResumeIssuer={resumeIssuer}
-                  initialInput={{
-                    name: draft.name,
-                    code: draft.symbol,
-                    amount: draft.supply,
-                  }}
-                  hideIdentity={
-                    !resumeIssuer &&
-                    (initialMode !== 'basic' || restoredProjectName)
-                  }
-                  onInputChange={(input) =>
-                    setDraft((current) => ({
-                      ...current,
-                      name: input.name,
-                      symbol: input.code,
-                      supply: input.amount,
-                    }))
-                  }
-                  onBeforeConnect={(input) => {
-                    try {
-                      window.sessionStorage.setItem(
-                        BASIC_AUTH_RETURN_KEY,
-                        JSON.stringify(input),
-                      );
-                      window.sessionStorage.setItem(
-                        BASIC_AUTH_RETURN_KEY,
-                        JSON.stringify({
-                          ...input,
-                          logo: draft.logo,
-                          description: draft.description,
-                          xAccount: draft.xAccount,
-                          website: draft.website,
-                        }),
-                      );
-                    } catch {
-                      /* Keep the token fields if the project image exceeds session storage capacity. */
-                    }
-                  }}
-                />
-              )}
-            </>
-          )}
-
-          <div className="mt-8 flex flex-wrap gap-3 border-t border-divider pt-5">
-            {!resumeIssuer && step > 0 && (
-              <Button
-                className="h-12 rounded-2xl"
-                variant="outline"
-                onClick={() => goToStep(step - 1)}
+        <AnimatePresence initial={false} mode="popLayout" custom={direction}>
+          <LaunchStepPanel
+            key={`${currentStep}-${draft.method}`}
+            direction={direction}
+            heading={heading[currentStep]}
+            description={
+              currentStep === 'method'
+                ? 'Basic creates a token on testnet. The sale methods are setup previews until their contracts are connected.'
+                : currentStep === 'basic'
+                  ? 'This is the live Stellar testnet token flow. Review the warning before connecting or signing.'
+                  : undefined
+            }
+            footer={
+              <div
+                className={cn(
+                  'flex shrink-0 flex-wrap gap-3 border-t border-divider pt-5',
+                  currentStep === 'vesting' ? 'mt-auto' : 'mt-5',
+                )}
               >
-                <ArrowLeft data-icon="inline-start" />
-                Back
-              </Button>
-            )}
-            {currentStep !== 'method' &&
-              currentStep !== 'basic' &&
-              currentStep !== 'review' && (
-                <Button
-                  className="h-12 min-w-0 flex-1 rounded-2xl"
-                  onClick={next}
-                >
-                  Continue
-                </Button>
-              )}
-            {currentStep === 'review' && (
-              <Button className="h-12 min-w-0 flex-1 rounded-2xl" disabled>
-                Launch unavailable
-              </Button>
+                {!resumeIssuer && step > 0 && (
+                  <Button
+                    className="h-12 rounded-2xl"
+                    variant="outline"
+                    onClick={() => goToStep(step - 1)}
+                  >
+                    <ArrowLeft data-icon="inline-start" />
+                    Back
+                  </Button>
+                )}
+                {currentStep !== 'method' &&
+                  currentStep !== 'basic' &&
+                  currentStep !== 'review' && (
+                    <Button
+                      className="h-12 min-w-0 flex-1 rounded-2xl"
+                      onClick={next}
+                    >
+                      Continue
+                    </Button>
+                  )}
+                {currentStep === 'review' && (
+                  <Button className="h-12 min-w-0 flex-1 rounded-2xl" disabled>
+                    Launch unavailable
+                  </Button>
+                )}
+                {currentStep === 'method' && (
+                  <p className="self-center text-small text-muted-foreground">
+                    Select a method to see its setup steps.
+                  </p>
+                )}
+              </div>
+            }
+          >
+            {currentStep === 'project' && (
+              <ProjectDetailsStep
+                draft={draft}
+                setDraft={setDraft}
+                errors={fieldErrors}
+              />
             )}
             {currentStep === 'method' && (
-              <p className="self-center text-small text-muted-foreground">
-                Select a method to see its setup steps.
-              </p>
+              <MethodChoice
+                onChoose={choose}
+                selected={draft.methodSelected ? draft.method : null}
+              />
             )}
+            {currentStep === 'token' && (
+              <TokenSetupStep
+                draft={draft}
+                setDraft={setDraft}
+                errors={fieldErrors}
+              />
+            )}
+            {currentStep === 'sale' && (
+              <EconomicsStep
+                draft={draft}
+                setDraft={setDraft}
+                errors={fieldErrors}
+              />
+            )}
+            {currentStep === 'settings' && (
+              <SettingsStep
+                draft={draft}
+                setDraft={setDraft}
+                errors={fieldErrors}
+              />
+            )}
+            {currentStep === 'eligibility' && (
+              <EligibilityStep
+                draft={draft}
+                setDraft={setDraft}
+                errors={fieldErrors}
+              />
+            )}
+            {currentStep === 'vesting' && (
+              <ParticipantVestingStep
+                draft={draft}
+                setDraft={setDraft}
+                errors={fieldErrors}
+              />
+            )}
+            {currentStep === 'review' && (
+              <ReviewStep draft={draft} onEdit={(index) => goToStep(index)} />
+            )}
+            {currentStep === 'basic' && (
+              <>
+                {!resumeIssuer && (
+                  <div className="mb-6 flex items-center gap-4 rounded-xl bg-surface p-4">
+                    {draft.logo && (
+                      <img
+                        src={draft.logo}
+                        alt=""
+                        className="size-12 shrink-0 rounded-lg object-cover"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-ui font-semibold">
+                        {draft.name || 'Your token'}
+                      </p>
+                      <p className="text-small text-muted-foreground">
+                        Basic token creation uses the name, symbol and supply.
+                        The image and description are not included in the token
+                        transaction.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <LaunchReveal show={basicReturnReady}>
+                  <CreateLaunchEntry
+                    initialResumeIssuer={resumeIssuer}
+                    initialInput={{
+                      name: draft.name,
+                      code: draft.symbol,
+                      amount: draft.supply,
+                    }}
+                    hideIdentity={
+                      !resumeIssuer &&
+                      (initialMode !== 'basic' || restoredProjectName)
+                    }
+                    onInputChange={(input) =>
+                      setDraft((current) => ({
+                        ...current,
+                        name: input.name,
+                        symbol: input.code,
+                        supply: input.amount,
+                      }))
+                    }
+                    onBeforeConnect={(input) => {
+                      try {
+                        window.sessionStorage.setItem(
+                          BASIC_AUTH_RETURN_KEY,
+                          JSON.stringify(input),
+                        );
+                        window.sessionStorage.setItem(
+                          BASIC_AUTH_RETURN_KEY,
+                          JSON.stringify({
+                            ...input,
+                            logo: draft.logo,
+                            description: draft.description,
+                            xAccount: draft.xAccount,
+                            website: draft.website,
+                          }),
+                        );
+                      } catch {
+                        /* Keep the token fields if the project image exceeds session storage capacity. */
+                      }
+                    }}
+                  />
+                </LaunchReveal>
+              </>
+            )}
+          </LaunchStepPanel>
+        </AnimatePresence>
+      </section>
+      <aside
+        className="hidden min-w-0 xl:sticky xl:top-24 xl:block"
+        aria-label="Your launch summary"
+      >
+        <div className="rounded-[28px] border border-border bg-card p-4 xl:p-5">
+          <h3 className="text-[16px] font-semibold tracking-[-0.02em]">
+            Your launch
+          </h3>
+          <div className="mt-5">
+            {draft.logo ? (
+              <img
+                src={draft.logo}
+                alt=""
+                className="size-14 rounded-xl object-cover"
+              />
+            ) : (
+              <span
+                className="grid size-14 place-items-center rounded-xl bg-muted text-muted-foreground"
+                aria-hidden="true"
+              >
+                <ImagePlus className="size-5" />
+              </span>
+            )}
+            <p className="mt-3 break-words text-[17px] font-semibold leading-snug tracking-[-0.02em]">
+              {draft.name || 'Untitled project'}
+            </p>
+            <LaunchReveal show={!!draft.symbol}>
+              <p className="mt-0.5 break-all text-small font-medium text-muted-foreground">
+                ${draft.symbol}
+              </p>
+            </LaunchReveal>
+          </div>
+          <div className="mt-5 border-t border-divider pt-4">
+            <p className="text-[12px] font-medium text-muted-foreground">
+              Launch method
+            </p>
+            <div className="mt-2 flex items-center gap-2.5">
+              {draft.methodSelected ||
+              initialMode === 'basic' ||
+              resumeIssuer ? (
+                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted">
+                  <MethodIcon className="size-4" aria-hidden="true" />
+                </span>
+              ) : null}
+              <p className="min-w-0 break-words text-small font-semibold text-foreground">
+                {draft.methodSelected || initialMode === 'basic' || resumeIssuer
+                  ? methodLabels[activeMethod]
+                  : 'Not selected'}
+              </p>
+            </div>
           </div>
         </div>
-      </section>
-
-      {currentStep !== 'review' && (
-        <aside
-          className="hidden min-w-0 xl:sticky xl:top-24 xl:block"
-          aria-label="Your launch summary"
-        >
-          <div className="rounded-[28px] border border-border bg-card p-4 xl:p-5">
-            <h3 className="text-[16px] font-semibold tracking-[-0.02em]">
-              Your launch
-            </h3>
-            <div className="mt-5">
-              {draft.logo ? (
-                <img
-                  src={draft.logo}
-                  alt=""
-                  className="size-14 rounded-xl object-cover"
-                />
-              ) : (
-                <span
-                  className="grid size-14 place-items-center rounded-xl bg-muted text-muted-foreground"
-                  aria-hidden="true"
-                >
-                  <ImagePlus className="size-5" />
-                </span>
-              )}
-              <p className="mt-3 break-words text-[17px] font-semibold leading-snug tracking-[-0.02em]">
-                {draft.name || 'Untitled project'}
-              </p>
-              {draft.symbol && (
-                <p className="mt-0.5 break-all text-small font-medium text-muted-foreground">
-                  ${draft.symbol}
-                </p>
-              )}
-            </div>
-            <div className="mt-5 border-t border-divider pt-4">
-              <p className="text-[12px] font-medium text-muted-foreground">
-                Launch method
-              </p>
-              <div className="mt-2 flex items-center gap-2.5">
-                {draft.methodSelected ||
-                initialMode === 'basic' ||
-                resumeIssuer ? (
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted">
-                    <MethodIcon className="size-4" aria-hidden="true" />
-                  </span>
-                ) : null}
-                <p className="min-w-0 break-words text-small font-semibold text-foreground">
-                  {draft.methodSelected ||
-                  initialMode === 'basic' ||
-                  resumeIssuer
-                    ? methodLabels[activeMethod]
-                    : 'Not selected'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </aside>
-      )}
+      </aside>
     </div>
   );
 }
