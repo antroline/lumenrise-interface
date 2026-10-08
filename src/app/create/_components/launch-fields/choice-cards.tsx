@@ -38,9 +38,10 @@ export function ChoiceCards<T extends string>({
           <FieldLabel
             key={option.value}
             className={cn(
-              'h-full min-w-0 cursor-pointer',
-              selectedValue === option.value &&
-                'border-foreground! bg-muted! shadow-none!',
+              'h-full min-w-0 cursor-pointer border-2! shadow-none! transition-colors duration-150 has-[:focus-visible]:ring-ring! has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-card',
+              selectedValue === option.value
+                ? 'border-emphasis! bg-accent!'
+                : 'border-border! bg-card! hover:border-faint! hover:bg-muted!',
             )}
           >
             <Field
@@ -48,23 +49,42 @@ export function ChoiceCards<T extends string>({
               className="min-h-24 items-start gap-3"
             >
               <span
-                className="grid size-9 shrink-0 place-items-center rounded-lg bg-secondary text-foreground"
+                className={cn(
+                  'grid size-9 shrink-0 place-items-center rounded-lg transition-colors duration-150',
+                  selectedValue === option.value
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground',
+                )}
                 aria-hidden="true"
               >
                 <option.icon className="size-4" />
               </span>
               <FieldContent>
-                <strong className="text-ui font-semibold text-foreground">
+                <strong
+                  className={cn(
+                    'text-ui font-semibold',
+                    selectedValue === option.value
+                      ? 'text-accent-foreground'
+                      : 'text-foreground',
+                  )}
+                >
                   {option.title}
                 </strong>
-                <span className="mt-1 text-small font-normal text-muted-foreground">
+                <span
+                  className={cn(
+                    'mt-1 text-small font-normal',
+                    selectedValue === option.value
+                      ? 'text-accent-foreground/70'
+                      : 'text-muted-foreground',
+                  )}
+                >
                   {option.detail}
                 </span>
               </FieldContent>
               <RadioGroupItem
                 value={option.value}
                 aria-label={option.title}
-                className="mt-0.5"
+                className="mt-0.5 focus-visible:ring-ring data-checked:border-emphasis data-checked:bg-primary-foreground [&_[data-slot=radio-group-indicator]]:bg-primary"
               />
             </Field>
           </FieldLabel>

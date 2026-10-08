@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import type { Popover as PopoverPrimitive } from '@base-ui/react/popover';
 import { CalendarDays, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -14,6 +15,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { isoToLocalDateTime } from '../../_launch/launch-draft';
+import { LaunchFieldError, LaunchReveal } from '../launch-motion';
 
 export function DateTimePicker({
   id,
@@ -33,6 +35,7 @@ export function DateTimePicker({
   defaultLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const actionsRef = useRef<PopoverPrimitive.Root.Actions>(null);
   const selected = value ? new Date(value) : undefined;
   const local = isoToLocalDateTime(value);
   const time = local.split('T')[1] || '10:00';
@@ -70,7 +73,7 @@ export function DateTimePicker({
   return (
     <Field data-invalid={!!error}>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} actionsRef={actionsRef} onOpenChange={setOpen}>
         <PopoverTrigger
           render={
             <Button
@@ -116,7 +119,7 @@ export function DateTimePicker({
             aria-hidden="true"
           />
         </PopoverTrigger>
-        <PopoverContent className="p-1">
+        <PopoverContent className="translate-none! p-1 transition-opacity motion-reduce:transition-none">
           <PopoverTitle className="sr-only">{label}</PopoverTitle>
           <Calendar
             mode="single"
@@ -142,13 +145,13 @@ export function DateTimePicker({
             <Button
               type="button"
               size="sm"
-              onClick={() => setOpen(false)}
+              onClick={() => actionsRef.current?.close()}
               disabled={!selected}
             >
               Done
             </Button>
           </div>
-          {defaultLabel && selected && (
+          <LaunchReveal show={!!defaultLabel && !!selected}>
             <Button
               type="button"
               variant="ghost"
@@ -156,19 +159,17 @@ export function DateTimePicker({
               className="mb-2 ml-3"
               onClick={() => {
                 onChange('');
-                setOpen(false);
+                actionsRef.current?.close();
               }}
             >
               Use default: {defaultLabel}
             </Button>
-          )}
+          </LaunchReveal>
         </PopoverContent>
       </Popover>
-      {error && (
-        <p id={`${id}-error`} className="text-small text-bad">
-          {error}
-        </p>
-      )}
+      <LaunchFieldError id={`${id}-error`} className="text-small text-bad">
+        {error}
+      </LaunchFieldError>
     </Field>
   );
 }

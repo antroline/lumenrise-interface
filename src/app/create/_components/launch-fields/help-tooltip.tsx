@@ -39,7 +39,7 @@ export function HelpTooltip({
         <TooltipContent
           side="top"
           sideOffset={8}
-          className="max-w-64 text-left leading-relaxed duration-200 ease-out data-closed:duration-150 motion-reduce:animate-none"
+          className="max-w-64 animate-none! text-left leading-relaxed transition-opacity duration-100 data-starting-style:opacity-0 data-ending-style:opacity-0 motion-reduce:transition-none"
         >
           {children}
         </TooltipContent>
@@ -59,7 +59,7 @@ export function HelpTooltip({
         >
           <CircleHelp className="size-4" aria-hidden="true" />
         </PopoverTrigger>
-        <PopoverContent className="max-w-64 p-3 text-small leading-relaxed">
+        <PopoverContent className="max-w-64 translate-none! p-3 text-small leading-relaxed transition-opacity motion-reduce:transition-none">
           <PopoverTitle className="sr-only">{label}</PopoverTitle>
           {children}
         </PopoverContent>

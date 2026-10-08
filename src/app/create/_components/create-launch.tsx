@@ -23,8 +23,21 @@ import {
 import { useLaunch } from '../_launch/use-launch';
 import { LaunchOverview } from './launch-overview';
 import { LaunchProgress } from './launch-progress';
+import { LaunchReveal, LaunchStatePanel } from './launch-motion';
 
-export function CreateLaunch({ resumeIssuer, initialInput, hideIdentity, onInputChange, onBeforeConnect }: { resumeIssuer: string | null; initialInput: LaunchInput; hideIdentity: boolean; onInputChange: (input: LaunchInput) => void; onBeforeConnect: (input: LaunchInput) => void }) {
+export function CreateLaunch({
+  resumeIssuer,
+  initialInput,
+  hideIdentity,
+  onInputChange,
+  onBeforeConnect,
+}: {
+  resumeIssuer: string | null;
+  initialInput: LaunchInput;
+  hideIdentity: boolean;
+  onInputChange: (input: LaunchInput) => void;
+  onBeforeConnect: (input: LaunchInput) => void;
+}) {
   const flow = useLaunch(resumeIssuer, initialInput);
   const account = useLaunchpad();
   const {
@@ -116,14 +129,11 @@ export function CreateLaunch({ resumeIssuer, initialInput, hideIdentity, onInput
   return (
     <div className="grid items-start gap-5">
       <section
-        className={cn(
-          cardVariants({ size: 'lg' }),
-          'order-1 min-w-0',
-        )}
+        className={cn(cardVariants({ size: 'lg' }), 'relative order-1 min-w-0')}
         aria-labelledby={isFinished ? 'launch-result' : 'token-details'}
       >
         {isFinished && record ? (
-          <div>
+          <LaunchStatePanel key="result">
             <h2
               id="launch-result"
               className="text-[26px] font-semibold tracking-[-0.025em]"
@@ -172,12 +182,12 @@ export function CreateLaunch({ resumeIssuer, initialInput, hideIdentity, onInput
                 </div>
               )}
             </dl>
-            {record.stage !== 'withdrawn' && !walletMatches && (
+            <LaunchReveal show={record.stage !== 'withdrawn' && !walletMatches}>
               <p className="mt-5 text-[14px] text-muted-foreground">
                 Connect {shortAddress(record.creator)} to continue.
               </p>
-            )}
-            {record.stage === 'complete' && (
+            </LaunchReveal>
+            <LaunchReveal show={record.stage === 'complete'}>
               <Button
                 type="button"
                 size="lg"
@@ -196,8 +206,8 @@ export function CreateLaunch({ resumeIssuer, initialInput, hideIdentity, onInput
                       : 'Withdraw tokens'}
                 <ArrowRight data-icon="inline-end" aria-hidden="true" />
               </Button>
-            )}
-            {record.stage === 'withdrawPending' && (
+            </LaunchReveal>
+            <LaunchReveal show={record.stage === 'withdrawPending'}>
               <Button
                 type="button"
                 size="lg"
@@ -212,13 +222,13 @@ export function CreateLaunch({ resumeIssuer, initialInput, hideIdentity, onInput
                     : 'Check withdrawal'}
                 <ArrowRight data-icon="inline-end" aria-hidden="true" />
               </Button>
-            )}
+            </LaunchReveal>
             <div className="mt-8 border-t border-divider pt-7">
               <LaunchOverview record={record} />
             </div>
-          </div>
+          </LaunchStatePanel>
         ) : (
-          <div>
+          <LaunchStatePanel key="details">
             <h2
               id="token-details"
               className="text-[22px] font-semibold tracking-[-0.02em]"
@@ -227,46 +237,50 @@ export function CreateLaunch({ resumeIssuer, initialInput, hideIdentity, onInput
             </h2>
             <form onSubmit={submit} className="mt-5">
               <FieldGroup className="gap-5">
-                {!hideIdentity && <div className="grid gap-5 sm:grid-cols-2 sm:gap-6">
-                  <Field>
-                    <FieldLabel htmlFor="launch-name">Name</FieldLabel>
-                    <Input
-                      id="launch-name"
-                      value={input.name}
-                      onChange={(event) =>
-                        updateInput({ ...input, name: event.target.value })
-                      }
-                      placeholder="My Token"
-                      maxLength={40}
-                      required
-                      disabled={busy || !!record}
-                      className="h-12 text-[15px]"
-                    />
-                    <FieldDescription>Used as the token name on Stellar.</FieldDescription>
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="launch-code">Symbol</FieldLabel>
-                    <Input
-                      id="launch-code"
-                      value={input.code}
-                      onChange={(event) =>
-                        updateInput({
-                          ...input,
-                          code: event.target.value.toUpperCase(),
-                        })
-                      }
-                      placeholder="MYTOKEN"
-                      maxLength={12}
-                      pattern="[A-Za-z0-9]{1,12}"
-                      required
-                      disabled={busy || !!record}
-                      className="h-12 font-mono text-[15px] tracking-[0.02em]"
-                    />
-                    <FieldDescription>
-                      1–12 letters or numbers.
-                    </FieldDescription>
-                  </Field>
-                </div>}
+                {!hideIdentity && (
+                  <div className="grid gap-5 sm:grid-cols-2 sm:gap-6">
+                    <Field>
+                      <FieldLabel htmlFor="launch-name">Name</FieldLabel>
+                      <Input
+                        id="launch-name"
+                        value={input.name}
+                        onChange={(event) =>
+                          updateInput({ ...input, name: event.target.value })
+                        }
+                        placeholder="My Token"
+                        maxLength={40}
+                        required
+                        disabled={busy || !!record}
+                        className="h-12 text-[15px]"
+                      />
+                      <FieldDescription>
+                        Used as the token name on Stellar.
+                      </FieldDescription>
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="launch-code">Symbol</FieldLabel>
+                      <Input
+                        id="launch-code"
+                        value={input.code}
+                        onChange={(event) =>
+                          updateInput({
+                            ...input,
+                            code: event.target.value.toUpperCase(),
+                          })
+                        }
+                        placeholder="MYTOKEN"
+                        maxLength={12}
+                        pattern="[A-Za-z0-9]{1,12}"
+                        required
+                        disabled={busy || !!record}
+                        className="h-12 font-mono text-[15px] tracking-[0.02em]"
+                      />
+                      <FieldDescription>
+                        1–12 letters or numbers.
+                      </FieldDescription>
+                    </Field>
+                  </div>
+                )}
                 <Field>
                   <FieldLabel htmlFor="launch-amount">Total supply</FieldLabel>
                   <div className="relative">
@@ -341,7 +355,7 @@ export function CreateLaunch({ resumeIssuer, initialInput, hideIdentity, onInput
                 </p>
               </div>
 
-              {!record && (
+              <LaunchReveal show={!record}>
                 <Button
                   type="submit"
                   size="lg"
@@ -359,43 +373,45 @@ export function CreateLaunch({ resumeIssuer, initialInput, hideIdentity, onInput
                           : 'Connect wallet to continue'}
                   <ArrowRight data-icon="inline-end" aria-hidden="true" />
                 </Button>
-              )}
+              </LaunchReveal>
             </form>
 
-            {record && (
-              <div className="mt-7 flex flex-col items-start gap-3">
-                {!walletMatches && (
-                  <p className="text-[14px] text-muted-foreground">
-                    Connect {shortAddress(record.creator)} to continue.
-                  </p>
-                )}
-                <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-                  <Button
-                    type="button"
-                    size="lg"
-                    onClick={continueLaunch}
-                    disabled={busy || account.loginPending || !walletMatches}
-                    className="w-full sm:w-auto"
-                  >
-                    {working
-                      ? 'Working…'
-                      : !user
-                        ? 'Connect and continue'
-                        : record.stage.endsWith('Pending')
-                          ? 'Check transaction'
-                          : record.stage === 'issuerReady'
-                            ? 'Continue: issue supply'
-                            : record.stage === 'sacConfirmed'
-                              ? 'Continue: lock tokens'
-                              : 'Continue: deploy SAC'}
-                    <ArrowRight data-icon="inline-end" aria-hidden="true" />
-                  </Button>
+            <LaunchReveal show={!!record}>
+              {record && (
+                <div className="mt-7 flex flex-col items-start gap-3">
+                  <LaunchReveal show={!walletMatches}>
+                    <p className="text-[14px] text-muted-foreground">
+                      Connect {shortAddress(record.creator)} to continue.
+                    </p>
+                  </LaunchReveal>
+                  <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                    <Button
+                      type="button"
+                      size="lg"
+                      onClick={continueLaunch}
+                      disabled={busy || account.loginPending || !walletMatches}
+                      className="w-full sm:w-auto"
+                    >
+                      {working
+                        ? 'Working…'
+                        : !user
+                          ? 'Connect and continue'
+                          : record.stage.endsWith('Pending')
+                            ? 'Check transaction'
+                            : record.stage === 'issuerReady'
+                              ? 'Continue: issue supply'
+                              : record.stage === 'sacConfirmed'
+                                ? 'Continue: lock tokens'
+                                : 'Continue: deploy SAC'}
+                      <ArrowRight data-icon="inline-end" aria-hidden="true" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </LaunchReveal>
+          </LaunchStatePanel>
         )}
-        {(error || (!isFinished && activity)) && (
+        <LaunchReveal show={!!(error || (!isFinished && activity))}>
           <p
             role={error ? 'alert' : 'status'}
             aria-live="polite"
@@ -406,17 +422,19 @@ export function CreateLaunch({ resumeIssuer, initialInput, hideIdentity, onInput
           >
             {error || activity}
           </p>
-        )}
-        {error.includes('Friendbot') && user && (
-          <a
-            className="mt-2 inline-block text-ui font-medium underline underline-offset-4"
-            href={`https://friendbot.stellar.org/?addr=${user.address}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Fund this testnet wallet
-          </a>
-        )}
+        </LaunchReveal>
+        <LaunchReveal show={error.includes('Friendbot') && !!user}>
+          {user && (
+            <a
+              className="mt-2 inline-block text-ui font-medium underline underline-offset-4"
+              href={`https://friendbot.stellar.org/?addr=${user.address}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Fund this testnet wallet
+            </a>
+          )}
+        </LaunchReveal>
       </section>
 
       <aside
@@ -480,11 +498,13 @@ export function CreateLaunch({ resumeIssuer, initialInput, hideIdentity, onInput
               </div>
             </dl>
           </section>
-          {record && (
-            <div className={cn(cardVariants({ size: 'default' }), 'min-w-0')}>
-              <LaunchOverview record={record} />
-            </div>
-          )}
+          <LaunchReveal show={!!record}>
+            {record && (
+              <div className={cn(cardVariants({ size: 'default' }), 'min-w-0')}>
+                <LaunchOverview record={record} />
+              </div>
+            )}
+          </LaunchReveal>
         </aside>
       )}
     </div>

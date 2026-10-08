@@ -1,6 +1,7 @@
 'use client';
 
-import { Field, FieldLabel } from '@/components/ui/field';
+import { FieldLabel, Field } from '@/components/ui/field';
+import { LaunchFieldError } from '../launch-motion';
 import { Input } from '@/components/ui/input';
 
 export function TextField({
@@ -31,11 +32,9 @@ export function TextField({
         aria-describedby={error ? `${id}-error` : undefined}
         className="aria-invalid:border-input aria-invalid:ring-0"
       />
-      {error && (
-        <p id={`${id}-error`} className="text-small text-bad">
-          {error}
-        </p>
-      )}
+      <LaunchFieldError id={`${id}-error`} className="text-small text-bad">
+        {error}
+      </LaunchFieldError>
     </Field>
   );
 }

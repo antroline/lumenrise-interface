@@ -2,6 +2,7 @@
 
 import { Clock3, Unlock } from 'lucide-react';
 import { FieldGroup } from '@/components/ui/field';
+import { LaunchReveal } from '../launch-motion';
 import type { LaunchDraft } from '../../_launch/launch-draft';
 import { ChoiceCards } from './choice-cards';
 import { NumberField } from './number-field';
@@ -40,8 +41,8 @@ export function ParticipantVestingStep({
         }
         onChange={(mode) => update({ mode })}
       />
-      {draft.participantVesting.mode === 'linear' && (
-        <div className="grid gap-5 sm:grid-cols-3">
+      <LaunchReveal show={draft.participantVesting.mode === 'linear'}>
+        <FieldGroup className="grid gap-5 sm:grid-cols-3">
           <NumberField
             id="vesting-tge"
             label="Unlocked at launch"
@@ -69,8 +70,8 @@ export function ParticipantVestingStep({
             help="Time over which the remaining allocation unlocks."
             error={errors['vesting-duration']}
           />
-        </div>
-      )}
+        </FieldGroup>
+      </LaunchReveal>
     </FieldGroup>
   );
 }

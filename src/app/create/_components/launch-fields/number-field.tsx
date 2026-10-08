@@ -1,6 +1,7 @@
 'use client';
 
-import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
+import { FieldDescription, FieldLabel, Field } from '@/components/ui/field';
+import { LaunchFieldError } from '../launch-motion';
 import { Input } from '@/components/ui/input';
 import { formatSupply } from '../../_launch/amount';
 import { HelpTooltip } from './help-tooltip';
@@ -64,7 +65,7 @@ export function NumberField({
 
   return (
     <Field data-invalid={!!error || invalid}>
-      <div className="rounded-xl border border-border bg-muted px-4 py-3.5 transition-[border-color,box-shadow] duration-200 focus-within:border-foreground focus-within:ring-3 focus-within:ring-lime/40">
+      <div className="rounded-xl border border-border bg-surface dark:bg-muted px-4 py-3.5 transition-[border-color,box-shadow] duration-200 focus-within:border-foreground focus-within:ring-3 focus-within:ring-lime/40">
         <div className="flex min-h-7 min-w-0 items-center gap-1">
           <FieldLabel
             htmlFor={id}
@@ -87,7 +88,9 @@ export function NumberField({
               [
                 descriptionId,
                 error ? `${id}-error` : hint ? `${id}-hint` : undefined,
-              ].filter(Boolean).join(' ') || undefined
+              ]
+                .filter(Boolean)
+                .join(' ') || undefined
             }
             className="h-10 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-[23px] font-semibold tracking-[-0.025em] tabular-nums focus-visible:border-0 focus-visible:ring-0 aria-invalid:border-0 aria-invalid:ring-0 sm:text-[26px]"
           />
@@ -109,11 +112,9 @@ export function NumberField({
           onChange={onChange}
         />
       )}
-      {error && (
-        <p id={`${id}-error`} className="text-small text-bad">
-          {error}
-        </p>
-      )}
+      <LaunchFieldError id={`${id}-error`} className="text-small text-bad">
+        {error}
+      </LaunchFieldError>
       {hint && <FieldDescription id={`${id}-hint`}>{hint}</FieldDescription>}
     </Field>
   );

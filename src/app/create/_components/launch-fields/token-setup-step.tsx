@@ -17,6 +17,7 @@ import { AllocationPreview } from './allocation-preview';
 import { NumberField } from './number-field';
 import { PresetChoices } from './preset-choices';
 import type { DraftProps } from './types';
+import { LaunchFieldError, LaunchReveal } from '../launch-motion';
 
 export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
   const update = (patch: Partial<LaunchDraft['allocation']>) =>
@@ -75,11 +76,14 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
             </p>
             <PresetChoices
               label="Launch, pool and team allocation"
-              value={presets.find((preset) =>
-                preset.value === draft.allocation.saleShare &&
-                preset.poolShare === draft.allocation.poolShare &&
-                preset.teamShare === draft.allocation.teamShare,
-              )?.value ?? ''}
+              value={
+                presets.find(
+                  (preset) =>
+                    preset.value === draft.allocation.saleShare &&
+                    preset.poolShare === draft.allocation.poolShare &&
+                    preset.teamShare === draft.allocation.teamShare,
+                )?.value ?? ''
+              }
               options={presets}
               onChange={(value) => {
                 const preset = presets.find((option) => option.value === value);
@@ -100,7 +104,11 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
               value={draft.allocation.saleShare}
               onChange={(saleShare) => update({ saleShare })}
               help={`Percentage of the total token supply offered to participants through ${allocationLabels[draft.method].toLowerCase()}. Pool and team tokens are allocated separately.`}
-              error={errors['allocation-sale'] && !invalidAllocation ? errors['allocation-sale'] : undefined}
+              error={
+                errors['allocation-sale'] && !invalidAllocation
+                  ? errors['allocation-sale']
+                  : undefined
+              }
               descriptionId={invalidAllocation ? 'allocation-error' : undefined}
               invalid={!!invalidAllocation}
             />
@@ -125,13 +133,15 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
               invalid={!!invalidAllocation}
             />
           </FieldGroup>
-          {invalidAllocation && (
-            <p id="allocation-error" role="status" className="text-small text-bad">
-              {invalidAllocation}
-            </p>
-          )}
+          <LaunchFieldError
+            id="allocation-error"
+            role="status"
+            className="text-small text-bad"
+          >
+            {invalidAllocation}
+          </LaunchFieldError>
           <AllocationPreview draft={draft} />
-          {numberValue(draft.allocation.teamShare) > 0 && (
+          <LaunchReveal show={numberValue(draft.allocation.teamShare) > 0}>
             <FieldSet>
               <FieldLegend variant="label">Team vesting</FieldLegend>
               <FieldGroup className="grid gap-5 sm:grid-cols-2">
@@ -155,7 +165,7 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
                 />
               </FieldGroup>
             </FieldSet>
-          )}
+          </LaunchReveal>
         </FieldGroup>
       </FieldSet>
     </FieldGroup>

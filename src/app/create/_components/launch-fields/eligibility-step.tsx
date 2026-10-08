@@ -10,12 +10,13 @@ import {
 import {
   Field,
   FieldDescription,
-  FieldGroup,
   FieldLabel,
+  FieldGroup,
 } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { ChoiceCards } from './choice-cards';
 import type { DraftProps } from './types';
+import { LaunchFieldError, LaunchReveal } from '../launch-motion';
 
 export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
   const choices = [
@@ -57,7 +58,7 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
           }))
         }
       />
-      {draft.eligibility.mode !== 'open' && (
+      <LaunchReveal show={draft.eligibility.mode !== 'open'}>
         <Field data-invalid={!!errors['eligibility-requirements']}>
           <FieldLabel htmlFor="eligibility-requirements">
             Participation requirements *
@@ -84,19 +85,17 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
             }
             className="aria-invalid:border-input aria-invalid:ring-0"
           />
-          {errors['eligibility-requirements'] && (
-            <p
-              id="eligibility-requirements-error"
-              className="text-small text-bad"
-            >
-              {errors['eligibility-requirements']}
-            </p>
-          )}
+          <LaunchFieldError
+            id="eligibility-requirements-error"
+            className="text-small text-bad"
+          >
+            {errors['eligibility-requirements']}
+          </LaunchFieldError>
           <FieldDescription id="eligibility-requirements-hint">
             Describe the rule for the future contract integration.
           </FieldDescription>
         </Field>
-      )}
+      </LaunchReveal>
       <ChoiceCards
         title="Identification hook"
         value={draft.eligibility.identificationMode}
@@ -123,7 +122,7 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
           }))
         }
       />
-      {draft.eligibility.identificationMode === 'required' && (
+      <LaunchReveal show={draft.eligibility.identificationMode === 'required'}>
         <Field data-invalid={!!errors['identification-requirements']}>
           <FieldLabel htmlFor="identification-requirements">
             Identification requirements *
@@ -150,20 +149,18 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
             }
             className="aria-invalid:border-input aria-invalid:ring-0"
           />
-          {errors['identification-requirements'] && (
-            <p
-              id="identification-requirements-error"
-              className="text-small text-bad"
-            >
-              {errors['identification-requirements']}
-            </p>
-          )}
+          <LaunchFieldError
+            id="identification-requirements-error"
+            className="text-small text-bad"
+          >
+            {errors['identification-requirements']}
+          </LaunchFieldError>
           <FieldDescription id="identification-requirements-hint">
-            This rule will need a connected verification service and
-            contract hook before launch.
+            This rule will need a connected verification service and contract
+            hook before launch.
           </FieldDescription>
         </Field>
-      )}
+      </LaunchReveal>
     </FieldGroup>
   );
 }

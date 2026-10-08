@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import type { LaunchDraft } from '../../_launch/launch-draft';
 import { TextField } from './text-field';
+import { LaunchFieldError, LaunchReveal } from '../launch-motion';
 import type { DraftProps } from './types';
 
 export function ProjectDetailsStep({
@@ -44,11 +45,11 @@ export function ProjectDetailsStep({
   }
   return (
     <FieldGroup className="gap-7">
-      <div className="grid grid-cols-[80px_minmax(0,1fr)] items-center gap-4 border-b border-divider pb-7 sm:grid-cols-[112px_minmax(0,1fr)] sm:gap-5">
+      <div className="grid grid-cols-[80px_minmax(0,1fr)] items-start gap-4 sm:grid-cols-[112px_minmax(0,1fr)] sm:gap-5">
         <Field className="w-20 sm:w-28">
           <label
             htmlFor="launch-logo"
-            className="group relative grid size-20 cursor-pointer place-items-center overflow-hidden rounded-2xl border border-dashed border-border bg-muted transition-[border-color,background-color] hover:border-foreground hover:bg-secondary focus-within:ring-3 focus-within:ring-lime/55 sm:size-28"
+            className="group relative grid size-20 cursor-pointer place-items-center overflow-hidden rounded-xl bg-surface dark:bg-muted transition-colors hover:bg-secondary focus-within:ring-3 focus-within:ring-lime/55 sm:size-28"
           >
             {draft.logo ? (
               <img
@@ -78,126 +79,123 @@ export function ProjectDetailsStep({
               onChange={(event) => upload(event.target.files?.[0])}
             />
           </label>
-          {errors['launch-logo'] && (
-            <p id="launch-logo-error" className="text-small text-bad">
-              {errors['launch-logo']}
-            </p>
-          )}
-          {fileError && (
-            <p role="alert" className="text-small text-bad">
-              {fileError}
-            </p>
-          )}
+          <LaunchFieldError
+            id="launch-logo-error"
+            className="text-small text-bad"
+          >
+            {errors['launch-logo']}
+          </LaunchFieldError>
+          <LaunchFieldError role="alert" className="text-small text-bad">
+            {fileError}
+          </LaunchFieldError>
         </Field>
-        <div className="min-w-0 space-y-5">
-          <Field className="min-w-0">
-            <FieldLabel
-              htmlFor="project-name"
-              className="text-small text-muted-foreground"
-            >
-              Project name *
-            </FieldLabel>
-            <Input
-              id="project-name"
-              value={draft.name}
-              onChange={(event) => update('name', event.target.value)}
-              maxLength={40}
-              placeholder="Name your project"
-              required
-              aria-invalid={!!errors['project-name']}
-              aria-describedby={
-                errors['project-name']
-                  ? 'project-name-error'
-                  : 'project-name-hint'
-              }
-              className="h-14 rounded-none border-0 border-b border-border bg-transparent px-0 text-[25px] font-semibold tracking-[-0.025em] focus-visible:border-foreground focus-visible:ring-0 aria-invalid:border-border aria-invalid:ring-0 sm:text-[32px]"
-            />
-            {errors['project-name'] && (
-              <p id="project-name-error" className="text-small text-bad">
-                {errors['project-name']}
-              </p>
-            )}
-            <FieldDescription id="project-name-hint">
-              {draft.name.length}/40 characters · also used as the Basic token
-              name.
-            </FieldDescription>
-          </Field>
-          <Field className="min-w-0">
+        <Field className="min-w-0" data-invalid={!!errors['project-name']}>
+          <FieldLabel
+            htmlFor="project-name"
+            className="min-w-0 text-small text-foreground"
+          >
+            Project name *
+          </FieldLabel>
+          <Input
+            id="project-name"
+            value={draft.name}
+            onChange={(event) => update('name', event.target.value)}
+            maxLength={40}
+            placeholder="Name your project"
+            required
+            aria-invalid={!!errors['project-name']}
+            aria-describedby={
+              errors['project-name'] ? 'project-name-error' : undefined
+            }
+            className="h-14 min-w-0 rounded-none border-0 border-b border-border bg-transparent px-0 text-[25px] font-semibold tracking-[-0.025em] focus-visible:border-foreground focus-visible:ring-0 aria-invalid:border-border aria-invalid:ring-0 sm:text-[32px]"
+          />
+          <LaunchFieldError
+            id="project-name-error"
+            className="text-small text-bad"
+          >
+            {errors['project-name']}
+          </LaunchFieldError>
+        </Field>
+        <FieldDescription id="launch-logo-hint" className="sr-only">
+          PNG, JPG or WebP, up to 1 MB.
+        </FieldDescription>
+      </div>
+      <Field className="min-w-0" data-invalid={!!errors['launch-symbol']}>
+        <div className="rounded-xl border border-border bg-surface dark:bg-muted px-4 py-3.5 transition-[border-color,box-shadow] duration-200 focus-within:border-foreground focus-within:ring-3 focus-within:ring-lime/40">
+          <div className="flex min-h-7 min-w-0 items-center">
             <FieldLabel
               htmlFor="launch-symbol"
-              className="text-small text-muted-foreground"
+              className="min-w-0 text-small text-foreground"
             >
               Token symbol *
             </FieldLabel>
-            <div className="flex items-center gap-2 border-b border-border focus-within:border-foreground">
-              <span
-                className="text-[22px] font-semibold text-muted-foreground"
-                aria-hidden="true"
-              >
-                $
-              </span>
-              <Input
-                id="launch-symbol"
-                value={draft.symbol}
-                onChange={(event) =>
-                  update('symbol', event.target.value.toUpperCase())
-                }
-                maxLength={12}
-                placeholder="TIDE"
-                required
-                aria-invalid={!!errors['launch-symbol']}
-                aria-describedby={
-                  errors['launch-symbol']
-                    ? 'launch-symbol-error'
-                    : 'launch-symbol-hint'
-                }
-                className="h-11 min-w-0 rounded-none border-0 bg-transparent px-0 text-[22px] font-semibold uppercase tracking-[-0.025em] focus-visible:border-0 focus-visible:ring-0 aria-invalid:border-0 aria-invalid:ring-0"
-              />
-            </div>
-            {errors['launch-symbol'] && (
-              <p id="launch-symbol-error" className="text-small text-bad">
-                {errors['launch-symbol']}
-              </p>
-            )}
-            <FieldDescription id="launch-symbol-hint">
-              1–12 letters or numbers on Stellar.
-            </FieldDescription>
-          </Field>
+          </div>
+          <div className="mt-1 flex min-w-0 items-center gap-2">
+            <span
+              className="text-[23px] font-semibold text-muted-foreground sm:text-[26px]"
+              aria-hidden="true"
+            >
+              $
+            </span>
+            <Input
+              id="launch-symbol"
+              value={draft.symbol}
+              onChange={(event) =>
+                update('symbol', event.target.value.toUpperCase())
+              }
+              maxLength={12}
+              placeholder="TIDE"
+              required
+              aria-invalid={!!errors['launch-symbol']}
+              aria-describedby={
+                errors['launch-symbol']
+                  ? 'launch-symbol-error'
+                  : 'launch-symbol-hint'
+              }
+              className="h-10 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-[23px] font-semibold uppercase tracking-[-0.025em] focus-visible:border-0 focus-visible:ring-0 aria-invalid:border-0 aria-invalid:ring-0 sm:text-[26px]"
+            />
+          </div>
         </div>
-        <FieldDescription id="launch-logo-hint" className="col-span-2">
-          Your image appears in this setup. Publishing it requires a media
-          service. PNG, JPG or WebP · up to 1 MB.
+        <LaunchFieldError
+          id="launch-symbol-error"
+          className="text-small text-bad"
+        >
+          {errors['launch-symbol']}
+        </LaunchFieldError>
+        <FieldDescription id="launch-symbol-hint" className="sr-only">
+          1–12 letters or numbers.
         </FieldDescription>
-      </div>
-      <Field className="rounded-2xl bg-muted p-5 focus-within:ring-3 focus-within:ring-lime/40 sm:p-6">
-        <FieldLabel htmlFor="launch-description">
-          What is this project about? *
+      </Field>
+      <Field
+        className="rounded-2xl bg-surface dark:bg-muted border-border border-1 p-5 focus-within:border-foreground focus-within:ring-3 focus-within:ring-lime/40 sm:p-6"
+        data-invalid={!!errors['launch-description']}
+      >
+        <FieldLabel htmlFor="launch-description" className="text-foreground">
+          Description *
         </FieldLabel>
         <Textarea
           id="launch-description"
           maxLength={500}
           value={draft.description}
           onChange={(event) => update('description', event.target.value)}
-          placeholder="A short introduction people will remember..."
+          placeholder="Describe your project"
           aria-invalid={!!errors['launch-description']}
           aria-describedby={
             errors['launch-description']
               ? 'launch-description-error'
-              : 'launch-description-count'
+              : undefined
           }
           className="mt-1 min-h-32 resize-none rounded-none border-0 bg-transparent px-0 text-[17px] leading-relaxed focus-visible:ring-0 aria-invalid:border-0 aria-invalid:ring-0"
         />
-        {errors['launch-description'] && (
-          <p id="launch-description-error" className="text-small text-bad">
-            {errors['launch-description']}
-          </p>
-        )}
-        <FieldDescription id="launch-description-count">
-          {draft.description.length}/500 characters
-        </FieldDescription>
+        <LaunchFieldError
+          id="launch-description-error"
+          className="text-small text-bad"
+        >
+          {errors['launch-description']}
+        </LaunchFieldError>
       </Field>
-      {showLinks ? (
-        <div className="grid gap-5 animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none sm:grid-cols-2">
+      <LaunchReveal show={showLinks}>
+        <FieldGroup className="grid gap-5 sm:grid-cols-2">
           <TextField
             id="launch-x"
             label="X account (optional)"
@@ -214,17 +212,18 @@ export function ProjectDetailsStep({
             placeholder="https://yourproject.com"
             error={errors['launch-website']}
           />
-        </div>
-      ) : (
+        </FieldGroup>
+      </LaunchReveal>
+      <LaunchReveal show={!showLinks}>
         <button
           type="button"
+          aria-expanded={showLinks}
           onClick={() => setShowLinks(true)}
           className="inline-flex w-fit items-center gap-2 rounded-md text-small font-semibold text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
         >
-          <Plus className="size-4" aria-hidden="true" /> Add X account or
-          website
+          <Plus className="size-4" aria-hidden="true" /> Add links
         </button>
-      )}
+      </LaunchReveal>
     </FieldGroup>
   );
 }
