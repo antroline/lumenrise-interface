@@ -1,5 +1,6 @@
 import {
   Asset,
+  AuthImmutableFlag,
   BASE_FEE,
   Horizon,
   Keypair,
@@ -8,15 +9,15 @@ import {
   rpc,
   TransactionBuilder,
   type Transaction,
-} from "@stellar/stellar-sdk";
+} from '@stellar/stellar-sdk';
 
 export const NETWORK = Networks.TESTNET;
 export const LOCK_CONTRACT_ID =
-  "CAP4INYPX7MRQJXLDVO5PU6MTB22QPZMOJSEPEF3R3QZXMR2A6JO2X7K";
+  'CAP4INYPX7MRQJXLDVO5PU6MTB22QPZMOJSEPEF3R3QZXMR2A6JO2X7K';
 export const horizon = new Horizon.Server(
-  "https://horizon-testnet.stellar.org",
+  'https://horizon-testnet.stellar.org',
 );
-export const soroban = new rpc.Server("https://soroban-testnet.stellar.org");
+export const soroban = new rpc.Server('https://soroban-testnet.stellar.org');
 
 export const assetFor = (code: string, issuer: string) =>
   new Asset(code, issuer);
@@ -31,7 +32,7 @@ export function buildSetup(
     networkPassphrase: NETWORK,
   })
     .addOperation(
-      Operation.createAccount({ destination: issuer, startingBalance: "2" }),
+      Operation.createAccount({ destination: issuer, startingBalance: '1.1' }),
     )
     .addOperation(Operation.changeTrust({ asset: assetFor(code, issuer) }))
     .setTimeout(180)
@@ -59,6 +60,8 @@ export function buildIssuance(
         amount,
       }),
     )
+    .addOperation(Operation.setOptions({ homeDomain: 'lumenrise.app' }))
+    .addOperation(Operation.setOptions({ setFlags: AuthImmutableFlag }))
     .addOperation(Operation.setOptions({ masterWeight: 0 }))
     .setTimeout(0)
     .build();
@@ -85,8 +88,8 @@ export async function buildSacDeployment(
 
 export function transactionHash(transaction: { hash(): Uint8Array }) {
   return Array.from(transaction.hash(), (byte) =>
-    byte.toString(16).padStart(2, "0"),
-  ).join("");
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
 }
 
 export function submitIssuance(xdr: string) {
