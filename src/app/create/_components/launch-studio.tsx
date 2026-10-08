@@ -4,14 +4,20 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
-  Gavel,
-  ImagePlus,
-  LineChart,
-  Tag,
-  Wallet,
+  // Gavel,
+  // ImagePlus,
+  // LineChart,
+  // Tag,
+  // Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useLaunchpad } from '@/lib/launchpad';
+import { isBondingDraft } from '../_launch/bonding-curve';
+import {
+  BONDING_AUTH_RETURN_KEY,
+  useBondingLaunch,
+} from '../_launch/use-bonding-launch';
 import {
   initialLaunchDraft,
   methodLabels,
@@ -41,6 +47,7 @@ import {
   TokenSetupStep,
 } from './launch-fields';
 import { LaunchStepper } from './launch-stepper';
+import { LaunchOperationDialog } from './launch-operation-dialog';
 import {
   LaunchMotionConfig,
   LaunchReveal,
@@ -64,6 +71,9 @@ export function LaunchStudio(props: LaunchStudioProps) {
 }
 
 function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
+  const bondingLaunch = useBondingLaunch();
+  const [progressOpen, setProgressOpen] = useState(false);
+  const { notify } = useLaunchpad();
   const [draft, setDraft] = useState(initialLaunchDraft);
   const [step, setStep] = useState(
     resumeIssuer || initialMode === 'basic' ? 2 : 0,
@@ -74,6 +84,29 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
     initialMode !== 'basic',
   );
   const [restoredProjectName, setRestoredProjectName] = useState(false);
+
+  function launchBondingCurve() {
+    setProgressOpen(true);
+    if (!bondingLaunch.working) void bondingLaunch.launch(draft);
+  }
+
+  useEffect(() => {
+    if (resumeIssuer || initialMode === 'basic') return;
+    const timeout = window.setTimeout(() => {
+      try {
+        const stored = window.sessionStorage.getItem(BONDING_AUTH_RETURN_KEY);
+        if (!stored) return;
+        const restored: unknown = JSON.parse(stored);
+        if (!isBondingDraft(restored)) throw new Error('The saved bonding-curve form cannot be read.');
+        setDraft(restored);
+        setStep(bondingSteps.length - 1);
+        window.sessionStorage.removeItem(BONDING_AUTH_RETURN_KEY);
+      } catch (cause) {
+        notify(cause instanceof Error ? cause.message : 'The saved bonding-curve form cannot be read.');
+      }
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [resumeIssuer, initialMode, notify]);
 
   useEffect(() => {
     if (initialMode !== 'basic') return;
@@ -107,8 +140,8 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
     }, 0);
     return () => window.clearTimeout(timeout);
   }, [initialMode]);
-  const activeMethod =
-    resumeIssuer || initialMode === 'basic' ? 'basic' : draft.method;
+  // const activeMethod =
+  //   resumeIssuer || initialMode === 'basic' ? 'basic' : draft.method;
   const visibleSteps: WizardStep[] = resumeIssuer
     ? ['basic']
     : initialMode === 'basic'
@@ -125,14 +158,14 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
     : (visibleSteps[step] ?? 'project');
   const currentIndex = resumeIssuer ? 0 : step;
   const fieldErrors = showErrors ? validateLaunchStep(draft, currentStep) : {};
-  const MethodIcon =
-    activeMethod === 'bonding'
-      ? LineChart
-      : activeMethod === 'fixed'
-        ? Tag
-        : activeMethod === 'auction'
-          ? Gavel
-          : Wallet;
+  // const MethodIcon =
+  //   activeMethod === 'bonding'
+  //     ? LineChart
+  //     : activeMethod === 'fixed'
+  //       ? Tag
+  //       : activeMethod === 'auction'
+  //         ? Gavel
+  //         : Wallet;
 
   function goToStep(nextStep: number) {
     setDirection(nextStep < step ? 'back' : 'forward');
@@ -180,9 +213,16 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
   return (
     <div
       data-launch-studio=""
-      className="relative grid w-full min-w-0 items-start gap-5 lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_200px] xl:gap-6"
+      className="relative grid w-full min-w-0 items-start gap-5 lg:grid-cols-[180px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)] xl:gap-6"
     >
-      <aside className="hidden lg:sticky lg:top-24 lg:-ml-8 lg:block">
+      <LaunchOperationDialog
+        operation={bondingLaunch.operation}
+        name={draft.name}
+        open={progressOpen}
+        onOpenChange={setProgressOpen}
+        onRetry={launchBondingCurve}
+      />
+      <aside className="hidden lg:sticky lg:top-24 lg:block">
         <LaunchStepper
           steps={visibleSteps}
           currentIndex={currentIndex}
@@ -193,10 +233,10 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
       </aside>
 
       <section
-        className="relative flex min-h-120 min-w-0 flex-col rounded-[28px] border border-border bg-card p-5 sm:p-6 xl:p-8"
+        className="@container/launch relative flex min-h-120 min-w-0 flex-col rounded-[28px] border border-border bg-card p-5 sm:p-6 xl:p-7 short:min-h-100 short:sm:p-4 short:xl:p-4"
         aria-labelledby="wizard-title"
       >
-        <div className="mb-7 flex flex-wrap items-center justify-between gap-3 border-b border-divider pb-5 lg:hidden">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-divider pb-4 lg:hidden short:mb-4 short:pb-3">
           <span className="text-ui font-semibold" aria-hidden="true">
             Step {currentIndex + 1}
             {draft.methodSelected || initialMode === 'basic' || resumeIssuer
@@ -238,7 +278,7 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
             footer={
               <div
                 className={cn(
-                  'flex shrink-0 flex-wrap gap-3 border-t border-divider pt-5',
+                  'flex shrink-0 flex-wrap gap-3 border-t border-divider pt-5 short:pt-4',
                   currentStep === 'vesting' ? 'mt-auto' : 'mt-5',
                 )}
               >
@@ -263,8 +303,17 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
                     </Button>
                   )}
                 {currentStep === 'review' && (
-                  <Button className="h-12 min-w-0 flex-1 rounded-2xl" disabled>
-                    Launch unavailable
+                  <Button
+                    className="h-12 min-w-0 flex-1 rounded-2xl"
+                    disabled={
+                      draft.method !== 'bonding' ||
+                      !bondingLaunch.isReady
+                    }
+                    onClick={launchBondingCurve}
+                  >
+                    {draft.method !== 'bonding'
+                      ? 'Launch unavailable'
+                      : bondingLaunch.working ? 'Launching…' : 'Launch'}
                   </Button>
                 )}
                 {currentStep === 'method' && (
@@ -396,7 +445,7 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
           </LaunchStepPanel>
         </AnimatePresence>
       </section>
-      <aside
+      {/* <aside
         className="hidden min-w-0 xl:sticky xl:top-24 xl:block"
         aria-label="Your launch summary"
       >
@@ -448,7 +497,7 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
             </div>
           </div>
         </div>
-      </aside>
+      </aside> */}
     </div>
   );
 }

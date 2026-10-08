@@ -37,7 +37,7 @@ export type LaunchRecord = LaunchInput & {
   unlockAt?: number;
 };
 
-function isLaunchRecord(value: unknown): value is LaunchRecord {
+export function isLaunchRecord(value: unknown): value is LaunchRecord {
   if (!value || typeof value !== 'object') return false;
   if (!('stage' in value && typeof value.stage === 'string')) return false;
   const stages: string[] = [
