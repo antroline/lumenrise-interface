@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowUpRight, Check, CircleAlert, LoaderCircle, Radio, Wallet } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ArrowUpRight, CircleAlert, LoaderCircle } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { LaunchOperation, LaunchOperationStep } from '../_launch/launch-operation';
 import { launchTransition, useLaunchReducedMotion } from './launch-motion';
+import styles from './launch-operation-dialog.module.css';
 
 const steps: { id: LaunchOperationStep; title: string }[] = [
   { id: 'check', title: 'Check launch settings' },
@@ -38,10 +40,17 @@ export function LaunchOperationDialog({
   onRetry: () => void;
 }) {
   const reduced = useLaunchReducedMotion();
+  const failed = operation?.status === 'error';
+  // A stable callback also runs when the portal mounts on an error/reopen.
+  const revealErrorStep = useCallback((element: HTMLLIElement | null) => {
+    if (open && failed) {
+      element?.scrollIntoView({ block: 'start', behavior: 'instant' });
+    }
+  }, [open, failed]);
+
   if (!operation) return null;
   const currentIndex = steps.findIndex((step) => step.id === operation.step);
   const success = operation.status === 'success';
-  const failed = operation.status === 'error';
   const approval = !failed && !success && operation.phase === 'approval';
   const transition = reduced ? { duration: 0 } : launchTransition;
   const focalTransition = reduced ? { duration: 0 } : { ...launchTransition, duration: 0.32 };
@@ -51,8 +60,7 @@ export function LaunchOperationDialog({
     : approval ? 'Awaiting approval'
       : operation.phase === 'confirming' ? 'Confirming on Stellar' : 'In progress';
   const statusLabel = success ? 'Complete' : activeLabel;
-  const StatusIcon = success ? Check : failed ? CircleAlert
-    : approval ? Wallet : operation.phase === 'confirming' ? Radio : LoaderCircle;
+  const completedSteps = success ? steps.length : currentIndex;
 
   return (
     <Dialog
@@ -62,21 +70,25 @@ export function LaunchOperationDialog({
       modal={!approval}
       disablePointerDismissal
     >
-      <DialogContent className="flex max-h-[calc(100svh-2rem)] flex-col gap-0 overflow-hidden rounded-3xl p-6 duration-300 motion-reduce:animate-none sm:max-w-md sm:p-8">
-        <DialogHeader className="shrink-0 gap-2 pr-5">
-          <DialogTitle className="text-[24px] font-semibold leading-tight tracking-tight">
+      <DialogContent className={cn(styles.popup, 'flex h-[min(40rem,calc(100svh-2rem))] flex-col gap-0 overflow-hidden rounded-3xl p-6 sm:max-w-md')}>
+        <DialogHeader className="h-20 shrink-0 gap-2 pr-5">
+          <DialogTitle className="text-[22px] font-semibold leading-tight tracking-tight sm:text-[24px]">
             {title}
           </DialogTitle>
-          <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-            <DialogDescription className="min-w-0 flex-1 break-words">{name}</DialogDescription>
+          <div className="flex min-w-0 items-baseline gap-3">
+            <DialogDescription className="min-w-0 flex-1 truncate" title={name}>{name}</DialogDescription>
             <span className="shrink-0 text-small text-muted-foreground tabular-nums">
               {success ? 'Complete' : `Step ${currentIndex + 1} of ${steps.length}`}
             </span>
           </div>
         </DialogHeader>
 
-        <motion.div layoutScroll className="min-h-0 overflow-y-auto overscroll-contain">
-          <ol className="my-6 flex flex-col gap-2" aria-label="Launch progress">
+        <p className="sr-only" role="status" aria-atomic="true">
+          {statusLabel}. {failed ? '' : operation.message}
+        </p>
+
+        <motion.div layoutScroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <ol className="my-4 flex flex-col gap-2" aria-label="Launch progress">
             {steps.map((step, index) => {
               const done = success || index < currentIndex;
               const active = !success && index === currentIndex;
@@ -85,6 +97,7 @@ export function LaunchOperationDialog({
               return (
                 <li
                   key={step.id}
+                  ref={active ? revealErrorStep : undefined}
                   aria-current={active ? 'step' : undefined}
                   className="relative isolate grid min-w-0 grid-cols-[36px_minmax(0,1fr)] items-center gap-x-3 rounded-xl px-3 py-2.5"
                 >
@@ -109,7 +122,7 @@ export function LaunchOperationDialog({
                   <span
                     aria-hidden="true"
                     className={cn(
-                      'relative grid size-9 place-items-center rounded-full text-small font-medium tabular-nums transition-colors duration-200 motion-reduce:transition-none',
+                      'relative mt-0.5 grid size-9 self-start place-items-center rounded-full text-small font-medium tabular-nums transition-colors duration-200 motion-reduce:transition-none',
                       done ? 'bg-primary text-primary-foreground'
                         : active && failed ? 'bg-destructive/10 text-destructive'
                           : active ? 'bg-foreground text-background' : 'bg-surface text-muted-foreground',
@@ -153,76 +166,74 @@ export function LaunchOperationDialog({
                     >
                       {label}
                     </motion.p>
+                    {active && failed && (
+                      <p role="alert" className="mt-2 break-words text-small leading-relaxed text-destructive">
+                        {operation.message}
+                      </p>
+                    )}
                   </div>
                 </li>
               );
             })}
           </ol>
+        </motion.div>
 
-          <Alert className={cn('flex-col gap-0 overflow-clip transition-colors duration-200 motion-reduce:transition-none', failed && 'bg-destructive/5', success && 'bg-primary/10')}>
-            <p className="sr-only" role={failed ? 'alert' : 'status'} aria-atomic="true">
-              {statusLabel}. {operation.message}
-            </p>
-            <motion.div layout={reduced ? false : 'size'} transition={focalTransition} className="w-full overflow-clip">
-              <AnimatePresence initial={false} mode="popLayout">
-                <motion.div
-                  key={`${operation.status}-${operation.phase}-${operation.message}`}
-                  initial={{ opacity: 0, x: reduced ? 0 : 16, filter: reduced ? 'none' : 'blur(2px)' }}
-                  animate={{ opacity: 1, x: 0, filter: reduced ? 'none' : 'blur(0px)' }}
-                  exit={{ opacity: 0, x: reduced ? 0 : -12, transition: { duration: reduced ? 0 : 0.15 } }}
-                  transition={focalTransition}
-                  aria-hidden="true"
-                  className="flex min-w-0 items-start gap-3"
-                >
-                  <motion.span
-                    initial={{ scale: reduced ? 1 : 0.75, rotate: reduced ? 0 : -20 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={focalTransition}
-                    className={cn('grid size-9 shrink-0 place-items-center rounded-xl bg-background', failed && 'text-destructive', success && 'bg-primary text-primary-foreground')}
-                  >
-                    <StatusIcon className={cn('size-4', open && !success && !failed && operation.phase === 'working' && 'animate-spin motion-reduce:animate-none')} />
-                  </motion.span>
-                  <AlertDescription className="flex flex-col gap-1">
-                    <AlertTitle className="text-small">{statusLabel}</AlertTitle>
-                    <p className="break-words text-small leading-relaxed">{operation.message}</p>
-                  </AlertDescription>
-                </motion.div>
-              </AnimatePresence>
-            </motion.div>
+        <div className="mt-4 flex shrink-0 flex-col gap-3">
+          <div className="flex items-center justify-between gap-3 text-small text-muted-foreground">
+            <span>{statusLabel}</span>
+            <span className="tabular-nums">{completedSteps} / {steps.length} complete</span>
+          </div>
+          <div className="relative overflow-hidden rounded-full">
+            <Progress
+              value={completedSteps}
+              max={steps.length}
+              size="thick"
+              tone="lime"
+              aria-label="Launch progress"
+              aria-valuetext={`${completedSteps} of ${steps.length} steps complete. ${statusLabel}.`}
+              className="[&_[data-slot=progress-indicator]]:duration-500 motion-reduce:[&_[data-slot=progress-indicator]]:transition-none"
+            />
+            {open && !failed && !success && !reduced && (
+              <motion.span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 origin-left rounded-full bg-primary/40"
+                initial={{ scaleX: 0, opacity: 0 }}
+                animate={{ scaleX: [0, 0.9, 1], opacity: [0.6, 0.3, 0] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            )}
+          </div>
+          <div className="flex h-5 items-center justify-between gap-3 text-small text-muted-foreground">
+            <span>Stellar Testnet</span>
             {operation.hash && (
               <Link
                 href={`https://stellar.expert/explorer/testnet/tx/${operation.hash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 inline-flex items-center gap-1 text-small font-medium underline decoration-border underline-offset-4 hover:decoration-foreground"
+                className="inline-flex items-center gap-1 font-medium underline decoration-border underline-offset-4 hover:decoration-foreground"
               >
                 View transaction <ArrowUpRight className="size-3.5" aria-hidden="true" />
               </Link>
             )}
-          </Alert>
-        </motion.div>
-
-        <AnimatePresence initial={false}>
-          {(success || failed) && (
-            <motion.div
-              initial={{ opacity: 0, y: reduced ? 0 : 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={transition}
-              className="mt-5 flex shrink-0 flex-col gap-2 sm:flex-row sm:justify-end"
-            >
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Close
+          </div>
+          <div className="mt-1 flex items-center gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+            {failed && <Button className="min-w-0 flex-1" onClick={onRetry}>Check / retry</Button>}
+            {success && operation.curveAddress && (
+              <Link href={`/trade/${operation.curveAddress}`} className={cn(buttonVariants(), 'min-w-0 flex-1')}>
+                Open trade <ArrowUpRight data-icon="inline-end" />
+              </Link>
+            )}
+            {!success && !failed && (
+              <Button disabled className="min-w-0 flex-1">
+                <LoaderCircle data-icon="inline-start" className={cn(open && 'animate-spin motion-reduce:animate-none')} />
+                Launching…
               </Button>
-              {failed && <Button onClick={onRetry}>Retry / check status</Button>}
-              {success && operation.curveAddress && (
-                <Link href={`/trade/${operation.curveAddress}`} className={buttonVariants()}>
-                  Open trade <ArrowUpRight data-icon="inline-end" />
-                </Link>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+            )}
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
