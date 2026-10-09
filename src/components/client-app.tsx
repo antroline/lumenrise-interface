@@ -1,17 +1,24 @@
-'use client'
+'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
-import { BluxProvider, networks, useBlux } from '@bluxcc/react'
-import { hydrateBluxConnection } from '@/lib/connections'
-import { LaunchpadContext, type LaunchpadContextValue } from '@/lib/launchpad'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
+import { useRouter } from 'next/navigation';
+import { BluxProvider, networks, useBlux } from '@bluxcc/react';
+import { hydrateBluxConnection } from '@/lib/connections';
+import { LaunchpadContext, type LaunchpadContextValue } from '@/lib/launchpad';
 
-const DEMO_ADDRESS = 'GDEMO6K4KQPR5H7NQOL6UPRTMPL4TE6CYXW2LP7SSQ3J2BQY7X2Q'
+const DEMO_ADDRESS = 'GDEMO6K4KQPR5H7NQOL6UPRTMPL4TE6CYXW2LP7SSQ3J2BQY7X2Q';
 
 const bluxConfig: Parameters<typeof BluxProvider>[0]['config'] = {
   appId: process.env.NEXT_PUBLIC_BLUX_APP_ID || 'launchpad-preview',
   appName: 'Launchpad',
   networks: [networks.testnet],
+  showWalletUIs: false,
   defaultNetwork: networks.testnet,
   loginMethods: ['wallet', 'email', 'passkey', 'twitter', 'github', 'gitlab'],
   appearance: {
@@ -20,7 +27,7 @@ const bluxConfig: Parameters<typeof BluxProvider>[0]['config'] = {
     accentColor: '#0b0b0b',
     textColor: '#0b0b0b',
     fontFamily: 'Bricolage Grotesque, ui-sans-serif, system-ui, sans-serif',
-    borderRadius: '12px',
+    borderRadius: '14px',
     borderColor: '#e5e5e5',
     borderWidth: '1px',
     outlineColor: '#0b0b0b',
@@ -31,64 +38,67 @@ const bluxConfig: Parameters<typeof BluxProvider>[0]['config'] = {
     backdropColor: 'rgba(11, 11, 11, 0.28)',
     boxShadow: '0 24px 70px rgba(11, 11, 11, 0.18)',
   },
-}
+};
 
 export default function ClientApp({ children }: { children: ReactNode }) {
   return (
     <BluxProvider config={bluxConfig}>
       <LaunchpadProvider>{children}</LaunchpadProvider>
     </BluxProvider>
-  )
+  );
 }
 
 function LaunchpadProvider({ children }: { children: ReactNode }) {
-  const blux = useBlux()
-  const router = useRouter()
-  const [loginPending, setLoginPending] = useState(false)
-  const [notice, setNotice] = useState<string | null>(null)
+  const blux = useBlux();
+  const router = useRouter();
+  const [loginPending, setLoginPending] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   // This module only loads in the browser (ssr: false boundary), so reading
   // the query string during the initial state pass is safe.
   const [isPreview] = useState(
     () =>
       process.env.NODE_ENV === 'development' &&
       new URLSearchParams(window.location.search).get('preview') === '1',
-  )
+  );
 
   useEffect(() => {
-    if (blux.user) hydrateBluxConnection(blux.user)
-  }, [blux.user])
+    if (blux.user) hydrateBluxConnection(blux.user);
+  }, [blux.user]);
 
   const login = useCallback(
     async (destination = '/portfolio') => {
       if (blux.isAuthenticated) {
-        router.push(destination)
-        return
+        router.push(destination);
+        return;
       }
 
-      window.sessionStorage.setItem('launchpad:returnTo', destination)
+      window.sessionStorage.setItem('launchpad:returnTo', destination);
       try {
-        const loginRequest = blux.login()
-        setLoginPending(true)
-        const user = await loginRequest
-        hydrateBluxConnection(user)
-        router.push('/onboarding')
+        const loginRequest = blux.login();
+        setLoginPending(true);
+        const user = await loginRequest;
+        hydrateBluxConnection(user);
+        router.push('/onboarding');
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Blux could not open the login flow.'
-        setNotice(message.replace(/^BLUX:\s*/i, ''))
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Blux could not open the login flow.';
+        setNotice(message.replace(/^BLUX:\s*/i, ''));
       } finally {
-        setLoginPending(false)
+        setLoginPending(false);
       }
     },
     [blux, router],
-  )
+  );
 
   const logout = useCallback(() => {
-    blux.logout()
-    router.push('/')
-    setNotice('You are now logged out.')
-  }, [blux, router])
+    blux.logout();
+    router.push('/');
+    setNotice('You are now logged out.');
+  }, [blux, router]);
 
-  const notify = useCallback((message: string) => setNotice(message), [])
+  const notify = useCallback((message: string) => setNotice(message), []);
 
   const value = useMemo<LaunchpadContextValue>(
     () => ({
@@ -99,8 +109,16 @@ function LaunchpadProvider({ children }: { children: ReactNode }) {
       logout,
       notify,
     }),
-    [blux.isAuthenticated, blux.user, isPreview, loginPending, login, logout, notify],
-  )
+    [
+      blux.isAuthenticated,
+      blux.user,
+      isPreview,
+      loginPending,
+      login,
+      logout,
+      notify,
+    ],
+  );
 
   return (
     <LaunchpadContext.Provider value={value}>
@@ -124,5 +142,5 @@ function LaunchpadProvider({ children }: { children: ReactNode }) {
         )}
       </div>
     </LaunchpadContext.Provider>
-  )
+  );
 }

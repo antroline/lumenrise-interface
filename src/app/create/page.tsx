@@ -1,24 +1,17 @@
-import { ProjectMark } from '@/components/project-mark'
-import { PageHeader } from '@/components/page-header'
-import { Stepper, type Step } from '@/components/stepper'
-import { CreateDraft } from './_components/create-draft'
+import { LaunchStudio } from './_components/launch-studio'
 
-const steps: Step[] = ['Project', 'Token', 'Mechanism', 'Raise', 'Eligibility', 'Vesting', 'Schedule', 'Contracts', 'Review'].map((label, index) => ({
-  key: label,
-  label,
-  state: index < 2 ? 'done' : index === 2 ? 'current' : index === 8 ? 'todo' : 'open',
-}))
+export default async function CreateLaunchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ resume?: string | string[]; mode?: string | string[] }>
+}) {
+  const { resume, mode } = await searchParams
+  const resumeIssuer = typeof resume === 'string' && /^G[A-Z2-7]{55}$/.test(resume) ? resume : null
 
-export default function CreateLaunchPage() {
   return (
-    <div className="flex flex-col gap-7">
-      <PageHeader
-        eyebrow="Create launch"
-        title="Configure your raise"
-        description={<span className="inline-flex items-center gap-2"><ProjectMark name="Tidewell" size={24} /> Tidewell · TIDE <span className="text-faint">· Local draft preview</span></span>}
-      />
-      <Stepper steps={steps} className="border-y border-divider py-5" />
-      <CreateDraft />
+    <div className="w-full min-w-0">
+      <h1 className="sr-only">Create launch</h1>
+      <LaunchStudio key={resumeIssuer ?? (mode === 'basic' ? 'basic' : 'new')} resumeIssuer={resumeIssuer} initialMode={mode === 'basic' ? 'basic' : null} />
     </div>
   )
 }

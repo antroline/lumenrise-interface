@@ -8,6 +8,7 @@ export default function CliPage() {
   return (
     <ComingSoon
       icon={SquareTerminal}
+      kind="cli"
       title="CLI & agents"
       description="Create, configure and deploy reproducible Stellar launches from a terminal or coding agent."
     />

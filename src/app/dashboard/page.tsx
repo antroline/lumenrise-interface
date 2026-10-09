@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { featuredLaunch } from '@/lib/data'
+import { RuledPanel, Trajectory } from '@/components/visual-system'
 
 const reputationLevels = [4, 17, 38, 31, 9, 1]
 const flagged = [
@@ -26,6 +27,7 @@ const commitmentSizes = [
 export default function DashboardPage() {
   return <div className="space-y-7">
     <ProjectHeading
+      specimen="Northstar"
       mark={<ProjectMark name="Northstar" size={50} />}
       eyebrow="Project dashboard"
       title="Northstar"
@@ -33,6 +35,8 @@ export default function DashboardPage() {
       description={<span className="text-ui text-muted-foreground">Illustrative dashboard · sale dates and activity are sample data</span>}
       actions={<><Button variant="outline" disabled title="Team management is not connected"><Users data-icon="inline-start" /> Team · 4 members</Button><Button variant="outline" render={<Link href={`/launch/${featuredLaunch.slug}`} />} nativeButton={false}><Eye data-icon="inline-start" /> View page</Button><Button variant="dark" disabled title="Publishing is not connected">Publish update</Button></>}
     />
+
+    <RuledPanel><Trajectory label="Northstar launch progression" active={1} steps={[{label:'Announced'},{label:'Sale live'},{label:'Allocation'},{label:'Claims'}]} /></RuledPanel>
 
     <nav aria-label="Dashboard sections" className="flex gap-6 overflow-x-auto border-b text-ui font-medium whitespace-nowrap"><a href="#overview" aria-current="page" className="border-b-2 border-foreground pb-3">Overview</a>{[['Participants', 'participants'], ['Sybil review', 'sybil'], ['Allocation', 'commitments'], ['Contracts', 'contracts'], ['Campaigns', 'campaigns'], ['Page & updates', 'updates']].map(([item, target]) => <a key={target} href={`#${target}`} className="pb-3 text-muted-foreground hover:text-foreground">{item}</a>)}</nav>
     <div id="overview"><StatBar columns={5}><Stat label="Capital raised" value="$312,480" hint="+$18,240 · 24h · 74% of target" /><Stat label="Participants" value="3,240" hint="+212 · 24h" /><Stat label="Commitments" value="3,812" hint="Avg 82 USDC · 142 withdrawn" /><Stat tone="bad" label="Suspected Sybil" value="41" unit="accounts" hint="Needs review · 1.3%" /><Stat label="Claims" value="—" hint="Example: Oct 02 · 14:00 UTC" /></StatBar></div>
@@ -48,8 +52,8 @@ export default function DashboardPage() {
     </div>
 
     <div id="contracts" className="grid scroll-mt-6 gap-5 md:grid-cols-3">
-      <Card><div className="flex justify-between"><CardTitle>Contracts</CardTitle><FileCode2 className="size-4" /></div><CardDescription>Example addresses shown in the design reference</CardDescription><KeyValue label="Sale">CDA6…E91P</KeyValue><KeyValue label="Vesting">CCF2…R48N</KeyValue><KeyValue label="Eligibility">CB79…M22D</KeyValue></Card>
-      <Card id="campaigns"><div className="flex justify-between"><CardTitle>Campaigns</CardTitle><Button variant="ghost" size="xs" render={<Link href="/missions" />} nativeButton={false}><Plus data-icon="inline-start" /> View</Button></div><CardDescription>Example campaigns linked to this launch</CardDescription><KeyValue label="Community builders">1,208 joined</KeyValue><KeyValue label="Early contributors">426 joined</KeyValue><Button variant="outline" size="sm" render={<Link href="/missions" />} nativeButton={false}>View missions <ArrowRight data-icon="inline-end" /></Button></Card>
+      <Card variant="ruled"><div className="flex justify-between"><CardTitle>Contracts</CardTitle><FileCode2 className="size-4" /></div><CardDescription>Example addresses shown in the design reference</CardDescription><KeyValue label="Sale">CDA6…E91P</KeyValue><KeyValue label="Vesting">CCF2…R48N</KeyValue><KeyValue label="Eligibility">CB79…M22D</KeyValue></Card>
+      <Card id="campaigns" variant="ruled"><div className="flex justify-between"><CardTitle>Campaigns</CardTitle><Button variant="ghost" size="xs" render={<Link href="/missions" />} nativeButton={false}><Plus data-icon="inline-start" /> View</Button></div><CardDescription>Example campaigns linked to this launch</CardDescription><KeyValue label="Community builders">1,208 joined</KeyValue><KeyValue label="Early contributors">426 joined</KeyValue><Button variant="outline" size="sm" render={<Link href="/missions" />} nativeButton={false}>View missions <ArrowRight data-icon="inline-end" /></Button></Card>
       <Card id="updates"><div className="flex justify-between"><CardTitle>Publish update</CardTitle><Badge variant="tag-outline">Preview</Badge></div><CardDescription>Project announcements require a connected publishing service.</CardDescription><div className="rounded-lg border bg-muted p-3 text-small text-muted-foreground">Final allocations will be published after the sale closes. Claims open when the vesting contract is ready.</div><Button variant="dark" size="sm" disabled title="Publishing is not connected">Publish</Button></Card>
     </div>
   </div>

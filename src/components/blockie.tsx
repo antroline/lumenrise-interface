@@ -5,6 +5,9 @@ const palettes = [
   ['#2E2E2C', '#F0F0EC'],
   ['#5E5E5A', '#E5E5E5'],
   ['#0B0B0B', '#F0F0EC'],
+  ['#0B0B0B', '#E4FF4D'],
+  ['#17744A', '#E7F4EC'],
+  ['#3D6B8F', '#E8EDF2'],
 ] as const
 
 function hash(seed: string) {

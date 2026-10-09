@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ProjectSpecimen } from '@/components/visual-system'
+import type { ProjectMarkName } from '@/components/project-mark'
 
 export function Eyebrow({ children }: { children: ReactNode }) {
   return (
@@ -80,6 +82,7 @@ export function ProjectHeading({
   description,
   actions,
   align = 'end',
+  specimen,
 }: {
   mark: ReactNode
   eyebrow?: ReactNode
@@ -88,8 +91,9 @@ export function ProjectHeading({
   description?: ReactNode
   actions?: ReactNode
   align?: 'start' | 'center' | 'end'
+  specimen?: ProjectMarkName
 }) {
-  return (
+  const content = (
     <div
       className={cn(
         'flex flex-col gap-5 lg:flex-row lg:justify-between',
@@ -112,6 +116,7 @@ export function ProjectHeading({
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   )
+  return specimen ? <ProjectSpecimen name={specimen}>{content}</ProjectSpecimen> : content
 }
 
 export function TextLink({ href, children, className }: { href: string; children: ReactNode; className?: string }) {

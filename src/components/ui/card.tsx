@@ -7,10 +7,15 @@ const cardVariants = cva("group/card flex flex-col rounded-2xl text-card-foregro
     variant: {
       default: "border bg-card",
       flat: "border border-transparent bg-muted",
+      surface: "bg-surface [--divider:var(--surface-divider)]",
+      ruled: "rounded-none border-y border-divider bg-transparent",
     },
     size: {
+      /** For cards that pad their own sections instead of the shell. */
+      none: "",
       default: "gap-4 p-5 sm:p-6",
       sm: "gap-3.5 px-5 py-[18px]",
+      lg: "gap-6 p-6 sm:p-8",
     },
   },
   defaultVariants: { variant: "default", size: "default" },

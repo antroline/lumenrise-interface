@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { KeyValue } from '@/components/stat'
+import { RuledPanel, SignalNode, Trajectory } from '@/components/visual-system'
 
 type Mechanism = 'Reputation-weighted' | 'Fixed price' | 'Proportional' | 'Auction' | 'Private / community' | 'Other'
 type Draft = {
@@ -62,7 +63,16 @@ function Field({ label, value, onChange, type = 'text', suffix }: { label: strin
 }
 
 function FormSection({ number, title, description, children }: { number: number; title: string; description: string; children: ReactNode }) {
-  return <section className="space-y-5 rounded-2xl border bg-card p-5 sm:p-6"><div className="flex gap-3"><span className="grid size-7 shrink-0 place-items-center rounded-full bg-lime font-mono text-small font-bold text-ink">{number}</span><div><h2 className="text-h2 font-semibold">{title}</h2><p className="mt-1 text-ui text-muted-foreground">{description}</p></div></div>{children}</section>
+  return <section className="grid grid-cols-[32px_minmax(0,1fr)] gap-4 border-t border-divider pt-6"><div className="flex flex-col items-center gap-2"><span className="font-mono text-small font-semibold tabular-nums">{String(number).padStart(2, '0')}</span><SignalNode active={number === 3} /><span aria-hidden="true" className="w-px flex-1 bg-divider" /></div><div className="min-w-0 space-y-5 pb-4"><div><h2 className="text-h2 font-semibold">{title}</h2><p className="mt-1 text-ui text-muted-foreground">{description}</p></div>{children}</div></section>
+}
+
+const mechanismFlows: Record<Mechanism, string[]> = {
+  'Reputation-weighted': ['Signals', 'Rule', 'Weighted allocation'],
+  'Fixed price': ['Commitment', 'Fixed price', 'Allocation'],
+  Proportional: ['Commitments', 'Share', 'Allocation'],
+  Auction: ['Bids', 'Clearing price', 'Allocation'],
+  'Private / community': ['Credential', 'Allowlist', 'Allocation'],
+  Other: ['Custom rule', 'Review', 'Allocation'],
 }
 
 function isDraft(value: unknown): value is Draft {
@@ -95,6 +105,10 @@ export function CreateDraft() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {mechanisms.map((option) => <button key={option.name} type="button" aria-pressed={draft.mechanism === option.name} onClick={() => update('mechanism', option.name)} className={`rounded-xl border p-4 text-left transition-colors ${draft.mechanism === option.name ? 'border-foreground bg-accent' : 'border-border bg-card hover:bg-muted'}`}><span className="flex items-center justify-between text-ui font-semibold">{option.name}<span className={`size-4 rounded-full border-4 ${draft.mechanism === option.name ? 'border-foreground bg-lime' : 'border-border'}`} /></span><span className="mt-1 block text-small text-muted-foreground">{option.description}</span></button>)}
         </div>
+        <div className="border-y border-divider bg-muted/60 px-4 py-4">
+          <span className="mb-3 block font-mono text-2xs tracking-caps text-muted-foreground uppercase">{draft.mechanism} · allocation path</span>
+          <Trajectory label={`${draft.mechanism} allocation path`} active={1} steps={mechanismFlows[draft.mechanism].map((label) => ({ label }))} />
+        </div>
       </FormSection>
       <FormSection number={4} title="Token and raise" description="Set the supply, price and commitment limits for this round.">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"><Field label="Tokens for sale" value={draft.saleAllocation} onChange={(v) => update('saleAllocation', v)} suffix="TIDE" /><Field label="Target raise" value={draft.target} onChange={(v) => update('target', v)} suffix="USDC" /><Field label="Soft cap" value={draft.softCap} onChange={(v) => update('softCap', v)} suffix="USDC" /><Field label="Price" value={draft.price} onChange={(v) => update('price', v)} suffix="USDC" /><Field label="Min commitment" value={draft.minCommitment} onChange={(v) => update('minCommitment', v)} suffix="USDC" /><Field label="Max commitment" value={draft.maxCommitment} onChange={(v) => update('maxCommitment', v)} /></div><div className="space-y-2"><Label>Accepted assets</Label><div className="flex flex-wrap gap-2">{(['usdc', 'xlm', 'eurc', 'yxlm'] as const).map((asset) => <Button key={asset} size="sm" variant={draft[asset] ? 'dark' : 'outline'} aria-pressed={draft[asset]} onClick={() => update(asset, !draft[asset])}>{draft[asset] && <Check className="size-3" />}{asset === 'yxlm' ? 'yXLM' : asset.toUpperCase()}</Button>)}</div></div>
@@ -113,8 +127,8 @@ export function CreateDraft() {
       </FormSection>
     </div>
     <aside className="space-y-5 xl:sticky xl:top-6">
-      <Card><div className="flex justify-between"><CardTitle>Summary</CardTitle><Badge variant="tag-outline">Local draft</Badge></div><div><KeyValue label="Mechanism">{draft.mechanism}</KeyValue><KeyValue label="For sale">{draft.saleAllocation} TIDE</KeyValue><KeyValue label="Price">{draft.price} USDC</KeyValue><KeyValue label="Target · soft cap">{draft.target} · {draft.softCap} USDC</KeyValue><KeyValue label="Accepted">{[['USDC', draft.usdc], ['XLM', draft.xlm], ['EURC', draft.eurc], ['yXLM', draft.yxlm]].filter(([, enabled]) => enabled).map(([name]) => name).join(', ') || 'None'}</KeyValue><KeyValue label="Rules">3 rules</KeyValue><KeyValue label="Vesting">{draft.tge}% TGE · {draft.cliff} + {draft.duration} mo</KeyValue><KeyValue label="Sale window">{draft.opens.slice(5, 10)} – {draft.closes.slice(5, 10)}</KeyValue></div></Card>
-      <Card><CardTitle>Launch checklist</CardTitle><CardDescription>Preview configuration only. No project verification or contract deployment has occurred.</CardDescription>{['Mechanism selected', 'Eligibility rules set'].map((item) => <div key={item} className="flex gap-2 text-ui"><Check className="size-4 text-lime" />{item}</div>)}{['Project verified', 'Contracts deployed', 'Audit report attached'].map((item) => <div key={item} className="flex gap-2 text-ui text-muted-foreground"><span className="size-4 rounded border" />{item}</div>)}</Card>
+      <RuledPanel className="space-y-4"><div className="flex justify-between"><CardTitle>Launch specification</CardTitle><Badge variant="tag-outline">Local draft</Badge></div><div><KeyValue label="Mechanism">{draft.mechanism}</KeyValue><KeyValue label="For sale">{draft.saleAllocation} TIDE</KeyValue><KeyValue label="Price">{draft.price} USDC</KeyValue><KeyValue label="Target · soft cap">{draft.target} · {draft.softCap} USDC</KeyValue><KeyValue label="Accepted">{[['USDC', draft.usdc], ['XLM', draft.xlm], ['EURC', draft.eurc], ['yXLM', draft.yxlm]].filter(([, enabled]) => enabled).map(([name]) => name).join(', ') || 'None'}</KeyValue><KeyValue label="Rules">3 rules</KeyValue><KeyValue label="Vesting">{draft.tge}% TGE · {draft.cliff} + {draft.duration} mo</KeyValue><KeyValue label="Sale window">{draft.opens.slice(5, 10)} – {draft.closes.slice(5, 10)}</KeyValue></div></RuledPanel>
+      <RuledPanel className="space-y-3"><CardTitle>Launch checklist</CardTitle><CardDescription>Preview configuration only. No project verification or contract deployment has occurred.</CardDescription>{['Mechanism selected', 'Eligibility rules set'].map((item) => <div key={item} className="flex gap-2 text-ui"><Check className="size-4 text-ok" />{item}</div>)}{['Project verified', 'Contracts deployed', 'Audit report attached'].map((item) => <div key={item} className="flex gap-2 text-ui text-muted-foreground"><span className="size-4 rounded border" />{item}</div>)}</RuledPanel>
       <Card><CardTitle>Save your preview</CardTitle><CardDescription>This draft stays in this browser. Publishing and contract deployment are not connected.</CardDescription><Button onClick={save}><Save data-icon="inline-start" /> Save local draft</Button><Button variant="outline" onClick={load}>Load saved draft</Button>{(saved || loadMessage) && <p role="status" className="text-small text-muted-foreground">{loadMessage || 'Saved in this browser.'}</p>}<Button variant="outline" disabled title="Launch deployment is not connected">Review and deploy</Button></Card>
     </aside>
   </div>

@@ -35,7 +35,7 @@ export const featuredLaunch: Launch = {
   target: '$420,000',
   progress: 74,
   dateLabel: 'Ends',
-  date: 'Sep 29 · 14:00 UTC',
+  date: 'Oct 04 · 14:00 UTC',
   participants: '3,240',
   allocation: 'Reputation-weighted',
   requirement: 'Stellar activity ≥ 40',
@@ -54,7 +54,7 @@ export const liveLaunches: Launch[] = [
     target: '$250,000',
     progress: 74,
     dateLabel: 'Ends',
-    date: 'Sep 29 · 16:00 UTC',
+    date: 'Oct 03 · 16:00 UTC',
     participants: '1,904',
     allocation: 'Quadratic',
     requirement: 'Level 2+',
@@ -88,7 +88,7 @@ export const liveLaunches: Launch[] = [
     target: '$400,000',
     progress: 100,
     dateLabel: 'Ends',
-    date: 'Sep 27 · 20:00 UTC',
+    date: 'Oct 05 · 20:00 UTC',
     participants: '4,118',
     allocation: 'Pro-rata, oversubscribed',
     requirement: 'Developer ≥ 50',
@@ -251,13 +251,3 @@ export const completedRaises: CompletedRaise[] = [
   { title: 'Orbit round 1', mark: 'Orbit', date: 'Jul 21', raised: '$96,300', participants: '688', outcome: 'refunded' },
   { title: 'Contour public', mark: 'Contour', date: 'Jul 09', raised: '$410,000', participants: '3,907', outcome: 'completed' },
 ]
-
-export const discoverCounts = {
-  all: 71,
-  live: 4,
-  upcoming: 9,
-  auction: 2,
-  launched: 6,
-  completed: 50,
-  participants30d: '18,402',
-}
