@@ -65,7 +65,7 @@ export function NumberField({
 
   return (
     <Field data-invalid={!!error || invalid}>
-      <div className="rounded-xl border border-border bg-surface dark:bg-muted px-4 py-3.5 transition-[border-color,box-shadow] duration-200 focus-within:border-foreground focus-within:ring-3 focus-within:ring-lime/40">
+      <div className="rounded-xl border border-border bg-surface dark:bg-muted px-4 py-3.5 transition-[border-color,box-shadow] duration-200 focus-within:border-foreground focus-within:ring-3 focus-within:ring-lime/40 short:py-2.5">
         <div className="flex min-h-7 min-w-0 items-center gap-1">
           <FieldLabel
             htmlFor={id}
@@ -92,7 +92,7 @@ export function NumberField({
                 .filter(Boolean)
                 .join(' ') || undefined
             }
-            className="h-10 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-[23px] font-semibold tracking-[-0.025em] tabular-nums focus-visible:border-0 focus-visible:ring-0 aria-invalid:border-0 aria-invalid:ring-0 sm:text-[26px]"
+            className="h-10 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-[23px] font-semibold tracking-[-0.025em] tabular-nums focus-visible:border-0 focus-visible:ring-0 aria-invalid:border-0 aria-invalid:ring-0 sm:text-[26px] short:h-9 short:sm:text-[23px]"
           />
           {unit && (
             <span className="inline-flex shrink-0 items-center gap-1.5 pb-1.5 text-small font-semibold text-muted-foreground">

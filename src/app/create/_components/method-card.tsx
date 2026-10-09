@@ -28,21 +28,21 @@ export function MethodCard({
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        'group flex min-h-44 flex-col items-start rounded-2xl border bg-card p-5 text-left transition-[border-color,background-color,transform] duration-200 hover:-translate-y-0.5 hover:border-foreground hover:bg-muted focus-visible:ring-3 focus-visible:ring-lime/60 focus-visible:outline-none motion-reduce:transform-none',
+        'group flex min-h-48 min-w-0 flex-col items-start rounded-2xl border bg-card p-4 text-left transition-[border-color,background-color,transform] duration-200 hover:-translate-y-0.5 hover:border-foreground hover:bg-muted focus-visible:ring-3 focus-visible:ring-lime/60 focus-visible:outline-none motion-reduce:transform-none short:min-h-44 short:p-3',
         selected ? 'border-foreground' : 'border-border',
       )}
     >
       <div className="flex w-full items-start justify-between gap-3">
-        <span className="grid size-10 place-items-center rounded-xl bg-secondary">
-          <Icon className="size-5" aria-hidden="true" />
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-secondary">
+          <Icon className="size-4" aria-hidden="true" />
         </span>
         <Badge variant={badge === 'Live on testnet' ? 'ok' : 'soft'}>
           {badge}
         </Badge>
       </div>
-      <strong className="mt-5 text-[18px] font-semibold">{title}</strong>
+      <strong className="mt-3 text-[17px] font-semibold leading-6 short:mt-2">{title}</strong>
       <span className="mt-1 text-ui text-muted-foreground">{detail}</span>
-      <span className="mt-auto flex w-full items-end justify-between gap-3 pt-4">
+      <span className="mt-auto flex w-full items-end justify-between gap-3 pt-3 short:pt-1.5">
         <span className="text-ui font-semibold group-hover:underline">
           Select method{' '}
           <ArrowRight className="inline size-4" aria-hidden="true" />
@@ -52,9 +52,9 @@ export function MethodCard({
           alt=""
           width={1254}
           height={1254}
-          sizes="144px"
+          sizes="(max-height: 800px) 48px, 80px"
           draggable={false}
-          className="pointer-events-none h-auto w-2/5 max-w-36 shrink-0 object-contain select-none"
+          className="pointer-events-none size-20 shrink-0 object-contain select-none short:size-12"
         />
       </span>
     </button>

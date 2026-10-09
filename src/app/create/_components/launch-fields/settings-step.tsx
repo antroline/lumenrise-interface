@@ -25,7 +25,7 @@ export function SettingsStep({ draft, setDraft, errors = {} }: DraftProps) {
     }));
   if (draft.method === 'bonding')
     return (
-      <FieldGroup>
+      <FieldGroup className="short:gap-4">
         <SwitchRow
           label="Creator fee share"
           description="Preview only: proposed 0.1% of trades handled by the launch contract. Exact coverage depends on the contract."
@@ -47,7 +47,7 @@ export function SettingsStep({ draft, setDraft, errors = {} }: DraftProps) {
     );
   if (draft.method === 'fixed')
     return (
-      <FieldGroup>
+      <FieldGroup className="short:gap-4">
         <LaunchScheduleFields
           method="fixed"
           startsAt={draft.fixed.startsAt}
@@ -69,7 +69,7 @@ export function SettingsStep({ draft, setDraft, errors = {} }: DraftProps) {
       </FieldGroup>
     );
   return (
-    <FieldGroup>
+    <FieldGroup className="short:gap-4">
       <LaunchScheduleFields
         method="auction"
         startsAt={draft.auction.startsAt}

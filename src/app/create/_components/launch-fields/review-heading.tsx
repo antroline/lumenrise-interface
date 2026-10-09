@@ -17,7 +17,7 @@ export function ReviewHeading({
       <h3 id={id} className="text-[20px] font-semibold tracking-[-0.02em]">
         {title}
       </h3>
-      <div className="flex gap-1">
+      <div className="flex flex-wrap gap-1">
         {actions.map((action) => (
           <Button
             key={action.label}

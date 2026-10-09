@@ -90,11 +90,11 @@ export const LaunchStepPanel = forwardRef<
       exit="exit"
       className="flex min-h-0 min-w-0 flex-1 flex-col"
     >
-      <div className="mb-6 shrink-0">
+      <div className="mb-6 shrink-0 short:mb-4">
         <h2
           id={present ? 'wizard-title' : undefined}
           tabIndex={-1}
-          className="text-[29px] font-semibold tracking-[-0.025em] outline-none sm:text-[36px]"
+          className="text-[29px] font-semibold leading-tight tracking-[-0.025em] outline-none sm:text-[32px] xl:text-[36px] short:sm:text-[30px]"
         >
           {heading}
         </h2>

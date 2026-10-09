@@ -19,7 +19,7 @@ export function ParticipantVestingStep({
       participantVesting: { ...current.participantVesting, ...patch },
     }));
   return (
-    <FieldGroup>
+    <FieldGroup className="short:gap-4">
       <ChoiceCards
         title="Participant token release"
         value={draft.participantVesting.mode}
@@ -42,7 +42,7 @@ export function ParticipantVestingStep({
         onChange={(mode) => update({ mode })}
       />
       <LaunchReveal show={draft.participantVesting.mode === 'linear'}>
-        <FieldGroup className="grid gap-5 sm:grid-cols-3">
+        <FieldGroup className="grid gap-4 @md/launch:grid-cols-2 @2xl/launch:grid-cols-3">
           <NumberField
             id="vesting-tge"
             label="Unlocked at launch"

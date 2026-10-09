@@ -82,7 +82,7 @@ export function DateTimePicker({
               variant="outline"
               aria-invalid={!!error}
               aria-describedby={error ? `${id}-error` : undefined}
-              className="h-[74px] w-full justify-between rounded-xl bg-muted px-4 text-left hover:border-foreground hover:bg-muted aria-invalid:border-border"
+              className="h-[74px] w-full justify-between rounded-xl bg-muted px-4 text-left hover:border-foreground hover:bg-muted aria-invalid:border-border short:h-16"
             />
           }
         >

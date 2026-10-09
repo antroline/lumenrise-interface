@@ -44,12 +44,12 @@ export function ProjectDetailsStep({
     reader.readAsDataURL(file);
   }
   return (
-    <FieldGroup className="gap-7">
-      <div className="grid grid-cols-[80px_minmax(0,1fr)] items-start gap-4 sm:grid-cols-[112px_minmax(0,1fr)] sm:gap-5">
-        <Field className="w-20 sm:w-28">
+    <FieldGroup className="gap-7 short:gap-5">
+      <div className="grid grid-cols-[80px_minmax(0,1fr)] items-start gap-4 sm:grid-cols-[112px_minmax(0,1fr)] sm:gap-5 short:sm:grid-cols-[80px_minmax(0,1fr)] short:sm:gap-4">
+        <Field className="w-20 sm:w-28 short:sm:w-20">
           <label
             htmlFor="launch-logo"
-            className="group relative grid size-20 cursor-pointer place-items-center overflow-hidden rounded-xl bg-surface dark:bg-muted transition-colors hover:bg-secondary focus-within:ring-3 focus-within:ring-lime/55 sm:size-28"
+            className="group relative grid size-20 cursor-pointer place-items-center overflow-hidden rounded-xl bg-surface dark:bg-muted transition-colors hover:bg-secondary focus-within:ring-3 focus-within:ring-lime/55 sm:size-28 short:sm:size-20"
           >
             {draft.logo ? (
               <img
@@ -107,7 +107,7 @@ export function ProjectDetailsStep({
             aria-describedby={
               errors['project-name'] ? 'project-name-error' : undefined
             }
-            className="h-14 min-w-0 rounded-none border-0 border-b border-border bg-transparent px-0 text-[25px] font-semibold tracking-[-0.025em] focus-visible:border-foreground focus-visible:ring-0 aria-invalid:border-border aria-invalid:ring-0 sm:text-[32px]"
+            className="h-14 min-w-0 rounded-none border-0 border-b border-border bg-transparent px-0 text-[25px] font-semibold tracking-[-0.025em] focus-visible:border-foreground focus-visible:ring-0 aria-invalid:border-border aria-invalid:ring-0 sm:text-[32px] short:h-12 short:sm:text-[28px]"
           />
           <LaunchFieldError
             id="project-name-error"
@@ -121,7 +121,7 @@ export function ProjectDetailsStep({
         </FieldDescription>
       </div>
       <Field className="min-w-0" data-invalid={!!errors['launch-symbol']}>
-        <div className="rounded-xl border border-border bg-surface dark:bg-muted px-4 py-3.5 transition-[border-color,box-shadow] duration-200 focus-within:border-foreground focus-within:ring-3 focus-within:ring-lime/40">
+        <div className="rounded-xl border border-border bg-surface dark:bg-muted px-4 py-3.5 transition-[border-color,box-shadow] duration-200 focus-within:border-foreground focus-within:ring-3 focus-within:ring-lime/40 short:py-2.5">
           <div className="flex min-h-7 min-w-0 items-center">
             <FieldLabel
               htmlFor="launch-symbol"
@@ -167,7 +167,7 @@ export function ProjectDetailsStep({
         </FieldDescription>
       </Field>
       <Field
-        className="rounded-2xl bg-surface dark:bg-muted border-border border-1 p-5 focus-within:border-foreground focus-within:ring-3 focus-within:ring-lime/40 sm:p-6"
+        className="rounded-2xl bg-surface dark:bg-muted border-border border-1 p-5 focus-within:border-foreground focus-within:ring-3 focus-within:ring-lime/40 sm:p-6 short:p-4 short:sm:p-4"
         data-invalid={!!errors['launch-description']}
       >
         <FieldLabel htmlFor="launch-description" className="text-foreground">
@@ -185,7 +185,7 @@ export function ProjectDetailsStep({
               ? 'launch-description-error'
               : undefined
           }
-          className="mt-1 min-h-32 resize-none rounded-none border-0 bg-transparent px-0 text-[17px] leading-relaxed focus-visible:ring-0 aria-invalid:border-0 aria-invalid:ring-0"
+          className="mt-1 min-h-32 resize-none rounded-none border-0 bg-transparent px-0 text-[17px] leading-relaxed focus-visible:ring-0 aria-invalid:border-0 aria-invalid:ring-0 short:min-h-24"
         />
         <LaunchFieldError
           id="launch-description-error"

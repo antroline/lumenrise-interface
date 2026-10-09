@@ -30,12 +30,12 @@ export function LaunchScheduleFields({
   errors: FieldErrors;
 }) {
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-5 short:gap-4">
       <p className="text-small text-muted-foreground">
         Starts immediately by default. Choose a duration or custom dates in your
         local time zone.
       </p>
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-4 @md/launch:grid-cols-2">
         <DateTimePicker
           id={`${method}-start`}
           label="Start (optional)"

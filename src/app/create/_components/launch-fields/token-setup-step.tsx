@@ -32,7 +32,7 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
     { label: '60 / 30 / 10', value: '60', poolShare: '30', teamShare: '10' },
   ];
   return (
-    <FieldGroup className="gap-7">
+    <FieldGroup className="gap-7 short:gap-5">
       <div>
         <NumberField
           id="launch-supply"
@@ -51,7 +51,7 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
             { label: '100B', value: '100000000000' },
           ]}
         />
-        <div className="mt-5 flex flex-wrap items-baseline justify-between gap-2 border-t border-divider pt-4">
+        <div className="mt-5 flex flex-wrap items-baseline justify-between gap-2 border-t border-divider pt-4 short:mt-3 short:pt-3">
           <span className="text-small text-muted-foreground">
             Your token supply
           </span>
@@ -63,13 +63,13 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
           </strong>
         </div>
       </div>
-      <FieldSet className="border-t border-divider pt-5">
+      <FieldSet className="border-t border-divider pt-5 short:pt-4">
         <FieldLegend>Token allocation</FieldLegend>
         <FieldDescription>
           Divide the total supply between the launch, liquidity pool and team.
           The three shares must add up to 100%.
         </FieldDescription>
-        <FieldGroup>
+        <FieldGroup className="short:gap-4">
           <div>
             <p className="mb-3 text-small text-muted-foreground">
               Starting allocations · launch / pool / team
@@ -96,7 +96,7 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
               }}
             />
           </div>
-          <FieldGroup className="grid gap-5 sm:grid-cols-3">
+          <FieldGroup className="grid gap-4 @md/launch:grid-cols-2 @2xl/launch:grid-cols-3">
             <NumberField
               id="allocation-sale"
               label={`${allocationLabels[draft.method]} allocation`}
@@ -144,7 +144,7 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
           <LaunchReveal show={numberValue(draft.allocation.teamShare) > 0}>
             <FieldSet>
               <FieldLegend variant="label">Team vesting</FieldLegend>
-              <FieldGroup className="grid gap-5 sm:grid-cols-2">
+              <FieldGroup className="grid gap-4 @md/launch:grid-cols-2">
                 <NumberField
                   id="team-cliff"
                   label="Team cliff"

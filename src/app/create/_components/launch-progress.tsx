@@ -63,7 +63,7 @@ export function LaunchProgress({
           <li
             key={item.number}
             aria-current={item.active && !item.done ? 'step' : undefined}
-            className="relative grid min-w-0 grid-cols-[40px_minmax(0,1fr)] gap-x-3.5 pb-9 last:pb-0"
+            className="relative grid min-w-0 grid-cols-[40px_minmax(0,1fr)] gap-x-3.5 pb-9 last:pb-0 short:pb-5 short:last:pb-0"
           >
             {index < steps.length - 1 && (
               <span

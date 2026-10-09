@@ -14,8 +14,8 @@ export function SwitchRow({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-t border-divider pt-5">
-      <div>
+    <div className="flex items-start justify-between gap-4 border-t border-divider pt-5 pr-3 short:pt-4">
+      <div className="min-w-0 flex-1">
         <p className="text-ui font-semibold">{label}</p>
         <p className="mt-1 max-w-[62ch] text-small text-muted-foreground">
           {description}

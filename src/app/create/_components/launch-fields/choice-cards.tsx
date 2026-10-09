@@ -32,7 +32,7 @@ export function ChoiceCards<T extends string>({
           const choice = options.find((option) => option.value === next);
           if (choice) onChange(choice.value);
         }}
-        className="grid gap-3 sm:grid-cols-2"
+        className="grid gap-3 @lg/launch:grid-cols-2"
       >
         {options.map((option) => (
           <FieldLabel
@@ -46,7 +46,7 @@ export function ChoiceCards<T extends string>({
           >
             <Field
               orientation="horizontal"
-              className="min-h-24 items-start gap-3"
+              className="min-h-24 items-start gap-3 short:min-h-20 short:p-3!"
             >
               <span
                 className={cn(
@@ -59,7 +59,7 @@ export function ChoiceCards<T extends string>({
               >
                 <option.icon className="size-4" />
               </span>
-              <FieldContent>
+              <FieldContent className="min-w-0">
                 <strong
                   className={cn(
                     'text-ui font-semibold',

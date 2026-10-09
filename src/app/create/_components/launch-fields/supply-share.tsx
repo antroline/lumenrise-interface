@@ -12,11 +12,11 @@ export function SupplyShare({
   symbol: string;
 }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-small text-muted-foreground">
         {label} · {percent || '—'}%
       </p>
-      <p className="mt-1 text-ui font-semibold tabular-nums">
+      <p className="mt-1 break-all text-ui font-semibold tabular-nums">
         {formatSupplyShare(supply, percent)} {symbol || 'tokens'}
       </p>
     </div>

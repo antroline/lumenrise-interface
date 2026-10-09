@@ -46,7 +46,7 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
     },
   ] as const;
   return (
-    <FieldGroup>
+    <FieldGroup className="short:gap-4">
       <ChoiceCards
         title="Participation access"
         value={draft.eligibility.mode}

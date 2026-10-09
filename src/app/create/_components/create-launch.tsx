@@ -127,9 +127,9 @@ export function CreateLaunch({
   }
 
   return (
-    <div className="grid items-start gap-5">
+    <div className="grid items-start gap-5 @3xl/launch:grid-cols-[minmax(0,1fr)_260px]">
       <section
-        className={cn(cardVariants({ size: 'lg' }), 'relative order-1 min-w-0')}
+        className={cn(cardVariants({ size: 'lg' }), 'relative order-1 min-w-0 short:gap-4 short:p-5 short:sm:p-5 @3xl/launch:row-span-2')}
         aria-labelledby={isFinished ? 'launch-result' : 'token-details'}
       >
         {isFinished && record ? (
@@ -449,7 +449,7 @@ export function CreateLaunch({
       {!isFinished && (
         <aside className="order-2 grid min-w-0 gap-5">
           <section
-            className={cn(cardVariants({ size: 'lg' }), 'min-w-0')}
+            className={cn(cardVariants({ size: 'lg' }), 'min-w-0 short:gap-4 short:p-5 short:sm:p-5')}
             aria-labelledby="token-preview"
           >
             <div className="flex items-center justify-between gap-3">
@@ -479,7 +479,7 @@ export function CreateLaunch({
                 </p>
               </div>
             </div>
-            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+            <dl className="grid gap-4 sm:grid-cols-2 @3xl/launch:grid-cols-1">
               <div>
                 <dt className="text-[13px] text-muted-foreground">
                   Total supply
@@ -490,7 +490,7 @@ export function CreateLaunch({
                     : '—'}
                 </dd>
               </div>
-              <div className="border-t border-divider pt-4 sm:border-t-0 sm:pt-0 lg:border-t lg:pt-4">
+              <div className="border-t border-divider pt-4 sm:border-t-0 sm:pt-0 @3xl/launch:border-t @3xl/launch:pt-4">
                 <dt className="text-[13px] text-muted-foreground">
                   Token lock
                 </dt>

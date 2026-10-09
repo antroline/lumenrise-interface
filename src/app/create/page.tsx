@@ -9,7 +9,7 @@ export default async function CreateLaunchPage({
   const resumeIssuer = typeof resume === 'string' && /^G[A-Z2-7]{55}$/.test(resume) ? resume : null
 
   return (
-    <div className="w-full pb-8">
+    <div className="w-full min-w-0">
       <h1 className="sr-only">Create launch</h1>
       <LaunchStudio key={resumeIssuer ?? (mode === 'basic' ? 'basic' : 'new')} resumeIssuer={resumeIssuer} initialMode={mode === 'basic' ? 'basic' : null} />
     </div>

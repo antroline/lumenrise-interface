@@ -12,7 +12,7 @@ export function MethodChoice({
   selected: LaunchMethod | null;
 }) {
   return (
-    <div id="launch-methods" className="grid gap-4 sm:grid-cols-2">
+    <div id="launch-methods" className="grid gap-3 @lg/launch:grid-cols-2">
       <MethodCard
         icon={Wallet}
         title="Basic"

@@ -16,7 +16,7 @@ export function ReviewSection({
   return (
     <section aria-labelledby={id}>
       <ReviewHeading id={id} title={title} actions={actions} />
-      <dl className="grid gap-3 pt-4">
+      <dl className="grid gap-3 pt-4 short:gap-2 short:pt-3">
         {rows.map(([label, value]) => (
           <div
             key={label}

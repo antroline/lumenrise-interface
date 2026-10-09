@@ -53,7 +53,7 @@ export function ReviewStep({
     </span>
   );
   return (
-    <div className="mx-auto flex max-w-[700px] flex-col gap-8">
+    <div className="mx-auto flex w-full min-w-0 max-w-[700px] flex-col gap-8 short:gap-5">
       <section aria-labelledby="review-token-heading">
         <ReviewHeading
           id="review-token-heading"
@@ -78,7 +78,7 @@ export function ReviewStep({
             <p className="text-ui text-muted-foreground">{draft.symbol}</p>
           </div>
         </div>
-        <p className="text-ui leading-relaxed">{draft.description}</p>
+        <p className="break-words text-ui leading-relaxed">{draft.description}</p>
         {(draft.website || draft.xAccount) && (
           <dl className="mt-3 grid gap-1 text-small text-muted-foreground">
             {draft.website && (
