@@ -10,6 +10,7 @@ import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/comp
 import { Progress } from '@/components/ui/progress'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
 import { useLaunchpad } from '@/lib/launchpad'
 import { cn } from '@/lib/utils'
 import type { ProjectMarkName } from '@/components/project-mark'
@@ -29,16 +30,21 @@ function matches(pool: LiquidityPool, filter: PoolFilter) {
   return true
 }
 
-export function PoolTable({ name, ticker }: { name: ProjectMarkName; ticker: string }) {
+type PoolTableProps = { ticker: string } & (
+  { name: ProjectMarkName; unavailableReason?: never } |
+  { name?: never; unavailableReason: string }
+)
+
+export function PoolTable({ name, ticker, unavailableReason }: PoolTableProps) {
   const { notify } = useLaunchpad()
   const [filter, setFilter] = useState<PoolFilter>('all')
-  const pools = liquidityPools.filter((pool) => matches(pool, filter))
+  const pools = unavailableReason ? [] : liquidityPools.filter((pool) => matches(pool, filter))
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Liquidity pools</CardTitle>
-        <CardDescription>Pools that currently hold {ticker}. Data from each protocol’s contracts.</CardDescription>
+        <CardDescription>{unavailableReason ? `${ticker} liquidity pools` : <>Pools that currently hold {ticker}. Data from each protocol’s contracts.</>}</CardDescription>
         <CardAction>
           <ToggleGroup
             aria-label="Pool source"
@@ -49,7 +55,7 @@ export function PoolTable({ name, ticker }: { name: ProjectMarkName; ticker: str
             }}
           >
             {filters.map((option) => (
-              <ToggleGroupItem key={option.value} value={option.value}>
+              <ToggleGroupItem key={option.value} value={option.value} disabled={!!unavailableReason}>
                 {option.label}
               </ToggleGroupItem>
             ))}
@@ -71,12 +77,15 @@ export function PoolTable({ name, ticker }: { name: ProjectMarkName; ticker: str
           </TableRow>
         </TableHeader>
         <TableBody>
+          {unavailableReason && <TableRow><TableCell colSpan={7}>
+            <Empty><EmptyHeader><EmptyTitle>Pool data unavailable</EmptyTitle><EmptyDescription>{unavailableReason}</EmptyDescription></EmptyHeader></Empty>
+          </TableCell></TableRow>}
           {pools.map((pool) => (
             <TableRow key={`${pool.source}-${pool.quote}`}>
               <TableCell>
                 <div className="flex items-center gap-2.5">
                   <div className="flex items-center">
-                    <ProjectMark name={name} size={26} />
+                    {name && <ProjectMark name={name} size={26} />}
                     <span
                       aria-hidden="true"
                       className={cn(

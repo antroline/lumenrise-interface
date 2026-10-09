@@ -36,7 +36,7 @@ export function CopyIssuerButton({ issuer }: { issuer: string }) {
       }}
     >
       Issuer
-      <span className="font-mono text-xs font-normal text-secondary-foreground">{issuer}</span>
+      <span className="font-mono text-xs font-normal text-secondary-foreground">{issuer.length > 16 ? `${issuer.slice(0, 4)}…${issuer.slice(-4)}` : issuer}</span>
       <Copy data-icon="inline-end" />
     </Button>
   )

@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 import { notFound } from 'next/navigation'
+import { StrKey } from '@stellar/stellar-sdk'
+import { BondingCurvePage } from './_bonding/bonding-curve-page'
 import { BackLink } from '@/components/page-header'
 import { cardVariants } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -27,6 +29,7 @@ function Figure({ label, accent = false, children }: { label: string; accent?: b
 
 export default async function LaunchDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
+  if (StrKey.isValidContract(slug)) return <BondingCurvePage key={slug} address={slug} />
   const launch = getLaunch(slug)
   if (!launch) notFound()
 

@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Activity } from 'lucide-react'
+import { StrKey } from '@stellar/stellar-sdk'
+import { BondingCurvePage } from '@/app/launch/[slug]/_bonding/bonding-curve-page'
 import { BackLink, ProjectHeading } from '@/components/page-header'
 import { ProjectMark } from '@/components/project-mark'
 import { Stat, StatBar } from '@/components/stat'
@@ -15,6 +17,7 @@ import { priceSeriesByTimeframe, swapRoutes } from './_data'
 
 export default async function TradePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
+  if (StrKey.isValidContract(slug)) return <BondingCurvePage key={slug} address={slug} surface="trade" />
   const token = getTradingToken(slug)
   if (!token) notFound()
   const price = Number(token.price.replace('$', ''))
