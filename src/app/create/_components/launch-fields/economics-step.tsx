@@ -26,6 +26,7 @@ export function EconomicsStep({ draft, setDraft, errors = {} }: DraftProps) {
     <FieldGroup>
       <QuoteChoice
         value={draft.quote}
+        highlightSelection={draft.method === 'bonding'}
         onChange={(quote) => setDraft((current) => ({ ...current, quote }))}
       />
       {draft.method === 'bonding' && (

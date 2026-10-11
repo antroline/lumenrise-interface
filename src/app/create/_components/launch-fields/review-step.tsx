@@ -78,7 +78,9 @@ export function ReviewStep({
             <p className="text-ui text-muted-foreground">{draft.symbol}</p>
           </div>
         </div>
-        <p className="break-words text-ui leading-relaxed">{draft.description}</p>
+        <p className="break-words text-ui leading-relaxed">
+          {draft.description}
+        </p>
         {(draft.website || draft.xAccount) && (
           <dl className="mt-3 grid gap-1 text-small text-muted-foreground">
             {draft.website && (
@@ -173,7 +175,11 @@ export function ReviewStep({
               ]
             : []),
         ]}
-        extra={<AllocationPreview draft={draft} />}
+        extra={
+          <div className="mt-2">
+            <AllocationPreview draft={draft} />
+          </div>
+        }
       />
       {draft.method === 'bonding' && (
         <ReviewSection
@@ -246,7 +252,12 @@ export function ReviewStep({
               : 'None',
           ),
           ...(draft.eligibility.identificationMode === 'required'
-            ? [row('Identity check', draft.eligibility.identificationRequirements)]
+            ? [
+                row(
+                  'Identity check',
+                  draft.eligibility.identificationRequirements,
+                ),
+              ]
             : []),
         ]}
       />

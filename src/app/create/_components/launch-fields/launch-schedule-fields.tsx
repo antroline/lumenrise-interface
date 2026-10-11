@@ -1,5 +1,6 @@
 'use client';
 
+import { FieldGroup } from '@/components/ui/field';
 import {
   launchDurationLabel,
   launchDurationOptions,
@@ -30,15 +31,18 @@ export function LaunchScheduleFields({
   errors: FieldErrors;
 }) {
   return (
-    <div className="grid gap-5 short:gap-4">
-      <p className="text-small text-muted-foreground">
-        Starts immediately by default. Choose a duration or custom dates in your
-        local time zone.
-      </p>
+    <FieldGroup className="gap-5 short:gap-4">
+      <div className="flex flex-col gap-1.5">
+        <h3 className="text-body font-semibold">Launch timing</h3>
+        <p className="text-body text-muted-foreground">
+          Starts immediately by default. Choose a duration or custom dates in your
+          local time zone.
+        </p>
+      </div>
       <div className="grid gap-4 @md/launch:grid-cols-2">
         <DateTimePicker
           id={`${method}-start`}
-          label="Start (optional)"
+          label="Start"
           value={startsAt}
           onChange={(value) => onChange({ startsAt: value })}
           error={errors[`${method}-start`]}
@@ -46,7 +50,7 @@ export function LaunchScheduleFields({
         />
         <DateTimePicker
           id={`${method}-end`}
-          label="End (optional)"
+          label="End"
           value={endsAt}
           onChange={(value) => onChange({ endsAt: value })}
           earliest={startsAt}
@@ -55,14 +59,15 @@ export function LaunchScheduleFields({
         />
       </div>
       <div>
-        <div className="mb-3 flex items-center gap-1">
-          <p className="text-small font-semibold">Duration</p>
+        <div className="mb-2 flex items-center gap-1">
+          <p className="text-body font-medium">Duration</p>
           <HelpTooltip label="Launch duration">
             The window ends this long after it starts. Month choices are 30 and
             60 days.
           </HelpTooltip>
         </div>
         <PresetChoices
+          className="grid grid-cols-2 @sm/launch:grid-cols-4 [&>button]:min-h-10 [&>button]:rounded-lg [&>button]:text-body"
           label="Launch duration"
           value={endsAt ? '' : durationDays}
           options={launchDurationOptions}
@@ -75,6 +80,6 @@ export function LaunchScheduleFields({
           }}
         />
       </div>
-    </div>
+    </FieldGroup>
   );
 }

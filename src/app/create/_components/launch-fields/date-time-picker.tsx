@@ -72,7 +72,9 @@ export function DateTimePicker({
 
   return (
     <Field data-invalid={!!error}>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <FieldLabel htmlFor={id} className="text-body">
+        {label}
+      </FieldLabel>
       <Popover open={open} actionsRef={actionsRef} onOpenChange={setOpen}>
         <PopoverTrigger
           render={
@@ -82,7 +84,7 @@ export function DateTimePicker({
               variant="outline"
               aria-invalid={!!error}
               aria-describedby={error ? `${id}-error` : undefined}
-              className="h-[74px] w-full justify-between rounded-xl bg-muted px-4 text-left hover:border-foreground hover:bg-muted aria-invalid:border-border short:h-16"
+              className="h-auto min-h-20 w-full justify-between rounded-xl bg-surface px-4 py-3.5 text-left hover:border-foreground hover:bg-muted aria-expanded:border-foreground aria-invalid:border-border short:min-h-18"
             />
           }
         >
@@ -92,16 +94,9 @@ export function DateTimePicker({
               aria-hidden="true"
             />
             <span className="min-w-0">
-              <span className="block text-small font-normal text-muted-foreground">
-                {selected
-                  ? 'Custom date & time'
-                  : defaultLabel
-                    ? 'Default · click to change'
-                    : 'Choose date & time'}
-              </span>
               <span
                 className={cn(
-                  'block truncate text-ui font-semibold',
+                  'block whitespace-normal text-title font-semibold leading-snug tabular-nums',
                   !selected && !defaultLabel && 'text-muted-foreground',
                 )}
               >
@@ -111,6 +106,13 @@ export function DateTimePicker({
                       timeStyle: 'short',
                     }).format(selected)
                   : defaultLabel || 'Select a date'}
+              </span>
+              <span className="mt-1 block text-ui font-normal text-muted-foreground">
+                {selected
+                  ? 'Custom date & time'
+                  : defaultLabel
+                    ? 'Default · click to change'
+                    : 'Choose date & time'}
               </span>
             </span>
           </span>
@@ -130,7 +132,7 @@ export function DateTimePicker({
           />
           <div className="flex items-end gap-3 border-t border-divider p-3">
             <Field className="min-w-0 flex-1">
-              <FieldLabel htmlFor={`${id}-time`} className="text-small">
+              <FieldLabel htmlFor={`${id}-time`} className="text-body">
                 Local time
               </FieldLabel>
               <Input

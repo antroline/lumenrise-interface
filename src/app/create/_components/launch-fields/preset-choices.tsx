@@ -8,15 +8,17 @@ export function PresetChoices({
   value,
   options,
   onChange,
+  className,
 }: {
   label: string;
   value: string;
   options: readonly Preset[];
   onChange: (value: string) => void;
+  className?: string;
 }) {
   return (
     <div
-      className="flex flex-wrap gap-2"
+      className={cn('flex flex-wrap gap-2', className)}
       role="group"
       aria-label={`${label} quick choices`}
     >
