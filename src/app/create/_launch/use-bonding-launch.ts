@@ -135,18 +135,28 @@ export function useBondingLaunch() {
     phase: LaunchOperation['phase'] = 'working',
     hash?: string,
   ) {
-    setOperation({ step, message, phase, hash, status: 'running' });
+    setOperation((current) => ({
+      step, message, phase, hash, status: 'running',
+      transactionHashes: {
+        ...(step === 'check' ? {} : current?.transactionHashes),
+        ...(hash ? { [step]: hash } : {}),
+      },
+    }));
   }
 
   function complete(address: string, hash?: string) {
-    setOperation({
+    setOperation((current) => ({
       step: 'curve',
       status: 'success',
       phase: 'confirming',
       message: 'Your bonding curve is ready.',
       curveAddress: address,
       hash,
-    });
+      transactionHashes: {
+        ...current?.transactionHashes,
+        ...(hash ? { curve: hash } : {}),
+      },
+    }));
   }
 
   async function launch(draft: LaunchDraft) {
@@ -169,6 +179,15 @@ export function useBondingLaunch() {
         amount: draft.supply,
       });
       let saved = loadRecord(owner, input);
+      if (saved) {
+        const transactionHashes = {
+          setup: saved.token.setupHash,
+          issue: saved.token.distributionHash,
+          deploy: saved.token.sacHash,
+          curve: saved.factoryHash,
+        };
+        setOperation((current) => current ? { ...current, transactionHashes } : current);
+      }
       if (saved?.curveAddress) {
         complete(saved.curveAddress, saved.factoryHash);
         return;

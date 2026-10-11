@@ -6,5 +6,6 @@ export type LaunchOperation = {
   phase: 'working' | 'approval' | 'confirming';
   message: string;
   hash?: string;
+  transactionHashes?: Partial<Record<LaunchOperationStep, string>>;
   curveAddress?: string;
 };

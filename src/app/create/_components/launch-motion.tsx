@@ -78,23 +78,38 @@ export const LaunchStepPanel = forwardRef<
         enter: (next: 'forward' | 'back') => ({
           opacity: 0,
           x: reduced ? 0 : next === 'forward' ? 4 : -4,
+          filter: reduced ? 'blur(0px)' : 'blur(3px)',
         }),
-        active: { opacity: 1, x: 0 },
+        active: {
+          opacity: 1,
+          x: 0,
+          filter: 'blur(0px)',
+          transition: { ...launchTransition, duration: reduced ? 0 : 0.26 },
+        },
         exit: (next: 'forward' | 'back') => ({
           opacity: 0,
           x: reduced ? 0 : next === 'forward' ? -4 : 4,
+          filter: reduced ? 'blur(0px)' : 'blur(2px)',
+          transition: { duration: reduced ? 0 : 0.14, ease: [0.4, 0, 1, 1] },
         }),
       }}
       initial="enter"
       animate="active"
       exit="exit"
+      onAnimationComplete={(definition) => {
+        if (present && definition === 'active') {
+          document
+            .getElementById('wizard-title')
+            ?.focus({ preventScroll: true });
+        }
+      }}
       className="flex min-h-0 min-w-0 flex-1 flex-col"
     >
       <div className="mb-6 shrink-0 short:mb-4">
         <h2
           id={present ? 'wizard-title' : undefined}
           tabIndex={-1}
-          className="text-[29px] font-semibold leading-tight tracking-[-0.025em] outline-none sm:text-[32px] xl:text-[36px] short:sm:text-[30px]"
+          className="text-[24px] font-semibold leading-[1.2] tracking-[-0.035em] outline-none sm:text-[28px] xl:text-[32px] short:sm:text-[28px]"
         >
           {heading}
         </h2>

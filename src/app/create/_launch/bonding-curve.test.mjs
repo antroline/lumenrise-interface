@@ -223,11 +223,14 @@ test('rejected SAC approval resumes the same issued token without another setup'
   assert.equal(h.progress.at(-1).step, 'deploy');
   assert.equal(h.progress.at(-1).phase, 'working');
   const retryStart = h.progress.length;
+  const previousHashes = h.progress.at(-1).transactionHashes;
   await h.flow.launch(draft());
   assert.equal(h.sends.filter((send) => send.xdr.startsWith('setup:')).length, 1);
   assert.equal(h.factoryCalls(), 1);
   assert.deepEqual([...new Set(h.progress.slice(retryStart).map((event) => event.step))], ['check', 'deploy', 'curve']);
   assert.equal(h.progress.at(-1).status, 'success');
+  assert.equal(h.progress.at(-1).transactionHashes.setup, previousHashes.setup);
+  assert.equal(h.progress.at(-1).transactionHashes.issue, previousHashes.issue);
 });
 
 test('a submitted factory transaction is not duplicated when its result is unavailable', async () => {
@@ -263,6 +266,10 @@ test('progress follows actual stages and wallet approvals, then completes with a
   assert.equal(result.status, 'success');
   assert.equal(result.curveAddress, curve);
   assert.equal(result.hash, 'factory-1');
+  assert.deepEqual(result.transactionHashes, {
+    setup: 'setup:1', issue: 'issuance:2', deploy: 'sac:3', curve: 'factory-1',
+  });
+  assert.equal(h.progress.find((event) => event.step === 'deploy' && event.phase === 'approval').transactionHashes.issue, 'issuance:2');
   assert.equal(h.messages.length, 0);
 });
 
@@ -270,9 +277,11 @@ test('launch errors and recovered results stay in the operation dialog without d
   const h = harness({ rejectReturn: true, factoryStatus: 'SUCCESS' });
   await h.flow.launch(draft());
   assert.equal(h.progress.at(-1).status, 'error');
+  const previousHashes = h.progress.at(-1).transactionHashes;
   assert.equal(h.messages.length, 0);
   await h.flow.launch(draft());
   assert.equal(h.progress.at(-1).status, 'success');
+  assert.deepEqual(h.progress.at(-1).transactionHashes, previousHashes);
   assert.equal(h.messages.length, 0);
   await h.flow.launch(draft());
   assert.equal(h.progress.at(-1).status, 'success');
