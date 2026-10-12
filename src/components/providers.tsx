@@ -7,6 +7,12 @@ import type { ReactNode } from 'react'
 // renders entirely on the client, matching the previous Vite SPA behavior.
 const ClientApp = dynamic(() => import('./client-app'), { ssr: false })
 
-export function Providers({ children }: { children: ReactNode }) {
-  return <ClientApp>{children}</ClientApp>
+export function Providers({
+  children,
+  apiBaseUrl,
+}: {
+  children: ReactNode
+  apiBaseUrl: string
+}) {
+  return <ClientApp apiBaseUrl={apiBaseUrl}>{children}</ClientApp>
 }

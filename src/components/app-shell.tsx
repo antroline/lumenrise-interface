@@ -645,7 +645,7 @@ function GlobalSearch() {
 }
 
 function WalletButton() {
-  const { isSignedIn, address, login, logout, loginPending, notify } =
+  const { isSignedIn, address, login, logout, loginPending, loginPhase, notify } =
     useLaunchpad();
 
   const { profile } = useBlux();
@@ -661,7 +661,11 @@ function WalletButton() {
         disabled={loginPending}
       >
         <Wallet data-icon="inline-start" />
-        {loginPending ? 'Connecting…' : 'Connect wallet'}
+        {loginPending
+          ? loginPhase === 'checking'
+            ? 'Checking…'
+            : 'Connecting…'
+          : 'Connect wallet'}
       </Button>
     );
   }
@@ -747,7 +751,7 @@ function WalletButton() {
 }
 
 /** Routes that render as a focused flow without the site navigation. */
-const bareRoutes = new Set(['/onboarding']);
+const bareRoutes = new Set(['/onboarding', '/register']);
 
 /** Routes that use the full viewport width instead of the centred reading column. */
 function isFullWidth(pathname: string) {

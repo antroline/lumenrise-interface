@@ -31,8 +31,8 @@ function ProjectCell({ name, subtitle }: { name: ProjectMarkName; subtitle: stri
 }
 
 export default function PortfolioPage() {
-  const { isSignedIn } = useLaunchpad()
-  if (!isSignedIn) return <AuthGate destination="/portfolio" description="Connect your Stellar wallet to view your portfolio and saved launch activity." />
+  const { accountReady } = useLaunchpad()
+  if (!accountReady) return <AuthGate destination="/portfolio" description="Connect your Stellar wallet to view your portfolio and saved launch activity." />
   return <div className="flex flex-col gap-6">
     <PageHeader eyebrow="Portfolio" title="Your portfolio" description="Everything you have joined, what is still an estimate and what is final." actions={<div className="flex gap-2"><Button variant="outline" size="sm" render={<Link href="/settings" />} nativeButton={false}>All wallets</Button><Button variant="outline" size="sm" disabled title="Portfolio export requires live position data"><Download data-icon="inline-start" /> Export CSV</Button></div>} />
     <p className="text-small text-muted-foreground">Positions below illustrate the reference layout. Live wallet positions and claims are not connected yet.</p>
