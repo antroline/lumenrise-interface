@@ -25,10 +25,12 @@ import styles from './launch-operation-dialog.module.css';
 
 const steps: { id: LaunchOperationStep; title: string }[] = [
   { id: 'check', title: 'Check launch settings' },
+  { id: 'logo', title: 'Upload project image' },
   { id: 'setup', title: 'Set up issuer & trustline' },
   { id: 'issue', title: 'Issue token supply' },
   { id: 'deploy', title: 'Deploy token contract' },
   { id: 'curve', title: 'Create bonding curve' },
+  { id: 'index', title: 'Prepare project page' },
 ];
 
 export function LaunchOperationDialog({
@@ -321,10 +323,10 @@ export function LaunchOperationDialog({
           )}
           {success && operation.curveAddress && (
             <Link
-              href={`/trade/${operation.curveAddress}`}
+              href={`/launch/${operation.curveAddress}`}
               className={cn(buttonVariants(), 'min-w-0 flex-1')}
             >
-              Open trade <ArrowUpRight data-icon="inline-end" />
+              View launch <ArrowUpRight data-icon="inline-end" />
             </Link>
           )}
           {!success && !failed && (
