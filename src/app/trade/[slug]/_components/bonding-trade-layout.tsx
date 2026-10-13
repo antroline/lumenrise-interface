@@ -5,7 +5,15 @@ import Link from 'next/link'
 import { Activity } from 'lucide-react'
 import { formatAmount, type Snapshot, type Tokens } from '@/app/launch/[slug]/_bonding/contract'
 import { BackLink, ProjectHeading } from '@/components/page-header'
-import { Blockie } from '@/components/blockie'
+import { TokenLogo } from '@/components/token-logo'
+import { TradePageTemplate } from './trade-page-template'
+import { IndexedPriceChart } from './indexed-price-chart'
+import { IndexedTrades } from './indexed-trades'
+import { useMarket } from '@/lib/api/launches/queries'
+import { displayAmount, pairLabel } from '@/lib/api/launches/display'
+import type { ApiNetwork } from '@/lib/api/launches/types'
+import type { LaunchResult } from '@/lib/api/launches/market'
+import { Button } from '@/components/ui/button'
 import { Stat, StatBar } from '@/components/stat'
 import { InsetField, RuledPanel, Trajectory } from '@/components/visual-system'
 import { Badge } from '@/components/ui/badge'
@@ -15,11 +23,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { CopyIssuerButton, FollowButton } from './trade-actions'
-import { PriceChart } from './price-chart'
+
 import { PoolTable } from './pool-table'
 
 type Props = {
   address: string
+  network: ApiNetwork
+  launch?: LaunchResult
   snapshot?: Snapshot
   tokens?: Tokens
   loading: boolean
@@ -31,11 +41,12 @@ type Props = {
   details: ReactNode
 }
 
-export function BondingTradeLayout({ address, snapshot, tokens, loading, refreshAction, feedback, wallet, buy, sell, details }: Props) {
+export function BondingTradeLayout({ address, network, launch, snapshot, tokens, loading, refreshAction, feedback, wallet, buy, sell, details }: Props) {
+  const market = useMarket(address, network)
   const params = snapshot?.config.params
-  const name = params?.metadata.name || 'Bonding curve launch'
-  const ticker = tokens?.assetSymbol || params?.metadata.symbol || 'Token'
-  const pair = tokens ? (tokens.pair.isNative() ? 'XLM' : tokens.pairSymbol) : 'Pair token'
+  const name = launch?.metadata.name || params?.metadata.name || 'Bonding curve launch'
+  const ticker = launch?.metadata.symbol || tokens?.assetSymbol || params?.metadata.symbol || 'Token'
+  const pair = tokens ? (tokens.pair.isNative() ? 'XLM' : tokens.pairSymbol) : pairLabel(launch?.pair, network)
   const issuer = tokens?.asset.getIssuer()
   const target = params?.curve.graduation_target
   const progress = snapshot && target && target > BigInt(0)
@@ -44,40 +55,41 @@ export function BondingTradeLayout({ address, snapshot, tokens, loading, refresh
   const canSell = snapshot && !snapshot.state.busy && (snapshot.status === 'Open' || snapshot.status === 'Failed') && snapshot.state.sold > BigInt(0)
   const routeStatus = !snapshot ? loading ? 'Loading' : 'Unavailable' : canBuy && canSell ? 'Available' : canBuy ? 'Buy only' : canSell ? 'Sell-back only' : 'Unavailable'
 
-  return <div className="flex min-w-0 flex-col gap-6">
-    <BackLink href="/">Discover</BackLink>
+  return <TradePageTemplate header={<>
+    <BackLink href={`/launches?network=${network}`}>Projects</BackLink>
     <RuledPanel>
       <ProjectHeading
-        mark={<Blockie seed={params?.asset || address} size={56} radius={16} />}
+        mark={<TokenLogo logo={launch?.metadata.logo ?? params?.metadata.logo} name={name} seed={address} size={56} />}
         title={name}
-        meta={<><Badge variant="tag">{ticker}</Badge><Badge variant="soft"><Activity />{snapshot?.status || (loading ? 'Loading' : 'Unavailable')}</Badge><Badge variant="net" size="sm">Testnet</Badge></>}
+        meta={<><Badge variant="tag">{ticker}</Badge><Badge variant="soft"><Activity />{launch?.bonding?.status || snapshot?.status || (loading ? 'Loading' : 'Unavailable')}</Badge><Badge variant="net" size="sm">{network === 'public' ? 'Mainnet' : 'Testnet'}</Badge></>}
         description={<span className="text-small text-muted-foreground">Bonding curve · {ticker} / {pair}</span>}
         actions={<><FollowButton name={name} />{issuer && <CopyIssuerButton issuer={issuer} />}{refreshAction}</>}
       />
     </RuledPanel>
     <nav aria-label="Token navigation" className="flex gap-6 overflow-x-auto border-b text-ui font-medium">
-      <Link href={`/launch/${address}`} className="pb-3 text-muted-foreground">Overview</Link>
+      <Link href={`/launch/${address}?network=${network}`} className="pb-3 text-muted-foreground">Overview</Link>
       <span aria-current="page" className="border-b-2 border-foreground pb-3">Trade</span>
       <a href="#pools" className="pb-3 text-muted-foreground">Liquidity pools</a>
       <a href="#launch-details" className="pb-3 text-muted-foreground">Launch details</a>
     </nav>
     {feedback}
+    {market.isPending && <Skeleton className="h-4 w-48" />}
+    {market.isError && <p role="alert" className="text-small text-destructive">Market data unavailable. <Button variant="outline" size="sm" onClick={() => void market.refetch()}>Retry</Button></p>}
     <RuledPanel>
       <Trajectory label="Launch to market" active={!snapshot || snapshot.status === 'Scheduled' ? 0 : snapshot.status === 'Graduated' ? 2 : 1}
         steps={[{ label: 'Launch' }, { label: 'Curve trading', detail: snapshot?.status }, { label: 'Graduation' }, { label: 'Pool settlement', detail: 'Not implemented' }]} />
     </RuledPanel>
     <StatBar columns={5}>
-      <Stat label="Price" value={<span className="block break-words text-lg sm:text-stat">{snapshot ? formatAmount(snapshot.price) : '—'}</span>} unit={snapshot ? <span className="block">{pair}</span> : undefined} hint="Current curve price · before fee" />
+      <Stat label="Price" value={<span className="block break-words text-lg sm:text-stat">{displayAmount(market.data?.currentPrice)}</span>} unit={<span className="block">{pair}</span>} hint={market.data?.stateStale ? 'Snapshot may be outdated' : market.data?.priceObservedAt ? `Recorded ${new Date(market.data.priceObservedAt).toLocaleString('en-US')} · before fee` : 'Marginal price · before fee'} />
       <Stat label="Liquidity" value="—" hint="Pool data unavailable" />
-      <Stat label="Volume · 24h" value="—" hint="Trade history unavailable" />
+      <Stat label="Volume · 24h" value={displayAmount(market.data?.volume24h.grossPairAmount)} unit={pair} hint={market.data ? `${market.data.volume24h.tradeCount} recorded trades` : market.isPending ? 'Loading…' : 'Unavailable'} />
       <Stat label="Holders" value="—" hint="Holder data unavailable" />
       <Stat label="Circulating" value="—" hint={snapshot ? `${formatAmount(snapshot.config.total_supply)} ${ticker} total supply` : 'Loading supply…'} />
     </StatBar>
-    <p className="font-mono text-2xs uppercase text-faint">Live contract data · Stellar Testnet · Refreshes every 15 seconds</p>
-    <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_384px]">
-      <div className="flex min-w-0 flex-col gap-5">
+    <p className="font-mono text-2xs uppercase text-faint">Recorded market data · Before fees · Volume includes recorded trades</p>
+    </>} market={<>
         <InsetField>
-          {snapshot && tokens ? <PriceChart ticker={ticker} quoteSymbol={pair} price={`${formatAmount(snapshot.price)} ${pair}`} /> : loading ? <Skeleton className="h-80 w-full" /> : <p className="text-small text-muted-foreground">Price unavailable until contract and token data can be verified.</p>}
+          <IndexedPriceChart address={address} network={network} ticker={ticker} pair={pair} price={market.data?.currentPrice == null ? '—' : displayAmount(market.data.currentPrice) + ' ' + pair} />
         </InsetField>
         {snapshot && <RuledPanel>
           <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -104,10 +116,10 @@ export function BondingTradeLayout({ address, snapshot, tokens, loading, refresh
             </TableRow></TableBody>
           </Table>
         </RuledPanel>
-      </div>
-      <div className="flex min-w-0 flex-col gap-5">
+      <RuledPanel><IndexedTrades address={address} network={network} ticker={ticker} pair={pair} /></RuledPanel>
+    </>} swap={<div className="flex min-w-0 flex-col gap-5">
         <Card>
-          <CardHeader><CardTitle>Swap</CardTitle><CardAction><Badge variant="net" size="sm">Testnet</Badge></CardAction></CardHeader>
+          <CardHeader><CardTitle>Swap</CardTitle><CardAction><Badge variant="net" size="sm">{network === 'public' ? 'Mainnet' : 'Testnet'}</Badge></CardAction></CardHeader>
           <CardContent>
             {snapshot && tokens ? <Tabs defaultValue="buy">
               <TabsList aria-label="Trade direction"><TabsTrigger value="buy">Buy</TabsTrigger><TabsTrigger value="sell">Sell</TabsTrigger></TabsList>
@@ -118,12 +130,11 @@ export function BondingTradeLayout({ address, snapshot, tokens, loading, refresh
           <CardFooter><p className="text-small text-muted-foreground">Missing trustlines require a separate approval. Keep XLM for fees and reserves.</p></CardFooter>
         </Card>
         {wallet && <RuledPanel>{wallet}</RuledPanel>}
-      </div>
-    </div>
+      </div>} footer={<>
     <section id="pools" aria-label="Liquidity pools"><PoolTable ticker={ticker} unavailableReason="External pool data is not connected. This contract version does not create a pool or transfer graduation proceeds." /></section>
     <div id="launch-details" className="flex min-w-0 flex-col gap-8 border-t border-divider pt-6">
       <dl className="text-small"><dt className="text-muted-foreground">Launch contract</dt><dd className="mt-1 break-all font-mono">{address}</dd></dl>
       {details}
     </div>
-  </div>
+  </>} />
 }
