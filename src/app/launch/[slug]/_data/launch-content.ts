@@ -12,6 +12,7 @@ export type LaunchContent = {
   tokenomics?: {
     totalSupply: string
     forSale: string
+    allocationLabel?: string
     allocations: { name: string; share: string; tokens: string; unlock: string }[]
   }
   updates?: { title: string; detail: string }[]

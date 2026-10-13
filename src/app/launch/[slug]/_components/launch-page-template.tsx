@@ -8,6 +8,7 @@ import type { ApiNetwork } from '@/lib/api/launches/types';
 import { LaunchExtraSections } from './launch-extra-sections';
 import { LaunchSummary, type LaunchView } from './launch-summary';
 import type { LaunchContent } from '../_data/launch-content';
+import styles from './project-detail.module.css';
 
 const panel = cardVariants({ variant: 'surface', size: 'lg' });
 
@@ -55,6 +56,9 @@ export function LaunchPageTemplate({
   progression,
   backHref = '/',
   backLabel = 'Discover',
+  overview,
+  afterTokenomics,
+  eligibilityNote,
 }: {
   launch: LaunchView;
   content: LaunchContent;
@@ -70,12 +74,15 @@ export function LaunchPageTemplate({
   progression?: ReactNode;
   backHref?: string;
   backLabel?: string;
+  overview?: ReactNode;
+  afterTokenomics?: ReactNode;
+  eligibilityNote?: string;
 }) {
   const live = launch.phase === 'live';
   return (
     <div
       className={cn(
-        'w-full pb-8',
+        styles.page, 'mx-auto w-full max-w-[1520px] pb-8',
         referenceStyle &&
           '[--surface:#ffffff] dark:[--surface:#1a1a1a] [&_.bg-surface]:border [&_.bg-surface]:border-border [&_.bg-accent]:bg-background',
       )}
@@ -92,100 +99,106 @@ export function LaunchPageTemplate({
           mark={mark}
           status={status}
           action={action}
-          className="lg:sticky lg:top-[84px] lg:col-start-2 lg:row-start-1 lg:max-h-[calc(100svh-104px)] lg:overflow-y-auto lg:overscroll-contain"
+          eligibilityNote={eligibilityNote}
+          className={cn(styles.summary, 'lg:sticky lg:top-[84px] lg:col-start-2 lg:row-start-1 lg:max-h-[calc(100svh-104px)] lg:overflow-y-auto lg:overscroll-contain')}
         />
 
         <div className="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-1 lg:gap-6">
-          <section className={panel} aria-labelledby="sale-heading">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-              <h2
-                id="sale-heading"
-                className="text-[22px] font-semibold tracking-[-0.025em] sm:text-[25px]"
-              >
-                {heading ?? (live ? 'Live sale' : 'Upcoming sale')}
-              </h2>
-              <p className="text-[15px] text-muted-foreground">
-                {caption ??
-                  (live
-                    ? 'Figures update as commitments settle'
-                    : 'No commitments accepted yet')}
-              </p>
-            </div>
+          {overview ?? (
+            <section className={panel} aria-labelledby="sale-heading">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+                <h2
+                  id="sale-heading"
+                  className="text-[22px] font-semibold tracking-[-0.025em] sm:text-[25px]"
+                >
+                  {heading ?? (live ? 'Live sale' : 'Upcoming sale')}
+                </h2>
+                <p className="text-[15px] text-muted-foreground">
+                  {caption ??
+                    (live
+                      ? 'Figures update as commitments settle'
+                      : 'No commitments accepted yet')}
+                </p>
+              </div>
 
-            <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-6">
-              <p className="min-w-0">
-                <span className="block text-[clamp(2.75rem,5vw,4.5rem)] leading-[0.95] font-semibold tracking-[-0.035em] tabular-nums">
-                  {live ? launch.raised : launch.target}
-                </span>
-                <span className="mt-3 block text-[17px] text-muted-foreground tabular-nums">
-                  {live
-                    ? `raised of ${launch.target} target`
-                    : 'fundraising target'}
-                </span>
-              </p>
-              {live && (
-                <p className="flex items-baseline gap-2.5">
-                  <span className="text-[38px] leading-none font-semibold tracking-[-0.03em] tabular-nums sm:text-[44px]">
-                    {launch.progress === null ? '—' : `${launch.progress}%`}
+              <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-6">
+                <p className="min-w-0">
+                  <span className="block text-[clamp(2.75rem,5vw,4.5rem)] leading-[0.95] font-semibold tracking-[-0.035em] tabular-nums">
+                    {live ? launch.raised : launch.target}
                   </span>
-                  <span className="text-[17px] text-muted-foreground">
-                    {(launch.progress ?? 0) >= 100
-                      ? 'of target, oversubscribed'
-                      : 'funded'}
+                  <span className="mt-3 block text-[17px] text-muted-foreground tabular-nums">
+                    {live
+                      ? `raised of ${launch.target} target`
+                      : 'fundraising target'}
                   </span>
                 </p>
-              )}
-            </div>
+                {live && (
+                  <p className="flex items-baseline gap-2.5">
+                    <span className="text-[38px] leading-none font-semibold tracking-[-0.03em] tabular-nums sm:text-[44px]">
+                      {launch.progress === null ? '—' : `${launch.progress}%`}
+                    </span>
+                    <span className="text-[17px] text-muted-foreground">
+                      {(launch.progress ?? 0) >= 100
+                        ? 'of target, oversubscribed'
+                        : 'funded'}
+                    </span>
+                  </p>
+                )}
+              </div>
 
-            {live && launch.progress !== null && (
-              <Progress
-                value={launch.progress}
-                aria-label={`${launch.progress}% of the target raised`}
-                size="thick"
-                tone="lime"
-                className="[&_[data-slot=progress-track]]:bg-foreground dark:[&_[data-slot=progress-track]]:bg-foreground/20"
-              />
-            )}
-
-            <dl className="grid grid-cols-2 gap-x-8 gap-y-7 border-t border-divider pt-7 sm:grid-cols-4">
-              <Figure label={`Sale ${launch.dateLabel.toLowerCase()}`} accent>
-                {launch.date}
-              </Figure>
-              <Figure label="Allocation">{launch.allocation}</Figure>
-              <Figure label="Model">{launch.model}</Figure>
-              <Figure label="Participants">
-                {launch.participants === '—' && !action
-                  ? 'None yet'
-                  : launch.participants}
-              </Figure>
-            </dl>
-
-            <div className="border-t border-divider pt-7">
-              <h3 className="text-[13px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
-                Launch progression
-              </h3>
-              {progression ?? (
-                <Trajectory
-                  className="mt-5 -mx-6 px-6 sm:mx-0 sm:px-0"
-                  size="lg"
-                  label="Launch progression"
-                  active={live ? 1 : 0}
-                  steps={[
-                    { label: 'Announced' },
-                    {
-                      label: 'Live sale',
-                      detail: `${launch.dateLabel} ${launch.date}`,
-                    },
-                    { label: 'Settlement' },
-                    { label: 'Trading & claims' },
-                  ]}
+              {live && launch.progress !== null && (
+                <Progress
+                  value={launch.progress}
+                  aria-label={`${launch.progress}% of the target raised`}
+                  size="thick"
+                  tone="lime"
+                  className="[&_[data-slot=progress-track]]:bg-foreground dark:[&_[data-slot=progress-track]]:bg-foreground/20"
                 />
               )}
-            </div>
-          </section>
+
+              <dl className="grid grid-cols-2 gap-x-8 gap-y-7 border-t border-divider pt-7 sm:grid-cols-4">
+                <Figure label={`Sale ${launch.dateLabel.toLowerCase()}`} accent>
+                  {launch.date}
+                </Figure>
+                <Figure label="Allocation">{launch.allocation}</Figure>
+                <Figure label="Model">{launch.model}</Figure>
+                <Figure label="Participants">
+                  {launch.participants === '—' && !action
+                    ? 'None yet'
+                    : launch.participants}
+                </Figure>
+              </dl>
+
+              <div className="border-t border-divider pt-7">
+                <h3 className="text-[13px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+                  Launch progression
+                </h3>
+                {progression ?? (
+                  <Trajectory
+                    className="mt-5 -mx-6 px-6 sm:mx-0 sm:px-0"
+                    size="lg"
+                    label="Launch progression"
+                    active={live ? 1 : 0}
+                    steps={[
+                      { label: 'Announced' },
+                      {
+                        label: 'Live sale',
+                        detail: `${launch.dateLabel} ${launch.date}`,
+                      },
+                      { label: 'Settlement' },
+                      { label: 'Trading & claims' },
+                    ]}
+                  />
+                )}
+              </div>
+            </section>
+          )}
 
           {feedback}
-          <LaunchExtraSections content={content} />
+          <LaunchExtraSections
+            content={content}
+            afterTokenomics={afterTokenomics}
+          />
           {children}
         </div>
       </div>

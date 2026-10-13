@@ -30,6 +30,7 @@ export function LaunchSummary({
   content,
   className,
   network = 'testnet', mark, status, action,
+  eligibilityNote,
 }: {
   launch: LaunchView
   network?: string
@@ -38,6 +39,7 @@ export function LaunchSummary({
   action?: ReactNode
   content: LaunchContent
   className?: string
+  eligibilityNote?: string
 }) {
   const live = launch.phase === 'live'
   const verifiedRecords = content.evidence?.filter((item) => item.source === 'verified').length ?? 0
@@ -59,16 +61,17 @@ export function LaunchSummary({
                 </Badge>
               )}
               {status ?? <StatusPill status={launch.phase} />}
-              <Badge variant="net" size="sm">{network.toUpperCase()}</Badge>
+              <Badge variant="net" size="sm">{network === 'public' ? 'MAINNET' : network.toUpperCase()}</Badge>
             </div>
-            <h1 id="project-name" className="mt-2.5 text-[30px] leading-[1.05] font-semibold tracking-[-0.03em]">
+            <h1 id="project-name" className="mt-2.5 break-words text-[30px] leading-[1.05] font-semibold tracking-[-0.03em]">
               {launch.name}
             </h1>
             <p className="mt-1.5 text-[16px] font-medium text-muted-foreground">${launch.ticker}</p>
+            {action && <p className="mt-2 text-small text-muted-foreground">{launch.model}</p>}
           </div>
         </div>
 
-        <p className="mt-5 text-[16px] leading-relaxed text-muted-foreground">{launch.description}</p>
+        {launch.description && <p className={cn('mt-5 text-[16px] leading-relaxed text-muted-foreground', eligibilityNote && 'line-clamp-3')}>{launch.description}</p>}
 
         {content.links && (
           <ul className="mt-5 flex flex-wrap gap-2">
@@ -94,7 +97,9 @@ export function LaunchSummary({
 
       <div className="border-t border-divider px-6 py-6 sm:px-7">
         <h2 className="text-[20px] font-semibold tracking-[-0.02em]">Your eligibility</h2>
-        <dl className="mt-4">
+        {eligibilityNote ? <div className="mt-4">
+          <Eligibility state={launch.eligibility.state} className="text-[17px] [&>svg]:size-[18px]">{launch.eligibility.label}</Eligibility>
+        </div> : <dl className="mt-4">
           <dt className="text-[13px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Requirement</dt>
           <dd className="mt-2 text-[17px] font-medium">{launch.requirement}</dd>
           <dt className="mt-5 text-[13px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Standing</dt>
@@ -103,9 +108,9 @@ export function LaunchSummary({
               {launch.eligibility.label}
             </Eligibility>
           </dd>
-        </dl>
+        </dl>}
         <p className="mt-5 text-[14px] leading-relaxed text-muted-foreground">
-          {action ? 'Eligibility and project links are not available for this launch.' : 'Reference data for this testnet preview. Eligibility, project links and transactions are not connected.'}
+          {eligibilityNote ?? (action ? 'Eligibility evaluation is unavailable for this launch.' : 'Reference data for this testnet preview. Eligibility, project links and transactions are not connected.')}
         </p>
         {action ?? <Button
           size="lg"
