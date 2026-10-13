@@ -7,8 +7,15 @@ import test from 'node:test';
 import ts from 'typescript';
 
 const directory = dirname(fileURLToPath(import.meta.url));
-for (const surface of ['launch', 'trade'])
-  test(`${surface} on Public ignores cached Testnet RPC values and never enables Testnet reads`, () => {
+for (const [surface, state] of [
+  ['launch', 'loaded'],
+  ['trade', 'loaded'],
+  ['launch', 'initial'],
+  ['launch', 'error'],
+  ['launch', 'refresh'],
+  ['trade', 'initial'],
+])
+  test(`${surface} on Public (${state}) keeps loading and network isolation correct`, () => {
     const observers = [],
       module = { exports: {} };
     const jsx = (type, props) => ({ type, props });
@@ -62,11 +69,16 @@ for (const surface of ['launch', 'trade'])
       '@/lib/api/launches/queries': {
         usePageVisible: () => true,
         useLaunchDetail: () => ({
-          data: {
+          data: state === 'loaded' || state === 'refresh' ? {
             metadata: { name: 'Public launch' },
             network: 'public',
             bonding: null,
-          },
+          } : undefined,
+          isPending: state === 'initial',
+          isFetching: state === 'initial' || state === 'refresh',
+          isError: state === 'error',
+          error: state === 'error' ? new Error('Launch information unavailable') : undefined,
+          refetch() {},
         }),
       },
       '@/lib/api/launches/use-trade-queue': {
@@ -75,6 +87,12 @@ for (const surface of ['launch', 'trade'])
       '@/lib/api/launches/trade-queue': { resumeTradeIdentity() {} },
       '../_components/indexed-launch-overview': {
         IndexedLaunchOverview: 'IndexedLaunchOverview',
+      },
+      '../_components/bonding-technical-details': {
+        BondingTechnicalDetails: 'BondingTechnicalDetails',
+      },
+      '../_components/launch-page-skeleton': {
+        LaunchPageSkeleton: 'LaunchPageSkeleton',
       },
       '@/components/ui/card': { cardVariants: () => '' },
       '@/app/trade/[slug]/_components/bonding-trade-layout': {
@@ -101,9 +119,14 @@ for (const surface of ['launch', 'trade'])
       network: 'public',
       surface,
     });
+    assert.ok(observers.every((observer) => observer.enabled === false));
+    if (surface === 'launch' && state === 'initial') {
+      assert.equal(result.type, 'LaunchPageSkeleton');
+      return;
+    }
+    assert.equal(result.type, surface === 'trade' ? 'BondingTradeLayout' : 'IndexedLaunchOverview');
     assert.equal(result.props.snapshot, undefined);
     assert.equal(result.props.network, 'public');
-    assert.ok(observers.every((observer) => observer.enabled === false));
     if (surface === 'trade') {
       assert.equal(result.props.loading, false);
       assert.equal(result.props.buy, null);

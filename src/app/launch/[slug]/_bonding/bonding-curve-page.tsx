@@ -23,7 +23,8 @@ import { useTradeQueue } from '@/lib/api/launches/use-trade-queue';
 import { resumeTradeIdentity } from '@/lib/api/launches/trade-queue';
 import type { ApiNetwork } from '@/lib/api/launches/types';
 import { IndexedLaunchOverview } from '../_components/indexed-launch-overview';
-import { cardVariants } from '@/components/ui/card';
+import { BondingTechnicalDetails } from '../_components/bonding-technical-details';
+import { LaunchPageSkeleton } from '../_components/launch-page-skeleton';
 import { BondingTradeLayout } from '@/app/trade/[slug]/_components/bonding-trade-layout';
 
 function decodeRead<T>(
@@ -58,7 +59,7 @@ export function BondingCurvePage({
   </p> : null;
   const indexedFeedback = <>
     {indexed.isPending && <p role="status">Loading launch information…</p>}
-    {indexed.isError && <p role="alert" className="text-small text-muted-foreground">{indexed.error instanceof ApiError && indexed.error.status === 404 ? 'Waiting for launch indexing. Live contract trading remains available.' : indexed.error instanceof ApiError && indexed.error.status === 400 ? 'The launch address or network is invalid.' : 'Launch information is temporarily unavailable.'} <Button variant="outline" size="sm" onClick={() => void indexed.refetch()}>Retry</Button></p>}
+    {indexed.isError && <p role="alert" className="text-small text-muted-foreground">{indexed.error instanceof ApiError && indexed.error.status === 404 ? (surface === 'launch' ? 'This launch has not been indexed yet. Contract information is shown when available.' : 'Waiting for launch indexing. Live contract trading remains available.') : indexed.error instanceof ApiError && indexed.error.status === 400 ? 'The launch address or network is invalid.' : 'Launch information is temporarily unavailable.'} <Button variant="outline" size="sm" onClick={() => void indexed.refetch()}>Retry</Button></p>}
     {network !== API_NETWORK && <p className="text-small text-muted-foreground">Wallet trading is currently configured for Testnet.</p>}
     {queueFeedback}
     {recoveryError && <p role="status" className="text-small text-muted-foreground">Trade registration will be checked again. Keep your transaction hashes until recorded.</p>}
@@ -365,17 +366,13 @@ export function BondingCurvePage({
         }
       />
     );
-  return <IndexedLaunchOverview address={address} network={network} launch={indexed.data} snapshot={snapshot} feedback={<>{indexedFeedback}{feedback}</>}>
-    {snapshot && <section className={cardVariants({ variant: 'surface', size: 'lg' })}>
-      <LaunchFacts snapshot={snapshot} tokens={tokens} now={now} />
-      {walletSection}
-      {tokens && <section className="flex flex-col gap-5" aria-labelledby="trade-heading">
-        <h2 id="trade-heading" className="text-xl font-semibold">Buy / sell</h2>
-        <p className="text-sm text-muted-foreground">Amounts use 7 decimal places. Missing trustlines require a separate approval.</p>
-        <div className="grid gap-8 md:grid-cols-2">{buyForm}{sellForm}</div>
-      </section>}
-      {rawResponses}
-    </section>}
+  if (indexed.isPending && !indexed.data && !snapshot && !indexed.isError && !coreError)
+    return <LaunchPageSkeleton />;
+
+  return <IndexedLaunchOverview address={address} network={network} launch={indexed.data} snapshot={snapshot} tokens={tokens} loading={indexed.isPending || (network === API_NETWORK && !snapshot && !coreError)} feedback={<>{indexedFeedback}{feedback}</>}>
+    <BondingTechnicalDetails address={address} network={network} launch={indexed.data} snapshot={snapshot} tokens={tokens}>
+      {snapshot && rawResponses}
+    </BondingTechnicalDetails>
   </IndexedLaunchOverview>;
 }
 
