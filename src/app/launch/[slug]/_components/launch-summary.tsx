@@ -1,4 +1,4 @@
-import type { ComponentType, SVGProps } from 'react'
+import type { ComponentType, SVGProps, ReactNode } from 'react'
 import Link from 'next/link'
 import { ArrowRight, BadgeCheck, BookOpen, Globe } from 'lucide-react'
 import { DiscordIcon, TelegramIcon, XLogoIcon } from '@/components/brand-icons'
@@ -10,6 +10,8 @@ import { cardVariants } from '@/components/ui/card'
 import type { Launch } from '@/lib/data'
 import { cn } from '@/lib/utils'
 import type { LaunchContent, LaunchLinkKind } from '../_data/launch-content'
+
+export type LaunchView = Omit<Launch, 'name' | 'progress'> & { name: string; progress: number | null }
 
 const linkKinds: Record<LaunchLinkKind, { name: string; Icon: ComponentType<SVGProps<SVGSVGElement>> }> = {
   website: { name: 'Website', Icon: Globe },
@@ -27,8 +29,13 @@ export function LaunchSummary({
   launch,
   content,
   className,
+  network = 'testnet', mark, status, action,
 }: {
-  launch: Launch
+  launch: LaunchView
+  network?: string
+  mark?: ReactNode
+  status?: ReactNode
+  action?: ReactNode
   content: LaunchContent
   className?: string
 }) {
@@ -42,7 +49,7 @@ export function LaunchSummary({
     >
       <div className="px-6 py-6 sm:px-7">
         <div className="flex items-start gap-4 sm:gap-5">
-          <ProjectMark name={launch.name} size={72} className="shrink-0" />
+          <>{mark ?? <ProjectMark name={launch.name} size={72} className="shrink-0" />}</>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
               {verifiedRecords > 0 && (
@@ -51,8 +58,8 @@ export function LaunchSummary({
                   {verifiedRecords} verified records
                 </Badge>
               )}
-              <StatusPill status={launch.phase} />
-              <Badge variant="net" size="sm">TESTNET</Badge>
+              {status ?? <StatusPill status={launch.phase} />}
+              <Badge variant="net" size="sm">{network.toUpperCase()}</Badge>
             </div>
             <h1 id="project-name" className="mt-2.5 text-[30px] leading-[1.05] font-semibold tracking-[-0.03em]">
               {launch.name}
@@ -98,9 +105,9 @@ export function LaunchSummary({
           </dd>
         </dl>
         <p className="mt-5 text-[14px] leading-relaxed text-muted-foreground">
-          Reference data for this testnet preview. Eligibility, project links and transactions are not connected.
+          {action ? 'Eligibility and project links are not available for this launch.' : 'Reference data for this testnet preview. Eligibility, project links and transactions are not connected.'}
         </p>
-        <Button
+        {action ?? <Button
           size="lg"
           className="mt-6 h-[52px] w-full text-[16px]"
           render={<Link href={`/launch/${launch.slug}/participate`} />}
@@ -108,7 +115,7 @@ export function LaunchSummary({
         >
           {live ? 'Review participation' : 'View participation terms'}
           <ArrowRight data-icon="inline-end" />
-        </Button>
+        </Button>}
       </div>
     </section>
   )
