@@ -148,7 +148,7 @@ test('frozen trustlines and full receiving limits are rejected', async () => {
 function renderTrade(side, position = '20000000', confirmation = 'SUCCESS') {
   const calls = [];
   const stored = new Map();
-  const states = ['2', '2', '', false, '', '', undefined, undefined, null];
+  const states = ['2', '2', '', false, '', '', undefined, undefined, '', null];
   let index = 0;
   let loads = 0;
   let written;
@@ -173,6 +173,7 @@ function renderTrade(side, position = '20000000', confirmation = 'SUCCESS') {
       },
     },
     '@/app/create/_launch/transactions': {
+      API_NETWORK: 'testnet',
       NETWORK: Networks.TESTNET,
       horizon: { loadAccount: async () => { loads++; return wallet([line(usdc, '10'), ...(loads > 1 || !buying ? [line(asset, '2')] : [])]); } },
       soroban: {
@@ -181,6 +182,8 @@ function renderTrade(side, position = '20000000', confirmation = 'SUCCESS') {
       },
     },
     '@/components/ui/button': primitives, '@/components/ui/field': primitives, '@/components/ui/input': primitives,
+    '@/lib/api/launches/trade-queue': { enqueueTrade: () => true },
+    '@/lib/api/launches/queries': { usePageVisible: () => true },
   };
   const { TradeForm } = loadSource('trade-form.tsx', mocks, new Map(), {
     localStorage: { getItem: key => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, value), removeItem: key => stored.delete(key) },
@@ -219,7 +222,7 @@ test('an unresolved submitted trade preserves its hash and does not report succe
   const trade = renderTrade('sell', '20000000', 'NOT_FOUND');
   await trade.submit();
   assert.equal(trade.stored.size, 1);
-  assert.equal(trade.states[8], 'trade-hash');
+  assert.equal(trade.states[9], 'trade-hash');
   assert.match(trade.states[5], /still pending/);
   assert.ok(!trade.calls.includes('refreshed'));
 });
