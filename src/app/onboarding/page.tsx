@@ -21,8 +21,8 @@ const providers: { key: ConnectionKey; title: string; description: string; signa
 ]
 
 export default function OnboardingPage() {
-  const { isSignedIn, address } = useLaunchpad()
-  if (!isSignedIn) return <div className="mx-auto max-w-3xl p-6"><AuthGate destination="/onboarding" description="Connect your wallet with Blux to complete optional profile setup." /></div>
+  const { accountReady, address } = useLaunchpad()
+  if (!accountReady) return <div className="mx-auto max-w-3xl p-6"><AuthGate destination="/onboarding" description="Connect your wallet with Blux to complete optional profile setup." /></div>
   return <OnboardingContent key={address} address={address} />
 }
 

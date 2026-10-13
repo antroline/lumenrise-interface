@@ -1,3 +1,5 @@
+import { PublicProjects } from './public-projects'
+import { API_NETWORK } from '@/app/create/_launch/transactions'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProjectsTable, ProjectsTableSkeleton } from '@/components/projects-table'
 import { ResultsLink, ResultsStack, ResultsTransition } from '@/components/results-transition'
@@ -6,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { projects, type ProjectCategory, type ProjectListing } from './_data/projects'
 
 type Category = 'All' | ProjectCategory
-type SearchParams = Promise<{ category?: string; sort?: string; dir?: string; page?: string }>
+type SearchParams = Promise<{ category?: string; sort?: string; dir?: string; page?: string; livePage?: string; network?: string; owner?: string }>
 
 const PAGE_SIZE = 10
 const categories: Category[] = ['All', 'Launch', 'Auction', 'Trading']
@@ -48,8 +50,10 @@ function sortProjects(rows: ProjectListing[], sort: ProjectColumn, direction: So
   })
 }
 
-function projectsUrl(category: Category, sort: ProjectColumn, direction: SortDirection, page: number) {
+function projectsUrl(category: Category, sort: ProjectColumn, direction: SortDirection, page: number, context: { network?: string; owner?: string } = {}) {
   const query = new URLSearchParams({ category, sort, dir: direction, page: String(page) })
+  if (context.network) query.set('network', context.network)
+  if (context.owner) query.set('owner', context.owner)
   return `/launches?${query}`
 }
 
@@ -63,6 +67,9 @@ function paginationItems(page: number, pageCount: number): Array<number | 'ellip
 
 export default async function ProjectsPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams
+  const network = params.network === 'public' ? 'public' : API_NETWORK
+  const livePage = Math.max(1, Math.min(100000, Number(params.livePage) || 1))
+  const url = (category: Category, sort: ProjectColumn, direction: SortDirection, page: number) => projectsUrl(category, sort, direction, page, { network, owner: params.owner })
   const category = categories.find((item) => item.toLowerCase() === params.category?.toLowerCase()) ?? 'All'
   const requestedSort = projectColumns.find((column) => column.key === params.sort)?.key
   const sort = requestedSort ?? 'name'
@@ -94,7 +101,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
                 return (
                   <ResultsLink
                     key={item}
-                    href={projectsUrl(item, sort, direction, 1)}
+                    href={url(item, sort, direction, 1)}
                     scroll={false}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
@@ -114,7 +121,9 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
           <p className="caps tabular-nums">{matching.length} projects</p>
         </div>
 
+        <div className="mt-4"><PublicProjects key={network + ':' + (params.owner ?? '')} network={network} owner={params.owner} page={Math.floor(livePage)} category={category} sort={requestedSort} direction={direction} /></div>
         <section className="mt-4" aria-label="Project results">
+          <h2 className="mb-4 text-title font-semibold">Project previews</h2>
           <p className="mb-1 flex items-center justify-end gap-1 text-small text-muted-foreground xl:hidden">
             Scroll to compare
             <ArrowRight className="size-3.5" aria-hidden="true" />
@@ -133,7 +142,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
                     const next = column === sort
                       ? direction === 'asc' ? 'desc' : 'asc'
                       : defaultDirection(column)
-                    return { href: projectsUrl(category, column, next, 1), direction: next }
+                    return { href: url(category, column, next, 1), direction: next }
                   },
                 }}
               />
@@ -146,7 +155,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
             </p>
             <nav aria-label="Pagination" className="flex items-center gap-1 text-ui">
               {page > 1 ? (
-                <ResultsLink href={projectsUrl(category, sort, direction, page - 1)} scroll={false} aria-label="Previous page" className={cn(pagerItem, 'text-foreground hover:bg-secondary')}><ChevronLeft className="size-4" /></ResultsLink>
+                <ResultsLink href={url(category, sort, direction, page - 1)} scroll={false} aria-label="Previous page" className={cn(pagerItem, 'text-foreground hover:bg-secondary')}><ChevronLeft className="size-4" /></ResultsLink>
               ) : (
                 <span aria-label="Previous page unavailable" className={cn(pagerItem, 'bg-secondary text-faint')}><ChevronLeft className="size-4" /></span>
               )}
@@ -155,7 +164,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
               ) : (
                 <ResultsLink
                   key={number}
-                  href={projectsUrl(category, sort, direction, number)}
+                  href={url(category, sort, direction, number)}
                   scroll={false}
                   aria-label={`Page ${number}`}
                   aria-current={number === page ? 'page' : undefined}
@@ -169,7 +178,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
                 </ResultsLink>
               ))}
               {page < pageCount ? (
-                <ResultsLink href={projectsUrl(category, sort, direction, page + 1)} scroll={false} aria-label="Next page" className={cn(pagerItem, 'text-foreground hover:bg-secondary')}><ChevronRight className="size-4" /></ResultsLink>
+                <ResultsLink href={url(category, sort, direction, page + 1)} scroll={false} aria-label="Next page" className={cn(pagerItem, 'text-foreground hover:bg-secondary')}><ChevronRight className="size-4" /></ResultsLink>
               ) : (
                 <span aria-label="Next page unavailable" className={cn(pagerItem, 'bg-secondary text-faint')}><ChevronRight className="size-4" /></span>
               )}

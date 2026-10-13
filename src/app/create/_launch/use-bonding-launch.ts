@@ -1,10 +1,19 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useBlux, useWriteContract } from '@bluxcc/react';
 import { Keypair, scValToNative, StrKey } from '@stellar/stellar-sdk';
-import { useLaunchpad } from '@/lib/launchpad';
+import { ApiError } from '@/lib/api/client';
+import {
+  fileFromDataUrl,
+  getLaunchImage,
+  launchImageErrorMessage,
+  uploadLaunchImage,
+} from '@/lib/api/launches/images';
+import { useLaunchpad, type AccountState } from '@/lib/launchpad';
 import { buildBondingCurveParams, FACTORY_CONTRACT_ID } from './bonding-curve';
+import { waitForIndexedLaunch } from './indexing';
 import type { LaunchDraft } from './launch-draft';
 import type { LaunchOperation, LaunchOperationStep } from './launch-operation';
 import {
@@ -20,6 +29,7 @@ import {
 } from './launch-state';
 import {
   assetFor,
+  API_NETWORK,
   buildIssuance,
   buildSacDeployment,
   buildSetup,
@@ -32,10 +42,17 @@ import {
 
 const STORAGE_PREFIX = 'launchpad:testnet-bonding:';
 export const BONDING_AUTH_RETURN_KEY = 'launchpad:bonding-auth-return';
+/** The uploaded logo stored beside a launch record so retries reuse it. */
+type LaunchImageRecord = {
+  imageId: string;
+  publicUrl: string;
+  fingerprint: string;
+};
 type BondingRecord = {
   token: LaunchRecord;
   factoryHash?: string;
   curveAddress?: string;
+  image?: LaunchImageRecord;
 };
 
 function recordKey(owner: string, input: LaunchInput) {
@@ -47,6 +64,25 @@ function matchesInput(token: LaunchInput, input: LaunchInput) {
     token.name === input.name && token.code === input.code &&
     toUnits(token.amount) === toUnits(input.amount)
   );
+}
+
+function readImageRecord(value: unknown): LaunchImageRecord {
+  if (
+    value &&
+    typeof value === 'object' &&
+    'imageId' in value &&
+    typeof value.imageId === 'string' &&
+    'publicUrl' in value &&
+    typeof value.publicUrl === 'string' &&
+    'fingerprint' in value &&
+    typeof value.fingerprint === 'string'
+  )
+    return {
+      imageId: value.imageId,
+      publicUrl: value.publicUrl,
+      fingerprint: value.fingerprint,
+    };
+  throw new Error('The saved bonding-curve launch cannot be read.');
 }
 
 function readRecord(stored: string, owner: string): BondingRecord {
@@ -70,6 +106,10 @@ function readRecord(stored: string, owner: string): BondingRecord {
     curveAddress:
       'curveAddress' in value && typeof value.curveAddress === 'string'
         ? value.curveAddress
+        : undefined,
+    image:
+      'image' in value && value.image !== undefined
+        ? readImageRecord(value.image)
         : undefined,
   };
 }
@@ -102,6 +142,31 @@ function saveRecord(record: BondingRecord) {
   );
 }
 
+/**
+ * Detects image, owner, or network changes without persisting the image
+ * itself: two FNV-1a passes over the preview data URL plus its length.
+ */
+function imageFingerprint(dataUrl: string, owner: string) {
+  const input = `${API_NETWORK}:${owner}:${dataUrl}`;
+  let first = 0x811c9dc5;
+  let second = 0x811c9dc5 ^ 0x9e3779b9;
+  for (let index = 0; index < input.length; index++) {
+    const code = input.charCodeAt(index);
+    first = Math.imul(first ^ code, 0x01000193);
+    second = Math.imul(second ^ (code + (index & 0xff)), 0x01000193);
+  }
+  return `${input.length}:${(first >>> 0).toString(16)}:${(second >>> 0).toString(16)}`;
+}
+
+/** The image upload is identified by X-User-Id, which requires a finished registration. */
+function requireRegisteredAccount(account: AccountState) {
+  if (account.status === 'registered') return;
+  if (account.status === 'checking')
+    throw new Error('We are still checking your account. Try again in a moment.');
+  if (account.status === 'error') throw new Error(account.message);
+  throw new Error('Finish setting up your LumenRise account before launching.');
+}
+
 function requireHash(result: unknown) {
   if (
     result &&
@@ -124,6 +189,7 @@ function curveAddress(value: unknown) {
 export function useBondingLaunch() {
   const { user, isReady, sendTransaction } = useBlux();
   const { mutateAsync: writeContract } = useWriteContract<string>();
+  const router = useRouter();
   const account = useLaunchpad();
   const [working, setWorking] = useState(false);
   const [operation, setOperation] = useState<LaunchOperation | null>(null);
@@ -135,18 +201,101 @@ export function useBondingLaunch() {
     phase: LaunchOperation['phase'] = 'working',
     hash?: string,
   ) {
-    setOperation({ step, message, phase, hash, status: 'running' });
+    setOperation((current) => ({
+      step, message, phase, hash, status: 'running',
+      transactionHashes: {
+        ...(step === 'check' ? {} : current?.transactionHashes),
+        ...(hash ? { [step]: hash } : {}),
+      },
+    }));
   }
 
   function complete(address: string, hash?: string) {
-    setOperation({
-      step: 'curve',
+    setOperation((current) => ({
+      step: 'index',
       status: 'success',
       phase: 'confirming',
-      message: 'Your bonding curve is ready.',
+      message: 'Your launch is confirmed and the project page is ready.',
       curveAddress: address,
       hash,
-    });
+      transactionHashes: {
+        ...current?.transactionHashes,
+        ...(hash ? { curve: hash } : {}),
+      },
+    }));
+  }
+
+  /**
+   * After the factory transaction confirms on-chain, the server reads the
+   * launch from the contract on its own. Wait for that index before pointing
+   * the user at the token page; a still-pending index is not a launch failure
+   * and never triggers another transaction.
+   */
+  async function finish(address: string, hash?: string) {
+    report(
+      'index', 'Confirmed on Stellar. Preparing your project page.',
+      'confirming', hash,
+    );
+    const result = await waitForIndexedLaunch(address, API_NETWORK);
+    if (result !== 'ready')
+      throw new Error(
+        'Your launch is confirmed on Stellar. The project page is still preparing — check again in a moment.',
+      );
+    router.refresh();
+    complete(address, hash);
+  }
+
+  /**
+   * Uploads the project image before any wallet transaction, or reuses the
+   * stored upload when the image, owner, and network are unchanged and the
+   * server still holds it. The returned publicUrl goes to the contract as-is.
+   */
+  async function resolveLaunchImage(
+    draft: LaunchDraft,
+    saved: BondingRecord | null,
+    owner: string,
+  ): Promise<LaunchImageRecord> {
+    const fingerprint = imageFingerprint(draft.logo, owner);
+    const existing = saved?.image;
+    if (existing && existing.fingerprint === fingerprint) {
+      report('logo', 'Checking your uploaded project image.');
+      try {
+        const info = await getLaunchImage(existing.imageId);
+        if (
+          info.status !== 'expired' &&
+          info.status !== 'deleting' &&
+          info.ownerAddress === owner &&
+          info.network === API_NETWORK
+        ) {
+          return {
+            imageId: info.imageId,
+            publicUrl: info.publicUrl,
+            fingerprint,
+          };
+        }
+      } catch (cause) {
+        // Session and ownership failures must stop before any transaction; a
+        // missing or unreachable image record falls through to a fresh upload.
+        if (
+          cause instanceof ApiError &&
+          (cause.code === 'unauthenticated' ||
+            (cause.code === 'http' &&
+              (cause.status === 401 || cause.status === 403)))
+        )
+          throw new Error(launchImageErrorMessage(cause));
+      }
+    }
+    report('logo', 'Uploading your project image.');
+    try {
+      const uploaded = await uploadLaunchImage({
+        network: API_NETWORK,
+        ownerAddress: owner,
+        image: fileFromDataUrl(draft.logo),
+      });
+      return { ...uploaded, fingerprint };
+    } catch (cause) {
+      throw new Error(launchImageErrorMessage(cause));
+    }
   }
 
   async function launch(draft: LaunchDraft) {
@@ -163,14 +312,24 @@ export function useBondingLaunch() {
       report('check', 'Checking your wallet and launch settings.');
       const owner = user.address;
       requireCreator(owner);
+      requireRegisteredAccount(account.account);
       const input = validateInput({
         name: draft.name,
         code: draft.symbol,
         amount: draft.supply,
       });
       let saved = loadRecord(owner, input);
+      if (saved) {
+        const transactionHashes = {
+          setup: saved.token.setupHash,
+          issue: saved.token.distributionHash,
+          deploy: saved.token.sacHash,
+          curve: saved.factoryHash,
+        };
+        setOperation((current) => current ? { ...current, transactionHashes } : current);
+      }
       if (saved?.curveAddress) {
-        complete(saved.curveAddress, saved.factoryHash);
+        await finish(saved.curveAddress, saved.factoryHash);
         return;
       }
       // Recover a submitted factory call before considering another transfer.
@@ -185,20 +344,25 @@ export function useBondingLaunch() {
             result.returnValue ? scValToNative(result.returnValue) : null,
           );
           saveRecord({ ...saved, curveAddress: address });
-          complete(address, saved.factoryHash);
+          await finish(address, saved.factoryHash);
           return;
         }
         if (result.status !== 'FAILED')
           throw new Error(
             'The factory transaction is still pending. Retry to check its result.',
           );
-        saved = { token: saved.token };
+        saved = { token: saved.token, image: saved.image };
         saveRecord(saved);
       }
       const keypair = Keypair.random();
       const issuer = saved?.token.issuer ?? keypair.publicKey();
+      const image = await resolveLaunchImage(draft, saved, owner);
+      if (saved) {
+        saved = { ...saved, image };
+        saveRecord(saved);
+      }
       // Validate all contract inputs before funding or issuing a token.
-      buildBondingCurveParams(draft, owner, issuer);
+      buildBondingCurveParams(draft, owner, issuer, image.publicUrl);
       if (!saved) {
         report('setup', 'Preparing the issuer account and token trustline.');
         const wallet = await horizon.loadAccount(owner);
@@ -214,13 +378,14 @@ export function useBondingLaunch() {
             setupHash: transactionHash(setup),
             setupXdr: setup.toXDR(),
           },
+          image,
         };
         saveRecord(saved);
       }
       let token = saved.token;
       const saveToken = (next: LaunchRecord) => {
         token = next;
-        saveRecord({ token });
+        saveRecord({ token, image });
       };
       if (token.stage === 'setupPending') {
         report('setup', 'Checking issuer setup.', 'confirming', token.setupHash);
@@ -335,7 +500,7 @@ export function useBondingLaunch() {
         throw new Error(
           'Your connected wallet must hold the full token supply before launching the curve.',
         );
-      const params = buildBondingCurveParams(draft, owner, token.issuer);
+      const params = buildBondingCurveParams(draft, owner, token.issuer, image.publicUrl);
       report(
         'curve', 'Approve curve creation and the full supply transfer in your wallet.',
         'approval',
@@ -348,14 +513,14 @@ export function useBondingLaunch() {
         },
         options: { network: NETWORK },
       });
-      saveRecord({ token, factoryHash: result.hash });
+      saveRecord({ token, factoryHash: result.hash, image });
       report(
         'curve', 'Confirming your bonding curve on Stellar.',
         'confirming', result.hash,
       );
       const address = curveAddress(await result.returnValue());
-      saveRecord({ token, factoryHash: result.hash, curveAddress: address });
-      complete(address, result.hash);
+      saveRecord({ token, factoryHash: result.hash, curveAddress: address, image });
+      await finish(address, result.hash);
     } catch (cause) {
       const message = describeError(cause);
       setOperation((current) =>

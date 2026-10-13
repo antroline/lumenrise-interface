@@ -6,7 +6,10 @@ import { StrKey } from '@stellar/stellar-sdk';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { NETWORK, soroban } from '@/app/create/_launch/transactions';
+import { API_NETWORK, NETWORK, soroban } from '@/app/create/_launch/transactions';
+import type { ApiNetwork } from '@/lib/api/launches/types';
+import { enqueueTrade } from '@/lib/api/launches/trade-queue';
+import { usePageVisible } from '@/lib/api/launches/queries';
 import {
   decodeQuote, defaultLimit, errorMessage, formatAmount, integer, parseAmount,
   type Snapshot, type Tokens,
@@ -15,6 +18,7 @@ import { checkReceivingCapacity, confirmTransaction, ensureTradeTrustlines } fro
 
 type Props = {
   address: string;
+  network?: ApiNetwork;
   snapshot: Snapshot;
   tokens: Tokens;
   side: 'buy' | 'sell';
@@ -23,7 +27,7 @@ type Props = {
   refresh: () => Promise<void>;
 };
 
-export function TradeForm({ address, snapshot, tokens, side, locked, setLocked, refresh }: Props) {
+export function TradeForm({ address, network = API_NETWORK, snapshot, tokens, side, locked, setLocked, refresh }: Props) {
   const { user, isReady, sendTransaction } = useBlux();
   const { mutateAsync: writeContract } = useWriteContract();
   const [entry, setEntry] = useState('');
@@ -35,13 +39,30 @@ export function TradeForm({ address, snapshot, tokens, side, locked, setLocked, 
   const [error, setError] = useState('');
   const [hash, setHash] = useState<string>();
   const [trustHash, setTrustHash] = useState<string>();
+  const [registrationNotice, setRegistrationNotice] = useState('');
+  const visible = usePageVisible();
+  function queueHash(hash: string) {
+    if (user && !enqueueTrade(network, address, hash, user.address)) setRegistrationNotice('Your trade was submitted, but this browser cannot save its registration across reloads. Keep the transaction hash until it is recorded.');
+  }
   const pendingKey = user ? `launchpad:pending-trade:${NETWORK}:${address}:${user.address}` : undefined;
   const [pendingHash, setPendingHash] = useState(() => {
     if (!pendingKey) return null;
     try { return localStorage.getItem(pendingKey); } catch { return null; }
   });
+  useEffect(() => {
+    if (pendingHash && user) enqueueTrade(network, address, pendingHash, user.address);
+  }, [pendingHash, user, network, address]);
+  function readPending() {
+    try { return pendingKey ? localStorage.getItem(pendingKey) ?? pendingHash : pendingHash; }
+    catch { return pendingHash; }
+  }
+  function savePending(value: string | null) {
+    if (!pendingKey) return;
+    try { if (value) localStorage.setItem(pendingKey, value); else localStorage.removeItem(pendingKey); }
+    catch { setRegistrationNotice('Browser storage is unavailable. Keep the transaction hash until its confirmation and registration are complete.'); }
+  }
   const buying = side === 'buy';
-  const permitted = !snapshot.state.busy && (snapshot.status === 'Open' || (!buying && snapshot.status === 'Failed'));
+  const permitted = network === API_NETWORK && !snapshot.state.busy && (snapshot.status === 'Open' || (!buying && snapshot.status === 'Failed'));
   let amount: bigint | undefined;
   let inputError = '';
   try { if (entry) amount = parseAmount(entry); } catch (cause) { inputError = errorMessage(cause); }
@@ -56,7 +77,7 @@ export function TradeForm({ address, snapshot, tokens, side, locked, setLocked, 
   const quoteRead = useReadContracts(
     [{ address, fn: buying ? 'quote_buy' : 'quote_sell', args: [quoteAmount?.toString() ?? '0'] }],
     { network: NETWORK },
-    { enabled: isReady && permitted && quoteAmount !== undefined, refetchInterval: 15_000, retry: false },
+    { enabled: visible && isReady && permitted && quoteAmount !== undefined, refetchInterval: 15_000, retry: false },
   );
   let quote: ReturnType<typeof decodeQuote> | undefined;
   let quoteError = '';
@@ -78,18 +99,19 @@ export function TradeForm({ address, snapshot, tokens, side, locked, setLocked, 
     setWorking(true);
     setError('');
     try {
-      const pending = localStorage.getItem(pendingKey);
+      const pending = readPending();
       if (!pending) { setPendingHash(null); return; }
+      queueHash(pending);
       setHash(pending);
       setMessage('Checking your submitted trade…');
       const result = await soroban.getTransaction(pending);
       if (result.status === 'FAILED') {
-        localStorage.removeItem(pendingKey);
+        savePending(null);
         setPendingHash(null);
         throw new Error('The submitted trade failed on-chain. You can request a new quote and retry.');
       }
       await confirmTransaction(pending);
-      localStorage.removeItem(pendingKey);
+      savePending(null);
       setPendingHash(null);
       setMessage('Your submitted trade is confirmed. Balances refreshed.');
       await refresh();
@@ -110,12 +132,13 @@ export function TradeForm({ address, snapshot, tokens, side, locked, setLocked, 
       if (!StrKey.isValidEd25519PublicKey(user.address)) throw new Error('Trading requires a connected Stellar account.');
       // Resolve a previous submission before creating another transaction. Persist
       // immediately after submission so reloads cannot accidentally repeat a trade.
-      const pending = localStorage.getItem(pendingKey);
+      const pending = readPending();
       if (pending) {
+        queueHash(pending);
         setHash(pending);
         setPendingHash(pending);
         await confirmTransaction(pending);
-        localStorage.removeItem(pendingKey);
+        savePending(null);
         setPendingHash(null);
         setMessage('Your previous trade is confirmed. Balances refreshed; submit again for a new trade.');
         await refresh();
@@ -141,12 +164,13 @@ export function TradeForm({ address, snapshot, tokens, side, locked, setLocked, 
         options: { network: NETWORK },
       });
       submittedHash = result.hash;
+      queueHash(result.hash);
       setHash(result.hash);
       setPendingHash(result.hash);
-      localStorage.setItem(pendingKey, result.hash);
+      savePending(result.hash);
       setMessage('Trade submitted. Waiting for confirmation…');
       await confirmTransaction(result.hash);
-      localStorage.removeItem(pendingKey);
+      savePending(null);
       setPendingHash(null);
       setMessage(`${buying ? 'Buy' : 'Sell'} confirmed.`);
       setEntry('');
@@ -157,11 +181,11 @@ export function TradeForm({ address, snapshot, tokens, side, locked, setLocked, 
       setMessage('');
       // A definitively failed trade can be retried. Keep unresolved hashes.
       try {
-        const pending = submittedHash ?? localStorage.getItem(pendingKey);
+        const pending = submittedHash ?? readPending();
         if (pending) {
           const result = await soroban.getTransaction(pending);
           if (result.status === 'FAILED') {
-            localStorage.removeItem(pendingKey);
+            savePending(null);
             setPendingHash(null);
           }
         }
@@ -216,6 +240,7 @@ export function TradeForm({ address, snapshot, tokens, side, locked, setLocked, 
       </>}
       {message && <p role="status" className="text-sm">{message}</p>}
       {error && <p role="alert" className="break-words text-sm text-destructive">{error}</p>}
+      {registrationNotice && <p role="status" className="text-sm text-muted-foreground">{registrationNotice}</p>}
       {trustHash && <TransactionHash hash={trustHash} label="Trustline transaction" />}
       {hash && <TransactionHash hash={hash} label="Trade transaction" />}
     </form>

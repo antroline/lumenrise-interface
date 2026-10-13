@@ -69,7 +69,7 @@ export function NumberField({
         <div className="flex min-h-7 min-w-0 items-center gap-1">
           <FieldLabel
             htmlFor={id}
-            className="min-w-0 text-small text-muted-foreground"
+            className="min-w-0 text-medium text-muted-foreground"
           >
             {label}
           </FieldLabel>
@@ -95,9 +95,9 @@ export function NumberField({
             className="h-10 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-[23px] font-semibold tracking-[-0.025em] tabular-nums focus-visible:border-0 focus-visible:ring-0 aria-invalid:border-0 aria-invalid:ring-0 sm:text-[26px] short:h-9 short:sm:text-[23px]"
           />
           {unit && (
-            <span className="inline-flex shrink-0 items-center gap-1.5 pb-1.5 text-small font-semibold text-muted-foreground">
+            <span className="inline-flex shrink-0 items-center gap-2 pb-1 text-lg font-semibold text-foreground sm:text-xl">
               {(unit === 'XLM' || unit === 'USDC') && (
-                <QuoteIcon quote={unit} className="size-5" />
+                <QuoteIcon quote={unit} className="size-6 sm:size-7" />
               )}
               {unit}
             </span>

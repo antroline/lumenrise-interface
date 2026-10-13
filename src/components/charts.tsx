@@ -48,6 +48,8 @@ export function LineChart({
   band,
   label,
   className,
+  timestamps,
+  interpolation = 'linear',
 }: {
   data: number[]
   width?: number
@@ -64,6 +66,8 @@ export function LineChart({
   /** Accessible summary of what the chart shows. */
   label: string
   className?: string
+  timestamps?: number[]
+  interpolation?: 'linear' | 'step'
 }) {
   // useId output may contain characters that are invalid inside url(#…).
   const gradientId = `line-fill-${useId().replace(/[^\w-]/g, '')}`
@@ -75,8 +79,15 @@ export function LineChart({
   const lo = min ?? Math.min(...data)
   const hi = max ?? Math.max(...data)
   const y = (value: number) => padTop + innerHeight - ((value - lo) / (hi - lo || 1)) * innerHeight
-  const points = data.map((value, index): [number, number] => [(index / (data.length - 1)) * innerWidth, y(value)])
+  const timeStart = timestamps?.[0] ?? 0
+  const timeSpan = timestamps ? timestamps[timestamps.length - 1] - timeStart : 0
+  const samples = data.map((value, index): [number, number] => [
+    timestamps && timeSpan > 0 ? (timestamps[index] - timeStart) / timeSpan * innerWidth : (index / Math.max(1, data.length - 1)) * innerWidth,
+    y(value),
+  ])
+  const points = interpolation === 'step' ? samples.flatMap((point, index) => index ? [[point[0], samples[index - 1][1]] as [number, number], point] : [point]) : samples
   const last = points[points.length - 1]
+  if (!last) return null
 
   return (
     <svg

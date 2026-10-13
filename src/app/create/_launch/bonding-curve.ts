@@ -104,11 +104,16 @@ export function buildBondingCurveParams(
   draft: LaunchDraft,
   owner: string,
   issuer: string,
+  logo: string,
   nowSeconds = Math.floor(Date.now() / 1000),
 ): LaunchParams {
   if (draft.method !== 'bonding')
     throw new Error('Only bonding-curve launches are connected.');
   requireCreator(owner);
+  // The contract stores the server-hosted image URL; local previews (data or
+  // blob URLs) must never reach `metadata.logo`.
+  if (!/^https?:\/\//.test(logo))
+    throw new Error('Upload the project image before launching.');
   const token = validateInput({
     name: draft.name,
     code: draft.symbol,
@@ -153,7 +158,7 @@ export function buildBondingCurveParams(
     metadata: {
       name: token.name,
       description: draft.description,
-      logo: 'https://example.com/logo.png', // needs a field — hosted logo URL; temporary fallback authorized for the uploaded image.
+      logo,
       symbol: token.code,
     },
     allocations: { pool_bps: poolBps, curve_bps: curveBps, team_bps: teamBps },

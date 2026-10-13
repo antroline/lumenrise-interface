@@ -26,23 +26,20 @@ export function SettingsStep({ draft, setDraft, errors = {} }: DraftProps) {
   if (draft.method === 'bonding')
     return (
       <FieldGroup className="short:gap-4">
+        <LaunchScheduleFields
+          method="bonding"
+          startsAt={draft.bonding.startsAt}
+          endsAt={draft.bonding.endsAt}
+          durationDays={draft.bonding.durationDays}
+          onChange={updateBonding}
+          errors={errors}
+        />
         <SwitchRow
           label="Creator fee share"
-          description="Preview only: proposed 0.1% of trades handled by the launch contract. Exact coverage depends on the contract."
+          description="Proposed 0.1% of trades handled by the launch contract. Exact coverage depends on the contract."
           checked={draft.bonding.creatorFee}
           onChange={(creatorFee) => updateBonding({ creatorFee })}
         />
-        <div className="border-t border-divider pt-5">
-          <p className="mb-4 text-ui font-semibold">Launch timing</p>
-          <LaunchScheduleFields
-            method="bonding"
-            startsAt={draft.bonding.startsAt}
-            endsAt={draft.bonding.endsAt}
-            durationDays={draft.bonding.durationDays}
-            onChange={updateBonding}
-            errors={errors}
-          />
-        </div>
       </FieldGroup>
     );
   if (draft.method === 'fixed')

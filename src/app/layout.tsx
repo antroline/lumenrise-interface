@@ -47,7 +47,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     >
       <body>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-        <Providers>
+        <Providers apiBaseUrl={process.env.LUMENRISE_API_URL ?? ''}>
           <TooltipProvider>
             <AppShell>{children}</AppShell>
           </TooltipProvider>

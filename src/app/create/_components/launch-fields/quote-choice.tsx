@@ -10,9 +10,11 @@ import { QuoteIcon } from './quote-icon';
 export function QuoteChoice({
   value,
   onChange,
+  highlightSelection = false,
 }: {
   value: QuoteToken;
   onChange: (value: QuoteToken) => void;
+  highlightSelection?: boolean;
 }) {
   return (
     <Field>
@@ -32,14 +34,18 @@ export function QuoteChoice({
             key={quote}
             value={quote}
             aria-label={quote}
-            className="relative h-auto min-h-24 min-w-0 flex-col items-stretch rounded-xl border-border bg-card px-4 py-4 text-left data-pressed:border-foreground data-pressed:bg-muted data-pressed:text-foreground short:min-h-20 short:py-3"
+            className={cn(
+              'relative h-auto min-h-24 min-w-0 flex-col items-stretch rounded-xl border-border bg-card px-4 py-4 text-left data-pressed:border-foreground data-pressed:bg-muted data-pressed:text-foreground short:min-h-20 short:py-3',
+              highlightSelection && 'transition-[border-color,background-color,box-shadow] duration-200 data-pressed:ring-3 data-pressed:ring-lime/40 focus-visible:ring-lime/40',
+            )}
           >
             <span className="flex w-full items-center gap-2.5">
               <QuoteIcon quote={quote} />
               <span className="text-[17px] font-semibold">{quote}</span>
               <span
                 className={cn(
-                  'ml-auto grid size-5 place-items-center rounded-full bg-foreground text-background transition-opacity',
+                  'ml-auto grid size-5 place-items-center rounded-full transition-opacity',
+                  highlightSelection ? 'bg-ink text-lime' : 'bg-foreground text-background',
                   value === quote ? 'opacity-100' : 'opacity-0',
                 )}
                 aria-hidden="true"

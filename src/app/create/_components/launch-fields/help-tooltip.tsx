@@ -1,6 +1,6 @@
 'use client';
 
-import { CircleHelp } from 'lucide-react';
+import { CircleHelp, Info } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -31,15 +31,15 @@ export function HelpTooltip({
           aria-label={`${label}: ${children}`}
           className={cn(
             triggerClassName,
-            'hidden cursor-help [@media(hover:hover)]:inline-flex',
+            'hidden cursor-pointer [@media(hover:hover)]:inline-flex',
           )}
         >
-          <CircleHelp className="size-4" aria-hidden="true" />
+          <Info className="size-4" aria-hidden="true" />
         </TooltipTrigger>
         <TooltipContent
           side="top"
           sideOffset={8}
-          className="max-w-64 animate-none! text-left leading-relaxed transition-opacity duration-100 data-starting-style:opacity-0 data-ending-style:opacity-0 motion-reduce:transition-none"
+          className="max-w-64 text-left leading-relaxed"
         >
           {children}
         </TooltipContent>

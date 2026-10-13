@@ -1,21 +1,26 @@
 'use client';
 
+import { Check, TriangleAlert } from 'lucide-react';
 import {
   FieldDescription,
   FieldGroup,
   FieldLegend,
   FieldSet,
 } from '@/components/ui/field';
+import { cn } from '@/lib/utils';
 import {
   allocationLabels,
   formatAmount,
+  formatSupplyShare,
   numberValue,
+  validPercent,
   type LaunchDraft,
 } from '../../_launch/launch-draft';
 import { allocationError } from '../../_launch/launch-validation';
-import { AllocationPreview } from './allocation-preview';
+import { AllocationBar } from './allocation-bar';
+import { AllocationPresets } from './allocation-presets';
+import { AllocationRow } from './allocation-row';
 import { NumberField } from './number-field';
-import { PresetChoices } from './preset-choices';
 import type { DraftProps } from './types';
 import { LaunchFieldError, LaunchReveal } from '../launch-motion';
 
@@ -26,10 +31,48 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
       allocation: { ...current.allocation, ...patch },
     }));
   const invalidAllocation = allocationError(draft.allocation);
+  const saleLabel = allocationLabels[draft.method];
   const presets = [
     { label: '80 / 20 / 0', value: '80', poolShare: '20', teamShare: '0' },
     { label: '70 / 20 / 10', value: '70', poolShare: '20', teamShare: '10' },
     { label: '60 / 30 / 10', value: '60', poolShare: '30', teamShare: '10' },
+  ];
+  const shares = [
+    draft.allocation.saleShare,
+    draft.allocation.poolShare,
+    draft.allocation.teamShare,
+  ];
+  const totalPercent = shares.every((share) => validPercent(share))
+    ? shares.reduce(
+        (total, share) => total + Math.round(numberValue(share) * 100),
+        0,
+      ) / 100
+    : null;
+  const saleFieldError = invalidAllocation
+    ? undefined
+    : errors['allocation-sale'];
+  const barShares = [
+    {
+      id: 'sale',
+      label: saleLabel,
+      percent: draft.allocation.saleShare,
+      segment: 'bg-foreground',
+      onSegment: 'text-background',
+    },
+    {
+      id: 'pool',
+      label: 'Liquidity pool',
+      percent: draft.allocation.poolShare,
+      segment: 'bg-lime',
+      onSegment: 'text-primary-foreground',
+    },
+    {
+      id: 'team',
+      label: 'Team',
+      percent: draft.allocation.teamShare,
+      segment: 'bg-orange',
+      onSegment: 'text-primary-foreground',
+    },
   ];
   return (
     <FieldGroup className="gap-7 short:gap-5">
@@ -51,30 +94,27 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
             { label: '100B', value: '100000000000' },
           ]}
         />
-        <div className="mt-5 flex flex-wrap items-baseline justify-between gap-2 border-t border-divider pt-4 short:mt-3 short:pt-3">
-          <span className="text-small text-muted-foreground">
-            Your token supply
-          </span>
-          <strong className="break-all text-[20px] font-semibold tracking-[-0.02em] tabular-nums">
-            {formatAmount(draft.supply)}{' '}
-            <span className="text-small text-muted-foreground">
-              {draft.symbol || 'tokens'}
-            </span>
-          </strong>
-        </div>
       </div>
       <FieldSet className="border-t border-divider pt-5 short:pt-4">
-        <FieldLegend>Token allocation</FieldLegend>
+        <FieldLegend className="flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 text-lg! font-semibold tracking-[-0.01em]">
+          Token allocation
+          <span className="ml-auto whitespace-nowrap text-sm font-semibold tracking-normal tabular-nums">
+            {formatAmount(draft.supply)}{' '}
+            <span className="text-xs font-normal text-muted-foreground">
+              {draft.symbol || 'tokens'}
+            </span>
+          </span>
+        </FieldLegend>
         <FieldDescription>
-          Divide the total supply between the launch, liquidity pool and team.
-          The three shares must add up to 100%.
+          Allocate supply across bonding curve, liquidity, and team. Total must
+          equal 100%.
         </FieldDescription>
         <FieldGroup className="short:gap-4">
           <div>
             <p className="mb-3 text-small text-muted-foreground">
-              Starting allocations · launch / pool / team
+              Allocation presets
             </p>
-            <PresetChoices
+            <AllocationPresets
               label="Launch, pool and team allocation"
               value={
                 presets.find(
@@ -96,43 +136,70 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
               }}
             />
           </div>
-          <FieldGroup className="grid gap-4 @md/launch:grid-cols-2 @2xl/launch:grid-cols-3">
-            <NumberField
+          <div>
+            <div className="mb-2.5 flex items-center justify-between gap-3">
+              <span className="text-small text-muted-foreground">
+                Distribution
+              </span>
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-small font-semibold tabular-nums transition-colors duration-200',
+                  invalidAllocation
+                    ? 'bg-bad-soft text-bad'
+                    : 'bg-ok-soft text-ok',
+                )}
+              >
+                {invalidAllocation ? (
+                  <TriangleAlert aria-hidden="true" className="size-3.5" />
+                ) : (
+                  <Check aria-hidden="true" className="size-3.5" />
+                )}
+                Total {totalPercent ?? '—'}%
+              </span>
+            </div>
+            <AllocationBar shares={barShares} invalid={!!invalidAllocation} />
+          </div>
+          <div className="divide-y divide-divider">
+            <AllocationRow
               id="allocation-sale"
-              label={`${allocationLabels[draft.method]} allocation`}
-              unit="%"
+              label={saleLabel}
               value={draft.allocation.saleShare}
               onChange={(saleShare) => update({ saleShare })}
-              help={`Percentage of the total token supply offered to participants through ${allocationLabels[draft.method].toLowerCase()}. Pool and team tokens are allocated separately.`}
-              error={
-                errors['allocation-sale'] && !invalidAllocation
-                  ? errors['allocation-sale']
-                  : undefined
+              amount={`${formatSupplyShare(draft.supply, draft.allocation.saleShare)} ${draft.symbol || 'tokens'}`}
+              help={`Percentage of the total token supply offered to participants through ${saleLabel.toLowerCase()}. Pool and team tokens are allocated separately.`}
+              swatch="bg-foreground"
+              invalid={!!invalidAllocation || !!saleFieldError}
+              descriptionId={
+                invalidAllocation
+                  ? 'allocation-error'
+                  : saleFieldError
+                    ? 'allocation-sale-error'
+                    : undefined
               }
-              descriptionId={invalidAllocation ? 'allocation-error' : undefined}
-              invalid={!!invalidAllocation}
             />
-            <NumberField
+            <AllocationRow
               id="allocation-pool"
               label="Liquidity pool"
-              unit="%"
               value={draft.allocation.poolShare}
               onChange={(poolShare) => update({ poolShare })}
+              amount={`${formatSupplyShare(draft.supply, draft.allocation.poolShare)} ${draft.symbol || 'tokens'}`}
               help="Percentage of the total token supply reserved for the liquidity pool after the launch. This is a share of tokens, not of the payment asset raised."
-              descriptionId={invalidAllocation ? 'allocation-error' : undefined}
+              swatch="bg-lime"
               invalid={!!invalidAllocation}
+              descriptionId={invalidAllocation ? 'allocation-error' : undefined}
             />
-            <NumberField
+            <AllocationRow
               id="allocation-team"
-              label="Team allocation"
-              unit="%"
+              label="Team"
               value={draft.allocation.teamShare}
               onChange={(teamShare) => update({ teamShare })}
+              amount={`${formatSupplyShare(draft.supply, draft.allocation.teamShare)} ${draft.symbol || 'tokens'}`}
               help="Percentage of the total token supply reserved for the team. Set it to 0% for no team allocation. A positive share also needs a team vesting schedule."
-              descriptionId={invalidAllocation ? 'allocation-error' : undefined}
+              swatch="bg-orange"
               invalid={!!invalidAllocation}
+              descriptionId={invalidAllocation ? 'allocation-error' : undefined}
             />
-          </FieldGroup>
+          </div>
           <LaunchFieldError
             id="allocation-error"
             role="status"
@@ -140,7 +207,12 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
           >
             {invalidAllocation}
           </LaunchFieldError>
-          <AllocationPreview draft={draft} />
+          <LaunchFieldError
+            id="allocation-sale-error"
+            className="text-small text-bad"
+          >
+            {saleFieldError}
+          </LaunchFieldError>
           <LaunchReveal show={numberValue(draft.allocation.teamShare) > 0}>
             <FieldSet>
               <FieldLegend variant="label">Team vesting</FieldLegend>

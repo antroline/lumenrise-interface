@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
+  ArrowRight,
   // Gavel,
   // ImagePlus,
   // LineChart,
@@ -57,6 +58,16 @@ import { MethodChoice } from './method-choice';
 
 const firstSteps: WizardStep[] = ['project', 'method'];
 
+/** Subtle lime glow for the wizard's primary CTA: soft halo plus a faint
+    top-light, intensifying on hover and tightening on press. */
+const primaryCtaGlow = cn(
+  'shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_2px_10px_-2px_color-mix(in_srgb,var(--color-lime)_45%,transparent),0_14px_36px_-12px_color-mix(in_srgb,var(--color-lime)_40%,transparent)]',
+  'transition-[box-shadow,transform,background-color] duration-200',
+  'hover:-translate-y-0.5 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_4px_16px_-4px_color-mix(in_srgb,var(--color-lime)_55%,transparent),0_18px_48px_-12px_color-mix(in_srgb,var(--color-lime)_55%,transparent)]',
+  'active:shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_1px_6px_-1px_color-mix(in_srgb,var(--color-lime)_40%,transparent),0_8px_22px_-10px_color-mix(in_srgb,var(--color-lime)_35%,transparent)]',
+  'disabled:shadow-none motion-reduce:transform-none motion-reduce:transition-none',
+);
+
 type LaunchStudioProps = {
   resumeIssuer: string | null;
   initialMode: 'basic' | null;
@@ -79,6 +90,7 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
     resumeIssuer || initialMode === 'basic' ? 2 : 0,
   );
   const [direction, setDirection] = useState<'forward' | 'back'>('forward');
+  const panelRef = useRef<HTMLElement>(null);
   const [showErrors, setShowErrors] = useState(false);
   const [basicReturnReady, setBasicReturnReady] = useState(
     initialMode !== 'basic',
@@ -97,12 +109,17 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
         const stored = window.sessionStorage.getItem(BONDING_AUTH_RETURN_KEY);
         if (!stored) return;
         const restored: unknown = JSON.parse(stored);
-        if (!isBondingDraft(restored)) throw new Error('The saved bonding-curve form cannot be read.');
+        if (!isBondingDraft(restored))
+          throw new Error('The saved bonding-curve form cannot be read.');
         setDraft(restored);
         setStep(bondingSteps.length - 1);
         window.sessionStorage.removeItem(BONDING_AUTH_RETURN_KEY);
       } catch (cause) {
-        notify(cause instanceof Error ? cause.message : 'The saved bonding-curve form cannot be read.');
+        notify(
+          cause instanceof Error
+            ? cause.message
+            : 'The saved bonding-curve form cannot be read.',
+        );
       }
     }, 0);
     return () => window.clearTimeout(timeout);
@@ -171,9 +188,6 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
     setDirection(nextStep < step ? 'back' : 'forward');
     setStep(nextStep);
     setShowErrors(false);
-    requestAnimationFrame(() =>
-      document.getElementById('wizard-title')?.focus({ preventScroll: true }),
-    );
   }
 
   function choose(method: LaunchMethod) {
@@ -198,12 +212,7 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
     method: 'How will you launch your token?',
     token: 'Set supply and allocation',
     sale: `Configure ${methodLabels[draft.method].toLowerCase()}`,
-    settings:
-      draft.method === 'bonding'
-        ? 'Schedule the bonding curve'
-        : draft.method === 'auction'
-          ? 'Schedule the auction'
-          : 'Schedule the sale',
+    settings: 'Launch settings',
     eligibility: 'Who can participate?',
     vesting: 'When do participants receive tokens?',
     review: `Review ${methodLabels[draft.method].toLowerCase()}`,
@@ -213,11 +222,13 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
   return (
     <div
       data-launch-studio=""
-      className="relative grid w-full min-w-0 items-start gap-5 lg:grid-cols-[180px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)] xl:gap-6"
+      className="relative grid w-full min-w-0 items-start gap-5 lg:grid-cols-[max-content_minmax(0,1fr)] xl:gap-6"
     >
       <LaunchOperationDialog
         operation={bondingLaunch.operation}
         name={draft.name}
+        symbol={draft.symbol}
+        logo={draft.logo}
         open={progressOpen}
         onOpenChange={setProgressOpen}
         onRetry={launchBondingCurve}
@@ -233,7 +244,8 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
       </aside>
 
       <section
-        className="@container/launch relative flex min-h-120 min-w-0 flex-col rounded-[28px] border border-border bg-card p-5 sm:p-6 xl:p-7 short:min-h-100 short:sm:p-4 short:xl:p-4"
+        ref={panelRef}
+        className="@container/launch relative flex min-h-120 min-w-0 scroll-mt-24 flex-col rounded-[28px] border border-border bg-card p-5 sm:p-6 xl:p-7 short:min-h-100 short:sm:p-4 short:xl:p-4"
         aria-labelledby="wizard-title"
       >
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-divider pb-4 lg:hidden short:mb-4 short:pb-3">
@@ -263,7 +275,18 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
             : ''}
           : {stepLabels[currentStep]}
         </p>
-        <AnimatePresence initial={false} mode="popLayout" custom={direction}>
+        <AnimatePresence
+          initial={false}
+          mode="wait"
+          custom={direction}
+          onExitComplete={() => {
+            // Reposition only after the outgoing step is invisible, before entry.
+            const panel = panelRef.current;
+            if (panel && panel.getBoundingClientRect().top < 0) {
+              panel.scrollIntoView({ block: 'start', behavior: 'instant' });
+            }
+          }}
+        >
           <LaunchStepPanel
             key={`${currentStep}-${draft.method}`}
             direction={direction}
@@ -273,7 +296,9 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
                 ? 'Basic creates a token on testnet. The sale methods are setup previews until their contracts are connected.'
                 : currentStep === 'basic'
                   ? 'This is the live Stellar testnet token flow. Review the warning before connecting or signing.'
-                  : undefined
+                  : currentStep === 'settings'
+                    ? 'Choose when your token launch starts and ends.'
+                    : undefined
             }
             footer={
               <div
@@ -284,7 +309,7 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
               >
                 {!resumeIssuer && step > 0 && (
                   <Button
-                    className="h-12 rounded-2xl"
+                    className="h-14 rounded-2xl px-5"
                     variant="outline"
                     onClick={() => goToStep(step - 1)}
                   >
@@ -296,24 +321,34 @@ function LaunchStudioContent({ resumeIssuer, initialMode }: LaunchStudioProps) {
                   currentStep !== 'basic' &&
                   currentStep !== 'review' && (
                     <Button
-                      className="h-12 min-w-0 flex-1 rounded-2xl"
+                      className={cn(
+                        'h-14 min-w-0 flex-1 rounded-2xl text-base border-2 border-surface',
+                      )}
                       onClick={next}
                     >
                       Continue
+                      <ArrowRight
+                        data-icon="inline-end"
+                        className="transition-transform duration-200 group-hover/button:translate-x-0.5 motion-reduce:transition-none"
+                      />
                     </Button>
                   )}
                 {currentStep === 'review' && (
                   <Button
-                    className="h-12 min-w-0 flex-1 rounded-2xl"
+                    className={cn(
+                      'h-14 min-w-0 flex-1 rounded-2xl text-base',
+                      primaryCtaGlow,
+                    )}
                     disabled={
-                      draft.method !== 'bonding' ||
-                      !bondingLaunch.isReady
+                      draft.method !== 'bonding' || !bondingLaunch.isReady
                     }
                     onClick={launchBondingCurve}
                   >
                     {draft.method !== 'bonding'
                       ? 'Launch unavailable'
-                      : bondingLaunch.working ? 'Launching…' : 'Launch'}
+                      : bondingLaunch.working
+                        ? 'Launching…'
+                        : 'Launch'}
                   </Button>
                 )}
                 {currentStep === 'method' && (

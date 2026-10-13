@@ -1,4 +1,11 @@
-export type LaunchOperationStep = 'check' | 'setup' | 'issue' | 'deploy' | 'curve';
+export type LaunchOperationStep =
+  | 'check'
+  | 'logo'
+  | 'setup'
+  | 'issue'
+  | 'deploy'
+  | 'curve'
+  | 'index';
 
 export type LaunchOperation = {
   step: LaunchOperationStep;
@@ -6,5 +13,6 @@ export type LaunchOperation = {
   phase: 'working' | 'approval' | 'confirming';
   message: string;
   hash?: string;
+  transactionHashes?: Partial<Record<LaunchOperationStep, string>>;
   curveAddress?: string;
 };

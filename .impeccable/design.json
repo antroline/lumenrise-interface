@@ -265,7 +265,525 @@
         "name": "mobile",
         "value": "600px"
       }
-    ]
+    ],
+    "surfaceSystems": {
+      "/launch/[slug]": {
+        "schemaVersion": 2,
+        "generatedAt": "2026-10-13T14:13:49.714Z",
+        "scope": "/launch/[slug]",
+        "tokenDocument": "DESIGN.md",
+        "authority": "Current source and user-pinned route brief. Existing top-level sidecar entries remain preserved legacy material; they do not describe the current installed fonts or palette.",
+        "direction": {
+          "editorialFintech": 60,
+          "technicalDataVisualization": 40,
+          "seed": "7502b531",
+          "implementation": "code-led",
+          "approvedRaster": null,
+          "qualityCard": null
+        },
+        "sources": [
+          "src/app/globals.css",
+          "src/app/layout.tsx",
+          "src/components/ui/button.tsx",
+          "src/components/ui/input.tsx",
+          "src/components/ui/badge.tsx",
+          "src/components/ui/card.tsx",
+          "src/components/visual-system.tsx",
+          "src/components/app-shell.tsx",
+          "src/app/launch/[slug]/_components/project-detail.module.css",
+          "src/app/launch/[slug]/_components/graduation-hero.tsx",
+          "src/app/launch/[slug]/_components/allocation-chart.tsx",
+          "src/app/launch/[slug]/_components/bonding-curve-visualization.tsx",
+          "src/app/launch/[slug]/_components/launch-lifecycle.tsx",
+          "src/app/launch/[slug]/_components/launch-page-template.tsx"
+        ],
+        "extensions": {
+          "colorMeta": {
+            "lime": {
+              "role": "primary",
+              "displayName": "Lime",
+              "scope": "existing shared source",
+              "tonalRamp": [
+                "oklch(15% 0.22434 120.76)",
+                "oklch(26.43% 0.22434 120.76)",
+                "oklch(37.86% 0.22434 120.76)",
+                "oklch(49.29% 0.22434 120.76)",
+                "oklch(60.71% 0.22434 120.76)",
+                "oklch(72.14% 0.22434 120.76)",
+                "oklch(83.57% 0.22434 120.76)",
+                "oklch(95% 0.22434 120.76)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "lime-hover": {
+              "role": "primary",
+              "displayName": "Lime Hover",
+              "scope": "existing shared source",
+              "tonalRamp": [
+                "oklch(15% 0.21378 120.88)",
+                "oklch(26.43% 0.21378 120.88)",
+                "oklch(37.86% 0.21378 120.88)",
+                "oklch(49.29% 0.21378 120.88)",
+                "oklch(60.71% 0.21378 120.88)",
+                "oklch(72.14% 0.21378 120.88)",
+                "oklch(83.57% 0.21378 120.88)",
+                "oklch(95% 0.21378 120.88)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "ink": {
+              "role": "neutral",
+              "displayName": "Ink",
+              "scope": "existing shared source",
+              "tonalRamp": [
+                "oklch(15% 0.00000 89.88)",
+                "oklch(26.43% 0.00000 89.88)",
+                "oklch(37.86% 0.00000 89.88)",
+                "oklch(49.29% 0.00000 89.88)",
+                "oklch(60.71% 0.00000 89.88)",
+                "oklch(72.14% 0.00000 89.88)",
+                "oklch(83.57% 0.00000 89.88)",
+                "oklch(95% 0.00000 89.88)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "background-light": {
+              "role": "neutral",
+              "displayName": "Background Light",
+              "scope": "existing shared source",
+              "tonalRamp": [
+                "oklch(15% 0.00000 89.88)",
+                "oklch(26.43% 0.00000 89.88)",
+                "oklch(37.86% 0.00000 89.88)",
+                "oklch(49.29% 0.00000 89.88)",
+                "oklch(60.71% 0.00000 89.88)",
+                "oklch(72.14% 0.00000 89.88)",
+                "oklch(83.57% 0.00000 89.88)",
+                "oklch(95% 0.00000 89.88)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "card-light": {
+              "role": "neutral",
+              "displayName": "Card Light",
+              "scope": "existing shared source",
+              "tonalRamp": [
+                "oklch(15% 0.00000 89.88)",
+                "oklch(26.43% 0.00000 89.88)",
+                "oklch(37.86% 0.00000 89.88)",
+                "oklch(49.29% 0.00000 89.88)",
+                "oklch(60.71% 0.00000 89.88)",
+                "oklch(72.14% 0.00000 89.88)",
+                "oklch(83.57% 0.00000 89.88)",
+                "oklch(95% 0.00000 89.88)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "border-light": {
+              "role": "neutral",
+              "displayName": "Border Light",
+              "scope": "existing shared source",
+              "tonalRamp": [
+                "oklch(15% 0.00000 89.88)",
+                "oklch(26.43% 0.00000 89.88)",
+                "oklch(37.86% 0.00000 89.88)",
+                "oklch(49.29% 0.00000 89.88)",
+                "oklch(60.71% 0.00000 89.88)",
+                "oklch(72.14% 0.00000 89.88)",
+                "oklch(83.57% 0.00000 89.88)",
+                "oklch(95% 0.00000 89.88)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "muted-foreground-light": {
+              "role": "neutral",
+              "displayName": "Muted Foreground Light",
+              "scope": "existing shared source",
+              "tonalRamp": [
+                "oklch(15% 0.00625 106.63)",
+                "oklch(26.43% 0.00625 106.63)",
+                "oklch(37.86% 0.00625 106.63)",
+                "oklch(49.29% 0.00625 106.63)",
+                "oklch(60.71% 0.00625 106.63)",
+                "oklch(72.14% 0.00625 106.63)",
+                "oklch(83.57% 0.00625 106.63)",
+                "oklch(95% 0.00625 106.63)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "background-dark": {
+              "role": "neutral",
+              "displayName": "Background Dark",
+              "scope": "existing shared source",
+              "tonalRamp": [
+                "oklch(15% 0.00206 106.63)",
+                "oklch(26.43% 0.00206 106.63)",
+                "oklch(37.86% 0.00206 106.63)",
+                "oklch(49.29% 0.00206 106.63)",
+                "oklch(60.71% 0.00206 106.63)",
+                "oklch(72.14% 0.00206 106.63)",
+                "oklch(83.57% 0.00206 106.63)",
+                "oklch(95% 0.00206 106.63)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "foreground-dark": {
+              "role": "neutral",
+              "displayName": "Foreground Dark",
+              "scope": "existing shared source",
+              "tonalRamp": [
+                "oklch(15% 0.00662 106.52)",
+                "oklch(26.43% 0.00662 106.52)",
+                "oklch(37.86% 0.00662 106.52)",
+                "oklch(49.29% 0.00662 106.52)",
+                "oklch(60.71% 0.00662 106.52)",
+                "oklch(72.14% 0.00662 106.52)",
+                "oklch(83.57% 0.00662 106.52)",
+                "oklch(95% 0.00662 106.52)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "card-dark": {
+              "role": "neutral",
+              "displayName": "Card Dark",
+              "scope": "existing shared source",
+              "tonalRamp": [
+                "oklch(15% 0.00383 106.71)",
+                "oklch(26.43% 0.00383 106.71)",
+                "oklch(37.86% 0.00383 106.71)",
+                "oklch(49.29% 0.00383 106.71)",
+                "oklch(60.71% 0.00383 106.71)",
+                "oklch(72.14% 0.00383 106.71)",
+                "oklch(83.57% 0.00383 106.71)",
+                "oklch(95% 0.00383 106.71)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "border-dark": {
+              "role": "neutral",
+              "displayName": "Border Dark",
+              "scope": "existing shared source",
+              "tonalRamp": [
+                "oklch(15% 0.00685 106.76)",
+                "oklch(26.43% 0.00685 106.76)",
+                "oklch(37.86% 0.00685 106.76)",
+                "oklch(49.29% 0.00685 106.76)",
+                "oklch(60.71% 0.00685 106.76)",
+                "oklch(72.14% 0.00685 106.76)",
+                "oklch(83.57% 0.00685 106.76)",
+                "oklch(95% 0.00685 106.76)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "muted-foreground-dark": {
+              "role": "neutral",
+              "displayName": "Muted Foreground Dark",
+              "scope": "existing shared source",
+              "tonalRamp": [
+                "oklch(15% 0.00713 106.58)",
+                "oklch(26.43% 0.00713 106.58)",
+                "oklch(37.86% 0.00713 106.58)",
+                "oklch(49.29% 0.00713 106.58)",
+                "oklch(60.71% 0.00713 106.58)",
+                "oklch(72.14% 0.00713 106.58)",
+                "oklch(83.57% 0.00713 106.58)",
+                "oklch(95% 0.00713 106.58)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "launch-graphite": {
+              "role": "neutral",
+              "displayName": "Launch Graphite",
+              "scope": "/launch/[slug]",
+              "tonalRamp": [
+                "oklch(15% 0.00495 219.69)",
+                "oklch(26.43% 0.00495 219.69)",
+                "oklch(37.86% 0.00495 219.69)",
+                "oklch(49.29% 0.00495 219.69)",
+                "oklch(60.71% 0.00495 219.69)",
+                "oklch(72.14% 0.00495 219.69)",
+                "oklch(83.57% 0.00495 219.69)",
+                "oklch(95% 0.00495 219.69)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "launch-hero-text": {
+              "role": "neutral",
+              "displayName": "Launch Hero Text",
+              "scope": "/launch/[slug]",
+              "tonalRamp": [
+                "oklch(15% 0.00168 145.56)",
+                "oklch(26.43% 0.00168 145.56)",
+                "oklch(37.86% 0.00168 145.56)",
+                "oklch(49.29% 0.00168 145.56)",
+                "oklch(60.71% 0.00168 145.56)",
+                "oklch(72.14% 0.00168 145.56)",
+                "oklch(83.57% 0.00168 145.56)",
+                "oklch(95% 0.00168 145.56)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "launch-hero-line": {
+              "role": "neutral",
+              "displayName": "Launch Hero Line",
+              "scope": "/launch/[slug]",
+              "tonalRamp": [
+                "oklch(15% 0.01360 158.24)",
+                "oklch(26.43% 0.01360 158.24)",
+                "oklch(37.86% 0.01360 158.24)",
+                "oklch(49.29% 0.01360 158.24)",
+                "oklch(60.71% 0.01360 158.24)",
+                "oklch(72.14% 0.01360 158.24)",
+                "oklch(83.57% 0.01360 158.24)",
+                "oklch(95% 0.01360 158.24)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "launch-hero-muted": {
+              "role": "neutral",
+              "displayName": "Launch Hero Muted",
+              "scope": "/launch/[slug]",
+              "tonalRamp": [
+                "oklch(15% 0.01555 158.16)",
+                "oklch(26.43% 0.01555 158.16)",
+                "oklch(37.86% 0.01555 158.16)",
+                "oklch(49.29% 0.01555 158.16)",
+                "oklch(60.71% 0.01555 158.16)",
+                "oklch(72.14% 0.01555 158.16)",
+                "oklch(83.57% 0.01555 158.16)",
+                "oklch(95% 0.01555 158.16)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "launch-allocation-neutral": {
+              "role": "neutral",
+              "displayName": "Launch Allocation Neutral",
+              "scope": "/launch/[slug]",
+              "tonalRamp": [
+                "oklch(15% 0.01010 150.61)",
+                "oklch(26.43% 0.01010 150.61)",
+                "oklch(37.86% 0.01010 150.61)",
+                "oklch(49.29% 0.01010 150.61)",
+                "oklch(60.71% 0.01010 150.61)",
+                "oklch(72.14% 0.01010 150.61)",
+                "oklch(83.57% 0.01010 150.61)",
+                "oklch(95% 0.01010 150.61)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            },
+            "launch-allocation-pale": {
+              "role": "neutral",
+              "displayName": "Launch Allocation Pale",
+              "scope": "/launch/[slug]",
+              "tonalRamp": [
+                "oklch(15% 0.00876 145.50)",
+                "oklch(26.43% 0.00876 145.50)",
+                "oklch(37.86% 0.00876 145.50)",
+                "oklch(49.29% 0.00876 145.50)",
+                "oklch(60.71% 0.00876 145.50)",
+                "oklch(72.14% 0.00876 145.50)",
+                "oklch(83.57% 0.00876 145.50)",
+                "oklch(95% 0.00876 145.50)"
+              ],
+              "tonalRampPurpose": "Synthesized panel preview only; not additional application tokens."
+            }
+          },
+          "typographyMeta": {
+            "app-display": {
+              "displayName": "app-display",
+              "purpose": "Existing shared source role."
+            },
+            "app-title": {
+              "displayName": "app-title",
+              "purpose": "Existing shared source role."
+            },
+            "app-body": {
+              "displayName": "app-body",
+              "purpose": "Existing shared source role."
+            },
+            "app-label": {
+              "displayName": "app-label",
+              "purpose": "Existing shared source role."
+            },
+            "launch-percentage": {
+              "displayName": "launch-percentage",
+              "purpose": "Observed launch detail role; local to /launch/[slug]."
+            },
+            "launch-heading": {
+              "displayName": "launch-heading",
+              "purpose": "Observed launch detail role; local to /launch/[slug]."
+            },
+            "launch-reading": {
+              "displayName": "launch-reading",
+              "purpose": "Observed launch detail role; local to /launch/[slug]."
+            }
+          },
+          "shadows": [],
+          "motion": [
+            {
+              "name": "launch-meter-fill",
+              "value": "450ms cubic-bezier(0.22, 1, 0.36, 1)",
+              "purpose": "Finite scaleX progress change; no transition under reduced motion."
+            },
+            {
+              "name": "launch-trade-action",
+              "value": "180ms ease",
+              "purpose": "Background and one-pixel hover lift; reduced motion removes transform and transition."
+            },
+            {
+              "name": "launch-chart-line",
+              "value": "none",
+              "purpose": "Recharts line animation explicitly disabled."
+            }
+          ],
+          "breakpoints": [
+            {
+              "name": "sm",
+              "value": "640px"
+            },
+            {
+              "name": "md",
+              "value": "768px"
+            },
+            {
+              "name": "lg",
+              "value": "1024px"
+            },
+            {
+              "name": "xl",
+              "value": "1280px"
+            }
+          ]
+        },
+        "components": [
+          {
+            "name": "LumenRise primary button",
+            "kind": "button",
+            "refersTo": "app-button-primary",
+            "description": "Existing Base UI default visual variant; source src/components/ui/button.tsx.",
+            "html": "<button class=\"ds-button ds-primary\" type=\"button\">Review participation</button>",
+            "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 18px;border:1px solid transparent;border-radius:10px;font:600 14px/1.5 var(--font-sans, 'Bricolage Grotesque', Inter, sans-serif);letter-spacing:-0.005em;white-space:nowrap;cursor:pointer;transition:color 150ms ease,background-color 150ms ease,border-color 150ms ease}.ds-primary{background:var(--primary,#d6ff00);color:var(--primary-foreground,#0b0b0b)}.ds-primary:hover{background:var(--color-lime-hover,#c8ef00)}.ds-button:focus-visible{outline:2px solid var(--ring,#0b0b0b);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in srgb,var(--color-lime,#d6ff00) 60%,transparent)}.ds-button:active{transform:translateY(1px)}.ds-button:disabled{cursor:not-allowed;background:var(--secondary,#f0f0ec);color:var(--faint,#70706b);border-color:transparent}"
+          },
+          {
+            "name": "LumenRise outline button",
+            "kind": "button",
+            "refersTo": "app-button-outline",
+            "description": "Existing bordered secondary action, using semantic theme variables.",
+            "html": "<button class=\"ds-button ds-outline\" type=\"button\">View details</button>",
+            "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 18px;border:1px solid transparent;border-radius:10px;font:600 14px/1.5 var(--font-sans, 'Bricolage Grotesque', Inter, sans-serif);letter-spacing:-0.005em;white-space:nowrap;cursor:pointer;transition:color 150ms ease,background-color 150ms ease,border-color 150ms ease}.ds-outline{background:var(--background,#fcfcfc);color:var(--foreground,#0b0b0b);border-color:var(--border,#e5e5e5)}.ds-outline:hover{background:var(--muted,#f7f7f5)}.ds-button:focus-visible{outline:2px solid var(--ring,#0b0b0b);outline-offset:2px;box-shadow:0 0 0 3px color-mix(in srgb,var(--color-lime,#d6ff00) 60%,transparent)}.ds-button:active{transform:translateY(1px)}.ds-button:disabled{cursor:not-allowed;background:var(--secondary,#f0f0ec);color:var(--faint,#70706b);border-color:transparent}"
+          },
+          {
+            "name": "LumenRise input",
+            "kind": "input",
+            "refersTo": "app-input",
+            "description": "Existing Base UI field primitive; a visual specimen, not a new route field.",
+            "html": "<label class=\"ds-field-label\" for=\"ds-field\">Amount</label><input id=\"ds-field\" class=\"ds-input\" placeholder=\"Enter amount\" />",
+            "css": ".ds-field-label{display:block;margin-bottom:8px;color:var(--foreground,#0b0b0b);font:500 14px/1.5 var(--font-sans, 'Bricolage Grotesque', Inter, sans-serif)}.ds-input{height:46px;width:100%;min-width:0;padding:0 14px;border:1px solid var(--input,#e5e5e5);border-radius:10px;background:var(--background,#fcfcfc);color:var(--foreground,#0b0b0b);font:400 14.5px/1.5 var(--font-sans, 'Bricolage Grotesque', Inter, sans-serif);transition:border-color 150ms ease,box-shadow 150ms ease}.ds-input::placeholder{color:var(--faint,#70706b)}.ds-input:focus-visible{outline:none;border-color:var(--foreground,#0b0b0b);box-shadow:0 0 0 3px color-mix(in srgb,var(--color-lime,#d6ff00) 55%,transparent)}.ds-input:disabled{background:var(--muted,#f7f7f5);color:var(--faint,#70706b);cursor:not-allowed}.ds-input[aria-invalid=true]{border-color:var(--destructive,#b42318);box-shadow:0 0 0 3px color-mix(in srgb,var(--destructive,#b42318) 20%,transparent)}"
+          },
+          {
+            "name": "LumenRise badge",
+            "kind": "chip",
+            "refersTo": "app-badge",
+            "description": "Shared default badge; explicit network text rather than an invented status.",
+            "html": "<span class=\"ds-badge\">Testnet</span>",
+            "css": ".ds-badge{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:26px;padding:0 10px;border:1px solid var(--border,#e5e5e5);border-radius:999px;background:var(--background,#fcfcfc);color:var(--secondary-foreground,#2e2e2c);font:500 12.5px/1.45 var(--font-sans, 'Bricolage Grotesque', Inter, sans-serif)}"
+          },
+          {
+            "name": "LumenRise card",
+            "kind": "card",
+            "refersTo": "app-card",
+            "description": "Existing default card primitive; padding grows at the small breakpoint.",
+            "html": "<section class=\"ds-card\"><h3 class=\"ds-card-title\">Launch terms</h3><p class=\"ds-card-copy\">Review the supplied project information.</p></section>",
+            "css": ".ds-card{display:flex;flex-direction:column;gap:16px;padding:20px;border:1px solid var(--border,#e5e5e5);border-radius:16px;background:var(--card,#fff);color:var(--card-foreground,#0b0b0b);font-family:var(--font-sans, 'Bricolage Grotesque', Inter, sans-serif)}.ds-card-title{margin:0;font-size:16px;font-weight:600;line-height:1.3;letter-spacing:-0.01em}.ds-card-copy{margin:0;color:var(--muted-foreground,#62625e);font-size:13px;line-height:1.45}@media(min-width:640px){.ds-card{padding:24px}}"
+          },
+          {
+            "name": "LumenRise header link",
+            "kind": "nav",
+            "description": "Observed headerNavItem treatment; static links only, preserving navigation primitive authority.",
+            "html": "<nav class=\"ds-nav\" aria-label=\"Primary\"><a class=\"ds-nav-link\" href=\"/\" aria-current=\"page\">Discover</a><a class=\"ds-nav-link\" href=\"/launches\">Projects</a></nav>",
+            "css": ".ds-nav{display:flex;flex-wrap:wrap;gap:4px}.ds-nav-link{display:inline-flex;align-items:center;height:36px;padding:0 8px;border-radius:10px;color:var(--muted-foreground,#62625e);font:500 14px/1.5 var(--font-sans, 'Bricolage Grotesque', Inter, sans-serif);text-decoration:none;white-space:nowrap;transition:color 150ms ease,background-color 150ms ease}.ds-nav-link[aria-current=page],.ds-nav-link:hover{color:var(--foreground,#0b0b0b)}.ds-nav-link:hover{background:var(--muted,#f7f7f5)}.ds-nav-link:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--color-lime,#d6ff00) 55%,transparent)}@media(min-width:1280px){.ds-nav-link{padding:0 12px;font-size:16px}}"
+          },
+          {
+            "name": "Launch graduation instrument",
+            "kind": "custom",
+            "refersTo": "launch-graduation",
+            "description": "Route-local graduation surface; unavailable specimen avoids fabricating launch amounts.",
+            "html": "<section class=\"ds-graduation\"><div class=\"ds-graduation-head\"><h2>Graduation progress</h2><span class=\"ds-graduation-status\">Unavailable</span></div><p class=\"ds-graduation-value\">—</p><p class=\"ds-graduation-note\">Net quote reserves · unavailable</p></section>",
+            "css": ".ds-graduation{padding:28px 32px 24px;color:#f9faf9;background:#191c1d;border:1px solid #303536;border-radius:14px;overflow:hidden;font-family:var(--font-sans, 'Bricolage Grotesque', Inter, sans-serif)}.ds-graduation-head{display:flex;align-items:center;justify-content:space-between;gap:16px}.ds-graduation-head h2{margin:0;font-size:22px;font-weight:500;letter-spacing:-0.025em}.ds-graduation-status{display:inline-flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid #46504b;border-radius:999px;color:#dce2dc;font-size:12px}.ds-graduation-status::before{content:'';width:6px;height:6px;border-radius:50%;background:#aebbb1}.ds-graduation-value{margin:24px 0 28px;font-size:clamp(4rem,8vw,7.5rem);font-weight:600;line-height:0.95;letter-spacing:-0.04em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.ds-graduation-note{margin:18px 0 0;font-size:12px;line-height:1.6;color:#b5c0b9}@media(max-width:639px){.ds-graduation{padding:24px 20px}.ds-graduation-head h2{font-size:19px}}"
+          },
+          {
+            "name": "Launch lifecycle unavailable stage",
+            "kind": "custom",
+            "description": "Observed final stage makes the absent post-graduation integration explicit.",
+            "html": "<div class=\"ds-stage\"><span class=\"ds-stage-marker\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M5 12h14\"/></svg></span><strong>Post-Graduation</strong><p>Not implemented</p></div>",
+            "css": ".ds-stage{min-width:0;padding-right:12px;color:var(--muted-foreground,#62625e);font-family:var(--font-sans, 'Bricolage Grotesque', Inter, sans-serif)}.ds-stage-marker{display:grid;place-items:center;width:25px;height:25px;border:1px dashed var(--border,#e5e5e5);border-radius:50%;background:var(--background,#fcfcfc)}.ds-stage-marker svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}.ds-stage strong{display:block;margin-top:12px;font-size:13px;font-weight:600;line-height:1.4}.ds-stage p{margin:4px 0 0;font-size:11px;line-height:1.5}"
+          }
+        ],
+        "layout": {
+          "containerMaxWidth": "1520px",
+          "stickyRailFrom": "1024px",
+          "stickyTop": "84px",
+          "railLarge": "minmax(358px, 400px)",
+          "railExtraLarge": "462px",
+          "railMaxHeight": "calc(100svh - 104px)",
+          "narrowOrder": "Identity, eligibility, CTA first; evaluation content follows."
+        },
+        "dataContract": [
+          "Graduation measures net quote reserves excluding fees against target; unknown progress is unavailable.",
+          "Curve uses exact BigInt ceiling model arithmetic; it is not recorded price history or an executable quote.",
+          "Allocation diagram uses supplied verified categories only; missing or invalid data stays missing.",
+          "Only contract status confirms graduation; target position is a model estimate.",
+          "Four lifecycle stages; Post-Graduation is explicitly not implemented.",
+          "Existing wallet, network, quote, transaction, eligibility, and source limitations remain authoritative."
+        ],
+        "notCanonized": [
+          "Retained legacy cobalt, Newsreader, Manrope, shadow, motion, and breakpoint entries are not evidence of current source identity.",
+          "Existing functional caps labels do not establish decorative eyebrows as house style."
+        ],
+        "narrative": {
+          "dos": [
+            "Do preserve existing shared graphite/lime tokens, Bricolage Grotesque, and semantic light/dark behavior.",
+            "Do keep launch-prefixed treatments scoped to `/launch/[slug]`.",
+            "Do align amounts and percentages with tabular numerals and thin rules.",
+            "Do preserve identity and CTA first on narrow screens, and the existing sticky decision rail on desktop.",
+            "Do distinguish model estimates, verified allocations, unavailable data, and confirmed contract state.",
+            "Do honor reduced motion and preserve focus, accessible records, and existing wallet/transaction behavior."
+          ],
+          "rules": [
+            {
+              "name": "The Scope Rule",
+              "section": "colors",
+              "body": "Launch-prefixed tokens and the graphite graduation treatment belong to `/launch/[slug]`; unrelated pages retain their established tokens and composition."
+            },
+            {
+              "name": "The Numeric Alignment Rule",
+              "section": "typography",
+              "body": "Use tabular numerals for repeated amounts, percentages, chart readouts, and allocation shares so updates retain column alignment."
+            },
+            {
+              "name": "The Instrument Depth Rule",
+              "section": "elevation & depth",
+              "body": "On launch detail, convey emphasis through graphite, lime, scale, and rules; do not add heavy shadows, blue illumination, or glow."
+            }
+          ],
+          "donts": [
+            "Don't spread the local graphite graduation surface or page composition to unrelated routes.",
+            "Don't add blue, cream, glows, or heavy decorative shadows to the redesigned launch detail.",
+            "Don't invent allocation categories, historical price activity, eligibility outcomes, or post-graduation execution.",
+            "Don't treat retained legacy sidecar typography or cobalt tokens as current source authority.",
+            "Don't turn decorative eyebrows, glyph icons, or continuous animation into new house rules."
+          ],
+          "northStar": "The Launch Instrument",
+          "overview": "LumenRise's existing interface uses Bricolage Grotesque, graphite and lime, neutral surfaces, compact controls, and clear numeric hierarchy. Shared source tokens remain authoritative. This document records the current foundation and the finished `/launch/[slug]` presentation; it does not authorize a redesign of other routes.\n\nThe launch detail expresses the user-pinned direction of 60% Editorial Fintech and 40% Technical Data Visualization. Spacious project reading sits beside exact, inspectable launch information. Its graphite graduation instrument is a local exception within the light neutral page, while semantic surrounding surfaces continue to support dark mode. The code-led direction uses seed `7502b531`; no approved raster composition or separate quality card exists.",
+          "keyCharacteristics": [
+            "Existing graphite and lime identity with Bricolage Grotesque throughout.",
+            "Strong tabular figures, restrained corners, thin rules, and aligned data.",
+            "A route-local graphite graduation instrument within theme-aware neutral content.",
+            "Explicit provenance and limitations beside charts and launch actions."
+          ]
+        }
+      }
+    }
   },
   "components": [
     {

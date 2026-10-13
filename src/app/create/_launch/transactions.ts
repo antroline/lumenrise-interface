@@ -10,8 +10,12 @@ import {
   TransactionBuilder,
   type Transaction,
 } from '@stellar/stellar-sdk';
+import type { ApiNetwork } from '@/lib/api/launches/types';
 
 export const NETWORK = Networks.TESTNET;
+/** The launches API spells the same Stellar network as `testnet`/`public`. */
+export const API_NETWORK: ApiNetwork =
+  (NETWORK as string) === Networks.PUBLIC ? 'public' : 'testnet';
 export const LOCK_CONTRACT_ID =
   'CAP4INYPX7MRQJXLDVO5PU6MTB22QPZMOJSEPEF3R3QZXMR2A6JO2X7K';
 export const horizon = new Horizon.Server(

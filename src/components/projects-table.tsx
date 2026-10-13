@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react'
 import Link from 'next/link'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { ProjectMark } from '@/components/project-mark'
+import { TokenLogo } from '@/components/token-logo'
 import { ResultsLink } from '@/components/results-transition'
 import { StatusDot } from '@/components/status'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -31,6 +32,8 @@ const phaseStatus: Record<ProjectPhase, { label: string; tone: ComponentProps<ty
   settling: { label: 'Settling', tone: 'warn' },
   completed: { label: 'Completed', tone: 'gray' },
   refunded: { label: 'Refunded', tone: 'warn' },
+  unavailable: { label: 'Unavailable', tone: 'gray' },
+  failed: { label: 'Failed', tone: 'warn' },
 }
 
 const tableClass = 'min-w-[880px] table-fixed text-sm'
@@ -72,7 +75,9 @@ function ProjectColumns({ directory = false }: { directory?: boolean }) {
 function ProjectName({ row, directory = false }: { row: ProjectTableRow; directory?: boolean }) {
   return (
     <>
-      <ProjectMark name={row.name} size={directory ? 42 : 36} />
+      {row.logo !== undefined
+        ? <TokenLogo logo={row.logo} name={row.name} seed={row.id} size={directory ? 42 : 36} />
+        : <ProjectMark name={row.name} size={directory ? 42 : 36} />}
       <span className={cn('truncate font-medium', directory && 'text-base')}>{row.title ?? row.name}</span>
       {row.ticker && <span className="shrink-0 text-small text-muted-foreground">{row.ticker}</span>}
     </>
@@ -170,7 +175,7 @@ export function ProjectsTable({
                   )}
                 >
                   <StatusDot tone={status.tone} />
-                  {status.label}
+                  {row.statusLabel ?? status.label}
                 </span>
               </TableCell>
               <TableCell className={cn(directory ? directoryCellClass : cellClass, 'tabular-nums', !directory && 'whitespace-nowrap')}>

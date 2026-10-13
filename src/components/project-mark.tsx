@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { Blockie } from '@/components/blockie'
 
 const ink = '#0B0B0B'
 const lime = '#D6FF00'
@@ -103,15 +104,20 @@ const marks = {
 
 export type ProjectMarkName = keyof typeof marks
 
+function isProjectMarkName(name: string): name is ProjectMarkName {
+  return Object.hasOwn(marks, name)
+}
+
 export function ProjectMark({
   name,
   size = 40,
   className,
 }: {
-  name: ProjectMarkName
+  name: string
   size?: number
   className?: string
 }) {
+  if (!isProjectMarkName(name)) return <Blockie seed={name} size={size} radius={Math.round(size * 0.28)} />
   return (
     <svg
       width={size}

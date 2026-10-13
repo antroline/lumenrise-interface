@@ -27,7 +27,7 @@ export function LaunchStepper({
   return (
     <nav
       aria-label="Launch steps"
-      className="max-h-[calc(100svh-7rem)] overflow-y-auto rounded-[28px] border border-border bg-card px-4 py-5 short:py-4"
+      className="min-w-80 max-h-[calc(100svh-7rem)] overflow-y-auto rounded-[28px] border border-border bg-card px-4 py-5 short:py-4"
     >
       <ol>
         {steps.map((step, index) => {
@@ -39,7 +39,7 @@ export function LaunchStepper({
                 className={cn(
                   'relative z-10 grid size-9 shrink-0 place-items-center rounded-full text-[16px] font-medium tabular-nums transition-colors duration-200 short:size-8 short:text-[15px]',
                   active
-                    ? 'bg-foreground text-background'
+                    ? 'bg-primary text-black border border-border'
                     : 'bg-muted text-muted-foreground',
                 )}
                 aria-hidden="true"
@@ -59,7 +59,7 @@ export function LaunchStepper({
                 </span>
                 <span
                   className={cn(
-                    'block text-[15px] font-medium leading-5',
+                    'block whitespace-nowrap text-[15px] font-medium leading-5',
                     active ? 'text-foreground' : 'text-muted-foreground',
                   )}
                 >
