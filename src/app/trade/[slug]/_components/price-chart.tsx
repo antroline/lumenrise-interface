@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { LineChart } from '@/components/charts'
 import { Label } from '@/components/stat'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -14,14 +14,17 @@ export function PriceChart({
   price,
   series,
   quoteSymbol = 'USD',
+  history,
 }: {
   ticker: string
   price: string
   series?: Record<ChartTimeframe, PriceSeries>
   quoteSymbol?: string
+  history?: { range: ChartTimeframe; onRangeChange: (range: ChartTimeframe) => void; content: ReactNode }
 }) {
   const [timeframe, setTimeframe] = useState<ChartTimeframe>('3M')
-  const current = series?.[timeframe]
+  const selected = history?.range ?? timeframe
+  const current = series?.[selected]
 
   return (
     <>
@@ -35,22 +38,25 @@ export function PriceChart({
         </div>
         <ToggleGroup
           aria-label="Chart timeframe"
-          value={[timeframe]}
+          value={[selected]}
           onValueChange={(values) => {
             const [next] = values
-            if (next) setTimeframe(next as ChartTimeframe)
+            if (timeframes.includes(next as ChartTimeframe)) {
+              if (history) history.onRangeChange(next as ChartTimeframe)
+              else setTimeframe(next as ChartTimeframe)
+            }
           }}
           className="font-mono"
         >
           {timeframes.map((option) => (
-            <ToggleGroupItem key={option} value={option} disabled={!series} className="font-mono text-meta">
+            <ToggleGroupItem key={option} value={option} disabled={!series && !history} className="font-mono text-meta">
               {option}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
       </div>
       <div className="mt-6">
-        {current ? <LineChart
+        {history ? history.content : current ? <LineChart
           data={current.data}
           height={280}
           min={current.min}
