@@ -3,8 +3,17 @@ import { formatAmount } from '@/app/launch/[slug]/_bonding/contract';
 import type { ApiNetwork } from './types';
 import type { ChartResult, ChartRange } from './market';
 
-export function displayAmount(raw: string | null | undefined) {
-  return raw == null ? '—' : formatAmount(BigInt(raw));
+export function roundAmount(raw: string, maxDecimals: number) {
+  // Round to the requested precision with exact integer arithmetic.
+  const units = BigInt(raw);
+  const keep = BigInt(10 ** (7 - maxDecimals));
+  return (((units + keep / BigInt(2)) / keep) * keep).toString();
+}
+
+export function displayAmount(raw: string | null | undefined, maxDecimals?: number) {
+  if (raw == null) return '—';
+  if (maxDecimals === undefined) return formatAmount(BigInt(raw));
+  return formatAmount(BigInt(roundAmount(raw, maxDecimals)));
 }
 export function pairLabel(pair: string | undefined, network: ApiNetwork) {
   if (!pair) return 'Pair token';
