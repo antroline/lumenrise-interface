@@ -76,8 +76,8 @@ test('maps exact amounts, pair, allocations, team vesting, fee toggle, and chose
   assert.equal(params.vesting.schedule.tag, 'Weekly');
   assert.equal(params.curve.graduation_target, '12345678901');
   const inventory = (9007199254740993n * 4001n) / 10000n;
-  assert.equal(params.curve.virtual_base_reserve, String(inventory * 3n));
-  assert.equal(params.curve.virtual_quote_reserve, String(inventory * 3n));
+  assert.equal(params.curve.virtual_base_reserve, String(inventory * 2n));
+  assert.equal(params.curve.virtual_quote_reserve, '12345678901');
   assert.equal(params.curve.creator_fee_bps, 10);
   assert.ok(params.curve.creator_payout_bps + 100 <= 10000);
   assert.equal(params.starts_at, '1800000060');
@@ -621,4 +621,29 @@ test('index polling aborts on unexpected errors and treats network trouble as te
   });
   assert.equal(await offline.indexing.waitForIndexedLaunch(curve, 'testnet'), 'ready');
   assert.equal(offline.checks.length, 3);
+});
+
+const { calculateCurveReserves } = loadSource('calculate-curve-reserves.ts');
+test('100K target and 50M inventory raise the target with increasing prices', () => {
+  const unit = 10_000_000n, inventory = 50_000_000n * unit, target = 100_000n * unit;
+  const r = calculateCurveReserves(inventory, target);
+  const base = BigInt(r.virtual_base_reserve), quote = BigInt(r.virtual_quote_reserve);
+  const cost = sold => (quote * sold + base - sold - 1n) / (base - sold);
+  const price = sold => (quote * base * unit + (base - sold) ** 2n - 1n) / (base - sold) ** 2n;
+  assert.equal(cost(0n), 0n);
+  assert.equal(cost(inventory), target);
+  assert.equal(price(0n), 10_000n); // 0.001 pair per token
+  assert.equal(price(inventory), 40_000n); // 0.004 pair per token
+  assert.ok(price(inventory / 100n) > price(0n));
+  let raised = 0n;
+  for(let i=1n;i<=100n;i++) raised += cost(inventory*i/100n) - cost(inventory*(i-1n)/100n);
+  assert.equal(raised, target); // Split trades telescope, excluding creator fees.
+});
+test('curve calibration preserves exact odd amounts and factory reserve limits', () => {
+  const inventory = 9007199254740993n, target = 12345678901n;
+  const r = calculateCurveReserves(inventory,target);
+  assert.equal(BigInt(r.virtual_quote_reserve)*inventory/(BigInt(r.virtual_base_reserve)-inventory),target);
+  assert.throws(() => calculateCurveReserves(0n,target));
+  assert.throws(() => calculateCurveReserves(inventory,0n));
+  assert.throws(() => calculateCurveReserves(4611686018427387904n,target), /contract amount limit/);
 });

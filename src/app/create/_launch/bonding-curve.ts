@@ -11,6 +11,7 @@ import {
   validateInput,
 } from './launch-state';
 import { assetFor, NETWORK } from './transactions';
+import { calculateCurveReserves } from './calculate-curve-reserves';
 
 export const FACTORY_CONTRACT_ID =
   'CDG76JM6I67SGIV5ZN4WK6DW54ZUWPL6BMXD234ULWIERXRRYJ5QVDZC';
@@ -151,6 +152,11 @@ export function buildBondingCurveParams(
   )
     throw new Error('Choose a future start and an end after the start.');
 
+  const reserves = calculateCurveReserves(
+    curveInventory,
+    toUnits(validateAmount(draft.bonding.target)),
+  );
+
   return {
     owner,
     asset: assetFor(token.code, issuer).contractId(NETWORK),
@@ -168,11 +174,7 @@ export function buildBondingCurveParams(
       schedule: { tag: 'Weekly' }, // needs a field — unlock schedule; allowed: Daily, Weekly, Monthly.
     },
     curve: {
-      virtual_base_reserve: (curveInventory * BigInt(3)).toString(), // needs a field — virtual base reserve in stroops.
-      virtual_quote_reserve: (curveInventory * BigInt(3)).toString(), // needs a field — virtual quote reserve in pair stroops.
-      graduation_target: toUnits(
-        validateAmount(draft.bonding.target),
-      ).toString(),
+      ...reserves,
       creator_fee_bps: draft.bonding.creatorFee ? 10 : 0,
       creator_payout_bps: 1000, // needs a field — creator payout; together with the 100 bps platform fee, at most 10000.
     },
