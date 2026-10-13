@@ -21,6 +21,7 @@ export class ApiError extends Error {
   readonly result?: unknown;
   /** The server's own message when the response carried one, otherwise null. */
   readonly serverMessage: string | null;
+  readonly retryAfterMs?: number;
 
   constructor(
     message: string,
@@ -29,6 +30,7 @@ export class ApiError extends Error {
       status?: number;
       result?: unknown;
       serverMessage?: string | null;
+      retryAfterMs?: number;
     },
   ) {
     super(message);
@@ -37,6 +39,7 @@ export class ApiError extends Error {
     this.status = options?.status;
     this.result = options?.result;
     this.serverMessage = options?.serverMessage ?? null;
+    this.retryAfterMs = options?.retryAfterMs;
   }
 }
 
@@ -121,6 +124,8 @@ export type ApiRequestOptions = {
   user?: boolean;
   timeoutMs?: number;
   signal?: AbortSignal;
+  /** Some mutations only complete on a specific success status (trade recording: 200). */
+  expectedStatus?: number;
 };
 
 function parseEnvelope(text: string): ApiEnvelope {
@@ -182,6 +187,7 @@ export async function apiRequest<T>(
   }
 
   let response: Response;
+  let responseText: string;
   try {
     response = await fetch(apiUrl(path), {
       method: options.method ?? 'GET',
@@ -191,6 +197,7 @@ export async function apiRequest<T>(
         (options.json !== undefined ? JSON.stringify(options.json) : undefined),
       signal: controller.signal,
     });
+    responseText = await response.text();
   } catch (error) {
     if (timedOut) {
       throw new ApiError('The request timed out. Try again.', 'timeout');
@@ -207,17 +214,21 @@ export async function apiRequest<T>(
     options.signal?.removeEventListener('abort', cancelFromCaller);
   }
 
-  const envelope = parseEnvelope(await response.text());
+  const envelope = parseEnvelope(responseText);
 
-  if (!response.ok) {
+  const retryAfter = response.headers?.get('Retry-After');
+  const retryAfterMs = retryAfter
+    ? /^\d+$/.test(retryAfter) ? Number(retryAfter) * 1000 : Math.max(0, Date.parse(retryAfter) - Date.now())
+    : undefined;
+  if (!response.ok || response.status === 202) {
     const serverMessage = envelopeMessage(envelope);
     throw new ApiError(
       serverMessage ?? `The request failed (${response.status}).`,
       'http',
-      { status: response.status, result: envelope.result, serverMessage },
+      { status: response.status, result: envelope.result, serverMessage, retryAfterMs },
     );
   }
-  if (envelope.status !== 'success') {
+  if (envelope.status !== 'success' || (options.expectedStatus !== undefined && response.status !== options.expectedStatus)) {
     const serverMessage = envelopeMessage(envelope);
     throw new ApiError(
       serverMessage ?? 'The server returned an unexpected response.',

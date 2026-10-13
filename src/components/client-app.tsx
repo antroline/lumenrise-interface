@@ -69,6 +69,8 @@ export default function ClientApp({
   children: ReactNode;
   apiBaseUrl: string;
 }) {
+  // Public query observers start in child effects; configure their URL first.
+  configureApi(apiBaseUrl);
   return (
     <BluxProvider config={bluxConfig}>
       <LaunchpadProvider apiBaseUrl={apiBaseUrl}>{children}</LaunchpadProvider>
