@@ -55,6 +55,9 @@ test('slippage rounds payment caps up and receipt floors down by exact stroops',
   assert.equal(domain.defaultLimit(1000000000n, false), 995000000n);
   assert.equal(domain.defaultLimit(1n, true), 2n);
   assert.equal(domain.defaultLimit(1n, false), 0n);
+  assert.equal(domain.defaultLimit(1000000000n, true, 125n), 1012500000n);
+  assert.equal(domain.defaultLimit(1000000000n, false, 125n), 987500000n);
+  assert.equal(domain.defaultLimit(1000000000n, false, 0n), 1000000000n);
 });
 
 test('SAC identity is resolved from the actual issuer and verified on the configured network', () => {
