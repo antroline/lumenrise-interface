@@ -32,7 +32,7 @@ function load(filename, mocks = {}, globals = {}) {
       name in mocks
         ? mocks[name]
         : name.startsWith('.')
-          ? load(resolve(dirname(path), `${name}.ts`), mocks, globals)
+          ? load(resolve(dirname(path), `${name}${name === './transaction-hash' ? '.tsx' : '.ts'}`), mocks, globals)
           : require(name),
   });
   return module.exports;
@@ -43,6 +43,12 @@ function harness({
   pending = null,
   confirmation = 'success',
   storageBlocked = false,
+  balances,
+  status = 'Open',
+  busy = false,
+  entry = '1',
+  connected = true,
+  loginPending = false,
 } = {}) {
   const events = [],
     states = [],
@@ -58,7 +64,7 @@ function harness({
       useState(initial) {
         const index = stateIndex++;
         const value =
-          index < 2 ? '1' : typeof initial === 'function' ? initial() : initial;
+          index < 2 ? entry : typeof initial === 'function' ? initial() : initial;
         return [value, (next) => states.push(next)];
       },
       useRef: (initial) => ({ current: initial }),
@@ -67,7 +73,7 @@ function harness({
     'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'fragment' },
     '@bluxcc/react': {
       useBlux: () => ({
-        user: { address: owner },
+        user: connected ? { address: owner } : null,
         isReady: true,
         sendTransaction() {
           throw new Error('Unexpected trustline submission');
@@ -90,6 +96,13 @@ function harness({
     },
     '@/components/ui/button': mockUi('Button'),
     '@/components/ui/input': mockUi('Input'),
+    '@/app/trade/[slug]/_components/trade-value': { TradeValue: 'TradeValue' },
+    '@/app/trade/[slug]/_components/trade-feedback': { TradeFeedback: 'TradeFeedback' },
+    '@/app/trade/[slug]/_components/trade-token-pill': { TradeTokenPill: 'TradeTokenPill' },
+    '@/lib/launchpad': { useLaunchpad: () => ({ loginPending, login: async (destination) => { events.push(`connect:${destination}`); } }) },
+    './trade-result-dialog': { TradeResultDialog: 'TradeResultDialog' },
+    '@/components/token-logo': mockUi('TokenLogo'),
+    '@/app/trade/[slug]/_components/trade-disclosure': mockUi('TradeDisclosure'),
     '@/components/ui/field': Object.fromEntries(
       ['Field', 'FieldDescription', 'FieldGroup', 'FieldLabel'].map((n) => [
         n,
@@ -141,7 +154,8 @@ function harness({
     address,
     network: 'testnet',
     side,
-    snapshot: { state: { busy: false }, status: 'Open' },
+    snapshot: { config: { buckets: { curve: 500000000000000n }, params: { curve: { virtual_base_reserve: 1000000000000000n, virtual_quote_reserve: 1000000000000n, creator_fee_bps: 0n } } }, state: { busy, sold: 0n }, status, price: 10000000n },
+    balances,
     tokens: {
       asset: Asset.native(),
       pair: Asset.native(),
@@ -153,6 +167,7 @@ function harness({
     refresh: async () => events.push('refresh'),
   });
   return {
+    form,
     events,
     states,
     storage,
@@ -172,6 +187,7 @@ for (const side of ['buy', 'sell'])
       'refresh',
     ]);
     assert.equal(h.writes(), 1);
+    assert.ok(h.states.some(value => value?.hash === 'new-hash' && value?.side === side), 'Only a confirmed trade opens its result dialog');
     assert.equal(h.storage.has(h.key), false);
     assert.ok(
       h.states.includes(`${side === 'buy' ? 'Buy' : 'Sell'} confirmed.`),
@@ -189,10 +205,74 @@ test('unresolved confirmation preserves the original on-chain hash', async () =>
   await h.submit();
   assert.equal(h.writes(), 1);
   assert.equal(h.storage.get(h.key), 'new-hash');
+  assert.ok(!h.states.some(value => value?.hash === 'new-hash'), 'Unresolved trades must not open a success dialog');
 });
 test('recovering an old on-chain hash queues that hash and never buys or sells again', async () => {
   const h = harness({ pending: 'old-hash' });
   await h.submit();
   assert.equal(h.writes(), 0);
   assert.deepEqual(h.events, ['queue:old-hash', 'confirm:old-hash', 'refresh']);
+});
+
+function elements(node) {
+  if (!node || typeof node !== 'object') return [];
+  return [node, ...[node.props?.children].flat().flatMap(elements)];
+}
+
+test('All sell uses the lesser of held tokens and eligible curve purchases without losing stroops', () => {
+  for (const [held, position] of [[90071992547409930n, 90071992547409931n], [90071992547409931n, 90071992547409930n]]) {
+    const h = harness({ side: 'sell', balances: { held, position, pairHeld: 0n } });
+    const max = elements(h.form).find(node => node.type === 'Button' && node.props.children === 'All');
+    assert.equal(max.props.disabled, false);
+    max.props.onClick();
+    assert.ok(h.states.includes('9007199254.740993'));
+  }
+});
+
+for (const options of [{ status: 'Scheduled' }, { status: 'Graduated' }, { status: 'Failed', side: 'buy' }, { busy: true }])
+  test(`unavailable form ${JSON.stringify(options)} cannot broadcast`, async () => {
+    const h = harness(options);
+    const cta = elements(h.form).find(node => node.type === 'Button' && node.props.type === 'submit');
+    assert.equal(cta.props.disabled, true);
+    await h.submit();
+    assert.equal(h.writes(), 0);
+  });
+
+test('invalid input cannot display a cached quote as the current estimate', () => {
+  const h = harness({ entry: 'invalid' });
+  assert.ok(!elements(h.form).some(node => node.type === 'dt' && node.props.children === 'Creator fee · included'));
+});
+
+for (const side of ['buy', 'sell']) test(`signed-out ${side} connects the wallet without requiring an amount or broadcasting`, async () => {
+  const h = harness({ side, connected: false, entry: '' });
+  const action = elements(h.form).find(node => node.type === 'Button' && node.props.children === 'Connect Wallet');
+  assert.ok(action);
+  assert.equal(action.props.type, 'button');
+  assert.equal(action.props.disabled, false);
+  action.props.onClick();
+  assert.deepEqual(h.events, ['connect:/trade/launch-contract?network=testnet']);
+  await h.submit();
+  assert.equal(h.writes(), 0);
+});
+test('wallet connection cannot be started twice while connecting', () => {
+  const h = harness({ connected: false, loginPending: true });
+  const action = elements(h.form).find(node => node.type === 'Button' && node.props.children === 'Connecting…');
+  assert.equal(action.props.disabled, true);
+});
+for (const side of ['buy', 'sell']) test(`${side} result dialog displays the confirmed transaction and supports dismissal`, () => {
+  const jsx=(type,props)=>({type,props});
+  const dialogNames=['Dialog','DialogContent','DialogHeader','DialogTitle','DialogDescription','DialogFooter','DialogClose'];
+  const { TradeResultDialog } = load('trade-result-dialog.tsx', {
+    'react/jsx-runtime': {jsx,jsxs:jsx},
+    '@/components/ui/dialog': Object.fromEntries(dialogNames.map(name=>[name,name])),
+    '@/components/ui/button': {Button:'Button'},
+    './transaction-hash': {TransactionHash:'TransactionHash'},
+  });
+  let dismissed=false;
+  const dialog=TradeResultDialog({confirmation:{hash:'confirmed-hash',side},onClose:()=>{dismissed=true;}});
+  assert.equal(dialog.props.open,true);
+  assert.ok(elements(dialog).some(node=>node.type==='DialogTitle' && node.props.children===`${side==='buy'?'Buy':'Sell'} confirmed`));
+  assert.ok(elements(dialog).some(node=>node.type==='TransactionHash' && node.props.hash==='confirmed-hash'));
+  dialog.props.onOpenChange(false);
+  assert.equal(dismissed,true);
 });
