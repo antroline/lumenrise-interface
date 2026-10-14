@@ -9,6 +9,11 @@ export type ProjectTableRow = {
   name: string
   logo?: string
   statusLabel?: string
+  graduation?: {
+    target: string
+    progressBps: number
+    stale: boolean
+  }
   /** Display name when it differs from the project mark, such as a named raise. */
   title?: string
   ticker?: string
