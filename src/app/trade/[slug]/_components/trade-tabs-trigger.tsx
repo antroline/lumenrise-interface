@@ -23,14 +23,14 @@ export function TradeTabsTrigger({
         'relative min-h-11 after:hidden data-active:bg-transparent data-active:shadow-none dark:data-active:bg-transparent',
         line
           ? 'text-title! font-semibold! pb-2!'
-          : 'flex-1 rounded-full! text-lg! font-bold!',
+          : 'flex-1 rounded-full! text-lg! font-bold! data-active:text-white! dark:data-active:text-foreground!',
         className,
       )}
     >
       {!line && active === String(value) && (
         <motion.span
           layoutId={indicator}
-          className="absolute inset-0 rounded-full bg-background dark:bg-card"
+          className="absolute inset-0 rounded-full bg-ink dark:bg-ink/70"
           transition={{ ...tradeTransition, duration: reduced ? 0 : 0.24 }}
         />
       )}
