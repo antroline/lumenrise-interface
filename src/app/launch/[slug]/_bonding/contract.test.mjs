@@ -23,7 +23,7 @@ function loadSource(filename, mocks = {}, cache = new Map(), globals = {}) {
   runInNewContext(output, {
     module, exports: module.exports, Error, ...globals,
     require: name => name in mocks ? mocks[name] : name.startsWith('.')
-      ? loadSource(resolve(dirname(path), `${name}.ts`), mocks, cache, globals) : require(name),
+      ? loadSource(resolve(dirname(path), `${name}${name === './transaction-hash' ? '.tsx' : '.ts'}`), mocks, cache, globals) : require(name),
   }, { filename: path });
   return module.exports;
 }
@@ -55,6 +55,9 @@ test('slippage rounds payment caps up and receipt floors down by exact stroops',
   assert.equal(domain.defaultLimit(1000000000n, false), 995000000n);
   assert.equal(domain.defaultLimit(1n, true), 2n);
   assert.equal(domain.defaultLimit(1n, false), 0n);
+  assert.equal(domain.defaultLimit(1000000000n, true, 125n), 1012500000n);
+  assert.equal(domain.defaultLimit(1000000000n, false, 125n), 987500000n);
+  assert.equal(domain.defaultLimit(1000000000n, false, 0n), 1000000000n);
 });
 
 test('SAC identity is resolved from the actual issuer and verified on the configured network', () => {
@@ -168,7 +171,8 @@ function renderTrade(side, position = '20000000', confirmation = 'SUCCESS') {
       useWriteContract: () => ({ mutateAsync: async request => { written = request; calls.push('trade submitted'); return { hash: 'trade-hash' }; } }),
       readContracts: async requests => {
         assert.equal(requests[0].fn, buying ? 'quote_buy' : 'quote_sell');
-        assert.equal(requests[0].args[0], '20000000');
+        // Buys invert the cumulative curve cost in exact units before requesting a quote.
+        assert.equal(requests[0].args[0], buying ? '19999600007' : '20000000');
         return { values: [quote, '20000000', '100000000', position] };
       },
     },
@@ -182,6 +186,13 @@ function renderTrade(side, position = '20000000', confirmation = 'SUCCESS') {
       },
     },
     '@/components/ui/button': primitives, '@/components/ui/field': primitives, '@/components/ui/input': primitives,
+    '@/app/trade/[slug]/_components/trade-disclosure': { TradeDisclosure: () => null },
+    '@/app/trade/[slug]/_components/trade-value': { TradeValue: 'TradeValue' },
+    '@/app/trade/[slug]/_components/trade-feedback': { TradeFeedback: 'TradeFeedback' },
+    '@/app/trade/[slug]/_components/trade-token-pill': { TradeTokenPill: 'TradeTokenPill' },
+    '@/lib/launchpad': { useLaunchpad: () => ({ loginPending: false, login: async () => {} }) },
+    './trade-result-dialog': { TradeResultDialog: 'TradeResultDialog' },
+    '@/components/token-logo': { TokenLogo: () => null },
     '@/lib/api/launches/trade-queue': { enqueueTrade: () => true },
     '@/lib/api/launches/queries': { usePageVisible: () => true },
   };
@@ -189,7 +200,7 @@ function renderTrade(side, position = '20000000', confirmation = 'SUCCESS') {
     localStorage: { getItem: key => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, value), removeItem: key => stored.delete(key) },
   });
   const form = TradeForm({ address: curve, side, tokens: { asset, pair: usdc, assetSymbol: 'LAUNCH', pairSymbol: 'USDC' },
-    snapshot: { state: { busy: false }, status: 'Open' }, locked: false, setLocked: () => {}, refresh: async () => calls.push('refreshed') });
+    snapshot: { config: { buckets: { curve: 500000000000000n }, params: { curve: { virtual_base_reserve: 1000000000000000n, virtual_quote_reserve: 1000000000000n, creator_fee_bps: 0n } } }, state: { busy: false, sold: 0n }, status: 'Open', price: 10000000n }, locked: false, setLocked: () => {}, refresh: async () => calls.push('refreshed') });
   return { submit: () => form.props.onSubmit({ preventDefault() {} }), calls, states, stored, get written() { return written; } };
 }
 
@@ -197,7 +208,8 @@ test('buy submits exact ABI arguments after trustline confirmation and refreshes
   const trade = renderTrade('buy');
   await trade.submit();
   assert.equal(trade.written.call.fn, 'buy');
-  assert.deepEqual(Array.from(trade.written.call.args), [owner, '20000000', '30451500']);
+  // Exact budget-derived fill; the RPC quote remains authoritative for slippage.
+  assert.deepEqual(Array.from(trade.written.call.args), [owner, '19999600007', '30451500']);
   assert.equal(trade.written.options.network, Networks.TESTNET);
   assert.deepEqual(trade.calls, ['trustline submitted', 'trustline-hash confirmed', 'trade submitted', 'trade-hash confirmed', 'refreshed']);
   assert.equal(trade.stored.size, 0);
@@ -225,4 +237,18 @@ test('an unresolved submitted trade preserves its hash and does not report succe
   assert.equal(trade.states[9], 'trade-hash');
   assert.match(trade.states[5], /still pending/);
   assert.ok(!trade.calls.includes('refreshed'));
+});
+
+const { buyAmountForBudget } = loadSource('buy-amount-for-budget.ts');
+test('buy budget inversion fits fees and steep curves, including remaining inventory', () => {
+  const unit=10_000_000n, base=100_000_000n*unit, reserve=100_000n*unit, capacity=50_000_000n*unit;
+  for (const sold of [0n,capacity/2n,capacity-1000n]) for(const feeBps of [0n,10n,100n]) for(const budget of [1n,100n*unit,reserve*2n]) {
+    const snapshot={config:{buckets:{curve:capacity},params:{curve:{virtual_base_reserve:base,virtual_quote_reserve:reserve,creator_fee_bps:feeBps}}},state:{sold}};
+    const amount=buyAmountForBudget(snapshot,budget);
+    const cost=s => (reserve*s+base-s-1n)/(base-s);
+    const pay=a => {const gross=cost(sold+a)-cost(sold); return gross+(gross*feeBps+9999n)/10000n;};
+    assert.ok(amount>=0n && amount<=capacity-sold);
+    assert.ok(pay(amount)<=budget);
+    if(amount<capacity-sold) assert.ok(pay(amount+1n)>budget);
+  }
 });

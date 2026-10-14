@@ -1,21 +1,18 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Activity } from 'lucide-react'
 import { StrKey } from '@stellar/stellar-sdk'
 import { BondingCurvePage } from '@/app/launch/[slug]/_bonding/bonding-curve-page'
-import { BackLink, ProjectHeading } from '@/components/page-header'
 import { ProjectMark } from '@/components/project-mark'
-import { Stat, StatBar } from '@/components/stat'
 import { Badge } from '@/components/ui/badge'
-import { InsetField, RuledPanel, Trajectory } from '@/components/visual-system'
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
 import { getTradingToken } from '@/lib/data'
 import { PoolTable } from './_components/pool-table'
 import { PriceChart } from './_components/price-chart'
 import { SwapPanel } from './_components/swap-panel'
-import { CopyIssuerButton, FollowButton } from './_components/trade-actions'
+import { FollowButton } from './_components/trade-actions'
 import { TradePageTemplate } from './_components/trade-page-template'
+import { TradeHeader } from './_components/trade-header'
+import { TradeActivity } from './_components/trade-activity'
 import { API_NETWORK } from '@/app/create/_launch/transactions'
-import { priceSeriesByTimeframe, swapRoutes } from './_data'
 
 export default async function TradePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ network?: string }> }) {
   const { slug } = await params
@@ -25,12 +22,10 @@ export default async function TradePage({ params, searchParams }: { params: Prom
   if (!token) notFound()
   const price = Number(token.price.replace('$', ''))
   return <TradePageTemplate header={<>
-    <BackLink href="/">Discover</BackLink>
-    <ProjectHeading specimen={token.name} mark={<ProjectMark name={token.name} size={56} />} title={token.name} meta={<><Badge variant="tag">{token.ticker}</Badge><Badge variant="soft"><Activity /> Trading</Badge></>} description={<span className="text-small text-muted-foreground">Launched on LumenRise {token.launched}, 2026 · community round</span>} actions={<><FollowButton name={token.name} /><CopyIssuerButton issuer="GHBR…M2QX" /></>} />
-    <nav className="flex gap-6 overflow-x-auto border-b text-ui font-medium"><Link href="/" className="pb-3 text-muted-foreground">Overview</Link><span className="border-b-2 border-foreground pb-3">Trade</span><a href="#pools" className="pb-3 text-muted-foreground">Liquidity pools</a></nav>
-    <RuledPanel><Trajectory label="Launch to market" active={2} steps={[{label:'Launch'},{label:'Allocation'},{label:'Trading'},{label:'Claim schedule'}]} /></RuledPanel>
-    <StatBar columns={5}><Stat label="Price" value={token.price} hint={`${token.change} · 7d`} /><Stat label="Liquidity · 4 sources" value="$1.84M" hint="Across Stellar DEX & Soroban" /><Stat label="Volume · 24h" value="$412,000" hint="1,208 trades" /><Stat label="Holders" value="6,812" hint="Trustlines with balance" /><Stat label="Circulating" value="42.0M" unit={token.ticker} hint="of 150M total supply" /></StatBar>
-    <p className="font-mono text-2xs uppercase text-faint">Price is volume-weighted across sources · Illustrative market data · Not investment advice</p>
-    </>} market={<> <InsetField><PriceChart ticker={token.ticker} price={token.price} series={priceSeriesByTimeframe(price)} /></InsetField><RuledPanel><div><h2 className="text-title font-semibold">Routes for 500 XLM → {token.ticker}</h2><p className="text-small text-muted-foreground">Illustrative quotes from available liquidity.</p></div><div className="overflow-x-auto"><table className="w-full text-left text-small"><thead className="border-b font-mono text-2xs uppercase text-faint"><tr>{['Source','Type','You receive','Price impact',''].map(x=><th key={x} className="py-3">{x}</th>)}</tr></thead><tbody>{swapRoutes.map(route=><tr key={route.name} className={route.best ? 'bg-accent' : 'border-b'}><td className="p-3"><b>{route.name}</b><span className="block text-muted-foreground">{route.detail}</span></td><td>{route.type}</td><td>{route.output} {token.ticker}</td><td>{route.impact}</td><td>{route.best ? <Badge variant="live">Best output</Badge> : 'Use'}</td></tr>)}</tbody></table></div></RuledPanel> </>} swap={<SwapPanel slug={slug} name={token.name} ticker={token.ticker} priceUsd={price} />} footer={<>     <div id="pools"><PoolTable name={token.name} ticker={token.ticker} /></div>
- </>} />
+    <TradeHeader mark={<ProjectMark name={token.name} size={64} />} name={token.name} ticker={token.ticker} pair="USD" overview="/"
+      status={<><Badge variant="soft" size="sm">Illustrative preview</Badge><Badge variant="net" size="sm">Testnet</Badge></>}
+      price={token.price} priceNote="Illustrative price" actions={<FollowButton name={token.name} />} metrics={<>{['24h volume', 'Liquidity', 'Holders'].map(label => <div key={label}><dt className="text-small text-muted-foreground">{label}</dt><dd className="mt-1 text-mid font-semibold">—</dd><span className="text-small text-muted-foreground">Not connected</span></div>)}</>} />
+  </>} market={<PriceChart ticker={token.ticker} price={token.price} />}
+    swap={<SwapPanel slug={slug} name={token.name} ticker={token.ticker} priceUsd={price} />}
+    footer={<TradeActivity trades={<Empty><EmptyHeader><EmptyTitle>Trading activity unavailable</EmptyTitle><EmptyDescription>This preview has no connected trade history. Open a contract launch to view recorded trades.</EmptyDescription></EmptyHeader></Empty>} pools={<PoolTable name={token.name} ticker={token.ticker} />} />} />
 }

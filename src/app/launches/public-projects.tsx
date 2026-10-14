@@ -16,7 +16,7 @@ import {
   EmptyDescription,
 } from '@/components/ui/empty';
 import { getLaunchList } from '@/lib/api/launches/market';
-import { displayAmount, pairLabel, unixDate } from '@/lib/api/launches/display';
+import { compactAmount, pairLabel, unixDate } from '@/lib/api/launches/display';
 import { publicQueryOptions, usePageVisible } from '@/lib/api/launches/queries';
 import type { ApiNetwork } from '@/lib/api/launches/types';
 import {
@@ -80,21 +80,20 @@ export function PublicProjects({
       ticker: l.metadata.symbol,
       logo: l.metadata.logo,
       href: `/launch/${l.contractId}?network=${network}`,
-      category: b?.status === 'Graduated' ? 'Trading' : 'Launch',
-      model: b ? 'Bonding curve' : '—',
+      category: b ? 'Bonding Curve' : '—',
       phase: b ? phases[b.status] : 'unavailable',
-      statusLabel: b?.status,
-      figure: b ? `${displayAmount(b.state.quoteReserve)} ${pair}` : '—',
-      figureContext: 'curve reserve',
+      graduation: b
+        ? {
+            target: compactAmount(b.curve.graduationTarget) + ' ' + pair,
+            progressBps: b.progressBps,
+            stale: b.stateStale,
+          }
+        : undefined,
+      figure: b ? `${compactAmount(b.state.quoteReserve)} ${pair}` : '—',
+      figureContext: '',
       participants: b?.state.buyerCount ?? null,
       date: unixDate(b?.status === 'Scheduled' ? b.startsAt : b?.endsAt),
       dateLabel: b?.status === 'Scheduled' ? 'opens' : b ? 'ends' : undefined,
-      snapshot: b ? `${b.progressBps / 100}%` : '—',
-      snapshotContext: b?.stateStale
-        ? 'Snapshot may be outdated'
-        : b
-          ? 'of target'
-          : undefined,
     };
   });
   const filtered = rows.filter(
@@ -118,7 +117,7 @@ export function PublicProjects({
         case 'category':
           return row.category;
         case 'phase':
-          return row.phase;
+          return bonding ? BigInt(bonding.curve.graduationTarget) : null;
         case 'participants':
           return bonding ? BigInt(bonding.state.buyerCount) : null;
         case 'date':
@@ -187,50 +186,50 @@ export function PublicProjects({
   return (
     <section className="mb-8 flex flex-col gap-4" aria-label="Launched tokens">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 className="text-title font-semibold">
-          Launched tokens · {network === 'public' ? 'Mainnet' : 'Testnet'}
-        </h2>
         <span className="text-small text-muted-foreground">
           Filters and sorting apply to this page
         </span>
       </div>
-      {query.isPending ? (
-        <ProjectsTableSkeleton rows={5} directory />
-      ) : query.isError && !query.data ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>Could not load launches</EmptyTitle>
-            <EmptyDescription>{query.error.message}</EmptyDescription>
-          </EmptyHeader>
-          <Button variant="outline" onClick={() => void query.refetch()}>
-            Retry
-          </Button>
-        </Empty>
-      ) : filtered.length ? (
-        <ProjectsTable
-          directory
-          rows={filtered}
-          sorting={sorting}
-          caption="Indexed launches on the selected network"
-        />
-      ) : (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>
-              {rows.length
-                ? 'No matches on this page'
-                : total
-                  ? 'No launches on this page'
-                  : 'No launches yet'}
-            </EmptyTitle>
-            <EmptyDescription>
-              {rows.length || total
-                ? 'Choose another category or browse the next page.'
-                : 'Launches will appear here once available.'}
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      )}
+      <div className="overflow-hidden rounded-2xl">
+        {query.isPending ? (
+          <ProjectsTableSkeleton rows={5} directory figureLabel="Pool Balance" />
+        ) : query.isError && !query.data ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>Could not load launches</EmptyTitle>
+              <EmptyDescription>{query.error.message}</EmptyDescription>
+            </EmptyHeader>
+            <Button variant="outline" onClick={() => void query.refetch()}>
+              Retry
+            </Button>
+          </Empty>
+        ) : filtered.length ? (
+          <ProjectsTable
+            directory
+            rows={filtered}
+            figureLabel="Pool Balance"
+            sorting={sorting}
+            caption="Indexed launches on the selected network"
+          />
+        ) : (
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>
+                {rows.length
+                  ? 'No matches on this page'
+                  : total
+                    ? 'No launches on this page'
+                    : 'No launches yet'}
+              </EmptyTitle>
+              <EmptyDescription>
+                {rows.length || total
+                  ? 'Choose another category or browse the next page.'
+                  : 'Launches will appear here once available.'}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
+      </div>
       {query.isError && query.data && (
         <p role="alert" className="text-small text-destructive">
           Could not refresh launches.{' '}

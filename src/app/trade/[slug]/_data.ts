@@ -51,22 +51,6 @@ export function priceSeriesByTimeframe(price: number): Record<ChartTimeframe, Pr
   return Object.fromEntries(entries) as Record<ChartTimeframe, PriceSeries>
 }
 
-export type SwapRoute = {
-  name: string
-  detail: string
-  type: 'AMM' | 'Order book'
-  output: string
-  impact: string
-  best: boolean
-}
-
-export const swapRoutes: SwapRoute[] = [
-  { name: 'Split route', detail: 'Soroswap 60% · Aquarius 40%', type: 'AMM', output: '199.21', impact: '0.18%', best: true },
-  { name: 'Soroswap', detail: 'HBR / XLM pool', type: 'AMM', output: '198.64', impact: '0.41%', best: false },
-  { name: 'Aquarius', detail: 'HBR / XLM pool', type: 'AMM', output: '198.02', impact: '0.63%', best: false },
-  { name: 'Stellar DEX', detail: 'Native order book', type: 'Order book', output: '197.40', impact: '0.92%', best: false },
-]
-
 export type PoolQuote = 'XLM' | 'USDC'
 
 export type LiquidityPool = {

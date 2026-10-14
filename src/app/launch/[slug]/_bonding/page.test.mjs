@@ -14,6 +14,7 @@ for (const [surface, state] of [
   ['launch', 'error'],
   ['launch', 'refresh'],
   ['trade', 'initial'],
+  ['trade', 'wallet-ready'],
 ])
   test(`${surface} on Public (${state}) keeps loading and network isolation correct`, () => {
     const observers = [],
@@ -40,7 +41,7 @@ for (const [surface, state] of [
       },
       'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'fragment' },
       '@bluxcc/react': {
-        useBlux: () => ({ user: null, isReady: true }),
+        useBlux: () => ({ user: state === 'wallet-ready' ? { address: 'connected-wallet' } : null, isReady: true }),
         useReadContracts: (_calls, _network, options) => {
           observers.push(options);
           return {
@@ -51,11 +52,11 @@ for (const [surface, state] of [
         },
         useAccount: (_params, options) => {
           observers.push(options);
-          return {};
+          return state === 'wallet-ready' ? { data: { balances: [] } } : {};
         },
       },
       '@stellar/stellar-sdk': {
-        StrKey: { isValidEd25519PublicKey: () => false },
+        StrKey: { isValidEd25519PublicKey: () => state === 'wallet-ready' },
       },
       '@/components/ui/button': { Button: 'Button' },
       '@/lib/launchpad': {
@@ -98,6 +99,8 @@ for (const [surface, state] of [
       '@/app/trade/[slug]/_components/bonding-trade-layout': {
         BondingTradeLayout: 'BondingTradeLayout',
       },
+      '@/app/trade/[slug]/_components/trade-disclosure': { TradeDisclosure: 'TradeDisclosure' },
+      '@/app/trade/[slug]/_components/trade-actions': { CopyAddressButton: 'CopyAddressButton' },
       './trade-form': { TradeForm: 'TradeForm' },
       './contract': {
         decodeSnapshot() {
@@ -131,5 +134,6 @@ for (const [surface, state] of [
       assert.equal(result.props.loading, false);
       assert.equal(result.props.buy, null);
       assert.equal(result.props.sell, null);
+      if (state === 'wallet-ready') assert.equal(result.props.walletFeedback, null, 'A connected wallet without a message must not render an empty feedback panel');
     }
   });

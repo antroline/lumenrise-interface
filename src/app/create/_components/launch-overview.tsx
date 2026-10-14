@@ -3,7 +3,6 @@
 import { Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { shortAddress, type LaunchRecord } from '../_launch/launch-state';
-import { LOCK_CONTRACT_ID } from '../_launch/transactions';
 import { LaunchDetail } from './launch-detail';
 import { TransactionLink } from './transaction-link';
 
@@ -31,11 +30,6 @@ export function LaunchOverview({ record }: { record: LaunchRecord }) {
           value={record.sac}
           href={`https://stellar.expert/explorer/testnet/contract/${record.sac}`}
         />
-        <LaunchDetail
-          label="Lock"
-          value={LOCK_CONTRACT_ID}
-          href={`https://stellar.expert/explorer/testnet/contract/${LOCK_CONTRACT_ID}`}
-        />
       </dl>
       <Button
         variant="outline"
@@ -54,8 +48,6 @@ export function LaunchOverview({ record }: { record: LaunchRecord }) {
           <TransactionLink hash={record.setupHash} label="Setup" />
           <TransactionLink hash={record.distributionHash} label="Issuance" />
           <TransactionLink hash={record.sacHash} label="Deployment" />
-          <TransactionLink hash={record.depositHash} label="Deposit" />
-          <TransactionLink hash={record.withdrawHash} label="Withdrawal" />
         </div>
       </div>
     </section>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAccount, useBlux, useReadContracts } from '@bluxcc/react';
 import { StrKey } from '@stellar/stellar-sdk';
 import { Button } from '@/components/ui/button';
@@ -10,11 +10,8 @@ import {
   decodeSnapshot,
   decodeTokens,
   errorMessage,
-  formatAmount,
   integer,
   trusts,
-  type Snapshot,
-  type Tokens,
 } from './contract';
 import { TradeForm } from './trade-form';
 import { ApiError } from '@/lib/api/client';
@@ -48,34 +45,77 @@ export function BondingCurvePage({
   surface?: 'launch' | 'trade';
 }) {
   const { user, isReady } = useBlux();
-  const { login, loginPending, retryStatusCheck } = useLaunchpad();
+  const { retryStatusCheck } = useLaunchpad();
   const indexed = useLaunchDetail(address, network);
   const { records: queued, recoveryError } = useTradeQueue(network, address);
   const visible = usePageVisible();
   const liveEnabled = visible && network === API_NETWORK;
-  const queueFeedback = queued.length > 0 ? <p role="status" className="text-small text-muted-foreground">
-    {queued.some(t => t.state === 'invalid') ? 'A trade could not be recorded. Its transaction confirmation is unchanged.' : queued.some(t => t.state === 'identity') ? 'Sign in again to finish recording your trades.' : 'Your submitted trades are waiting to be recorded.'}
-    {queued.some(t => t.state === 'identity') && <Button variant="outline" size="sm" onClick={() => { retryStatusCheck(); if (user?.address) resumeTradeIdentity(network, address, user.address); }}>Retry account verification</Button>}
-  </p> : null;
-  const indexedFeedback = <>
-    {indexed.isPending && <p role="status">Loading launch information…</p>}
-    {indexed.isError && <p role="alert" className="text-small text-muted-foreground">{indexed.error instanceof ApiError && indexed.error.status === 404 ? (surface === 'launch' ? 'This launch has not been indexed yet. Contract information is shown when available.' : 'Waiting for launch indexing. Live contract trading remains available.') : indexed.error instanceof ApiError && indexed.error.status === 400 ? 'The launch address or network is invalid.' : 'Launch information is temporarily unavailable.'} <Button variant="outline" size="sm" onClick={() => void indexed.refetch()}>Retry</Button></p>}
-    {network !== API_NETWORK && <p className="text-small text-muted-foreground">Wallet trading is currently configured for Testnet.</p>}
-    {queueFeedback}
-    {recoveryError && <p role="status" className="text-small text-muted-foreground">Trade registration will be checked again. Keep your transaction hashes until recorded.</p>}
-  </>;
+  const queueFeedback =
+    queued.length > 0 ? (
+      <p role="status" className="text-small text-muted-foreground">
+        {queued.some((t) => t.state === 'invalid')
+          ? 'A trade could not be recorded. Its transaction confirmation is unchanged.'
+          : queued.some((t) => t.state === 'identity')
+            ? 'Sign in again to finish recording your trades.'
+            : 'Your submitted trades are waiting to be recorded.'}
+        {queued.some((t) => t.state === 'identity') && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              retryStatusCheck();
+              if (user?.address)
+                resumeTradeIdentity(network, address, user.address);
+            }}
+          >
+            Retry account verification
+          </Button>
+        )}
+      </p>
+    ) : null;
+  const indexedFeedback = (
+    <>
+      {indexed.isPending && <p role="status">Loading launch information…</p>}
+      {indexed.isError && (
+        <p role="alert" className="text-small text-muted-foreground">
+          {indexed.error instanceof ApiError && indexed.error.status === 404
+            ? surface === 'launch'
+              ? 'This launch has not been indexed yet. Contract information is shown when available.'
+              : 'Waiting for launch indexing. Live contract trading remains available.'
+            : indexed.error instanceof ApiError && indexed.error.status === 400
+              ? 'The launch address or network is invalid.'
+              : 'Launch information is temporarily unavailable.'}{' '}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void indexed.refetch()}
+          >
+            Retry
+          </Button>
+        </p>
+      )}
+      {network !== API_NETWORK && (
+        <p className="text-small text-muted-foreground">
+          Wallet trading is currently configured for Testnet.
+        </p>
+      )}
+      {queueFeedback}
+      {recoveryError && (
+        <p role="status" className="text-small text-muted-foreground">
+          Trade registration will be checked again. Keep your transaction hashes
+          until recorded.
+        </p>
+      )}
+    </>
+  );
   const [locked, setLocked] = useState(false);
   const mounted = useRef(true);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
-  const [now, setNow] = useState(() => BigInt(Math.floor(Date.now() / 1000)));
   useEffect(() => {
-    const timer = setInterval(
-      () => setNow(BigInt(Math.floor(Date.now() / 1000))),
-      1000,
-    );
-    return () => clearInterval(timer);
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
   }, []);
-
   const reads = useReadContracts(
     [
       'get_config',
@@ -89,7 +129,10 @@ export function BondingCurvePage({
     { network: NETWORK },
     { enabled: isReady && liveEnabled, refetchInterval: 15_000, retry: false },
   );
-  const decoded = decodeRead(network === API_NETWORK ? reads.data?.values : undefined, decodeSnapshot);
+  const decoded = decodeRead(
+    network === API_NETWORK ? reads.data?.values : undefined,
+    decodeSnapshot,
+  );
   const snapshot = decoded.value;
   const params = snapshot?.config.params;
   const tokensRead = useReadContracts(
@@ -108,17 +151,27 @@ export function BondingCurvePage({
       { address: params?.pair ?? '', fn: 'balance', args: [address] },
     ],
     { network: NETWORK },
-    { enabled: isReady && liveEnabled && !!params, refetchInterval: 15_000, retry: false },
+    {
+      enabled: isReady && liveEnabled && !!params,
+      refetchInterval: 15_000,
+      retry: false,
+    },
   );
-  const decodedTokens = decodeRead(network === API_NETWORK ? tokensRead.data?.values : undefined, (values) => {
-    if (!snapshot) throw new Error('Launch configuration is unavailable.');
-    const tokens = decodeTokens(values, snapshot.config, NETWORK);
-    if (tokens.assetDecimals !== BigInt(7) || tokens.pairDecimals !== BigInt(7))
-      throw new Error(
-        'This page requires the contract’s 7-decimal Stellar assets.',
-      );
-    return tokens;
-  });
+  const decodedTokens = decodeRead(
+    network === API_NETWORK ? tokensRead.data?.values : undefined,
+    (values) => {
+      if (!snapshot) throw new Error('Launch configuration is unavailable.');
+      const tokens = decodeTokens(values, snapshot.config, NETWORK);
+      if (
+        tokens.assetDecimals !== BigInt(7) ||
+        tokens.pairDecimals !== BigInt(7)
+      )
+        throw new Error(
+          'This page requires the contract’s 7-decimal Stellar assets.',
+        );
+      return tokens;
+    },
+  );
   const tokens = decodedTokens.value;
   const owner = user?.address;
   const validWallet = !!owner && StrKey.isValidEd25519PublicKey(owner);
@@ -135,14 +188,21 @@ export function BondingCurvePage({
       retry: false,
     },
   );
-  const wallet = decodeRead(network === API_NETWORK ? walletRead.data?.values : undefined, (values) => ({
-    held: integer(values[0]),
-    pairHeld: integer(values[1]),
-    position: integer(values[2]),
-  }));
+  const wallet = decodeRead(
+    network === API_NETWORK ? walletRead.data?.values : undefined,
+    (values) => ({
+      held: integer(values[0]),
+      pairHeld: integer(values[1]),
+      position: integer(values[2]),
+    }),
+  );
   const account = useAccount(
     { address: owner, network: NETWORK },
-    { enabled: isReady && liveEnabled && validWallet, refetchInterval: 15_000, retry: false },
+    {
+      enabled: isReady && liveEnabled && validWallet,
+      refetchInterval: 15_000,
+      retry: false,
+    },
   );
 
   async function refresh() {
@@ -156,108 +216,50 @@ export function BondingCurvePage({
     ]);
   }
 
-  const coreError = network === API_NETWORK ? decoded.error || (reads.error && errorMessage(reads.error)) : undefined;
-  const walletSection = (
-    <section className="flex flex-col gap-3" aria-labelledby="wallet-heading">
-      <h2 id="wallet-heading" className="text-xl font-semibold">
-        Your wallet
-      </h2>
-      {!user ? (
-        <>
-          <p className="text-sm text-muted-foreground">
-            Connect to see your balances and curve position, or to buy and sell.
+  const coreError =
+    network === API_NETWORK
+      ? decoded.error || (reads.error && errorMessage(reads.error))
+      : undefined;
+  const missingTrustlines =
+    !!account.data &&
+    !!tokens &&
+    (!trusts(account.data, tokens.asset) || !trusts(account.data, tokens.pair));
+  const loadingWallet =
+    validWallet &&
+    !wallet.value &&
+    !walletRead.error &&
+    !wallet.error &&
+    network === API_NETWORK;
+  const hasWalletFeedback =
+    !validWallet || account.data === null || missingTrustlines || loadingWallet;
+  const walletFeedback =
+    user && hasWalletFeedback ? (
+      <>
+        {!validWallet && (
+          <p role="alert" className="text-destructive">
+            A Stellar account address is required to trade.
           </p>
-          <Button
-            className="self-start"
-            disabled={loginPending || !isReady}
-            onClick={() => void login(`/${surface}/${address}`)}
-          >
-            {loginPending ? 'Connecting…' : 'Connect wallet'}
-          </Button>
-        </>
-      ) : (
-        <>
-          <p className="break-all font-mono text-sm">{owner}</p>
-          {!validWallet && (
-            <p role="alert">A Stellar account address is required to trade.</p>
-          )}
-          {wallet.value && (
-            <Facts
-              rows={[
-                [
-                  'Token balance',
-                  `${formatAmount(wallet.value.held)} ${tokens?.assetSymbol ?? params?.metadata.symbol}`,
-                ],
-                [
-                  'Pair balance',
-                  `${formatAmount(wallet.value.pairHeld)} ${tokens?.pair.isNative() ? 'XLM' : (tokens?.pairSymbol ?? 'pair tokens')}`,
-                ],
-                [
-                  'Current curve position',
-                  wallet.value.position > BigInt(0)
-                    ? 'Yes — net curve purchases remain'
-                    : 'No net curve position',
-                ],
-                [
-                  'Sellable balance recorded by curve',
-                  `${formatAmount(wallet.value.position)} ${params?.metadata.symbol}`,
-                ],
-                [
-                  'Held and eligible for sell-back',
-                  `${formatAmount(wallet.value.held < wallet.value.position ? wallet.value.held : wallet.value.position)} ${params?.metadata.symbol}`,
-                ],
-                [
-                  'Connected as creator',
-                  owner === params?.owner ? 'Yes' : 'No',
-                ],
-              ]}
-            />
-          )}
-          <p className="text-sm text-muted-foreground">
-            The contract exposes net purchases, not individual purchase history.
-            A zero position can mean no purchases or a full sell-back. Transfers
-            into your wallet do not increase your sellable curve balance.
+        )}
+        {account.data === null && (
+          <p role="alert" className="text-destructive">
+            This wallet is not funded on Testnet. Fund it with XLM before
+            trading.
           </p>
-          {account.data && tokens && (
-            <Facts
-              rows={[
-                [
-                  'Launch token trusted',
-                  trusts(account.data, tokens.asset)
-                    ? 'Yes'
-                    : 'No — added automatically before trading',
-                ],
-                [
-                  'Pair token trusted',
-                  trusts(account.data, tokens.pair)
-                    ? tokens.pair.isNative()
-                      ? 'Native XLM — no trustline required'
-                      : 'Yes'
-                    : 'No — needed to hold the pair token',
-                ],
-              ]}
-            />
-          )}
-          {account.data === null && (
-            <p role="alert">
-              This wallet is not funded on Testnet. Fund it with XLM before
-              trading.
-            </p>
-          )}
-          {validWallet &&
-            !wallet.value &&
-            !walletRead.error &&
-            !wallet.error && <p role="status">Loading wallet balances…</p>}
-          {(walletRead.error || wallet.error || account.error) && (
-            <p role="alert" className="break-words text-sm text-destructive">
-              Wallet data unavailable:{' '}
-              {wallet.error || errorMessage(walletRead.error || account.error)}
-            </p>
-          )}
-        </>
-      )}
-    </section>
-  );
+        )}
+        {missingTrustlines && (
+          <p className="text-muted-foreground">
+            Missing trustlines require a separate wallet approval. Keep XLM for
+            fees and reserves.
+          </p>
+        )}
+
+        {loadingWallet && (
+          <p role="status" className="text-muted-foreground">
+            Loading wallet balances…
+          </p>
+        )}
+      </>
+    ) : null;
   const buyForm =
     snapshot && tokens ? (
       <TradeForm
@@ -270,6 +272,7 @@ export function BondingCurvePage({
         locked={locked}
         setLocked={setLocked}
         refresh={refresh}
+        balances={walletRead.error || wallet.error ? undefined : wallet.value}
       />
     ) : null;
   const sellForm =
@@ -284,6 +287,7 @@ export function BondingCurvePage({
         locked={locked}
         setLocked={setLocked}
         refresh={refresh}
+        balances={walletRead.error || wallet.error ? undefined : wallet.value}
       />
     ) : null;
   const rawResponses = (
@@ -338,9 +342,13 @@ export function BondingCurvePage({
         snapshot={snapshot}
         tokens={tokens}
         loading={
-          network === API_NETWORK && (!isReady ||
-          (!snapshot && !coreError) ||
-          (!!snapshot && !tokens && !tokensRead.error && !decodedTokens.error))
+          network === API_NETWORK &&
+          (!isReady ||
+            (!snapshot && !coreError) ||
+            (!!snapshot &&
+              !tokens &&
+              !tokensRead.error &&
+              !decodedTokens.error))
         }
         refreshAction={
           <Button
@@ -349,277 +357,56 @@ export function BondingCurvePage({
             onClick={() => void refresh()}
             disabled={network !== API_NETWORK || reads.isFetching || locked}
           >
-            {reads.isFetching ? 'Refreshing…' : 'Refresh contract data'}
+            {reads.isFetching ? 'Refreshing…' : 'Refresh'}
           </Button>
         }
-        feedback={<>{indexedFeedback}{feedback}</>}
-        wallet={snapshot ? walletSection : null}
+        feedback={
+          <>
+            {indexedFeedback}
+            {feedback}
+          </>
+        }
+        walletFeedback={walletFeedback}
         buy={buyForm}
         sell={sellForm}
-        details={
-          snapshot ? (
-            <>
-              <LaunchFacts snapshot={snapshot} tokens={tokens} now={now} />
-              {rawResponses}
-            </>
-          ) : null
-        }
       />
     );
-  if (indexed.isPending && !indexed.data && !snapshot && !indexed.isError && !coreError)
+  if (
+    indexed.isPending &&
+    !indexed.data &&
+    !snapshot &&
+    !indexed.isError &&
+    !coreError
+  )
     return <LaunchPageSkeleton />;
 
-  return <IndexedLaunchOverview address={address} network={network} launch={indexed.data} snapshot={snapshot} tokens={tokens} loading={indexed.isPending || (network === API_NETWORK && !snapshot && !coreError)} feedback={<>{indexedFeedback}{feedback}</>}>
-    <BondingTechnicalDetails address={address} network={network} launch={indexed.data} snapshot={snapshot} tokens={tokens}>
-      {snapshot && rawResponses}
-    </BondingTechnicalDetails>
-  </IndexedLaunchOverview>;
-}
-
-function Facts({ rows }: { rows: [string, ReactNode][] }) {
   return (
-    <dl className="grid min-w-0 grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-[minmax(180px,2fr)_3fr]">
-      {rows.map(([label, value]) => (
-        <div key={label} className="contents">
-          <dt className="text-muted-foreground">{label}</dt>
-          <dd className="mb-2 min-w-0 whitespace-pre-wrap break-words tabular-nums sm:mb-0">
-            {value}
-          </dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-function date(seconds: bigint) {
-  const value = new Date(Number(seconds) * 1000);
-  return Number.isNaN(value.getTime())
-    ? `${seconds} Unix seconds`
-    : `${value.toUTCString()} (${seconds})`;
-}
-
-function percent(bps: bigint) {
-  return `${bps / BigInt(100)}.${(bps % BigInt(100)).toString().padStart(2, '0')}%`;
-}
-
-function LaunchFacts({
-  snapshot: s,
-  tokens: t,
-  now,
-}: {
-  snapshot: Snapshot;
-  tokens?: Tokens;
-  now: bigint;
-}) {
-  const c = s.config;
-  const p = c.params;
-  const pair = t ? (t.pair.isNative() ? 'XLM' : t.pairSymbol) : 'pair tokens';
-  const asset = p.metadata.symbol;
-  const tokenAmount = (value: bigint) => `${formatAmount(value)} ${asset}`;
-  const pairAmount = (value: bigint) => `${formatAmount(value)} ${pair}`;
-  const target = p.curve.graduation_target;
-  const remaining =
-    target > s.state.quote_reserve ? target - s.state.quote_reserve : BigInt(0);
-  const progress =
-    target > BigInt(0)
-      ? (s.state.quote_reserve * BigInt(10_000)) / target
-      : BigInt(0);
-  const cliff = p.starts_at + p.vesting.cliff_seconds;
-  return (
-    <>
-      <section className="flex flex-col gap-3" aria-labelledby="status-heading">
-        <h2 id="status-heading" className="text-xl font-semibold">
-          Status and graduation
-        </h2>
-        <Facts
-          rows={[
-            ['Contract status (ledger time)', s.status],
-            ['Start date passed', s.status === 'Scheduled' ? 'No' : 'Yes'],
-            [
-              'End date passed (browser clock)',
-              now >= p.ends_at ? 'Yes' : 'No',
-            ],
-            [
-              'Launch over',
-              s.status === 'Failed' || s.status === 'Graduated' ? 'Yes' : 'No',
-            ],
-            [
-              'Buys available',
-              s.status === 'Open' &&
-              !s.state.busy &&
-              s.state.sold < c.buckets.curve
-                ? 'Yes — subject to wallet funds and trustlines'
-                : 'No',
-            ],
-            [
-              'Sell-back available',
-              (s.status === 'Open' || s.status === 'Failed') &&
-              !s.state.busy &&
-              s.state.sold > BigInt(0)
-                ? 'Yes — requires a held curve position'
-                : 'No',
-            ],
-            ['Graduated', s.state.graduated ? 'Yes' : 'No'],
-            [
-              'Graduation target reached',
-              s.state.quote_reserve >= target ? 'Yes' : 'No',
-            ],
-            ['Current graduation amount', pairAmount(s.state.quote_reserve)],
-            ['Graduation target', pairAmount(target)],
-            ['Graduation progress', percent(progress)],
-            ['Still needed', pairAmount(remaining)],
-            ['Starts at', date(p.starts_at)],
-            ['Ends at', date(p.ends_at)],
-            [
-              'Current marginal price (before fee)',
-              `${pairAmount(s.price)} per ${asset}`,
-            ],
-            ['Distinct buyers recorded', s.buyers.toString()],
-            ['Buyer count in state', s.state.buyer_count.toString()],
-            ['Net tokens sold', tokenAmount(s.state.sold)],
-            [
-              'Curve inventory remaining',
-              tokenAmount(c.buckets.curve - s.state.sold),
-            ],
-            ['Contract busy', s.state.busy ? 'Yes' : 'No'],
-          ]}
-        />
-        <p className="text-sm text-muted-foreground">
-          Graduation uses net pair reserves, excluding trading fees. Buyer count
-          records distinct buying addresses and does not decrease when they
-          sell. Contract status determines the trading window; the browser clock
-          is informational.
-        </p>
-      </section>
-      <section className="flex flex-col gap-3" aria-labelledby="config-heading">
-        <h2 id="config-heading" className="text-xl font-semibold">
-          Launch configuration
-        </h2>
-        <Facts
-          rows={[
-            ['Name', p.metadata.name],
-            ['Symbol', asset],
-            ['Description', p.metadata.description],
-            ['Logo URL', p.metadata.logo],
-            ['Creator', p.owner],
-            ['Factory', c.factory],
-            ['Platform', c.platform],
-            ['Launch token contract', p.asset],
-            ['Pair token contract', p.pair],
-            ['Token identity', t?.assetName ?? 'Loading…'],
-            ['Pair identity', t?.pairName ?? 'Loading…'],
-            ['Token decimals', t?.assetDecimals.toString() ?? 'Loading…'],
-            ['Pair decimals', t?.pairDecimals.toString() ?? 'Loading…'],
-            ['Total supply', tokenAmount(c.total_supply)],
-            [
-              'Curve allocation',
-              `${tokenAmount(c.buckets.curve)} (${percent(p.allocations.curve_bps)})`,
-            ],
-            [
-              'Pool allocation',
-              `${tokenAmount(c.buckets.pool)} (${percent(p.allocations.pool_bps)})`,
-            ],
-            [
-              'Team allocation',
-              `${tokenAmount(c.buckets.team)} (${percent(p.allocations.team_bps)})`,
-            ],
-            [
-              'Initial virtual token reserve',
-              tokenAmount(p.curve.virtual_base_reserve),
-            ],
-            [
-              'Initial virtual pair reserve',
-              pairAmount(p.curve.virtual_quote_reserve),
-            ],
-            [
-              'Creator trading fee',
-              `${percent(p.curve.creator_fee_bps)} (${p.curve.creator_fee_bps} bps)`,
-            ],
-            [
-              'Creator graduation payout share',
-              percent(p.curve.creator_payout_bps),
-            ],
-            ['Platform graduation fee share', percent(c.platform_fee_bps)],
-            [
-              'Accrued unclaimed creator fees',
-              pairAmount(s.state.creator_fees),
-            ],
-            [
-              'Actual vault token balance',
-              t ? tokenAmount(t.vaultAssetBalance) : 'Loading…',
-            ],
-            [
-              'Actual vault pair balance',
-              t ? pairAmount(t.vaultPairBalance) : 'Loading…',
-            ],
-          ]}
-        />
-      </section>
-      <section
-        className="flex flex-col gap-3"
-        aria-labelledby="vesting-heading"
+    <IndexedLaunchOverview
+      address={address}
+      network={network}
+      launch={indexed.data}
+      snapshot={snapshot}
+      tokens={tokens}
+      loading={
+        indexed.isPending ||
+        (network === API_NETWORK && !snapshot && !coreError)
+      }
+      feedback={
+        <>
+          {indexedFeedback}
+          {feedback}
+        </>
+      }
+    >
+      <BondingTechnicalDetails
+        address={address}
+        network={network}
+        launch={indexed.data}
+        snapshot={snapshot}
+        tokens={tokens}
       >
-        <h2 id="vesting-heading" className="text-xl font-semibold">
-          Team vesting
-        </h2>
-        <Facts
-          rows={[
-            ['Cliff duration', `${p.vesting.cliff_seconds} seconds`],
-            [
-              'Vesting duration after cliff',
-              `${p.vesting.duration_seconds} seconds`,
-            ],
-            ['Unlock schedule', p.vesting.schedule],
-            ['Cliff ends', date(cliff)],
-            [
-              'Fully vested at',
-              p.vesting.duration_seconds === BigInt(0)
-                ? 'Immediately — no vesting delay'
-                : date(cliff + p.vesting.duration_seconds),
-            ],
-            ['Team tokens already claimed', tokenAmount(s.state.team_claimed)],
-            ['Team tokens claimable now', tokenAmount(s.claimableTeam)],
-            [
-              'Team tokens remaining',
-              tokenAmount(c.buckets.team - s.state.team_claimed),
-            ],
-          ]}
-        />
-        <p className="text-sm text-muted-foreground">
-          A zero vesting duration makes the full team allocation immediately
-          claimable. Otherwise, vesting uses the launch start, configured cliff,
-          and stepped unlocks. Monthly periods are fixed at 30 days. The creator
-          can claim team tokens and trading fees through the contract.
-        </p>
-      </section>
-      <section
-        className="flex flex-col gap-3"
-        aria-labelledby="preview-heading"
-      >
-        <h2 id="preview-heading" className="text-xl font-semibold">
-          Graduation accounting preview
-        </h2>
-        <Facts
-          rows={[
-            ['Creator payout', pairAmount(s.preview.creator_payout)],
-            ['Platform fee', pairAmount(s.preview.platform_fee)],
-            [
-              'Pair tokens earmarked for pool',
-              pairAmount(s.preview.pool_pair_amount),
-            ],
-            [
-              'Launch tokens earmarked for pool',
-              tokenAmount(s.preview.pool_asset_amount),
-            ],
-            ['Unsold curve tokens', tokenAmount(s.preview.unsold_curve_amount)],
-          ]}
-        />
-        <p className="text-sm text-muted-foreground">
-          These values are calculated from current reserves. This contract
-          version does not create a pool or transfer graduation proceeds.
-          Graduation stops curve trading.
-        </p>
-      </section>
-    </>
+        {snapshot && rawResponses}
+      </BondingTechnicalDetails>
+    </IndexedLaunchOverview>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LineChart } from '@/components/charts';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -35,6 +35,17 @@ export function IndexedPriceChart({
   price: string;
 }) {
   const [range, setRange] = useState<ChartRange>('1D');
+  const chartContainer = useRef<HTMLDivElement>(null);
+  const [chartWidth, setChartWidth] = useState(680);
+  useEffect(() => {
+    const element = chartContainer.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setChartWidth(Math.max(240, Math.round(entry.contentRect.width)));
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
   const visible = usePageVisible();
   const client = useQueryClient();
   const query = useQuery({
@@ -71,7 +82,7 @@ export function IndexedPriceChart({
       minute: '2-digit',
     });
   const content = query.isPending ? (
-    <Skeleton className="h-70 w-full" />
+    <Skeleton className="h-60 w-full" />
   ) : query.isError && !query.data ? (
     <Empty>
       <EmptyHeader>
@@ -101,7 +112,11 @@ export function IndexedPriceChart({
         data={data}
         timestamps={points.map((p) => p.time)}
         interpolation="step"
-        height={280}
+        fill={false}
+        className="[&_.stroke-foreground]:stroke-lime [&_line]:stroke-transparent [&_text]:fill-muted-foreground"
+        width={chartWidth}
+        axisWidth={90}
+        height={240}
         min={min - padding}
         max={max + padding}
         yTicks={[min, (min + max) / 2, max].filter(
@@ -113,16 +128,20 @@ export function IndexedPriceChart({
         ]}
         formatTick={(v) =>
           v.toLocaleString('en-US', {
-            maximumSignificantDigits: 5,
-            notation: Math.abs(v) >= 1000 ? 'compact' : 'standard',
+            maximumSignificantDigits: 8,
+            notation:
+              Math.abs(v) >= 1000
+                ? 'compact'
+                : Math.abs(v) > 0 && Math.abs(v) < 0.00001
+                  ? 'scientific'
+                  : 'standard',
           })
         }
         marker={false}
         label={`${ticker} observed contract prices in ${pair} over ${range}`}
       />
       <p className="mt-3 text-small text-muted-foreground">
-        Observed contract prices before fees · Prices continue between
-        observations.
+        Observed contract prices · before fees · held between observations
       </p>
     </>
   );
@@ -132,7 +151,15 @@ export function IndexedPriceChart({
         ticker={ticker}
         price={price}
         quoteSymbol={pair}
-        history={{ range, onRangeChange: setRange, content }}
+        history={{
+          range,
+          onRangeChange: setRange,
+          content: (
+            <div ref={chartContainer} className="min-h-60">
+              {content}
+            </div>
+          ),
+        }}
       />
       {query.isError && query.data && (
         <p role="alert" className="text-small text-destructive">

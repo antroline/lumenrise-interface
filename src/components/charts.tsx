@@ -50,6 +50,7 @@ export function LineChart({
   className,
   timestamps,
   interpolation = 'linear',
+  axisWidth = 48,
 }: {
   data: number[]
   width?: number
@@ -68,10 +69,12 @@ export function LineChart({
   className?: string
   timestamps?: number[]
   interpolation?: 'linear' | 'step'
+  /** Space for the price axis, without shrinking its numeric labels. */
+  axisWidth?: number
 }) {
   // useId output may contain characters that are invalid inside url(#…).
   const gradientId = `line-fill-${useId().replace(/[^\w-]/g, '')}`
-  const padRight = 48
+  const padRight = axisWidth
   const padTop = 10
   const padBottom = 26
   const innerWidth = width - padRight

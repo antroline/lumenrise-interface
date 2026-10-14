@@ -145,8 +145,8 @@ export function formatAmount(amount: bigint): string {
   return `${negative ? '-' : ''}${value / UNIT}${fraction ? `.${fraction}` : ''}`;
 }
 
-export function defaultLimit(receipt: bigint, buying: boolean) {
-  const margin = (receipt * BigInt(50) + BigInt(9_999)) / BigInt(10_000);
+export function defaultLimit(receipt: bigint, buying: boolean, slippageBps = BigInt(50)) {
+  const margin = (receipt * slippageBps + BigInt(9_999)) / BigInt(10_000);
   return buying ? receipt + margin : receipt > margin ? receipt - margin : BigInt(0);
 }
 

@@ -36,7 +36,7 @@ export function EconomicsStep({ draft, setDraft, errors = {} }: DraftProps) {
           unit={draft.quote}
           value={draft.bonding.target}
           onChange={(target) => updateBonding({ target })}
-          help="When the curve raises this amount, trading moves to a liquidity pool. A higher target keeps the curve active longer."
+          help="Net raise target, excluding fees. Price is calculated from this target and the bonding-curve token allocation. It starts at half the average sale price and increases to four times its starting price as the allocation sells."
           placeholder="Enter a target"
           groupThousands
           error={errors['curve-target']}
