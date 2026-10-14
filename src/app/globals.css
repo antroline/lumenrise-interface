@@ -135,7 +135,7 @@
   --foreground: #0b0b0b;
   --card: #fff;
   --card-foreground: #0b0b0b;
-  --surface: #f0f0f1;
+  --surface: #f1f0f2;
   /* Hairlines need more separation on the stone ground than on the white page. */
   --surface-divider: #dcdcdd;
   --popover: #ffffff;
@@ -252,6 +252,7 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    scrollbar-gutter: stable;
     @apply font-sans;
   }
 
@@ -328,11 +329,6 @@
   * {
     @apply border-border outline-ring/50;
   }
-}
-
-/* Keep the wizard width stable when a step gains or loses vertical overflow. */
-html:has([data-launch-studio]) {
-  scrollbar-gutter: stable;
 }
 
 @keyframes settle-page {
