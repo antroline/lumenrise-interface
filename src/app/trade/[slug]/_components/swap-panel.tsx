@@ -1,18 +1,24 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { ArrowDownUp, ArrowRight, ChevronDown, Info, Settings } from 'lucide-react'
-import { StellarIcon } from '@/components/brand-icons'
-import { ProjectMark } from '@/components/project-mark'
-import { KeyValue } from '@/components/stat'
-import { StatusDot } from '@/components/status'
-import { Alert } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardTitle } from '@/components/ui/card'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { useLaunchpad } from '@/lib/launchpad'
-import type { ProjectMarkName } from '@/components/project-mark'
+import { usePreviewSwap } from './use-preview-swap';
+import { formatAmount } from './format-preview-amount';
+import { TradeTokenPill } from './trade-token-pill';
+import { TradeValue } from './trade-value';
+import { TradeFeedback } from './trade-feedback';
+import { Info, Settings } from 'lucide-react';
+import { StellarIcon } from '@/components/brand-icons';
+import { ProjectMark, type ProjectMarkName } from '@/components/project-mark';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+  TradeTabs,
+  TradeTabsList,
+  TradeTabsTrigger,
+  TradeTabsContent,
+  TradeTabPanels,
+} from './trade-tabs';
+import { TradeDisclosure } from './trade-disclosure';
 import {
   BEST_ROUTE,
   NETWORK_FEE_XLM,
@@ -20,226 +26,240 @@ import {
   PRICE_IMPACT,
   XLM_BALANCE,
   XLM_PER_TOKEN,
-  XLM_USD,
   slippageOptions,
-  type Slippage,
-} from '../_data'
+} from '../_data';
 
-const TOKEN_BALANCE = 0
-
-function parseAmount(value: string) {
-  const amount = Number(value.replace(/,/g, ''))
-  return Number.isFinite(amount) ? amount : Number.NaN
-}
-
-function formatAmount(value: number, decimals = 2) {
-  return value.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
-}
-
+const TOKEN_BALANCE = 0;
 export function SwapPanel({
   slug,
   name,
   ticker,
   priceUsd,
 }: {
-  slug: string
-  name: ProjectMarkName
-  ticker: string
-  priceUsd: number
+  slug: string;
+  name: ProjectMarkName;
+  ticker: string;
+  priceUsd: number;
 }) {
-  const { isSignedIn, login, loginPending, notify } = useLaunchpad()
-  const [payAmount, setPayAmount] = useState('500')
-  const [selling, setSelling] = useState(false)
-  const [slippage, setSlippage] = useState<Slippage>('0.5')
-
-  const payToken = selling ? ticker : 'XLM'
-  const receiveToken = selling ? 'XLM' : ticker
-  const payBalance = selling ? TOKEN_BALANCE : XLM_BALANCE
-
-  const amount = parseAmount(payAmount)
-  const receive = Number.isFinite(amount) && amount > 0 ? (selling ? amount * XLM_PER_TOKEN : amount / XLM_PER_TOKEN) : 0
-  const payUsd = Number.isFinite(amount) && amount > 0 ? amount * (selling ? priceUsd : XLM_USD) : 0
-  const receiveUsd = receive * (selling ? XLM_USD : priceUsd)
-  const minimumReceived = receive * (1 - Number(slippage) / 100)
-
-  const error = !Number.isFinite(amount) || amount <= 0 ? 'Enter an amount' : amount > payBalance ? `Insufficient ${payToken} balance` : null
-
-  const submit = () => {
-    if (error) return
-    if (!isSignedIn) {
-      void login(`/trade/${slug}`)
-      return
-    }
-    notify(`Review swap: ${payAmount} ${payToken} → ~${formatAmount(receive)} ${receiveToken}. Swaps are not connected to a backend in this preview.`)
-  }
-
-  const flip = () => {
-    setSelling((current) => !current)
-    setPayAmount(receive > 0 ? String(Math.round(receive * 100) / 100) : '')
-  }
-
-  const payTokenPill = (
-    <span className="flex h-9 shrink-0 items-center gap-2 rounded-full border pr-3 pl-1.5">
-      {selling ? (
-        <ProjectMark name={name} size={24} />
-      ) : (
-        <span className="grid size-6 place-items-center rounded-full bg-foreground text-background">
-          <StellarIcon className="size-3.5" />
-        </span>
-      )}
-      <b className="font-semibold">{payToken}</b>
-      <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
-    </span>
-  )
-
+  const {
+    isSignedIn,
+    loginPending,
+    notify,
+    payAmount,
+    setPayAmount,
+    selling,
+    slippage,
+    setSlippage,
+    payToken,
+    receiveToken,
+    payBalance,
+    receive,
+    payUsd,
+    receiveUsd,
+    minimumReceived,
+    error,
+    submit,
+    flip,
+  } = usePreviewSwap(slug, ticker, priceUsd);
+  const token = (symbol: string) => (
+    <TradeTokenPill
+      symbol={symbol}
+      mark={
+        symbol === 'XLM' ? (
+          <span className="grid size-6 place-items-center rounded-full bg-foreground text-background">
+            <StellarIcon className="size-3.5" />
+          </span>
+        ) : (
+          <ProjectMark name={name} size={24} />
+        )
+      }
+    />
+  );
   return (
-    <Card className="gap-0 p-[22px]">
-      <div className="flex items-center justify-between">
-        <CardTitle>Swap</CardTitle>
-        <div className="flex items-center gap-2">
-          <Badge variant="net" size="sm">
-            <StatusDot />
-            Testnet
-          </Badge>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            className="size-8"
-            aria-label="Swap settings"
-            onClick={() => notify('Routing is automatic in this preview. Slippage can be adjusted below.')}
-          >
-            <Settings data-icon="inline-start" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="mt-4 rounded-xl bg-muted p-4">
-        <div className="flex items-center justify-between gap-3 text-small">
-          <span>You pay</span>
-          <span>
-            Balance {formatAmount(payBalance)} {payToken}
-          </span>
-        </div>
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <input
-            value={payAmount}
-            onChange={(event) => setPayAmount(event.target.value)}
-            inputMode="decimal"
-            autoComplete="off"
-            aria-label={`Amount to pay in ${payToken}`}
-            aria-invalid={error ? true : undefined}
-            placeholder="0"
-            className="w-full min-w-0 bg-transparent text-[30px] font-semibold tracking-[-0.03em] tabular-nums outline-none placeholder:text-faint"
-          />
-          {payTokenPill}
-        </div>
-        <div className="mt-2 flex items-center justify-between gap-3 text-small">
-          <span>≈ ${formatAmount(payUsd)}</span>
-          <span className="flex items-center gap-1.5">
-            {[0.5, 1].map((fraction) => (
-              <Badge
-                key={fraction}
-                variant="tag-outline"
-                render={
-                  <button
-                    type="button"
-                    onClick={() => setPayAmount(String(Math.round(payBalance * fraction * 100) / 100))}
+    <Card variant="surface" size="none" className="bg-transparent">
+      <TradeTabs
+        value={selling ? 'sell' : 'buy'}
+        onValueChange={(value) => {
+          if ((value === 'sell' && !selling) || (value === 'buy' && selling))
+            flip();
+        }}
+      >
+        <TradeTabsList aria-label="Trade direction">
+          <TradeTabsTrigger value="buy">Buy</TradeTabsTrigger>
+          <TradeTabsTrigger value="sell">Sell</TradeTabsTrigger>
+        </TradeTabsList>
+        <TradeTabPanels>
+          <TradeTabsContent value={selling ? 'sell' : 'buy'}>
+            <div className="flex min-w-0 flex-col gap-2">
+              <div className="rounded-2xl bg-muted p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <label
+                    htmlFor="preview-amount"
+                    className="text-small font-medium text-muted-foreground"
+                  >
+                    {selling ? 'Sell' : 'Buy'} {ticker}
+                  </label>
+                  <div className="flex gap-1">
+                    {[0.5, 1].map((fraction) => (
+                      <Button
+                        key={fraction}
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="min-h-8 rounded-full bg-background px-2 text-small"
+                        onClick={() =>
+                          setPayAmount(
+                            String(
+                              Math.round(payBalance * fraction * 100) / 100,
+                            ),
+                          )
+                        }
+                      >
+                        {fraction === 1 ? 'Max' : '50%'}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-2 flex min-w-0 items-center gap-2">
+                  <input
+                    id="preview-amount"
+                    aria-label={`Amount to pay in ${payToken}`}
+                    aria-invalid={!!error}
+                    inputMode="decimal"
+                    autoComplete="off"
+                    value={payAmount}
+                    onChange={(event) => setPayAmount(event.target.value)}
+                    placeholder="0"
+                    className="h-14 w-full min-w-0 rounded-lg bg-transparent text-[34px] font-semibold tabular-nums outline-none focus-visible:ring-3 focus-visible:ring-lime/60"
                   />
-                }
+                  {token(payToken)}
+                </div>
+                <p className="mt-1 text-small text-muted-foreground">
+                  ≈ $<TradeValue>{formatAmount(payUsd)}</TradeValue> · preview
+                  balance {formatAmount(payBalance)} {payToken}
+                </p>
+              </div>
+              <TradeFeedback>
+                {error && payAmount && (
+                  <p role="alert" className="text-small text-destructive">
+                    {error}
+                  </p>
+                )}
+              </TradeFeedback>
+              <div className="rounded-2xl bg-muted p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-small text-muted-foreground">
+                    Receive · estimated
+                  </span>
+                  {token(receiveToken)}
+                </div>
+                <p className="mt-2 break-words text-mid font-semibold tabular-nums">
+                  <TradeValue>
+                    {receive > 0 ? formatAmount(receive) : '—'}
+                  </TradeValue>
+                </p>
+                <p className="mt-1 text-small text-muted-foreground">
+                  ≈ $<TradeValue>{formatAmount(receiveUsd)}</TradeValue>
+                </p>
+              </div>
+              <TradeDisclosure title={`Max slippage · ${slippage}%`}>
+                <ToggleGroup
+                  aria-label="Slippage tolerance"
+                  value={[slippage]}
+                  onValueChange={(values) => {
+                    const next = values[0];
+                    if (next === '0.1' || next === '0.5' || next === '1.0')
+                      setSlippage(next);
+                  }}
+                >
+                  {slippageOptions.map((option) => (
+                    <ToggleGroupItem key={option} value={option} size="sm">
+                      {option}%
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              </TradeDisclosure>
+              <dl className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-2 text-small tabular-nums">
+                <dt className="text-muted-foreground">You pay</dt>
+                <dd className="break-words text-right font-semibold">
+                  <TradeValue>
+                    {payAmount || '—'} {payToken}
+                  </TradeValue>
+                </dd>
+                <dt className="text-muted-foreground">You receive</dt>
+                <dd className="break-words text-right font-semibold">
+                  <TradeValue>
+                    {formatAmount(receive)} {receiveToken}
+                  </TradeValue>
+                </dd>
+                <dt className="text-muted-foreground">Minimum received</dt>
+                <dd className="break-words text-right">
+                  <TradeValue>
+                    {formatAmount(minimumReceived)} {receiveToken}
+                  </TradeValue>
+                </dd>
+                <dt className="text-muted-foreground">Price impact</dt>
+                <dd className="text-right">
+                  <TradeValue>{PRICE_IMPACT}</TradeValue>
+                </dd>
+                <dt className="text-muted-foreground">Pool fees</dt>
+                <dd className="text-right">
+                  <TradeValue>{POOL_FEES_XLM} XLM</TradeValue>
+                </dd>
+                <dt className="text-muted-foreground">Network fee</dt>
+                <dd className="text-right">
+                  <TradeValue>{NETWORK_FEE_XLM} XLM</TradeValue>
+                </dd>
+              </dl>
+              <TradeDisclosure title="Quote details">
+                <p className="text-small">
+                  {selling
+                    ? `1 XLM = ${formatAmount(1 / XLM_PER_TOKEN, 4)} ${ticker}`
+                    : `1 ${ticker} = ${formatAmount(XLM_PER_TOKEN, 3)} XLM`}
+                </p>
+                <p className="text-small">Route · {BEST_ROUTE}</p>
+                <p className="text-small">
+                  Receiving balance · preview ·{' '}
+                  {formatAmount(selling ? XLM_BALANCE : TOKEN_BALANCE)}{' '}
+                  {receiveToken}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    notify(
+                      'Routing is automatic in this preview. Slippage can be adjusted above.',
+                    )
+                  }
+                >
+                  <Settings />
+                  Swap settings
+                </Button>
+              </TradeDisclosure>
+              <Button
+                size="lg"
+                className="w-full rounded-2xl disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
+                disabled={loginPending || (isSignedIn && Boolean(error))}
+                onClick={submit}
               >
-                {fraction === 1 ? 'Max' : '50%'}
-              </Badge>
-            ))}
-          </span>
-        </div>
-      </div>
-      {error && payAmount !== '' && (
-        <p role="alert" className="mt-2 text-small text-bad">
-          {error}
-        </p>
-      )}
-
-      <div className="relative z-10 -my-2.5 grid place-items-center">
-        <Button variant="outline" size="icon-sm" className="size-9 bg-card" aria-label="Flip swap direction" onClick={flip}>
-          <ArrowDownUp data-icon="inline-start" />
-        </Button>
-      </div>
-
-      <div className="rounded-xl bg-muted p-4">
-        <div className="flex items-center justify-between gap-3 text-small">
-          <span>You receive · estimated</span>
-          <span>
-            Balance {formatAmount(selling ? XLM_BALANCE : TOKEN_BALANCE)} {receiveToken}
-          </span>
-        </div>
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <span aria-live="polite" className="text-[30px] font-semibold tracking-[-0.03em] tabular-nums">
-            {receive > 0 ? formatAmount(receive) : '0'}
-          </span>
-          <span className="flex h-9 shrink-0 items-center gap-2 rounded-full border pr-3 pl-1.5">
-            {selling ? (
-              <span className="grid size-6 place-items-center rounded-full bg-foreground text-background">
-                <StellarIcon className="size-3.5" />
-              </span>
-            ) : (
-              <ProjectMark name={name} size={24} />
-            )}
-            <b className="font-semibold">{receiveToken}</b>
-            <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
-          </span>
-        </div>
-        <div className="mt-2 text-small">≈ ${formatAmount(receiveUsd)}</div>
-      </div>
-
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <span className="text-small">Slippage tolerance</span>
-        <ToggleGroup
-          aria-label="Slippage tolerance"
-          value={[slippage]}
-          onValueChange={(values) => {
-            const [next] = values
-            if (next) setSlippage(next as Slippage)
-          }}
-        >
-          {slippageOptions.map((option) => (
-            <ToggleGroupItem key={option} value={option} size="sm" className="font-mono">
-              {option}%
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      </div>
-
-      <div className="mt-2">
-        <KeyValue label="Rate">
-          <span className="font-mono text-small font-medium">
-            {selling ? `1 XLM = ${formatAmount(1 / XLM_PER_TOKEN, 4)} ${ticker}` : `1 ${ticker} = ${formatAmount(XLM_PER_TOKEN, 3)} XLM`}
-          </span>
-        </KeyValue>
-        <KeyValue label="Route">{BEST_ROUTE}</KeyValue>
-        <KeyValue label="Price impact">{PRICE_IMPACT}</KeyValue>
-        <KeyValue label={`Minimum received · ${slippage}% slippage`}>
-          {formatAmount(minimumReceived)} {receiveToken}
-        </KeyValue>
-        <KeyValue label="Pool fees">{POOL_FEES_XLM} XLM</KeyValue>
-        <KeyValue label="Network fee">{NETWORK_FEE_XLM} XLM</KeyValue>
-      </div>
-
-      {!selling && (
-        <Alert size="sm" className="mt-4">
-          <Info />
-          <span>
-            First time holding {ticker}. This swap adds an {ticker} trustline, which reserves 0.5 XLM in your wallet.
-          </span>
-        </Alert>
-      )}
-
-      <Button size="lg" className="mt-4 w-full" disabled={Boolean(error) || loginPending} onClick={submit}>
-        Review swap
-        <ArrowRight data-icon="inline-end" />
-      </Button>
-      <p className="mt-3 text-center text-small">
-        Swaps execute against third-party liquidity from your wallet. LumenRise does not hold funds or run an exchange.
-      </p>
+                {!isSignedIn
+                  ? loginPending
+                    ? 'Connecting…'
+                    : 'Connect Wallet'
+                  : `Preview ${selling ? 'sell' : 'buy'}`}
+              </Button>
+              <div className="flex items-start gap-2 rounded-2xl bg-muted px-3 py-2.5 text-small text-muted-foreground">
+                <Info className="mt-0.5 size-4 shrink-0" />
+                <p>
+                  Illustrative quotes and balances · trading unavailable.
+                  {!selling &&
+                    ` A new ${ticker} trustline would reserve 0.5 XLM.`}
+                </p>
+              </div>
+            </div>
+          </TradeTabsContent>
+        </TradeTabPanels>
+      </TradeTabs>
     </Card>
-  )
+  );
 }
