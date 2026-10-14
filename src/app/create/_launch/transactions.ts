@@ -16,8 +16,7 @@ export const NETWORK = Networks.TESTNET;
 /** The launches API spells the same Stellar network as `testnet`/`public`. */
 export const API_NETWORK: ApiNetwork =
   (NETWORK as string) === Networks.PUBLIC ? 'public' : 'testnet';
-export const LOCK_CONTRACT_ID =
-  'CAP4INYPX7MRQJXLDVO5PU6MTB22QPZMOJSEPEF3R3QZXMR2A6JO2X7K';
+
 export const horizon = new Horizon.Server(
   'https://horizon-testnet.stellar.org',
 );
@@ -52,6 +51,12 @@ export function buildIssuance(
 ) {
   // Blux's email wallet rejects operations sourced from this separate issuer.
   // Sign locally, then submit only after the wallet-funded setup confirms.
+  const homeDomain = process.env.NEXT_PUBLIC_STELLAR_HOME_DOMAIN?.trim();
+  if (!homeDomain) {
+    throw new Error(
+      'NEXT_PUBLIC_STELLAR_HOME_DOMAIN is required for issuance.',
+    );
+  }
   const issuer = Keypair.fromSecret(secret);
   const transaction = new TransactionBuilder(account, {
     fee: BASE_FEE,
@@ -64,7 +69,7 @@ export function buildIssuance(
         amount,
       }),
     )
-    .addOperation(Operation.setOptions({ homeDomain: 'lumenrise.app' }))
+    .addOperation(Operation.setOptions({ homeDomain }))
     .addOperation(Operation.setOptions({ setFlags: AuthImmutableFlag }))
     .addOperation(Operation.setOptions({ masterWeight: 0 }))
     .setTimeout(0)

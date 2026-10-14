@@ -15,7 +15,6 @@ import { useLaunchpad } from '@/lib/launchpad';
 import { cn } from '@/lib/utils';
 import { expandSupply, formatSupply, type SupplyUnit } from '../_launch/amount';
 import {
-  formatTokenUnits,
   shortAddress,
   validateAmount,
   type LaunchInput,
@@ -55,14 +54,7 @@ export function CreateLaunch({
   const [amountUnit, setAmountUnit] = useState<SupplyUnit>('');
   const busy = working || !isReady || !hydrated;
   const walletMatches = !record || !user || user.address === record.creator;
-  const canWithdraw =
-    record?.stage === 'complete' &&
-    !!record.unlockAt &&
-    flow.now >= record.unlockAt * 1000 + 5_000;
-  const isFinished =
-    record?.stage === 'complete' ||
-    record?.stage === 'withdrawPending' ||
-    record?.stage === 'withdrawn';
+  const isFinished = record?.stage === 'complete';
   const preview = record ?? input;
   let amountError = '';
   if (input.amount && !record) {
@@ -114,18 +106,6 @@ export function CreateLaunch({
     void flow.resume();
   }
 
-  function withdraw() {
-    if (!user) {
-      void account.login(
-        record
-          ? `/create?resume=${encodeURIComponent(record.issuer)}`
-          : '/create?mode=basic',
-      );
-      return;
-    }
-    void flow.withdraw();
-  }
-
   return (
     <div className="grid items-start gap-5 @3xl/launch:grid-cols-[minmax(0,1fr)_260px]">
       <section
@@ -138,91 +118,17 @@ export function CreateLaunch({
               id="launch-result"
               className="text-[26px] font-semibold tracking-[-0.025em]"
             >
-              {record.stage === 'withdrawn'
-                ? 'Tokens withdrawn'
-                : record.stage === 'withdrawPending'
-                  ? 'Withdrawal pending'
-                  : 'Tokens locked'}
+              Token created
             </h2>
             <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-              {record.stage === 'withdrawn'
-                ? 'The lock no longer holds this supply.'
-                : record.stage === 'withdrawPending'
-                  ? 'The withdrawal is being confirmed on Stellar testnet.'
-                  : canWithdraw
-                    ? 'The lock period has ended. You can withdraw the tokens to your wallet.'
-                    : 'The full supply is locked. It becomes available to withdraw after the time below.'}
+              The full supply was issued to the creator wallet.
             </p>
-            <dl className="mt-7 grid gap-5 border-y border-divider py-6 sm:grid-cols-2">
-              <div>
-                <dt className="text-[13px] text-muted-foreground">
-                  {record.stage === 'withdrawn'
-                    ? 'Withdrawn supply'
-                    : 'Locked supply'}
-                </dt>
-                <dd className="mt-2 break-all text-[28px] font-semibold tracking-[-0.025em] tabular-nums">
-                  {formatSupply(
-                    record.lockAmount
-                      ? formatTokenUnits(record.lockAmount)
-                      : record.amount,
-                  )}{' '}
-                  <span className="text-[17px]">{record.code}</span>
-                </dd>
-              </div>
-              {record.unlockAt && (
-                <div>
-                  <dt className="text-[13px] text-muted-foreground">
-                    {record.stage === 'withdrawn'
-                      ? 'Unlock time'
-                      : 'Available to withdraw'}
-                  </dt>
-                  <dd className="mt-2 text-[17px] font-medium tabular-nums">
-                    {new Date(record.unlockAt * 1000).toLocaleString()}
-                  </dd>
-                </div>
-              )}
+            <dl className="mt-7 border-y border-divider py-6">
+              <dt className="text-[13px] text-muted-foreground">Total supply</dt>
+              <dd className="mt-2 break-all text-[28px] font-semibold tabular-nums">
+                {formatSupply(record.amount)} {record.code}
+              </dd>
             </dl>
-            <LaunchReveal show={record.stage !== 'withdrawn' && !walletMatches}>
-              <p className="mt-5 text-[14px] text-muted-foreground">
-                Connect {shortAddress(record.creator)} to continue.
-              </p>
-            </LaunchReveal>
-            <LaunchReveal show={record.stage === 'complete'}>
-              <Button
-                type="button"
-                size="lg"
-                onClick={withdraw}
-                disabled={
-                  busy || account.loginPending || !walletMatches || !canWithdraw
-                }
-                className="mt-6 w-full sm:w-auto"
-              >
-                {working
-                  ? 'Working…'
-                  : !canWithdraw
-                    ? 'Available after unlock'
-                    : !user
-                      ? 'Connect to withdraw'
-                      : 'Withdraw tokens'}
-                <ArrowRight data-icon="inline-end" aria-hidden="true" />
-              </Button>
-            </LaunchReveal>
-            <LaunchReveal show={record.stage === 'withdrawPending'}>
-              <Button
-                type="button"
-                size="lg"
-                onClick={continueLaunch}
-                disabled={busy || account.loginPending || !walletMatches}
-                className="mt-6 w-full sm:w-auto"
-              >
-                {working
-                  ? 'Checking…'
-                  : !user
-                    ? 'Connect and check withdrawal'
-                    : 'Check withdrawal'}
-                <ArrowRight data-icon="inline-end" aria-hidden="true" />
-              </Button>
-            </LaunchReveal>
             <div className="mt-8 border-t border-divider pt-7">
               <LaunchOverview record={record} />
             </div>
@@ -350,8 +256,7 @@ export function CreateLaunch({
                   </span>{' '}
                   2 XLM funds an issuer that cannot be recovered. Minting is
                   permanently disabled, and no home domain can be added later.
-                  Your full balance is locked for 120 seconds. This creates a
-                  token, not a sale.
+                  This creates a token, not a sale.
                 </p>
               </div>
 
@@ -401,7 +306,7 @@ export function CreateLaunch({
                             : record.stage === 'issuerReady'
                               ? 'Continue: issue supply'
                               : record.stage === 'sacConfirmed'
-                                ? 'Continue: lock tokens'
+                                ? 'Continue: finish token'
                                 : 'Continue: deploy SAC'}
                       <ArrowRight data-icon="inline-end" aria-hidden="true" />
                     </Button>
@@ -489,12 +394,6 @@ export function CreateLaunch({
                     ? formatSupply(preview.amount.trim())
                     : '—'}
                 </dd>
-              </div>
-              <div className="border-t border-divider pt-4 sm:border-t-0 sm:pt-0 @3xl/launch:border-t @3xl/launch:pt-4">
-                <dt className="text-[13px] text-muted-foreground">
-                  Token lock
-                </dt>
-                <dd className="mt-1 text-[15px] font-medium">120 seconds</dd>
               </div>
             </dl>
           </section>

@@ -1,6 +1,5 @@
-import { readContracts } from '@bluxcc/react';
 import { StrKey } from '@stellar/stellar-sdk';
-import { horizon, LOCK_CONTRACT_ID, NETWORK, soroban } from './transactions';
+import { horizon, soroban } from './transactions';
 
 const STORAGE_KEY = 'launchpad:last-testnet-launch';
 const STORAGE_PREFIX = 'launchpad:testnet-launch:';
@@ -15,10 +14,7 @@ export type Stage =
   | 'setupConfirmed'
   | 'sacPending'
   | 'sacConfirmed'
-  | 'depositPending'
-  | 'complete'
-  | 'withdrawPending'
-  | 'withdrawn';
+  | 'complete';
 export type LaunchRecord = LaunchInput & {
   creator: string;
   issuer: string;
@@ -31,10 +27,6 @@ export type LaunchRecord = LaunchInput & {
   distributionXdr?: string;
   sacHash?: string;
   sacXdr?: string;
-  depositHash?: string;
-  withdrawHash?: string;
-  lockAmount?: string;
-  unlockAt?: number;
 };
 
 export function isLaunchRecord(value: unknown): value is LaunchRecord {
@@ -46,10 +38,7 @@ export function isLaunchRecord(value: unknown): value is LaunchRecord {
     'setupConfirmed',
     'sacPending',
     'sacConfirmed',
-    'depositPending',
     'complete',
-    'withdrawPending',
-    'withdrawn',
   ];
   if (!stages.includes(value.stage)) return false;
   return [
@@ -68,8 +57,6 @@ function readStoredLaunch(value: string | null): LaunchRecord | null {
   try {
     const record: unknown = JSON.parse(value);
     if (!isLaunchRecord(record)) return null;
-    if (record.stage === 'complete' && !record.depositHash)
-      return { ...record, stage: 'sacConfirmed' };
     return record;
   } catch {
     return null;
@@ -156,19 +143,6 @@ export function shortAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-6)}`;
 }
 
-export function formatTokenUnits(value: string) {
-  try {
-    const units = BigInt(value);
-    const decimals = (units % TOKEN_UNIT)
-      .toString()
-      .padStart(7, '0')
-      .replace(/0+$/, '');
-    return `${units / TOKEN_UNIT}${decimals ? `.${decimals}` : ''}`;
-  } catch {
-    return value;
-  }
-}
-
 export async function isTransactionConfirmed(hash: string) {
   try {
     const result = await horizon.transactions().transaction(hash).call();
@@ -182,26 +156,6 @@ export async function isTransactionConfirmed(hash: string) {
     if (status === 404) return false;
     throw error;
   }
-}
-
-type Lock = {
-  amount: string | number | bigint;
-  unlock_at: string | number | bigint;
-};
-export async function readLock(record: LaunchRecord) {
-  const result = await readContracts<[Lock | null]>(
-    [
-      {
-        address: LOCK_CONTRACT_ID,
-        fn: 'get_lock',
-        args: [record.creator, record.sac],
-      },
-    ],
-    { network: NETWORK },
-  );
-  const lock = result.values[0];
-  if (!lock) return null;
-  return { amount: String(lock.amount), unlockAt: Number(lock.unlock_at) };
 }
 
 export async function checkPending(
@@ -234,32 +188,6 @@ export async function checkPending(
       };
     if (result.status === 'NOT_FOUND' && record.sacXdr) return record;
     throw new Error('SAC deployment is still pending. Check again shortly.');
-  }
-  if (record.stage === 'depositPending' && record.depositHash) {
-    const result = await soroban.getTransaction(record.depositHash);
-    if (result.status === 'SUCCESS') {
-      const lock = await readLock(record);
-      if (!lock)
-        throw new Error(
-          'Deposit confirmed, but lock details are not visible yet.',
-        );
-      return {
-        ...record,
-        stage: 'complete',
-        lockAmount: lock.amount,
-        unlockAt: lock.unlockAt,
-      };
-    }
-    if (result.status === 'FAILED')
-      return { ...record, stage: 'sacConfirmed', depositHash: undefined };
-    throw new Error('Deposit is still pending. Check again shortly.');
-  }
-  if (record.stage === 'withdrawPending' && record.withdrawHash) {
-    const result = await soroban.getTransaction(record.withdrawHash);
-    if (result.status === 'SUCCESS') return { ...record, stage: 'withdrawn' };
-    if (result.status === 'FAILED')
-      return { ...record, stage: 'complete', withdrawHash: undefined };
-    throw new Error('Withdrawal is still pending. Check again shortly.');
   }
   return record;
 }

@@ -1,18 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAccount, useBlux, useWriteContract } from "@bluxcc/react";
+import { useAccount, useBlux } from "@bluxcc/react";
 import { Keypair, type Horizon } from "@stellar/stellar-sdk";
 import {
   checkPending,
   describeError,
   isTransactionConfirmed,
   loadLaunch,
-  readLock,
   requireCreator,
   saveLaunch,
   shortAddress,
-  toUnits,
   validateInput,
   type LaunchInput,
   type LaunchRecord,
@@ -22,7 +20,6 @@ import {
   buildIssuance,
   buildSacDeployment,
   buildSetup,
-  LOCK_CONTRACT_ID,
   NETWORK,
   submitIssuance,
   transactionHash,
@@ -60,15 +57,13 @@ export function useLaunch(resumeIssuer: string | null, initialInput: LaunchInput
     { address: record?.issuer, network: NETWORK },
     { enabled: record?.stage === "issuerReady" },
   );
-  const { mutateAsync: writeContract } = useWriteContract();
   const initialInputRef = useRef(initialInput);
   const [input, setInput] = useState<LaunchInput>(initialInput);
   const [working, setWorking] = useState(false);
-  const [step, setStep] = useState<1 | 2 | 3 | null>(null);
+  const [step, setStep] = useState<1 | 2 | null>(null);
   const [activity, setActivity] = useState("");
   const [error, setError] = useState("");
   const autoAdvance = useRef(false);
-  const [now, setNow] = useState(Date.now);
   const running = useRef(false);
   const mounted = useRef(true);
 
@@ -160,7 +155,7 @@ export function useLaunch(resumeIssuer: string | null, initialInput: LaunchInput
 
       if (next.stage === "setupConfirmed") {
         setStep(2);
-        setActivity("Approval 2 of 3: deploy the Stellar Asset Contract.");
+        setActivity("Approval 2 of 2: deploy the Stellar Asset Contract.");
         const wallet = requireAccount(await refetchWallet());
         const transaction = await buildSacDeployment(
           wallet,
@@ -187,65 +182,11 @@ export function useLaunch(resumeIssuer: string | null, initialInput: LaunchInput
       }
 
       if (next.stage === "sacConfirmed") {
-        setStep(3);
-        setActivity("Checking your full token balance before deposit...");
-        const existing = await readLock(next);
-        if (existing) {
-          save({
-            ...next,
-            stage: "complete",
-            lockAmount: existing.amount,
-            unlockAt: existing.unlockAt,
-          });
-          return;
-        }
-        const wallet = requireAccount(await refetchWallet());
-        const balance = wallet.balances.find(
-          (item) =>
-            "asset_code" in item &&
-            item.asset_code === next.code &&
-            item.asset_issuer === next.issuer,
-        );
-        if (!balance || toUnits(balance.balance) !== toUnits(next.amount)) {
-          throw new Error(
-            "Your wallet no longer holds the full supply. Return those tokens before locking them.",
-          );
-        }
-        setActivity(
-          "Approval 3 of 3: deposit the full supply into the two-minute lock.",
-        );
-        const result = await writeContract({
-          call: {
-            address: LOCK_CONTRACT_ID,
-            fn: "deposit",
-            args: [next.creator, next.sac],
-          },
-          options: { network: NETWORK },
-        });
-        const pending: LaunchRecord = {
-          ...next,
-          stage: "depositPending",
-          depositHash: result.hash,
-        };
-        save(pending);
-        const lock = await readLock(pending);
-        if (!lock)
-          throw new Error(
-            "Deposit confirmed, but lock details are not visible yet. Continue to check again.",
-          );
-        next = {
-          ...pending,
-          stage: "complete",
-          lockAmount: lock.amount,
-          unlockAt: lock.unlockAt,
-        };
-        save(next);
-        setActivity(
-          "Full supply deposited. Withdraw after the unlock time shown below.",
-        );
+        save({ ...next, stage: "complete" });
+        setActivity("Token created. The full supply was issued to the creator wallet.");
       }
     },
-    [refetchIssuer, refetchWallet, save, sendTransaction, writeContract],
+    [refetchIssuer, refetchWallet, save, sendTransaction],
   );
 
   useEffect(() => {
@@ -259,13 +200,6 @@ export function useLaunch(resumeIssuer: string | null, initialInput: LaunchInput
     autoAdvance.current = false;
     void execute(() => advance(record, issuerAccount));
   }, [advance, execute, issuerAccount, record, working]);
-
-  useEffect(() => {
-    if (record?.stage !== "complete" || !record.unlockAt) return;
-    const delay = Math.max(0, record.unlockAt * 1000 + 5_000 - Date.now());
-    const timer = window.setTimeout(() => setNow(Date.now()), delay);
-    return () => window.clearTimeout(timer);
-  }, [record]);
 
   const launch = () =>
     execute(async () => {
@@ -289,7 +223,7 @@ export function useLaunch(resumeIssuer: string | null, initialInput: LaunchInput
         setupHash: transactionHash(transaction),
         setupXdr: transaction.toXDR(),
       };
-      setActivity("Approval 1 of 3: fund the issuer and open your trustline.");
+      setActivity("Approval 1 of 2: fund the issuer and open your trustline.");
       save(pending);
       const result = await sendTransaction(transaction.toXDR(), {
         network: NETWORK,
@@ -318,7 +252,7 @@ export function useLaunch(resumeIssuer: string | null, initialInput: LaunchInput
         next.setupXdr &&
         !(await isTransactionConfirmed(next.setupHash))
       ) {
-        setActivity("Approval 1 of 3: resubmit the issue transaction.");
+        setActivity("Approval 1 of 2: resubmit the issue transaction.");
         const result = await sendTransaction(next.setupXdr, {
           network: NETWORK,
         });
@@ -335,7 +269,7 @@ export function useLaunch(resumeIssuer: string | null, initialInput: LaunchInput
         save(next);
       }
       if (next.stage === "sacPending" && next.sacXdr) {
-        setActivity("Approval 2 of 3: resubmit the SAC deployment.");
+        setActivity("Approval 2 of 2: resubmit the SAC deployment.");
         const result = await sendTransaction(next.sacXdr, { network: NETWORK });
         next = {
           ...next,
@@ -353,40 +287,6 @@ export function useLaunch(resumeIssuer: string | null, initialInput: LaunchInput
         await advance(next);
     });
 
-  const withdraw = () =>
-    execute(async () => {
-      if (
-        !record ||
-        record.stage !== "complete" ||
-        !record.unlockAt ||
-        Date.now() < record.unlockAt * 1000 + 5_000
-      ) {
-        throw new Error(
-          "The tokens are still locked. Wait until the unlock time shown below.",
-        );
-      }
-      if (!user) throw new Error("Connect your wallet to withdraw tokens.");
-      const address = user.address;
-      if (address !== record.creator)
-        throw new Error(`Connect ${shortAddress(record.creator)} to withdraw.`);
-      const existing = await readLock(record);
-      if (!existing) {
-        save({ ...record, stage: "withdrawn" });
-        return;
-      }
-      setActivity("Sign to return the locked tokens to your wallet.");
-      const result = await writeContract({
-        call: {
-          address: LOCK_CONTRACT_ID,
-          fn: "withdraw",
-          args: [record.creator, record.sac],
-        },
-        options: { network: NETWORK },
-      });
-      save({ ...record, stage: "withdrawn", withdrawHash: result.hash });
-      setActivity("Withdrawal confirmed. Tokens are back in your wallet.");
-    });
-
   return {
     user,
     isReady,
@@ -398,9 +298,7 @@ export function useLaunch(resumeIssuer: string | null, initialInput: LaunchInput
     step,
     activity,
     error,
-    now,
     launch,
     resume,
-    withdraw,
   };
 }

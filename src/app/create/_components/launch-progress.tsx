@@ -9,22 +9,13 @@ export function LaunchProgress({
   step,
 }: {
   record: LaunchRecord | null;
-  step: 1 | 2 | 3 | null;
+  step: 1 | 2 | null;
 }) {
   const firstDone =
     !!record &&
     record.stage !== 'setupPending' &&
     record.stage !== 'issuerReady';
-  const secondDone =
-    record?.stage === 'sacConfirmed' ||
-    record?.stage === 'depositPending' ||
-    record?.stage === 'complete' ||
-    record?.stage === 'withdrawPending' ||
-    record?.stage === 'withdrawn';
-  const thirdDone =
-    record?.stage === 'complete' ||
-    record?.stage === 'withdrawPending' ||
-    record?.stage === 'withdrawn';
+  const secondDone = record?.stage === 'sacConfirmed' || record?.stage === 'complete';
   const steps = [
     {
       number: 1,
@@ -44,15 +35,6 @@ export function LaunchProgress({
         step === 2 ||
         record?.stage === 'sacPending' ||
         record?.stage === 'setupConfirmed',
-    },
-    {
-      number: 3,
-      title: 'Lock supply',
-      done: thirdDone,
-      active:
-        step === 3 ||
-        record?.stage === 'depositPending' ||
-        record?.stage === 'sacConfirmed',
     },
   ];
 
