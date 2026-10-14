@@ -2,7 +2,6 @@
 
 import { useState, type ReactNode } from 'react'
 import { LineChart } from '@/components/charts'
-import { Label } from '@/components/stat'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
 import type { ChartTimeframe, PriceSeries } from '../_data'
@@ -11,7 +10,6 @@ const timeframes: ChartTimeframe[] = ['1D', '1W', '1M', '3M', 'ALL']
 
 export function PriceChart({
   ticker,
-  price,
   series,
   quoteSymbol = 'USD',
   history,
@@ -27,16 +25,16 @@ export function PriceChart({
   const current = series?.[selected]
 
   return (
-    <>
+    <section aria-label="Price analysis" className="dark flex min-w-0 flex-col rounded-2xl bg-panel p-4 text-foreground sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <Label>{ticker} / {quoteSymbol}</Label>
-          <div className="flex items-baseline gap-2.5">
-            <span className="text-big font-semibold tracking-[-0.03em] tabular-nums">{price}</span>
+          <h2 className="text-title font-semibold">Price history</h2>
+          <div className="flex flex-wrap items-baseline gap-2.5 text-small text-muted-foreground">
+            <span>{ticker} / {quoteSymbol}</span>
             {current && <span className="text-small text-ok">{current.change}</span>}
           </div>
         </div>
-        <ToggleGroup
+        {(series || history) && <ToggleGroup
           aria-label="Chart timeframe"
           value={[selected]}
           onValueChange={(values) => {
@@ -46,19 +44,19 @@ export function PriceChart({
               else setTimeframe(next as ChartTimeframe)
             }
           }}
-          className="font-mono"
+          className="flex-wrap"
         >
           {timeframes.map((option) => (
-            <ToggleGroupItem key={option} value={option} disabled={!series && !history} className="font-mono text-meta">
+            <ToggleGroupItem key={option} value={option} disabled={!series && !history} className="min-h-10 text-meta">
               {option}
             </ToggleGroupItem>
           ))}
-        </ToggleGroup>
+        </ToggleGroup>}
       </div>
-      <div className="mt-6">
+      <div className="mt-4 min-w-0">
         {history ? history.content : current ? <LineChart
           data={current.data}
-          height={280}
+          height={240}
           min={current.min}
           max={current.max}
           yTicks={current.yTicks}
@@ -68,10 +66,10 @@ export function PriceChart({
         /> : <Empty className="min-h-60">
           <EmptyHeader>
             <EmptyTitle>Price history unavailable</EmptyTitle>
-            <EmptyDescription>The contract provides the current price. Historical prices are not connected.</EmptyDescription>
+            <EmptyDescription>There is no connected historical price source for this preview.</EmptyDescription>
           </EmptyHeader>
         </Empty>}
       </div>
-    </>
+    </section>
   )
 }
