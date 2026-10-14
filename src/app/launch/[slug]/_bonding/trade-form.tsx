@@ -45,7 +45,8 @@ export function TradeForm(props: TradeFormProps) {
     amount,
     quote,
     quoteError,
-    suggestedLimit,
+    slippage,
+    minimumReceived,
     limit,
     limitError,
     sellable,
@@ -99,7 +100,6 @@ export function TradeForm(props: TradeFormProps) {
                     disabled={locked || !permitted}
                     onClick={() => {
                       setEntry(value);
-                      setLimitEntry('');
                     }}
                   >
                     {value}
@@ -119,7 +119,6 @@ export function TradeForm(props: TradeFormProps) {
                   onClick={() => {
                     if (balances) {
                       setEntry(formatAmount(balances.pairHeld));
-                      setLimitEntry('');
                     }
                   }}
                 >
@@ -135,7 +134,6 @@ export function TradeForm(props: TradeFormProps) {
                 disabled={locked || !permitted || sellable <= BigInt(0)}
                 onClick={() => {
                   setEntry(formatAmount(sellable));
-                  setLimitEntry('');
                 }}
               >
                 All
@@ -158,7 +156,6 @@ export function TradeForm(props: TradeFormProps) {
               aria-invalid={!!inputError}
               onChange={(event) => {
                 setEntry(event.target.value);
-                setLimitEntry('');
               }}
               placeholder="0.0"
             />
@@ -207,36 +204,6 @@ export function TradeForm(props: TradeFormProps) {
         </p>
       </div>
       <dl className="mt-2 grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-2 text-small tabular-nums">
-        <dt className="text-muted-foreground">You pay</dt>
-        <dd
-          aria-live={buying ? 'polite' : undefined}
-          className="break-words text-right font-semibold"
-        >
-          <TradeValue>
-            {buying
-              ? quote
-                ? `${formatAmount(quote.user_amount)} ${pair}`
-                : '—'
-              : amount === undefined
-                ? '—'
-                : `${formatAmount(amount)} ${tokens.assetSymbol}`}
-          </TradeValue>
-        </dd>
-        <dt className="text-muted-foreground">You receive</dt>
-        <dd
-          aria-live={!buying ? 'polite' : undefined}
-          className="break-words text-right font-semibold"
-        >
-          <TradeValue>
-            {buying
-              ? amount === undefined
-                ? '—'
-                : `${formatAmount(amount)} ${tokens.assetSymbol}`
-              : quote
-                ? `${formatAmount(quote.user_amount)} ${pair}`
-                : '—'}
-          </TradeValue>
-        </dd>
         <dt className="text-muted-foreground">Fee · included</dt>
         <dd className="break-words text-right">
           <TradeValue>
@@ -244,44 +211,48 @@ export function TradeForm(props: TradeFormProps) {
           </TradeValue>
         </dd>
         <dt className="text-muted-foreground">
-          {buying ? 'Maximum payment' : 'Minimum received'}
+          Minimum received
         </dt>
         <dd className="break-words text-right">
           <TradeValue>
             {quote
-              ? limit === undefined || limitError
+              ? minimumReceived === undefined || limitError
                 ? 'Invalid amount'
-                : `${formatAmount(limit)} ${pair}`
+                : `${formatAmount(minimumReceived)} ${buying ? tokens.assetSymbol : pair}`
               : '—'}
           </TradeValue>
         </dd>
       </dl>
       <TradeDisclosure
-        title={`Slippage · ${limitEntry ? 'Custom limit' : '0.5%'}`}
+        title={`Slippage · ${limitError ? 'Invalid percentage' : `${slippage}%`}`}
       >
-        <FieldGroup>
-          <Field data-invalid={!!limitError}>
-            <FieldLabel htmlFor={`${side}-limit`}>
-              {buying ? 'Maximum payment' : 'Minimum receipt'} ({pair})
+        <FieldGroup className="gap-2">
+          <Field orientation="horizontal" data-invalid={!!limitError} className="justify-between gap-3">
+            <FieldLabel htmlFor={`${side}-limit`} className="text-small font-medium">
+              Slippage tolerance
             </FieldLabel>
-            <Input
-              id={`${side}-limit`}
-              className="rounded-2xl border-0 bg-muted"
-              inputMode="decimal"
-              value={limitEntry}
-              disabled={locked || !permitted}
-              aria-invalid={!!limitError}
-              onChange={(event) => setLimitEntry(event.target.value)}
-              placeholder={
-                suggestedLimit === undefined
-                  ? 'Enter amount first'
-                  : formatAmount(suggestedLimit)
-              }
-            />
-            <FieldDescription>
-              Blank uses the quoted amount with 0.5% slippage.
-            </FieldDescription>
+            <div className="flex shrink-0 items-center gap-2">
+              <Input
+                id={`${side}-limit`}
+                className="h-11 w-11 shrink-0 rounded-md border border-input bg-muted px-1 text-center text-small tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                type="number"
+                min="0"
+                max="99.99"
+                step="0.01"
+                inputMode="decimal"
+                value={limitEntry}
+                disabled={locked || !permitted}
+                aria-invalid={!!limitError}
+                onChange={(event) => setLimitEntry(event.target.value)}
+                placeholder="0.5"
+                aria-describedby={`${side}-slippage-description`}
+              />
+              <span className="text-small text-muted-foreground" aria-hidden="true">%</span>
+            </div>
           </Field>
+          <FieldDescription id={`${side}-slippage-description`}>
+            Blank uses 0.5% slippage.
+          </FieldDescription>
         </FieldGroup>
         <TradeFeedback>
           {quote && (

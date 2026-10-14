@@ -47,6 +47,7 @@ function harness({
   status = 'Open',
   busy = false,
   entry = '1',
+  slippage = '',
   connected = true,
   loginPending = false,
 } = {}) {
@@ -64,7 +65,7 @@ function harness({
       useState(initial) {
         const index = stateIndex++;
         const value =
-          index < 2 ? entry : typeof initial === 'function' ? initial() : initial;
+          index < 2 ? entry : index === 2 ? slippage : typeof initial === 'function' ? initial() : initial;
         return [value, (next) => states.push(next)];
       },
       useRef: (initial) => ({ current: initial }),
@@ -276,3 +277,12 @@ for (const side of ['buy', 'sell']) test(`${side} result dialog displays the con
   dialog.props.onOpenChange(false);
   assert.equal(dismissed,true);
 });
+
+for (const slippage of ['-1', '100', '1.001', 'abc'])
+  test('invalid slippage ' + slippage + ' prevents a trade', async () => {
+    const h = harness({ slippage });
+    await h.submit();
+    assert.equal(h.writes(), 0);
+    const action = elements(h.form).find(node => node.type === 'Button' && node.props.type === 'submit');
+    assert.equal(action.props.disabled, true);
+  });

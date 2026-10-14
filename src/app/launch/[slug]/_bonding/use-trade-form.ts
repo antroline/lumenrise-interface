@@ -168,24 +168,21 @@ export function useTradeForm({
   }
   // Token amount bought or sold. Buys submit the budget-sized token amount.
   const amount = buying ? (entryCurrent ? quoteAmount : undefined) : spendNow;
-  const suggestedLimit = quote
-    ? defaultLimit(quote.user_amount, buying)
-    : undefined;
-  let limit: bigint | undefined;
+  let slippageBps: bigint | undefined;
   let limitError = '';
-  try {
-    limit = limitEntry ? parseAmount(limitEntry, !buying) : suggestedLimit;
-  } catch (cause) {
-    limitError = errorMessage(cause);
+  const slippage = limitEntry.trim() || '0.5';
+  if (!/^\d+(\.\d{1,2})?$/.test(slippage)) {
+    limitError = 'Enter a slippage percentage with up to 2 decimal places.';
+  } else {
+    const [whole, decimals = ''] = slippage.split('.');
+    slippageBps = BigInt(whole) * BigInt(100) + BigInt(decimals.padEnd(2, '0'));
+    if (slippageBps >= BigInt(10_000))
+      limitError = 'Slippage must be between 0% and less than 100%.';
   }
-  if (
-    limit !== undefined &&
-    quote &&
-    (buying ? limit < quote.user_amount : limit > quote.user_amount)
-  )
-    limitError = buying
-      ? 'Maximum payment is below the current quote.'
-      : 'Minimum receipt is above the current quote.';
+  const limit = quote && slippageBps !== undefined && !limitError
+    ? defaultLimit(quote.user_amount, buying, slippageBps)
+    : undefined;
+  const minimumReceived = buying ? amount : limit;
 
   async function recoverPending() {
     if (!pendingKey || locked || running.current) return;
@@ -412,7 +409,8 @@ export function useTradeForm({
     amount,
     quote,
     quoteError,
-    suggestedLimit,
+    slippage,
+    minimumReceived,
     limit,
     limitError,
     sellable,
