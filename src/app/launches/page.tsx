@@ -1,54 +1,56 @@
 import { PublicProjects } from './public-projects'
 import { API_NETWORK } from '@/app/create/_launch/transactions'
-import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
-import { ProjectsTable, ProjectsTableSkeleton } from '@/components/projects-table'
-import { ResultsLink, ResultsStack, ResultsTransition } from '@/components/results-transition'
+// import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
+// import { ProjectsTable, ProjectsTableSkeleton } from '@/components/projects-table'
+// import { ResultsStack } from '@/components/results-transition'
+import { ResultsLink, ResultsTransition } from '@/components/results-transition'
 import { projectColumns, type ProjectColumn, type SortDirection } from '@/lib/project-table'
 import { cn } from '@/lib/utils'
-import { projects, type ProjectCategory, type ProjectListing } from './_data/projects'
+// import { type ProjectListing } from './_data/projects'
+// import { projects, type ProjectCategory } from './_data/projects'
 
-type Category = 'All' | ProjectCategory
+type Category = 'All' | 'Bonding Curve' | 'Auction' | 'pre-sale'
 type SearchParams = Promise<{ category?: string; sort?: string; dir?: string; page?: string; livePage?: string; network?: string; owner?: string }>
 
-const PAGE_SIZE = 10
-const categories: Category[] = ['All', 'Launch', 'Auction', 'Trading']
+// const PAGE_SIZE = 10
+const categories: Category[] = ['All', 'Bonding Curve', 'Auction', 'pre-sale']
 const categoryLabels: Record<Category, string> = {
-  All: 'All projects', Launch: 'Launches', Auction: 'Auctions', Trading: 'Trading',
+  All: 'All', 'Bonding Curve': 'Bonding Curve', Auction: 'Auction', 'pre-sale': 'pre-sale',
 }
 
-const pagerItem = 'grid size-8 place-items-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-lime'
+// const pagerItem = 'grid size-8 place-items-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-lime'
 
-const phaseRank: Record<ProjectListing['phase'], number> = {
-  live: 0, upcoming: 1, auction: 2, launched: 3, settling: 4, completed: 5,
-}
+// const phaseRank: Record<ProjectListing['phase'], number> = {
+//   live: 0, upcoming: 1, auction: 2, launched: 3, settling: 4, completed: 5,
+// }
 
 function defaultDirection(sort: ProjectColumn): SortDirection {
   return sort === 'figure' || sort === 'participants' || sort === 'date' ? 'desc' : 'asc'
 }
 
-function sortValue(project: ProjectListing, sort: ProjectColumn): string | number | null {
-  switch (sort) {
-    case 'name': return project.name
-    case 'category': return project.category
-    case 'phase': return phaseRank[project.phase]
-    case 'figure': return project.figureValue
-    case 'participants': return project.participants
-    case 'date': return project.dateValue
-  }
-}
+// function sortValue(project: ProjectListing, sort: ProjectColumn): string | number | null {
+//   switch (sort) {
+//     case 'name': return project.name
+//     case 'category': return project.category
+//     case 'phase': return phaseRank[project.phase]
+//     case 'figure': return project.figureValue
+//     case 'participants': return project.participants
+//     case 'date': return project.dateValue
+//   }
+// }
 
-function sortProjects(rows: ProjectListing[], sort: ProjectColumn, direction: SortDirection) {
-  return [...rows].sort((a, b) => {
-    const left = sortValue(a, sort)
-    const right = sortValue(b, sort)
-    if (left === null) return right === null ? a.name.localeCompare(b.name) : 1
-    if (right === null) return -1
-    const comparison = typeof left === 'number' && typeof right === 'number'
-      ? left - right
-      : String(left).localeCompare(String(right))
-    return (direction === 'asc' ? comparison : -comparison) || a.name.localeCompare(b.name)
-  })
-}
+// function sortProjects(rows: ProjectListing[], sort: ProjectColumn, direction: SortDirection) {
+//   return [...rows].sort((a, b) => {
+//     const left = sortValue(a, sort)
+//     const right = sortValue(b, sort)
+//     if (left === null) return right === null ? a.name.localeCompare(b.name) : 1
+//     if (right === null) return -1
+//     const comparison = typeof left === 'number' && typeof right === 'number'
+//       ? left - right
+//       : String(left).localeCompare(String(right))
+//     return (direction === 'asc' ? comparison : -comparison) || a.name.localeCompare(b.name)
+//   })
+// }
 
 function projectsUrl(category: Category, sort: ProjectColumn, direction: SortDirection, page: number, context: { network?: string; owner?: string } = {}) {
   const query = new URLSearchParams({ category, sort, dir: direction, page: String(page) })
@@ -57,13 +59,13 @@ function projectsUrl(category: Category, sort: ProjectColumn, direction: SortDir
   return `/launches?${query}`
 }
 
-function paginationItems(page: number, pageCount: number): Array<number | 'ellipsis'> {
-  const visible = Array.from({ length: pageCount }, (_, index) => index + 1)
-    .filter((number) => number === 1 || number === pageCount || Math.abs(number - page) <= 1)
-  return visible.flatMap((number, index) =>
-    index > 0 && number - visible[index - 1] > 1 ? ['ellipsis' as const, number] : [number],
-  )
-}
+// function paginationItems(page: number, pageCount: number): Array<number | 'ellipsis'> {
+  // const visible = Array.from({ length: pageCount }, (_, index) => index + 1)
+//     .filter((number) => number === 1 || number === pageCount || Math.abs(number - page) <= 1)
+//   return visible.flatMap((number, index) =>
+//     index > 0 && number - visible[index - 1] > 1 ? ['ellipsis' as const, number] : [number],
+//   )
+// }
 
 export default async function ProjectsPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams
@@ -74,54 +76,54 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
   const requestedSort = projectColumns.find((column) => column.key === params.sort)?.key
   const sort = requestedSort ?? 'name'
   const direction = params.dir === 'asc' || params.dir === 'desc' ? params.dir : defaultDirection(sort)
-  const matching = category === 'All' ? projects : projects.filter((project) => project.category === category)
-  const sorted = sortProjects(matching, sort, direction)
-  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
-  const requestedPage = Number(params.page)
-  const page = Number.isInteger(requestedPage) && requestedPage > 0
-    ? Math.min(requestedPage, pageCount)
-    : 1
-  const first = (page - 1) * PAGE_SIZE
-  const visible = sorted.slice(first, first + PAGE_SIZE)
+  // const matching = category === 'All' ? projects : projects.filter((project) => project.category === category)
+  // const sorted = sortProjects(matching, sort, direction)
+  // const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
+  // const requestedPage = Number(params.page)
+  // const page = Number.isInteger(requestedPage) && requestedPage > 0
+//     ? Math.min(requestedPage, pageCount)
+//     : 1
+  // const first = (page - 1) * PAGE_SIZE
+  // const visible = sorted.slice(first, first + PAGE_SIZE)
 
   return (
     <ResultsTransition>
       <div className="w-full pb-12">
-        <div className="mb-8">
+        <div className="mx-auto mb-8 w-full max-w-[1400px]">
           <h1 className="text-[36px] leading-none font-bold tracking-[-0.04em] sm:text-[48px]">Projects</h1>
           <p className="mt-3 text-body text-muted-foreground sm:text-base">Explore launches, auctions, and live markets on Stellar.</p>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <nav aria-label="Project category" className="-mx-4 max-w-[calc(100%+2rem)] overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:max-w-full sm:px-0">
-            <div className="flex w-fit gap-0.5 rounded-lg bg-secondary p-[3px]">
-              {categories.map((item) => {
-                const active = item === category
-                const count = item === 'All' ? projects.length : projects.filter((project) => project.category === item).length
-                return (
-                  <ResultsLink
-                    key={item}
-                    href={url(item, sort, direction, 1)}
-                    scroll={false}
-                    aria-current={active ? 'page' : undefined}
-                    className={cn(
-                      'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3.5 text-ui font-medium transition-colors focus-visible:outline-2 focus-visible:outline-lime',
-                      active
-                        ? 'bg-background text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:bg-card'
-                        : 'text-muted-foreground hover:text-foreground',
-                    )}
-                  >
-                    {categoryLabels[item]}
-                    <span className="text-caption text-faint tabular-nums">{count}</span>
-                  </ResultsLink>
-                )
-              })}
-            </div>
-          </nav>
-          <p className="caps tabular-nums">{matching.length} projects</p>
-        </div>
+        <div className="mx-auto w-full max-w-[1400px]">
+          <div className="flex flex-wrap items-center gap-3">
+            <nav aria-label="Project category" className="-mx-4 max-w-[calc(100%+2rem)] overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:max-w-full sm:px-0">
+              <div className="flex w-fit gap-1 rounded-xl bg-secondary p-1">
+                {categories.map((item) => {
+                  const active = item === category
+                  return (
+                    <ResultsLink
+                      key={item}
+                      href={url(item, sort, direction, 1)}
+                      scroll={false}
+                      aria-current={active ? 'page' : undefined}
+                      className={cn(
+                        'inline-flex h-11 shrink-0 items-center gap-2 rounded-lg px-5 text-body font-medium sm:px-6 sm:text-base transition-colors focus-visible:outline-2 focus-visible:outline-lime',
+                        active
+                          ? 'bg-background text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:bg-card'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      {categoryLabels[item]}
+                    </ResultsLink>
+                  )
+                })}
+              </div>
+            </nav>
+          </div>
 
-        <div className="mt-4"><PublicProjects key={network + ':' + (params.owner ?? '')} network={network} owner={params.owner} page={Math.floor(livePage)} category={category} sort={requestedSort} direction={direction} /></div>
+          <div className="mt-4"><PublicProjects key={network + ':' + (params.owner ?? '')} network={network} owner={params.owner} page={Math.floor(livePage)} category={category} sort={requestedSort} direction={direction} /></div>
+        </div>
+        {/* Mock project previews are temporarily disabled.
         <section className="mt-4" aria-label="Project results">
           <h2 className="mb-4 text-title font-semibold">Project previews</h2>
           <p className="mb-1 flex items-center justify-end gap-1 text-small text-muted-foreground xl:hidden">
@@ -185,6 +187,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
             </nav>
           </div>
         </section>
+        */}
       </div>
     </ResultsTransition>
   )
