@@ -1,8 +1,7 @@
 'use client';
+import { tradeTableClass } from './trade-table-style';
 
-import { useEffect, useState, type FormEvent } from 'react';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { StrKey } from '@stellar/stellar-sdk';
+import { useIndexedTrades } from './use-indexed-trades';
 import {
   Table,
   TableBody,
@@ -11,8 +10,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Input } from '@/components/ui/input';
+import { TradeFilter } from './trade-filter';
+import { IndexedTradeRow } from './indexed-trade-row';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -21,13 +20,6 @@ import {
   EmptyTitle,
   EmptyDescription,
 } from '@/components/ui/empty';
-import { getTrades } from '@/lib/api/launches/market';
-import { displayAmount } from '@/lib/api/launches/display';
-import {
-  launchKey,
-  publicQueryOptions,
-  usePageVisible,
-} from '@/lib/api/launches/queries';
 import type { ApiNetwork } from '@/lib/api/launches/types';
 
 export function IndexedTrades({
@@ -35,103 +27,86 @@ export function IndexedTrades({
   network,
   ticker,
   pair,
+  tradeCount24h,
+  volume24h,
 }: {
   address: string;
   network: ApiNetwork;
   ticker: string;
   pair: string;
+  tradeCount24h?: number;
+  volume24h?: string;
 }) {
-  const [side, setSide] = useState<'all' | 'buy' | 'sell'>('all');
-  const [entry, setEntry] = useState(''),
-    [trader, setTrader] = useState(''),
-    [error, setError] = useState('');
-  const visible = usePageVisible(),
-    client = useQueryClient();
-  const query = useInfiniteQuery({
-    ...publicQueryOptions,
-    queryKey: [...launchKey(network, address), 'trades', side, trader],
-    initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam, signal }) =>
-      getTrades(
-        address,
-        network,
-        {
-          cursor: pageParam,
-          side: side === 'all' ? undefined : side,
-          trader: trader || undefined,
-        },
-        signal,
-      ),
-    getNextPageParam: (last, _pages, _param, params) =>
-      last.nextCursor !== null && !params.includes(last.nextCursor)
-        ? last.nextCursor
-        : undefined,
-    enabled: visible,
-  });
-  useEffect(() => {
-    if (!visible)
-      void client.cancelQueries({
-        queryKey: [...launchKey(network, address), 'trades', side, trader],
-      });
-  }, [visible, client, address, network, side, trader]);
-  function filter(event: FormEvent) {
-    event.preventDefault();
-    const value = entry.trim();
-    if (value && !StrKey.isValidEd25519PublicKey(value)) {
-      setError('Enter a valid Stellar account address.');
-      return;
-    }
-    setError('');
-    setTrader(value);
-  }
+  const {
+    side,
+    setSide,
+    size,
+    setSize,
+    period,
+    setPeriod,
+    setFilterAsOf,
+    asOf,
+    filtered,
+    query,
+  } = useIndexedTrades(address, network);
   return (
     <section
-      className="flex min-w-0 flex-col gap-4"
+      className="flex min-w-0 flex-col gap-3"
       aria-labelledby="trades-heading"
     >
-      <div>
-        <h2 id="trades-heading" className="text-title font-semibold">
+      <div className="sr-only">
+        <h3 id="trades-heading" className="sr-only">
           Recent trades
-        </h2>
-        <p className="mt-1 text-small text-muted-foreground">
-          Recorded trades · Average execution price in {pair}, before fees.
+        </h3>
+        <p className="sr-only">
+          {tradeCount24h !== undefined &&
+            `${tradeCount24h.toLocaleString('en-US')} trades in 24h · `}
+          Execution prices in {pair}, before fees.
+          {volume24h !== undefined && (
+            <span className="mt-1 block tabular-nums sm:hidden">
+              24h volume · {volume24h} {pair}
+            </span>
+          )}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <ToggleGroup
-          value={[side]}
-          aria-label="Trade side"
-          onValueChange={(values) => {
-            if (
-              values[0] === 'all' ||
-              values[0] === 'buy' ||
-              values[0] === 'sell'
-            )
-              setSide(values[0]);
+        <TradeFilter
+          label="Trade side"
+          value={side}
+          options={[
+            { value: 'all', label: 'All trades' },
+            { value: 'buy', label: 'Buys' },
+            { value: 'sell', label: 'Sells' },
+          ]}
+          onChange={(value) => {
+            if (value === 'all' || value === 'buy' || value === 'sell')
+              setSide(value);
           }}
-        >
-          <ToggleGroupItem value="all">All</ToggleGroupItem>
-          <ToggleGroupItem value="buy">Buy</ToggleGroupItem>
-          <ToggleGroupItem value="sell">Sell</ToggleGroupItem>
-        </ToggleGroup>
-        <form onSubmit={filter} className="flex min-w-0 flex-1 gap-2">
-          <Input
-            aria-label="Filter by trader address"
-            aria-invalid={!!error}
-            placeholder="Trader address (optional)"
-            value={entry}
-            onChange={(e) => setEntry(e.target.value)}
-          />
-          <Button variant="outline" type="submit">
-            Filter
-          </Button>
-        </form>
+        />
+        <TradeFilter
+          label="Trade size"
+          value={size}
+          options={[
+            { value: 'all', label: 'Any size' },
+            { value: 'small', label: `Under 1K ${ticker}` },
+            { value: 'large', label: `1K ${ticker} or more` },
+          ]}
+          onChange={setSize}
+        />
+        <TradeFilter
+          label="Trade time"
+          value={period}
+          options={[
+            { value: 'all', label: 'Any time' },
+            { value: 'hour', label: 'Last hour' },
+            { value: 'day', label: 'Last 24h' },
+          ]}
+          onChange={(value) => {
+            setFilterAsOf(Date.now());
+            setPeriod(value);
+          }}
+        />
       </div>
-      {error && (
-        <p role="alert" className="text-small text-destructive">
-          {error}
-        </p>
-      )}
       {query.isPending ? (
         <Skeleton className="h-44 w-full" />
       ) : query.isError && !query.data ? (
@@ -144,57 +119,58 @@ export function IndexedTrades({
             Retry
           </Button>
         </Empty>
-      ) : query.data?.pages.some((p) => p.items.length) ? (
-        <Table>
+      ) : (
+        <Table className={tradeTableClass}>
           <TableHeader>
             <TableRow>
               {[
-                'Trader',
                 'Time',
-                'Token',
-                'Side',
-                'Amount',
+                'Trade',
+                `Value · ${pair} ≈`,
+                ticker,
                 `Price · ${pair}`,
-              ].map((h) => (
-                <TableHead key={h}>{h}</TableHead>
+                'Trader',
+              ].map((label) => (
+                <TableHead
+                  key={label}
+                  className="h-10 bg-muted py-3 text-small normal-case tracking-normal first:rounded-l-2xl last:rounded-r-2xl"
+                >
+                  {label}
+                </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {query.data.pages.flatMap((page, pageIndex) =>
-              page.items.map((trade, index) => (
-                <TableRow key={`${pageIndex}:${index}`}>
-                  <TableCell title={trade.trader} className="font-mono">
-                    {trade.trader.slice(0, 6)}…{trade.trader.slice(-4)}
-                  </TableCell>
-                  <TableCell>
-                    <time dateTime={trade.tradedAt}>
-                      {new Date(trade.tradedAt).toLocaleString('en-US')}
-                    </time>
-                  </TableCell>
-                  <TableCell title={trade.asset}>{ticker}</TableCell>
-                  <TableCell>{trade.side === 'buy' ? 'Buy' : 'Sell'}</TableCell>
-                  <TableCell className="tabular-nums">
-                    {displayAmount(trade.assetAmount)}
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {displayAmount(trade.executionPrice)}
-                  </TableCell>
-                </TableRow>
-              )),
+            {filtered.map((trade, index) => (
+              <IndexedTradeRow
+                key={`${trade.trader}:${trade.tradedAt}:${index}`}
+                trade={trade}
+                asOf={asOf}
+              />
+            ))}
+            {!filtered.length && (
+              <TableRow>
+                <TableCell colSpan={6}>
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyTitle>No recorded trades</EmptyTitle>
+                      <EmptyDescription>
+                        Trades matching these filters will appear here when
+                        available.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                </TableCell>
+              </TableRow>
             )}
           </TableBody>
         </Table>
-      ) : (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>No recorded trades</EmptyTitle>
-            <EmptyDescription>
-              Trades matching these filters will appear here when available.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
       )}
+      <p className="text-small text-muted-foreground">
+        Execution prices before fees.
+        {(size !== 'all' || period !== 'all') &&
+          ' Size and time filters apply to loaded trades.'}
+      </p>
       {query.isError && query.data && (
         <p role="alert" className="text-small text-destructive">
           Could not refresh trades.{' '}
