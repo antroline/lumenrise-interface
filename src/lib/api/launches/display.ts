@@ -10,13 +10,45 @@ export function roundAmount(raw: string, maxDecimals: number) {
   return (((units + keep / BigInt(2)) / keep) * keep).toString();
 }
 
-export function displayAmount(raw: string | null | undefined, maxDecimals?: number) {
+export function displayAmount(
+  raw: string | null | undefined,
+  maxDecimals?: number,
+) {
   if (raw == null) return '—';
   if (maxDecimals === undefined) return formatAmount(BigInt(raw));
   return formatAmount(BigInt(roundAmount(raw, maxDecimals)));
 }
+/** Formats seven-decimal token units with up to two decimals and K/M/B/T suffixes. */
+export function compactAmount(raw: string | null | undefined): string {
+  if (raw == null) return '—';
+  const amount = BigInt(raw);
+  const negative = amount < BigInt(0);
+  const absolute = negative ? -amount : amount;
+  const suffixes = ['', 'K', 'M', 'B', 'T'];
+  let divisor = BigInt(10_000_000);
+  let index = 0;
+  let hundredths = (absolute * BigInt(100) + divisor / BigInt(2)) / divisor;
+  while (hundredths >= BigInt(100_000) && index < suffixes.length - 1) {
+    divisor *= BigInt(1000);
+    index += 1;
+    hundredths = (absolute * BigInt(100) + divisor / BigInt(2)) / divisor;
+  }
+  const integer = (hundredths / BigInt(100)).toString();
+  const fraction = (hundredths % BigInt(100))
+    .toString()
+    .padStart(2, '0')
+    .replace(/0+$/, '');
+  const sign = negative && hundredths > BigInt(0) ? '-' : '';
+  return sign + integer + (fraction ? '.' + fraction : '') + suffixes[index];
+}
+
 export function pairLabel(pair: string | undefined, network: ApiNetwork) {
   if (!pair) return 'Pair token';
+  if (
+    network === 'testnet' &&
+    pair === 'CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA'
+  )
+    return 'USDC';
   if (
     pair ===
     Asset.native().contractId(

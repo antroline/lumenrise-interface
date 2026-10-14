@@ -484,3 +484,24 @@ test('unmount cancellation also aborts a response body after HTTP headers arrive
   controller.abort();
   await aborted;
 });
+
+
+test('pair labels identify configured Testnet USDC without relabeling other assets', () => {
+  const { display } = harness();
+  assert.equal(display.pairLabel(PAIR, 'testnet'), 'USDC');
+  assert.equal(display.pairLabel(PAIR, 'public'), 'CBIE…DAMA');
+  assert.equal(display.pairLabel(ASSET, 'testnet'), 'CAWK…TENK');
+});
+
+
+test('compact token amounts retain exact rounding and promote suffixes at boundaries', () => {
+  const { compactAmount } = harness().display;
+  for (const [raw, expected] of [
+    [null, '—'], ['0', '0'], ['123456789', '12.35'],
+    ['100000000000', '10K'], ['125678900000', '12.57K'],
+    ['10000000000000', '1M'], ['10000000000000000', '1B'],
+    ['10000000000000000000', '1T'], ['9999990000', '1K'],
+    ['9999990000000', '1M'], ['-125678900000', '-12.57K'],
+    ['-1', '0'], ['9007199254740993', '900.72M'],
+  ]) assert.equal(compactAmount(raw), expected);
+});
