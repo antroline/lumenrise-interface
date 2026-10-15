@@ -11,8 +11,8 @@ import {
   EmptyTitle,
   EmptyDescription,
 } from '@/components/ui/empty';
-import { getChart, type ChartRange } from '@/lib/api/launches/market';
-import { chartPoints } from '@/lib/api/launches/display';
+import { chartTimeframes, getChart, type ChartRange } from '@/lib/api/launches/market';
+import { chartPoints, chartWindow } from '@/lib/api/launches/display';
 import {
   launchKey,
   publicQueryOptions,
@@ -50,7 +50,7 @@ export function IndexedPriceChart({
   const client = useQueryClient();
   const query = useQuery({
     ...publicQueryOptions,
-    queryKey: [...launchKey(network, address), 'chart', range],
+    queryKey: [...launchKey(network, address), 'chart', range, chartTimeframes[range], { limit: 1000, window: range, to: 'server-now' }],
     queryFn: ({ signal }) => getChart(address, network, range, signal),
     enabled: visible,
   });
@@ -63,7 +63,7 @@ export function IndexedPriceChart({
   let points: ReturnType<typeof chartPoints> = [],
     precisionError = '';
   try {
-    if (query.data) points = chartPoints(query.data, query.dataUpdatedAt);
+    if (query.data) points = chartPoints(query.data);
   } catch (error) {
     precisionError =
       error instanceof Error
@@ -73,6 +73,11 @@ export function IndexedPriceChart({
   const data = points.map((p) => p.price),
     min = Math.min(...data),
     max = Math.max(...data);
+  const timeDomain = query.data ? chartWindow(query.data) : undefined;
+  const lastCandle = query.data?.items.at(-1);
+  const stepEndTime = lastCandle && query.data
+    ? Math.min(Date.parse(lastCandle.endsAt), Date.parse(query.data.asOf))
+    : undefined;
   const padding = Math.max((max - min) * 0.1, Math.abs(max) * 0.01, 0.0000001);
   const formatDate = (time: number) =>
     new Date(time).toLocaleString('en-US', {
@@ -111,6 +116,8 @@ export function IndexedPriceChart({
       <LineChart
         data={data}
         timestamps={points.map((p) => p.time)}
+        timeDomain={timeDomain}
+        stepEndTime={stepEndTime}
         interpolation="step"
         fill={false}
         className="[&_.stroke-foreground]:stroke-lime [&_line]:stroke-transparent [&_text]:fill-muted-foreground"
@@ -123,8 +130,8 @@ export function IndexedPriceChart({
           (v, i, a) => a.indexOf(v) === i,
         )}
         xLabels={[
-          formatDate(points[0].time),
-          formatDate(points[points.length - 1].time),
+          formatDate(timeDomain?.[0] ?? points[0].time),
+          formatDate(timeDomain?.[1] ?? points[points.length - 1].time),
         ]}
         formatTick={(v) =>
           v.toLocaleString('en-US', {
@@ -157,22 +164,18 @@ export function IndexedPriceChart({
           content: (
             <div ref={chartContainer} className="min-h-60">
               {content}
+              {query.isError && query.data && (
+                <p role="alert" className="text-small text-destructive">
+                  Could not refresh price history.{' '}
+                  <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
+                    Retry
+                  </Button>
+                </p>
+              )}
             </div>
           ),
         }}
       />
-      {query.isError && query.data && (
-        <p role="alert" className="text-small text-destructive">
-          Could not refresh price history.{' '}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void query.refetch()}
-          >
-            Retry
-          </Button>
-        </p>
-      )}
     </>
   );
 }
