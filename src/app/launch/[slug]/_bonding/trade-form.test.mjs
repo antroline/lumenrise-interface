@@ -50,25 +50,30 @@ function harness({
   slippage = '',
   connected = true,
   loginPending = false,
+  writeGate,
+  confirmGate,
 } = {}) {
   const events = [],
     states = [],
+    values = [],
+    refs = [],
     storage = new Map(),
     key = `launchpad:pending-trade:${Networks.TESTNET}:${address}:${owner}`;
   if (pending) storage.set(key, pending);
-  let stateIndex = 0,
+  let stateIndex = 0, refIndex = 0,
     writes = 0;
   const jsx = (type, props) => ({ type, props });
   const mockUi = (name) => ({ [name]: name });
   const mocks = {
+    './trade-form.module.css': { default: { pay: 'pay', presets: 'presets' } },
     react: {
       useState(initial) {
         const index = stateIndex++;
-        const value =
+        if (!(index in values)) values[index] =
           index < 2 ? entry : index === 2 ? slippage : typeof initial === 'function' ? initial() : initial;
-        return [value, (next) => states.push(next)];
+        return [values[index], (next) => { values[index] = typeof next === 'function' ? next(values[index]) : next; states.push(values[index]); }];
       },
-      useRef: (initial) => ({ current: initial }),
+      useRef: (initial) => { const index = refIndex++; return refs[index] ??= { current: initial }; },
       useEffect() {},
     },
     'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'fragment' },
@@ -84,6 +89,7 @@ function harness({
         mutateAsync: async () => {
           events.push('broadcast');
           writes++;
+          if (writeGate) await writeGate;
           return { hash: 'new-hash' };
         },
       }),
@@ -97,6 +103,7 @@ function harness({
     },
     '@/components/ui/button': mockUi('Button'),
     '@/components/ui/input': mockUi('Input'),
+    '@/components/ui/input-group': { InputGroup: 'InputGroup', InputGroupAddon: 'InputGroupAddon', InputGroupInput: 'InputGroupInput' },
     '@/app/trade/[slug]/_components/trade-value': { TradeValue: 'TradeValue' },
     '@/app/trade/[slug]/_components/trade-feedback': { TradeFeedback: 'TradeFeedback' },
     '@/app/trade/[slug]/_components/trade-token-pill': { TradeTokenPill: 'TradeTokenPill' },
@@ -129,6 +136,7 @@ function harness({
       confirmTransaction: async (hash) => {
         events.push(`confirm:${hash}`);
         assert.ok(events.includes(`queue:${hash}`));
+        if (confirmGate) await confirmGate;
         if (confirmation !== 'success') throw new Error('Still pending');
       },
       ensureTradeTrustlines: async () => ({}),
@@ -151,7 +159,9 @@ function harness({
     },
   };
   const { TradeForm } = load('trade-form.tsx', mocks, globals);
-  const form = TradeForm({
+  const render = () => {
+    stateIndex = refIndex = 0;
+    return TradeForm({
     address,
     network: 'testnet',
     side,
@@ -166,9 +176,12 @@ function harness({
     locked: false,
     setLocked() {},
     refresh: async () => events.push('refresh'),
-  });
+    });
+  };
+  const form = render();
   return {
     form,
+    render,
     events,
     states,
     storage,
@@ -188,7 +201,7 @@ for (const side of ['buy', 'sell'])
       'refresh',
     ]);
     assert.equal(h.writes(), 1);
-    assert.ok(h.states.some(value => value?.hash === 'new-hash' && value?.side === side), 'Only a confirmed trade opens its result dialog');
+    assert.ok(h.states.some(value => value?.hash === 'new-hash' && value?.side === side), 'Only a confirmed trade shows success in the dialog');
     assert.equal(h.storage.has(h.key), false);
     assert.ok(
       h.states.includes(`${side === 'buy' ? 'Buy' : 'Sell'} confirmed.`),
@@ -267,12 +280,16 @@ for (const side of ['buy', 'sell']) test(`${side} result dialog displays the con
     'react/jsx-runtime': {jsx,jsxs:jsx},
     '@/components/ui/dialog': Object.fromEntries(dialogNames.map(name=>[name,name])),
     '@/components/ui/button': {Button:'Button'},
+    '@/components/ui/spinner': {Spinner:'Spinner'},
+    'motion/react': { motion: { div: 'div', span: 'span', p: 'p' }, AnimatePresence: 'AnimatePresence', useReducedMotion: () => false },
+    '@/lib/utils': { cn: (...values) => values.filter(Boolean).join(' ') },
+    '@/app/trade/[slug]/_components/trade-transition': { tradeTransition: { duration: 0.24 } },
     './transaction-hash': {TransactionHash:'TransactionHash'},
   });
   let dismissed=false;
   const dialog=TradeResultDialog({confirmation:{hash:'confirmed-hash',side},onClose:()=>{dismissed=true;}});
   assert.equal(dialog.props.open,true);
-  assert.ok(elements(dialog).some(node=>node.type==='DialogTitle' && node.props.children===`${side==='buy'?'Buy':'Sell'} confirmed`));
+  assert.ok(elements(dialog).some(node=>node.type==='span' && node.props.children===`${side==='buy'?'Buy':'Sell'} confirmed`));
   assert.ok(elements(dialog).some(node=>node.type==='TransactionHash' && node.props.hash==='confirmed-hash'));
   dialog.props.onOpenChange(false);
   assert.equal(dismissed,true);
@@ -286,3 +303,125 @@ for (const slippage of ['-1', '100', '1.001', 'abc'])
     const action = elements(h.form).find(node => node.type === 'Button' && node.props.type === 'submit');
     assert.equal(action.props.disabled, true);
   });
+
+function deferred() {
+  let resolve, reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
+const tradeDialog = h => elements(h.render()).find(node => node.type === 'TradeResultDialog').props;
+for (const side of ['buy', 'sell']) test(`${side} keeps one dialog open through checks, wallet approval, network and success`, async () => {
+  const wallet = deferred(), network = deferred();
+  const h = harness({ side, writeGate: wallet.promise, confirmGate: network.promise });
+  const submission = h.submit();
+  let dialog = tradeDialog(h);
+  assert.equal(dialog.open, true);
+  assert.equal(dialog.working, true);
+  assert.equal(dialog.confirmation, undefined);
+  dialog.onClose();
+  assert.equal(tradeDialog(h).open, true);
+  await new Promise(resolve => setImmediate(resolve));
+  dialog = tradeDialog(h);
+  assert.equal(dialog.awaitingApproval, true);
+  assert.ok(dialog.message.includes('transaction in your wallet'));
+  wallet.resolve();
+  await new Promise(resolve => setImmediate(resolve));
+  dialog = tradeDialog(h);
+  assert.equal(dialog.open, true);
+  assert.equal(dialog.awaitingApproval, false);
+  assert.equal(dialog.pendingHash, 'new-hash');
+  assert.ok(dialog.message.includes('Waiting for confirmation'));
+  assert.equal(dialog.confirmation, undefined);
+  assert.equal(elements(h.render()).some(node => node.type === 'p' && Array.isArray(node.props.children) && node.props.children.includes('new-hash')), false);
+  network.resolve();
+  await submission;
+  dialog = tradeDialog(h);
+  assert.equal(dialog.open, true);
+  assert.equal(dialog.working, false);
+  assert.equal(dialog.confirmation.hash, 'new-hash');
+  assert.equal(dialog.confirmation.side, side);
+  dialog.onClose();
+  assert.equal(tradeDialog(h).open, false);
+  assert.equal(tradeDialog(h).confirmation.hash, 'new-hash', 'Keep success visible throughout the closing animation');
+  tradeDialog(h).onClosed();
+  assert.equal(tradeDialog(h).confirmation, undefined, 'Clear the result only after the modal has closed');
+  assert.equal(h.writes(), 1);
+});
+
+test('wallet rejection remains visible in the dialog without fabricating a submitted trade', async () => {
+  const wallet = deferred();
+  const h = harness({ writeGate: wallet.promise });
+  const submission = h.submit();
+  await new Promise(resolve => setImmediate(resolve));
+  wallet.reject(new Error('User rejected the transaction'));
+  await submission;
+  const dialog = tradeDialog(h);
+  assert.equal(dialog.open, true);
+  assert.equal(dialog.working, false);
+  assert.equal(dialog.awaitingApproval, false);
+  assert.equal(dialog.confirmation, undefined);
+  assert.equal(dialog.pendingHash, null);
+  assert.equal(dialog.error, 'The trade was cancelled in your wallet.');
+});
+
+test('unresolved confirmation allows checking the original hash without rebroadcast', async () => {
+  const h = harness({ confirmation: 'pending' });
+  await h.submit();
+  let dialog = tradeDialog(h);
+  assert.equal(dialog.open, true);
+  assert.equal(dialog.working, false);
+  assert.equal(dialog.pendingHash, 'new-hash');
+  assert.equal(dialog.confirmation, undefined);
+  dialog.onCheckPending();
+  await new Promise(resolve => setImmediate(resolve));
+  dialog = tradeDialog(h);
+  assert.equal(dialog.open, true);
+  assert.equal(dialog.pendingHash, 'new-hash');
+  assert.equal(h.writes(), 1);
+});
+
+test('dialog supports loading, Blux focus, unresolved confirmation, failure and safe dismissal', () => {
+  const jsx = (type, props) => ({ type, props });
+  let reduced = false;
+  const names = ['Dialog', 'DialogContent', 'DialogHeader', 'DialogTitle', 'DialogDescription', 'DialogFooter', 'DialogClose'];
+  const { TradeResultDialog } = load('trade-result-dialog.tsx', {
+    'react/jsx-runtime': { jsx, jsxs: jsx },
+    '@/components/ui/dialog': Object.fromEntries(names.map(name => [name, name])),
+    '@/components/ui/button': { Button: 'Button' },
+    '@/components/ui/spinner': { Spinner: 'Spinner' },
+    'motion/react': { motion: { div: 'div', span: 'span', p: 'p' }, AnimatePresence: 'AnimatePresence', useReducedMotion: () => reduced },
+    '@/lib/utils': { cn: (...values) => values.filter(Boolean).join(' ') },
+    '@/app/trade/[slug]/_components/trade-transition': { tradeTransition: { duration: 0.24 } },
+    './transaction-hash': { TransactionHash: 'TransactionHash' },
+  });
+  let closed = 0, checks = 0;
+  const props = { open: true, side: 'buy', onClose: () => closed++, onCheckPending: () => checks++ };
+  const loading = TradeResultDialog({ ...props, working: true, message: 'Checking your wallet' });
+  assert.ok(elements(loading).some(node => node.props?.role === 'status' && node.props.children === 'Checking your wallet'));
+  assert.ok(!elements(loading).some(node => node.type === 'DialogFooter'), 'Modal uses one surface without a separate footer');
+  assert.ok(elements(loading).some(node => node.props?.className?.includes('items-center justify-center')), 'Content stays centered');
+  assert.equal(loading.props.modal, true);
+  assert.equal(loading.props.disablePointerDismissal, true);
+  loading.props.onOpenChange(false);
+  assert.equal(closed, 0);
+  const approval = TradeResultDialog({ ...props, working: true, awaitingApproval: true });
+  assert.equal(approval.props.modal, false);
+  const pending = TradeResultDialog({ ...props, pendingHash: 'original-hash', error: 'Still pending' });
+  assert.ok(elements(pending).some(node => node.type === 'span' && node.props.children === 'Confirmation pending'));
+  elements(pending).find(node => node.type === 'Button' && node.props.children === 'Check submitted trade').props.onClick();
+  assert.equal(checks, 1);
+  assert.ok(elements(pending).some(node => node.type === 'TransactionHash' && node.props.compact === true));
+  assert.ok(elements(pending).some(node => node.type === 'TransactionHash' && node.props.hash === 'original-hash'));
+  const failed = TradeResultDialog({ ...props, error: 'Wallet cancelled' });
+  assert.ok(elements(failed).some(node => node.props?.role === 'alert' && node.props.children === 'Wallet cancelled'));
+  failed.props.onOpenChange(false);
+  assert.equal(closed, 1);
+  const refreshed = TradeResultDialog({ ...props, confirmation: { hash: 'confirmed-hash', side: 'buy' }, error: 'Refresh failed' });
+  assert.ok(elements(refreshed).some(node => node.type === 'span' && node.props.children === 'Buy confirmed'));
+  assert.ok(elements(refreshed).some(node => node.props?.role === 'alert' && node.props.children.includes('balances could not refresh')));
+  reduced = true;
+  const quiet = TradeResultDialog({ ...props, confirmation: { hash: 'confirmed-hash', side: 'buy' } });
+  const animated = elements(quiet).filter(node => node.props?.initial !== undefined && node.props.transition);
+  assert.ok(animated.length > 0);
+  assert.ok(animated.every(node => node.props.initial === false && node.props.transition.duration === 0), 'Reduced motion removes spatial transitions');
+});
