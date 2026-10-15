@@ -51,6 +51,8 @@ export function LineChart({
   timestamps,
   interpolation = 'linear',
   axisWidth = 48,
+  timeDomain,
+  stepEndTime,
 }: {
   data: number[]
   width?: number
@@ -71,6 +73,10 @@ export function LineChart({
   interpolation?: 'linear' | 'step'
   /** Space for the price axis, without shrinking its numeric labels. */
   axisWidth?: number
+  /** Visible timestamp interval in milliseconds; boundary candles remain in data. */
+  timeDomain?: [number, number]
+  /** Render the final step through this time (milliseconds), without adding a data sample. */
+  stepEndTime?: number
 }) {
   // useId output may contain characters that are invalid inside url(#…).
   const gradientId = `line-fill-${useId().replace(/[^\w-]/g, '')}`
@@ -82,13 +88,19 @@ export function LineChart({
   const lo = min ?? Math.min(...data)
   const hi = max ?? Math.max(...data)
   const y = (value: number) => padTop + innerHeight - ((value - lo) / (hi - lo || 1)) * innerHeight
-  const timeStart = timestamps?.[0] ?? 0
-  const timeSpan = timestamps ? timestamps[timestamps.length - 1] - timeStart : 0
+  const timeStart = timeDomain?.[0] ?? timestamps?.[0] ?? 0
+  const timeSpan = timestamps ? (timeDomain?.[1] ?? timestamps[timestamps.length - 1]) - timeStart : 0
   const samples = data.map((value, index): [number, number] => [
     timestamps && timeSpan > 0 ? (timestamps[index] - timeStart) / timeSpan * innerWidth : (index / Math.max(1, data.length - 1)) * innerWidth,
     y(value),
   ])
   const points = interpolation === 'step' ? samples.flatMap((point, index) => index ? [[point[0], samples[index - 1][1]] as [number, number], point] : [point]) : samples
+  const endTime = Math.min(stepEndTime ?? NaN, timeDomain?.[1] ?? Infinity)
+  if (interpolation === 'step' && timestamps && timeSpan > 0 && samples.length &&
+      Number.isFinite(endTime) && endTime > timestamps[timestamps.length - 1]) {
+    // Extend candle geometry only; the recorded series retains its original timestamps.
+    points.push([(endTime - timeStart) / timeSpan * innerWidth, samples[samples.length - 1][1]])
+  }
   const last = points[points.length - 1]
   if (!last) return null
 
@@ -100,6 +112,7 @@ export function LineChart({
       className={cn('block h-auto w-full overflow-visible', className)}
     >
       <defs>
+        {timeDomain && <clipPath id={`${gradientId}-window`}><rect width={innerWidth} height={height} /></clipPath>}
         <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
           <stop offset="0" stopColor="var(--color-lime)" stopOpacity={0.55} />
           <stop offset="1" stopColor="var(--color-lime)" stopOpacity={0} />
@@ -123,8 +136,8 @@ export function LineChart({
           opacity={0.35}
         />
       )}
-      {fill && <path d={areaPath(points, padTop + innerHeight)} fill={`url(#${gradientId})`} />}
-      <path d={linePath(points)} fill="none" className="stroke-foreground" strokeWidth={1.8} strokeLinejoin="round" />
+      {fill && <path clipPath={timeDomain ? `url(#${gradientId}-window)` : undefined} d={areaPath(points, padTop + innerHeight)} fill={`url(#${gradientId})`} />}
+      <path clipPath={timeDomain ? `url(#${gradientId}-window)` : undefined} d={linePath(points)} fill="none" className="stroke-foreground" strokeWidth={1.8} strokeLinejoin="round" />
       {marker && (
         <>
           <line
@@ -141,7 +154,7 @@ export function LineChart({
       )}
       {xLabels.map((text, index) => (
         <text
-          key={text}
+          key={index}
           x={(index / (xLabels.length - 1)) * innerWidth}
           y={height - 6}
           textAnchor={index === 0 ? 'start' : index === xLabels.length - 1 ? 'end' : 'middle'}

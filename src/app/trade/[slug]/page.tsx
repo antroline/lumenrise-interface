@@ -8,23 +8,25 @@ import { getTradingToken } from '@/lib/data'
 import { PoolTable } from './_components/pool-table'
 import { PriceChart } from './_components/price-chart'
 import { SwapPanel } from './_components/swap-panel'
-import { FollowButton } from './_components/trade-actions'
 import { TradePageTemplate } from './_components/trade-page-template'
 import { TradeHeader } from './_components/trade-header'
 import { TradeActivity } from './_components/trade-activity'
 import { API_NETWORK } from '@/app/create/_launch/transactions'
+import { getLaunchContent } from '@/app/launch/[slug]/_data/launch-content'
 
 export default async function TradePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ network?: string }> }) {
   const { slug } = await params
   const { network } = await searchParams
-  if (StrKey.isValidContract(slug)) return <BondingCurvePage key={network + ':' + slug} address={slug} surface="trade" network={network === 'public' ? 'public' : API_NETWORK} />
+  if (StrKey.isValidContract(slug)) return <BondingCurvePage key={network + ':' + slug} address={slug} surface="trade" network={network === 'public' || network === 'mainnet' ? 'public' : API_NETWORK} />
   const token = getTradingToken(slug)
   if (!token) notFound()
   const price = Number(token.price.replace('$', ''))
+  const projectLinks = getLaunchContent(slug).links
   return <TradePageTemplate header={<>
-    <TradeHeader mark={<ProjectMark name={token.name} size={64} />} name={token.name} ticker={token.ticker} pair="USD" overview="/"
+    <TradeHeader mark={<ProjectMark name={token.name} size={64} />} name={token.name} ticker={token.ticker} pair="USD"
+      links={{ website: projectLinks?.find(link => link.kind === 'website')?.href, x: projectLinks?.find(link => link.kind === 'x')?.href }}
       status={<><Badge variant="soft" size="sm">Illustrative preview</Badge><Badge variant="net" size="sm">Testnet</Badge></>}
-      price={token.price} priceNote="Illustrative price" actions={<FollowButton name={token.name} />} metrics={<>{['24h volume', 'Liquidity', 'Holders'].map(label => <div key={label}><dt className="text-small text-muted-foreground">{label}</dt><dd className="mt-1 text-mid font-semibold">—</dd><span className="text-small text-muted-foreground">Not connected</span></div>)}</>} />
+      price={token.price} priceNote="Illustrative price" metrics={<>{['24h volume', 'Liquidity', 'Holders'].map(label => <div key={label}><dt className="text-small text-muted-foreground">{label}</dt><dd className="mt-1 text-mid font-semibold">—</dd><span className="text-small text-muted-foreground">Not connected</span></div>)}</>} />
   </>} market={<PriceChart ticker={token.ticker} price={token.price} />}
     swap={<SwapPanel slug={slug} name={token.name} ticker={token.ticker} priceUsd={price} />}
     footer={<TradeActivity trades={<Empty><EmptyHeader><EmptyTitle>Trading activity unavailable</EmptyTitle><EmptyDescription>This preview has no connected trade history. Open a contract launch to view recorded trades.</EmptyDescription></EmptyHeader></Empty>} pools={<PoolTable name={token.name} ticker={token.ticker} />} />} />

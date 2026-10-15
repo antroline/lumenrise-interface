@@ -51,13 +51,11 @@ export function BondingCurvePage({
   const visible = usePageVisible();
   const liveEnabled = visible && network === API_NETWORK;
   const queueFeedback =
-    queued.length > 0 ? (
+    queued.some((trade) => trade.state === 'invalid' || trade.state === 'identity') ? (
       <p role="status" className="text-small text-muted-foreground">
         {queued.some((t) => t.state === 'invalid')
           ? 'A trade could not be recorded. Its transaction confirmation is unchanged.'
-          : queued.some((t) => t.state === 'identity')
-            ? 'Sign in again to finish recording your trades.'
-            : 'Your submitted trades are waiting to be recorded.'}
+          : 'Sign in again to finish recording your trades.'}
         {queued.some((t) => t.state === 'identity') && (
           <Button
             variant="outline"
@@ -349,16 +347,6 @@ export function BondingCurvePage({
               !tokens &&
               !tokensRead.error &&
               !decodedTokens.error))
-        }
-        refreshAction={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void refresh()}
-            disabled={network !== API_NETWORK || reads.isFetching || locked}
-          >
-            {reads.isFetching ? 'Refreshing…' : 'Refresh'}
-          </Button>
         }
         feedback={
           <>

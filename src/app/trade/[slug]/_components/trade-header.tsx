@@ -5,7 +5,7 @@ import { useTradeCopy } from './use-trade-copy';
 import { TradeCopyFeedback } from './trade-copy-feedback';
 import { Copy } from 'lucide-react';
 import { TradeTooltip } from './trade-tooltip';
-import { TradeHeaderActions } from './trade-header-actions';
+import { TradeHeaderActions, type TradeProjectLinks } from './trade-header-actions';
 import { TradeHeaderMetrics } from './trade-header-metrics';
 
 export function TradeHeader({
@@ -17,9 +17,8 @@ export function TradeHeader({
   price,
   priceNote,
   metrics,
-  actions,
+  links,
   address,
-  overview,
   fdv,
 }: {
   mark: ReactNode;
@@ -30,15 +29,14 @@ export function TradeHeader({
   price: ReactNode;
   priceNote: ReactNode;
   metrics?: ReactNode;
-  actions?: ReactNode;
+  links?: TradeProjectLinks;
   address?: string;
-  overview?: string;
   fdv?: ReactNode;
 }) {
   const { feedback, copy } = useTradeCopy();
   return (
     <header className="flex min-w-0 flex-col gap-6">
-      <div className="flex min-w-0 items-center justify-between gap-4">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-4">
           <div className="shrink-0 overflow-hidden rounded-full">{mark}</div>
           <div className="min-w-0">
@@ -80,9 +78,7 @@ export function TradeHeader({
           </div>
         </div>
         <TradeHeaderActions
-          address={address}
-          overview={overview}
-          actions={actions}
+          links={links}
           copy={copy}
           copyMessage={
             feedback?.label === 'Link' ? feedback.message : undefined

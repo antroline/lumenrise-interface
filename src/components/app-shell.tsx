@@ -8,6 +8,7 @@ import {
   ArrowLeftRight,
   ChartPie,
   ChevronDown,
+  ChevronLeft,
   Compass,
   Copy,
   Gavel,
@@ -499,6 +500,14 @@ function crumbsFor(pathname: string): Crumb[] {
 function Breadcrumbs() {
   const pathname = usePathname();
   if (!/^\/(launch|trade|auction)\//.test(pathname)) return null;
+  if (pathname.startsWith('/trade/')) return (
+    <nav aria-label="Back to projects" className="mb-6 min-w-0">
+      <Link href="/launches" className="inline-flex min-h-9 items-center gap-1 rounded-lg text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-lime/60">
+        <ChevronLeft aria-hidden="true" className="size-4" />
+        Projects
+      </Link>
+    </nav>
+  );
   const crumbs = crumbsFor(pathname);
   return (
     <nav aria-label="Breadcrumb" className="mb-6 hidden min-w-0 md:block">

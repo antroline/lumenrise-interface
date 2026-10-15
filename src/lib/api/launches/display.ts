@@ -1,7 +1,7 @@
 import { Asset, Networks } from '@stellar/stellar-sdk';
 import { formatAmount } from '@/app/launch/[slug]/_bonding/contract';
 import type { ApiNetwork } from './types';
-import type { ChartResult, ChartRange } from './market';
+import type { ChartHistory } from './market';
 
 export function roundAmount(raw: string, maxDecimals: number) {
   // Round to the requested precision with exact integer arithmetic.
@@ -75,50 +75,29 @@ export function unixDate(seconds: string | undefined) {
 /** Conversion to floating point happens only at the SVG boundary. */
 export function chartNumber(raw: string, scale: number): number {
   const integer = BigInt(raw);
-  if (integer > BigInt(Number.MAX_SAFE_INTEGER))
-    throw new Error('These prices exceed the chart’s supported precision.');
-  const value = Number(integer) / 10 ** scale;
+  const digits = integer.toString().padStart(scale + 1, '0');
+  const decimal = scale === 7 ? formatAmount(integer)
+    : scale === 0 ? digits : `${digits.slice(0, -scale)}.${digits.slice(-scale)}`;
+  const value = Number(decimal);
   if (!Number.isFinite(value) || (integer !== BigInt(0) && value === 0))
     throw new Error('This price cannot be displayed accurately.');
   return value;
 }
-const durations: Record<Exclude<ChartRange, 'ALL'>, number> = {
-  '1D': 86400,
-  '1W': 7 * 86400,
-  '1M': 30 * 86400,
-  '3M': 90 * 86400,
-};
-export function chartPoints(chart: ChartResult, now = Date.now()) {
-  const observations = [...chart.items].sort(
-    (a, b) => Date.parse(a.lastObservedAt) - Date.parse(b.lastObservedAt),
-  );
-  const end = Math.max(
-    now,
-    ...observations.map((i) => Date.parse(i.lastObservedAt)),
-  );
-  const start =
-    chart.range === 'ALL'
-      ? chart.firstObservationAt
-        ? Date.parse(chart.firstObservationAt)
-        : observations.length
-          ? Date.parse(observations[0].timestamp)
-          : end - chart.intervalSeconds * 1000
-      : end - durations[chart.range] * 1000;
-  const points: { time: number; price: number }[] = [];
-  if (chart.previousPrice !== null)
-    points.push({
-      time: start,
-      price: chartNumber(chart.previousPrice, chart.priceScale),
-    });
-  for (const item of observations)
-    points.push({
-      time: Date.parse(item.lastObservedAt),
-      price: chartNumber(item.close, chart.priceScale),
-    });
-  if (points.length && end > points[points.length - 1].time)
-    points.push({
-      time: end,
-      price: points[points.length - 1].price,
-    });
-  return points;
+export function chartPoints(chart: ChartHistory) {
+  const candles = new Map<number, (typeof chart.items)[number]>();
+  for (const candle of chart.items) candles.set(Date.parse(candle.timestamp), candle);
+  return [...candles.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([time, candle]) => ({
+      time,
+      price: chartNumber(candle.close ?? candle.latestPrice, chart.priceScale),
+    }));
+}
+
+/** Keep overlapping UTC candles in the data while displaying the selected window. */
+export function chartWindow(chart: ChartHistory): [number, number] | undefined {
+  if (!chart.items.length) return undefined;
+  const first = Math.min(...chart.items.map((item) => Date.parse(item.timestamp)));
+  const observed = chart.firstObservationAt ? Date.parse(chart.firstObservationAt) : first;
+  return [chart.from ? Math.max(Date.parse(chart.from), observed) : first, Date.parse(chart.asOf)];
 }

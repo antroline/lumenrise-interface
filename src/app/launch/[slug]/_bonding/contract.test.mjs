@@ -160,6 +160,7 @@ function renderTrade(side, position = '20000000', confirmation = 'SUCCESS') {
   const quote = { gross: '30000000', creator_fee: '300000', user_amount: buying ? '30300000' : '29700000' };
   const primitives = Object.fromEntries(['Button', 'Input', 'Field', 'FieldDescription', 'FieldGroup', 'FieldLabel'].map(name => [name, () => null]));
   const mocks = {
+    './trade-form.module.css': { default: { pay: 'pay', presets: 'presets' } },
     react: {
       useState: () => { const at = index++; return [states[at], value => { states[at] = value; }]; },
       useRef: () => ({ current: false }), useEffect: () => {},
@@ -186,6 +187,7 @@ function renderTrade(side, position = '20000000', confirmation = 'SUCCESS') {
       },
     },
     '@/components/ui/button': primitives, '@/components/ui/field': primitives, '@/components/ui/input': primitives,
+    '@/components/ui/input-group': { InputGroup: () => null, InputGroupAddon: () => null, InputGroupInput: () => null },
     '@/app/trade/[slug]/_components/trade-disclosure': { TradeDisclosure: () => null },
     '@/app/trade/[slug]/_components/trade-value': { TradeValue: 'TradeValue' },
     '@/app/trade/[slug]/_components/trade-feedback': { TradeFeedback: 'TradeFeedback' },
@@ -234,7 +236,7 @@ test('an unresolved submitted trade preserves its hash and does not report succe
   const trade = renderTrade('sell', '20000000', 'NOT_FOUND');
   await trade.submit();
   assert.equal(trade.stored.size, 1);
-  assert.equal(trade.states[9], 'trade-hash');
+  assert.equal([...trade.stored.values()][0], 'trade-hash');
   assert.match(trade.states[5], /still pending/);
   assert.ok(!trade.calls.includes('refreshed'));
 });
@@ -251,4 +253,12 @@ test('buy budget inversion fits fees and steep curves, including remaining inven
     assert.ok(pay(amount)<=budget);
     if(amount<capacity-sold) assert.ok(pay(amount+1n)>budget);
   }
+});
+
+test('swap display rounds to at most three decimals without changing exact amount formatting', () => {
+  for (const [raw, expected] of [
+    [12345678n, '1.235'], [9999999n, '1'], [10000000n, '1'],
+    [9007199254740993n, '900719925.474'], [0n, '0'], [-1n, '0'],
+  ]) assert.equal(domain.formatAmount(raw, 3), expected);
+  assert.equal(domain.formatAmount(9007199254740993n), '900719925.4740993');
 });

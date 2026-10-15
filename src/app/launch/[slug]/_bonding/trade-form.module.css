@@ -1,0 +1,41 @@
+.presets > button {
+  transition:
+    opacity 180ms ease-out,
+    transform 240ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 150ms ease-out,
+    color 150ms ease-out,
+    box-shadow 150ms ease-out;
+}
+
+.presets > button:nth-child(2) { --preset-delay: 35ms; }
+.presets > button:nth-child(3) { --preset-delay: 70ms; }
+.presets > button:nth-child(4) { --preset-delay: 105ms; }
+
+@media (hover: hover) and (pointer: fine) {
+  .pay:where(:not(:hover):not(:focus-within)) .presets {
+    pointer-events: none;
+  }
+
+  .pay:where(:not(:hover):not(:focus-within)) .presets > button {
+    opacity: 0;
+    transform: translateY(5px) scale(0.96);
+  }
+
+  .pay:hover .presets > button {
+    transition-delay: var(--preset-delay, 0ms), var(--preset-delay, 0ms), 0ms, 0ms, 0ms;
+  }
+
+  .pay:focus-within .presets > button {
+    transition-delay: 0ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .presets > button {
+    transition: none;
+  }
+
+  .pay .presets > button {
+    transform: none;
+  }
+}

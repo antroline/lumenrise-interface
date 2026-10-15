@@ -138,11 +138,13 @@ export function parseAmount(value: string, allowZero = false): bigint {
   return amount;
 }
 
-export function formatAmount(amount: bigint): string {
+export function formatAmount(amount: bigint, decimals: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 = 7): string {
   const negative = amount < BigInt(0);
-  const value = negative ? -amount : amount;
+  const absolute = negative ? -amount : amount;
+  const step = BigInt(10) ** BigInt(7 - decimals);
+  const value = ((absolute + step / BigInt(2)) / step) * step;
   const fraction = (value % UNIT).toString().padStart(7, '0').replace(/0+$/, '');
-  return `${negative ? '-' : ''}${value / UNIT}${fraction ? `.${fraction}` : ''}`;
+  return `${negative && value !== BigInt(0) ? '-' : ''}${value / UNIT}${fraction ? `.${fraction}` : ''}`;
 }
 
 export function defaultLimit(receipt: bigint, buying: boolean, slippageBps = BigInt(50)) {
