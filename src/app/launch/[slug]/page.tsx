@@ -1,10 +1,10 @@
 import { notFound } from 'next/navigation'
 import { StrKey } from '@stellar/stellar-sdk'
-import { BondingCurvePage } from './_bonding/bonding-curve-page'
+import { BondingCurvePage } from '@/features/launches/bonding'
 import { getLaunch } from '@/lib/data'
-import { LaunchPageTemplate } from './_components/launch-page-template'
-import { getLaunchContent } from './_data/launch-content'
-import { API_NETWORK } from '@/app/create/_launch/transactions'
+import { LaunchPageTemplate } from '@/features/launches/components/launch-page-template'
+import { getLaunchContent } from '@/features/launches/data/launch-content'
+import { API_NETWORK } from '@/lib/stellar/network'
 
 export default async function LaunchDetailPage({ params, searchParams }: {
   params: Promise<{ slug: string }>; searchParams: Promise<{ network?: string }>;

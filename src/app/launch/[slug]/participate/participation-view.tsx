@@ -1,6 +1,6 @@
 import { BackLink } from '@/components/page-header'
 import type { Launch } from '@/lib/data'
-import type { LaunchContent } from '../_data/launch-content'
+import type { LaunchContent } from '../../../../features/launches/data/launch-content'
 import { CommitmentForm } from './commitment-form'
 import { ParticipationHeader } from './participation-header'
 

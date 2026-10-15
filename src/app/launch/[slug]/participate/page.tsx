@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getLaunch } from '@/lib/data'
-import { getLaunchContent } from '../_data/launch-content'
+import { getLaunchContent } from '../../../../features/launches/data/launch-content'
 import { ParticipationView } from './participation-view'
 
 export default async function ParticipatePage({ params }: { params: Promise<{ slug: string }> }) {

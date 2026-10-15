@@ -683,14 +683,14 @@ test('holders lifecycle scopes pages, blocks duplicate loads, resets on refresh 
       }
     },
   };
-  const hook = load('use-holders.ts', {
+  const hook = load('../../../features/launches/hooks/use-holders.ts', {
     require: (name) => name === 'react' ? react
       : name === '@tanstack/react-query' ? {
         useQuery: (value) => { options = value; return query; }, useQueryClient: () => client,
       } : name === './queries' ? {
         launchKey: (network, id) => ['launch', network, id],
         publicQueryOptions: { retry: false }, usePageVisible: () => true,
-      } : name === './holders' ? h.holders : require(name),
+      } : name === '../../../lib/api/launches/holders' ? h.holders : require(name),
   });
   function render(id = ID, network = 'testnet', active = true) {
     stateIndex = refIndex = effectIndex = 0;
@@ -744,7 +744,7 @@ test('holders lifecycle scopes pages, blocks duplicate loads, resets on refresh 
 
 test('holder UI distinguishes loading, empty, failures and populated balances with retry/load-more actions', () => {
   const jsx = (type, props) => ({ type, props });
-  const { IndexedHolders } = load('../../../app/trade/[slug]/_components/indexed-holders.tsx', {
+  const { IndexedHolders } = load('../../../features/launches/trading/indexed-holders.tsx', {
     require: (name) => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
       : name === '@/lib/api/launches/holders' ? harness().holders
       : name === './trade-table-style' ? { tradeTableClass: 'existing-table' }
@@ -784,13 +784,13 @@ test('price history keeps its chart styling and range wiring, with loading/empty
   const jsx = (type, props) => ({ type, props });
   let selected = '1D', options;
   let query = { isPending: true, isError: false, refetch() {} };
-  const { IndexedPriceChart } = load('../../../app/trade/[slug]/_components/indexed-price-chart.tsx', {
+  const { IndexedPriceChart } = load('../../../features/launches/trading/indexed-price-chart.tsx', {
     require: name => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
       : name === 'react' ? { useState: initial => [typeof initial === 'string' ? selected : initial, value => { selected = value; }], useEffect() {}, useRef: () => ({ current: null }) }
       : name === '@tanstack/react-query' ? { useQuery: value => { options = value; return query; }, useQueryClient: () => ({}) }
       : name === '@/lib/api/launches/market' ? h.api
       : name === '@/lib/api/launches/display' ? h.display
-      : name === '@/lib/api/launches/queries' ? { launchKey: (network, id) => ['launch', network, id], publicQueryOptions: {}, usePageVisible: () => true }
+      : name === '@/features/launches/hooks/queries' ? { launchKey: (network, id) => ['launch', network, id], publicQueryOptions: {}, usePageVisible: () => true }
       : Object.fromEntries(['LineChart', 'PriceChart', 'Skeleton', 'Button', 'Empty', 'EmptyHeader', 'EmptyTitle', 'EmptyDescription'].map(key => [key, key])),
   });
   function nodes(value) {
@@ -869,7 +869,7 @@ test('final candle renders through server asOf without changing samples or exten
   const { LineChart } = load('../../../components/charts.tsx', {
     require: name => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
       : name === 'react' ? { useId: () => 'test-chart' }
-      : name === '@/lib/chart' ? load('../../../lib/chart.ts', {})
+      : name === '@/lib/chart' ? load('../../chart.ts', {})
       : name === '@/lib/utils' ? { cn: (...values) => values.filter(Boolean).join(' ') }
       : require(name),
   });
@@ -957,13 +957,13 @@ test('top traders rejects partial history failures, repeated cursors and currenc
 test('top traders table shows loading, empty, error and ranked data with retry and scoped queries', () => {
   const h = harness(), jsx = (type, props) => ({ type, props });
   let query = { isPending: true, isError: false, refetch() {} }, options;
-  const { IndexedTopTraders } = load('../../../app/trade/[slug]/_components/indexed-top-traders.tsx', {
+  const { IndexedTopTraders } = load('../../../features/launches/trading/indexed-top-traders.tsx', {
     require: name => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
       : name === 'react' ? { useEffect() {} }
       : name === '@tanstack/react-query' ? { useQuery: value => { options = value; return query; }, useQueryClient: () => ({}) }
       : name === '@/lib/api/launches/top-traders' ? h.topTraders
       : name === '@/lib/api/launches/display' ? h.display
-      : name === '@/lib/api/launches/queries' ? { launchKey: (network, id) => ['launch', network, id], publicQueryOptions: { refetchInterval: 60000 }, usePageVisible: () => true }
+      : name === '@/features/launches/hooks/queries' ? { launchKey: (network, id) => ['launch', network, id], publicQueryOptions: { refetchInterval: 60000 }, usePageVisible: () => true }
       : name === './trade-table-style' ? { tradeTableClass: 'existing-table' }
       : Object.fromEntries(['Blockie', 'Button', 'Skeleton', 'Empty', 'EmptyHeader', 'EmptyTitle', 'EmptyDescription', 'Table', 'TableHeader', 'TableBody', 'TableRow', 'TableHead', 'TableCell'].map(key => [key, key])),
   });
@@ -1002,7 +1002,7 @@ test('launch decoder preserves optional project links without requiring them on 
 
 test('trade header displays available project links next to Share and omits the options menu', async () => {
   const jsx = (type, props) => ({ type, props });
-  const { TradeHeaderActions } = load('../../../app/trade/[slug]/_components/trade-header-actions.tsx', {
+  const { TradeHeaderActions } = load('../../../features/launches/trading/trade-header-actions.tsx', {
     window: { location: { href: 'https://app.example/trade/token' } },
     require: name => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
       : name === 'lucide-react' ? { Globe: 'Globe', Share2: 'Share2' }

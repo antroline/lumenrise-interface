@@ -27,6 +27,7 @@ import {
 } from '@/lib/api/client';
 import { getAuthProviderUserId } from '@/lib/auth-provider';
 import { hydrateBluxConnection } from '@/lib/connections';
+import { HORIZON_URL, NETWORK, SOROBAN_URL } from '@/lib/stellar/network';
 import {
   LaunchpadContext,
   type AccountActionResult,
@@ -42,6 +43,9 @@ const bluxConfig: Parameters<typeof BluxProvider>[0]['config'] = {
   networks: [networks.testnet],
   showWalletUIs: false,
   defaultNetwork: networks.testnet,
+  transports: {
+    [NETWORK]: { horizon: HORIZON_URL, soroban: SOROBAN_URL },
+  },
   loginMethods: ['wallet', 'email', 'passkey', 'twitter', 'github', 'gitlab'],
   appearance: {
     background: '#ffffff',
@@ -225,7 +229,7 @@ function LaunchpadProvider({
       statusWaiter.current = null;
       waiter?.resolve(outcome);
     };
-    if (!blux.isAuthenticated || !blux.user) {
+    if (!blux.isAuthenticated || !userIdentity) {
       setApiUserId(null);
       setAccount(isPreview ? { status: 'preview' } : { status: 'signed-out' });
       settleWaiter('cancelled');
