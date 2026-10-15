@@ -39,7 +39,7 @@ export type LaunchResult = {
   owner: string;
   asset: string;
   pair: string;
-  metadata: { name: string; symbol: string; description: string; logo: string };
+  metadata: { name: string; symbol: string; description: string; logo: string; website?: string; xAccount?: string; github?: string };
   config: Record<string, unknown>;
   state: Record<string, unknown>;
   asOfLedger: number;
@@ -78,31 +78,57 @@ export type MarketResult = {
     sellCount: number;
   };
 };
+export const chartTimeframes = {
+  '1D': '15m', '1W': '4h', '1M': '1d', '3M': '1w', ALL: '1d',
+} as const;
+export type Candle = {
+  timestamp: string;
+  endsAt: string;
+  open: string;
+  high: string;
+  low: string;
+  close: string | null;
+  latestPrice: string;
+  complete: boolean;
+  partial: boolean;
+  count: number;
+  firstObservedAt: string | null;
+  lastObservedAt: string | null;
+};
 export type ChartResult = {
   network: ApiNetwork;
   contractId: string;
   asset: string;
   pair: string;
-  range: ChartRange;
-  intervalSeconds: number;
   priceScale: number;
   amountScale: number;
   priceType: 'marginal_before_fee';
   firstObservationAt: string | null;
   lastObservationAt: string | null;
-  previousPrice: string | null;
-  interpolation: 'step';
-  items: {
-    timestamp: string;
-    open: string;
-    close: string;
-    high: string;
-    low: string;
-    count: number;
-    firstObservedAt: string;
-    lastObservedAt: string;
+  asOf: string;
+  timeframes: {
+    timeframe: string;
+    timezone: 'UTC';
+    items: Candle[];
+    hasMore: boolean;
+    nextBefore: string | null;
   }[];
 };
+export type ChartHistory = ChartResult & { items: Candle[]; from: string | null };
+
+/** Subtract calendar months in UTC, clamping to the target month's last day. */
+export function chartFrom(range: ChartRange, referenceTime = Date.now()): string | null {
+  if (range === 'ALL') return null;
+  if (range === '1D' || range === '1W')
+    return new Date(referenceTime - (range === '1D' ? 1 : 7) * 86400000).toISOString();
+  const start = new Date(referenceTime);
+  const day = start.getUTCDate();
+  start.setUTCDate(1);
+  start.setUTCMonth(start.getUTCMonth() - (range === '1M' ? 1 : 3));
+  const lastDay = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0)).getUTCDate();
+  start.setUTCDate(Math.min(day, lastDay));
+  return start.toISOString();
+}
 export type TradeResult = {
   trader: string;
   tradedAt: string;
@@ -238,6 +264,9 @@ export function decodeLaunch(v: unknown): LaunchResult {
       symbol: string(m.symbol),
       description: string(m.description),
       logo: string(m.logo),
+      website: typeof m.website === 'string' ? m.website : undefined,
+      xAccount: typeof m.xAccount === 'string' ? m.xAccount : undefined,
+      github: typeof m.github === 'string' ? m.github : undefined,
     },
     config: object(l.config),
     state: object(l.state),
@@ -277,40 +306,43 @@ export function decodeMarket(v: unknown): MarketResult {
   };
 }
 export function decodeChart(v: unknown): ChartResult {
-  const c = object(v),
-    range = c.range;
-  if (
-    !['1D', '1W', '1M', '3M', 'ALL'].includes(string(range)) ||
-    c.interpolation !== 'step'
-  )
-    invalid();
-  const intervalSeconds = number(c.intervalSeconds);
-  if (!intervalSeconds) invalid();
+  const c = object(v);
   return {
     network: network(c.network),
     contractId: string(c.contractId),
     asset: string(c.asset),
     pair: string(c.pair),
-    range: range as ChartRange,
-    intervalSeconds,
     priceScale: scale(c.priceScale),
     amountScale: scale(c.amountScale),
     priceType: priceType(c.priceType),
+    asOf: date(c.asOf),
     firstObservationAt: nullable(c.firstObservationAt, date),
     lastObservationAt: nullable(c.lastObservationAt, date),
-    previousPrice: nullable(c.previousPrice, raw),
-    interpolation: 'step',
-    items: array(c.items, (v) => {
-      const i = object(v);
+    timeframes: array(c.timeframes, (v) => {
+      const frame = object(v);
+      if (frame.timezone !== 'UTC') invalid();
       return {
-        timestamp: date(i.timestamp),
-        open: raw(i.open),
-        close: raw(i.close),
-        high: raw(i.high),
-        low: raw(i.low),
-        count: number(i.count),
-        firstObservedAt: date(i.firstObservedAt),
-        lastObservedAt: date(i.lastObservedAt),
+        timeframe: string(frame.timeframe),
+        timezone: 'UTC',
+        hasMore: boolean(frame.hasMore),
+        nextBefore: nullable(frame.nextBefore, date),
+        items: array(frame.items, (v) => {
+          const i = object(v);
+          return {
+            timestamp: date(i.timestamp),
+            endsAt: date(i.endsAt),
+            open: raw(i.open),
+            close: nullable(i.close, raw),
+            latestPrice: raw(i.latestPrice),
+            high: raw(i.high),
+            low: raw(i.low),
+            complete: boolean(i.complete),
+            partial: boolean(i.partial),
+            count: number(i.count),
+            firstObservedAt: nullable(i.firstObservedAt, date),
+            lastObservedAt: nullable(i.lastObservedAt, date),
+          };
+        }),
       };
     }),
   };
@@ -396,17 +428,49 @@ export async function getChart(
   n: ApiNetwork,
   range: ChartRange,
   signal?: AbortSignal,
-) {
-  const result = identity(
-    decodeChart(
-      await apiRequest<unknown>(`${path(id, n, '/chart')}&range=${range}`, {
-        signal,
-      }),
-    ),
-    id,
-    n,
-  );
-  return result.range === range ? result : invalid();
+  referenceTime = Date.now(),
+): Promise<ChartHistory> {
+  const timeframe = chartTimeframes[range];
+  const from = chartFrom(range, referenceTime);
+  async function page(to?: string) {
+    signal?.throwIfAborted();
+    const query = new URLSearchParams({ network: n, timeframes: timeframe, limit: '1000' });
+    if (from) query.set('from', from);
+    if (to) query.set('to', to);
+    const result = identity(decodeChart(await apiRequest<unknown>(
+      `/launches/${encodeURIComponent(id)}/chart?${query}`, { signal },
+    )), id, n);
+    signal?.throwIfAborted();
+    const frame = result.timeframes.find((entry) => entry.timeframe === timeframe);
+    if (!frame) invalid();
+    return { result, frame };
+  }
+  const initial = await page();
+  let frame = initial.frame;
+  let boundary = initial.result.asOf;
+  const candles = new Map<number, Candle>();
+  const append = (items: Candle[]) => {
+    // Keep the newer page's candle when pagination boundaries overlap.
+    for (const item of items) {
+      const time = Date.parse(item.timestamp);
+      if (!candles.has(time)) candles.set(time, item);
+    }
+  };
+  append(frame.items);
+  while (range === 'ALL' && frame.hasMore) {
+    const next = frame.nextBefore;
+    if (!next || Date.parse(next) >= Date.parse(boundary))
+      throw new ApiError('Price history pagination did not advance. Try again.', 'invalid-response');
+    boundary = next;
+    const older = await page(next);
+    append(older.frame.items);
+    frame = older.frame;
+  }
+  return {
+    ...initial.result,
+    from,
+    items: [...candles.values()].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp)),
+  };
 }
 export async function getTrades(
   id: string,
