@@ -54,6 +54,8 @@ export function useTradeForm({
   const [confirmation, setConfirmation] = useState<TradeConfirmation>();
   const [trustHash, setTrustHash] = useState<string>();
   const [registrationNotice, setRegistrationNotice] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [awaitingApproval, setAwaitingApproval] = useState(false);
   const visible = usePageVisible();
   function queueHash(hash: string) {
     if (user && !enqueueTrade(network, address, hash, user.address))
@@ -196,6 +198,9 @@ export function useTradeForm({
         setPendingHash(null);
         return;
       }
+      setConfirmation(undefined);
+      setTrustHash(undefined);
+      setDialogOpen(true);
       queueHash(pending);
       setMessage('Checking your submitted trade…');
       const result = await soroban.getTransaction(pending);
@@ -218,6 +223,7 @@ export function useTradeForm({
       );
       setMessage('');
     } finally {
+      setAwaitingApproval(false);
       running.current = false;
       setLocked(false);
       setWorking(false);
@@ -242,6 +248,9 @@ export function useTradeForm({
     setLocked(true);
     setWorking(true);
     setError('');
+    setConfirmation(undefined);
+    setTrustHash(undefined);
+    setDialogOpen(true);
     setMessage('Checking the current quote and your wallet…');
     let submittedHash: string | undefined;
     try {
@@ -309,8 +318,15 @@ export function useTradeForm({
         tokens,
         buying,
         sendTransaction,
-        setTrustHash,
-        setMessage,
+        (hash) => {
+          setTrustHash(hash);
+          setAwaitingApproval(false);
+          setMessage('Trustline submitted. Waiting for confirmation…');
+        },
+        (stage) => {
+          setAwaitingApproval(true);
+          setMessage(stage);
+        },
       );
       checkReceivingCapacity(
         wallet,
@@ -318,6 +334,7 @@ export function useTradeForm({
         buying,
         buying ? amount : current.user_amount,
       );
+      setAwaitingApproval(true);
       setMessage(`Approve the ${side} transaction in your wallet…`);
       const result = await writeContract({
         call: {
@@ -327,6 +344,7 @@ export function useTradeForm({
         },
         options: { network: NETWORK },
       });
+      setAwaitingApproval(false);
       submittedHash = result.hash;
       queueHash(result.hash);
       setPendingHash(result.hash);
@@ -362,6 +380,7 @@ export function useTradeForm({
         /* Keep the pending hash when RPC or storage is unavailable. */
       }
     } finally {
+      setAwaitingApproval(false);
       running.current = false;
       setLocked(false);
       setWorking(false);
@@ -394,7 +413,15 @@ export function useTradeForm({
     message,
     error,
     confirmation,
+    dialogOpen,
+    awaitingApproval,
     dismissConfirmation: () => {
+      if (working && !confirmation) return;
+      setDialogOpen(false);
+    },
+    finishDialogClose: () => {
+      if (dialogOpen) return;
+      setError('');
       setConfirmation(undefined);
       setMessage('');
       setTrustHash(undefined);
