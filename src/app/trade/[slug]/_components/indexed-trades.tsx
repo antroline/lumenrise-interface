@@ -166,11 +166,11 @@ export function IndexedTrades({
           </TableBody>
         </Table>
       )}
-      <p className="text-small text-muted-foreground">
-        Execution prices before fees.
-        {(size !== 'all' || period !== 'all') &&
-          ' Size and time filters apply to loaded trades.'}
-      </p>
+      {(size !== 'all' || period !== 'all') && (
+        <p className="text-small text-muted-foreground">
+          Size and time filters apply to loaded trades.
+        </p>
+      )}
       {query.isError && query.data && (
         <p role="alert" className="text-small text-destructive">
           Could not refresh trades.{' '}
