@@ -17,7 +17,7 @@ import { API_NETWORK } from '@/app/create/_launch/transactions'
 export default async function TradePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ network?: string }> }) {
   const { slug } = await params
   const { network } = await searchParams
-  if (StrKey.isValidContract(slug)) return <BondingCurvePage key={network + ':' + slug} address={slug} surface="trade" network={network === 'public' ? 'public' : API_NETWORK} />
+  if (StrKey.isValidContract(slug)) return <BondingCurvePage key={network + ':' + slug} address={slug} surface="trade" network={network === 'public' || network === 'mainnet' ? 'public' : API_NETWORK} />
   const token = getTradingToken(slug)
   if (!token) notFound()
   const price = Number(token.price.replace('$', ''))

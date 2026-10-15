@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   formatAmount,
   type Snapshot,
@@ -18,6 +18,8 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMarket } from '@/lib/api/launches/queries';
+import { useHolders } from '@/lib/api/launches/use-holders';
+import { IndexedHolders } from './indexed-holders';
 import {
   displayAmount,
   pairLabel,
@@ -67,6 +69,8 @@ export function BondingTradeLayout({
   sell,
 }: Props) {
   const market = useMarket(address, network);
+  const [holdersActive, setHoldersActive] = useState(false);
+  const holders = useHolders(address, network, holdersActive);
   const params = snapshot?.config.params;
   const name =
     launch?.metadata.name || params?.metadata.name || 'Bonding curve launch';
@@ -182,9 +186,11 @@ export function BondingTradeLayout({
                 </div>
                 <div>
                   <dt className="text-small text-muted-foreground">Holders</dt>
-                  <dd className="mt-1 text-mid font-semibold">—</dd>
-                  <span className="text-small text-muted-foreground">
-                    Not indexed
+                  <dd className="mt-1 text-mid font-semibold">
+                    {holders.query.data?.totalHolders.toLocaleString('en-US') ?? '—'}
+                  </dd>
+                  <span className="text-small text-muted-foreground" title="Known holders from recorded trades; updates may be delayed. Not a complete on-chain holder index.">
+                    {holders.query.isPending ? 'Loading…' : holders.query.isError ? 'Unavailable' : 'Known holders'}
                   </span>
                 </div>
               </>
@@ -309,6 +315,8 @@ export function BondingTradeLayout({
             </Card>
           )}
           <TradeActivity
+            holders={<IndexedHolders holders={holders} ticker={ticker} />}
+            onHoldersActiveChange={setHoldersActive}
             trades={
               <IndexedTrades
                 address={address}

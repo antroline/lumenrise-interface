@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 import ts from 'typescript';
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryObserver } from '@tanstack/react-query';
 
 const require = createRequire(import.meta.url),
   directory = dirname(fileURLToPath(import.meta.url));
@@ -89,9 +89,11 @@ function load(filename, globals, cache = new Map()) {
   const module = { exports: {} };
   cache.set(path, module);
   const output = ts.transpileModule(readFileSync(path, 'utf8'), {
+    fileName: path,
     compilerOptions: {
       module: ts.ModuleKind.CommonJS,
       target: ts.ScriptTarget.ES2020,
+      jsx: ts.JsxEmit.ReactJSX,
     },
   }).outputText;
   runInNewContext(
@@ -168,7 +170,8 @@ function harness(handler = () => ({ result: recorded }), store = storage()) {
   const client = load('../client.ts', globals, cache),
     api = load('market.ts', globals, cache),
     queue = load('trade-queue.ts', globals, cache),
-    display = load('display.ts', globals, cache);
+    display = load('display.ts', globals, cache),
+    holders = load('holders.ts', globals, cache);
   client.configureApi('http://api.example/v1');
   client.setApiUserId('42');
   return {
@@ -176,6 +179,7 @@ function harness(handler = () => ({ result: recorded }), store = storage()) {
     api,
     queue,
     display,
+    holders,
     calls,
     globals,
     setHandler: (handler) => {
@@ -504,4 +508,206 @@ test('compact token amounts retain exact rounding and promote suffixes at bounda
     ['9999990000000', '1M'], ['-125678900000', '-12.57K'],
     ['-1', '0'], ['9007199254740993', '900.72M'],
   ]) assert.equal(compactAmount(raw), expected);
+});
+
+const holderResult = {
+  network: 'testnet', contractId: ID, asset: ASSET, amountScale: 7,
+  balanceSource: 'token_contract', coverage: 'trade_participants',
+  totalHolders: 42, nextCursor: 'opaque/+==',
+  items: [{ address: OWNER, balance: '9007199254740993', observedAt: DATE }],
+};
+
+test('holders unwrap the public response, preserve opaque cursors and use the launch contract', async () => {
+  const h = harness(() => ({ result: holderResult }));
+  same(await h.holders.getHolders(ID, 'testnet'), holderResult);
+  assert.equal(h.calls[0].url, `http://api.example/v1/launches/${ID}/holders?network=testnet&limit=20`);
+  assert.equal(h.calls[0].init.headers['X-User-Id'], undefined);
+  assert.equal(h.calls[0].init.body, undefined);
+  await h.holders.getHolders(ID, 'testnet', { cursor: holderResult.nextCursor });
+  assert.equal(new URL(h.calls[1].url).searchParams.get('cursor'), holderResult.nextCursor);
+  h.client.configureApi('http://api.example');
+  h.setHandler(() => ({ result: { ...holderResult, network: 'public' } }));
+  await h.holders.getHolders(ID, 'public');
+  assert.equal(h.calls[2].url, `http://api.example/v1/launches/${ID}/holders?network=public&limit=20`);
+});
+
+test('holder balances remain exact above MAX_SAFE_INTEGER and appended rows retain server order', () => {
+  const { formatHolderBalance, appendHolders } = harness().holders;
+  for (const [raw, expected] of [
+    ['0', '0'], ['1', '0.0000001'], ['123456789', '12.3456789'],
+    ['9007199254740993', '900719925.4740993'],
+    ['9223372036854775807', '922337203685.4775807'],
+  ]) assert.equal(formatHolderBalance(raw, 7), expected);
+  const second = { address: ID, balance: '1', observedAt: DATE };
+  same(appendHolders(holderResult.items, [...holderResult.items, second, second]), [...holderResult.items, second]);
+});
+
+test('holders accept empty results and contract holders, reject invalid requests and malformed responses', async () => {
+  const h = harness(() => ({ result: { ...holderResult, items: [], totalHolders: 0, nextCursor: null } }));
+  assert.equal((await h.holders.getHolders(ID, 'testnet')).totalHolders, 0);
+  h.setHandler(() => ({ result: { ...holderResult, items: [{ ...holderResult.items[0], address: ID }] } }));
+  assert.equal((await h.holders.getHolders(ID, 'testnet')).items[0].address, ID);
+  for (const [id, network, limit] of [[OWNER, 'testnet', 20], [ID, 'mainnet', 20], [ID, 'public', 0], [ID, 'testnet', 101]]) {
+    await assert.rejects(h.holders.getHolders(id, network, { limit }), (e) => e.status === 400);
+  }
+  assert.equal(h.calls.length, 2);
+  for (const patch of [{ contractId: ASSET }, { network: 'public' }, { amountScale: 6 }, { items: [{ ...holderResult.items[0], balance: 42 }] }]) {
+    h.setHandler(() => ({ result: { ...holderResult, ...patch } }));
+    await assert.rejects(h.holders.getHolders(ID, 'testnet'), (e) => e.code === 'invalid-response');
+  }
+});
+
+test('holder HTTP failures are errors rather than zero counts', async () => {
+  for (const status of [400, 404, 503]) {
+    const h = harness(() => ({ status, result: {} }));
+    await assert.rejects(h.holders.getHolders(ID, 'testnet'), (e) => e.status === status);
+  }
+});
+
+test('recorded trades invalidate this launch’s holders while allowing delayed balance updates', async () => {
+  let snapshot = holderResult;
+  const h = harness((url) => ({ result: url.includes('/holders?') ? snapshot : recorded }));
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+  const key = ['launch', 'testnet', ID, 'holders', 20];
+  const observer = new QueryObserver(client, {
+    queryKey: key, queryFn: ({ signal }) => h.holders.getHolders(ID, 'testnet', {}, signal),
+  });
+  const unsubscribe = observer.subscribe(() => {});
+  await observer.refetch();
+  client.setQueryData(['launch', 'public', ID, 'holders', 20], 'other network');
+  h.queue.enqueueTrade('testnet', ID, 'holder-trade', OWNER);
+  await h.queue.flushTradeQueue({
+    network: 'testnet', contractId: ID, traderAddress: OWNER,
+    signal: new AbortController().signal,
+    onRecorded: () => client.invalidateQueries({ queryKey: ['launch', 'testnet', ID] }),
+  });
+  await observer.refetch();
+  assert.equal(observer.getCurrentResult().data.items[0].balance, holderResult.items[0].balance);
+  assert.equal(client.getQueryData(['launch', 'public', ID, 'holders', 20]), 'other network');
+  snapshot = { ...holderResult, items: [{ ...holderResult.items[0], balance: '10000000' }] };
+  await observer.refetch();
+  assert.equal(observer.getCurrentResult().data.items[0].balance, '10000000');
+  unsubscribe();
+  client.clear();
+});
+
+test('holders lifecycle scopes pages, blocks duplicate loads, resets on refresh and cancels old pages', { timeout: 15_000 }, async () => {
+  const h = harness(() => ({ result: { ...holderResult, nextCursor: null,
+    items: [...holderResult.items, { address: ID, balance: '1', observedAt: DATE }] } }));
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+  const states = [], refs = [], effects = [];
+  let stateIndex, refIndex, effectIndex, options;
+  let query = { data: holderResult, isFetching: false };
+  const react = {
+    useState(initial) {
+      const index = stateIndex++;
+      if (!(index in states)) states[index] = initial;
+      return [states[index], (value) => { states[index] = value; }];
+    },
+    useRef(initial) {
+      const index = refIndex++;
+      return refs[index] ??= { current: initial };
+    },
+    useEffect(fn, deps) {
+      const index = effectIndex++;
+      const previous = effects[index];
+      if (!previous || deps.some((value, i) => value !== previous.deps[i])) {
+        previous?.cleanup?.();
+        effects[index] = { deps, fn, pending: true };
+      }
+    },
+  };
+  const hook = load('use-holders.ts', {
+    require: (name) => name === 'react' ? react
+      : name === '@tanstack/react-query' ? {
+        useQuery: (value) => { options = value; return query; }, useQueryClient: () => client,
+      } : name === './queries' ? {
+        launchKey: (network, id) => ['launch', network, id],
+        publicQueryOptions: { retry: false }, usePageVisible: () => true,
+      } : name === './holders' ? h.holders : require(name),
+  });
+  function render(id = ID, network = 'testnet', active = true) {
+    stateIndex = refIndex = effectIndex = 0;
+    const result = hook.useHolders(id, network, active);
+    for (const effect of effects) if (effect.pending) {
+      effect.pending = false;
+      effect.cleanup = effect.fn();
+    }
+    return result;
+  }
+  let result = render();
+  same(options.queryKey, ['launch', 'testnet', ID, 'holders', 20]);
+  assert.equal(options.refetchInterval, 60_000);
+  await Promise.all([result.loadMore(), result.loadMore()]);
+  result = render();
+  assert.equal(h.calls.length, 1);
+  assert.equal(result.items.length, 2);
+  assert.equal(result.cursor, null);
+  assert.equal(result.query.data.totalHolders, 42);
+  query = { data: { ...holderResult }, isFetching: false };
+  result = render();
+  assert.equal(result.items.length, 1, 'Refresh replaces appended pages');
+  assert.equal(result.cursor, holderResult.nextCursor);
+  query = { data: undefined, isFetching: true };
+  result = render(ASSET, 'public', false);
+  assert.equal(result.items.length, 0, 'No previous launch/network rows while loading');
+  assert.equal(result.cursor, undefined);
+  same(options.queryKey, ['launch', 'public', ASSET, 'holders', 20]);
+  assert.equal(options.refetchInterval, false);
+
+  query = { data: holderResult, isFetching: false };
+  result = render();
+  let started;
+  const ready = new Promise((resolve) => { started = resolve; });
+  h.setHandler((_url, init) => new Promise((_resolve, reject) => {
+    started();
+    init.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+  }));
+  const pending = result.loadMore();
+  assert.equal(states[1], true, 'A page request started');
+  await ready;
+  query = { data: undefined, isFetching: true };
+  result = render(ASSET, 'public');
+  await pending;
+  result = render(ASSET, 'public');
+  assert.equal(result.items.length, 0);
+  assert.equal(result.pageError, undefined);
+  for (const effect of effects) effect.cleanup?.();
+  client.clear();
+});
+
+test('holder UI distinguishes loading, empty, failures and populated balances with retry/load-more actions', () => {
+  const jsx = (type, props) => ({ type, props });
+  const { IndexedHolders } = load('../../../app/trade/[slug]/_components/indexed-holders.tsx', {
+    require: (name) => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
+      : name === '@/lib/api/launches/holders' ? harness().holders
+      : name === './trade-table-style' ? { tradeTableClass: 'existing-table' }
+      : Object.fromEntries(['Blockie', 'Button', 'Empty', 'EmptyHeader', 'EmptyTitle', 'EmptyDescription',
+        'Skeleton', 'Table', 'TableBody', 'TableCell', 'TableHead', 'TableHeader', 'TableRow'].map((key) => [key, key])),
+  });
+  const refetch = () => {}, loadMore = () => {};
+  const base = { query: { data: holderResult, isPending: false, isError: false,
+    isFetching: false, refetch }, items: holderResult.items, cursor: holderResult.nextCursor,
+    pending: false, loadMore };
+  function nodes(value) {
+    if (Array.isArray(value)) return value.flatMap(nodes);
+    if (!value || typeof value !== 'object') return [value];
+    return [value, ...nodes(value.props?.children)];
+  }
+  for (const [patch, expected] of [
+    [{ query: { ...base.query, data: undefined, isPending: true } }, 'Loading holders'],
+    [{ items: [], cursor: null, query: { ...base.query, data: { ...holderResult, items: [], totalHolders: 0 } } }, 'No holder data available yet'],
+    [{ query: { ...base.query, data: undefined, isError: true, error: new Error('Launch not found') } }, 'Could not load holders'],
+  ]) {
+    const tree = nodes(IndexedHolders({ holders: { ...base, ...patch }, ticker: 'TOK' }));
+    assert.ok(tree.some((node) => node === expected || node?.props?.['aria-label'] === expected));
+  }
+  const populated = nodes(IndexedHolders({ holders: base, ticker: 'TOK' }));
+  assert.ok(populated.includes('900719925.4740993'));
+  assert.ok(populated.some((node) => typeof node === 'string' && node.includes('42 known holders')));
+  assert.ok(populated.some((node) => node?.props?.title === OWNER));
+  assert.ok(populated.some((node) => node?.type === 'Button' && node.props.children === 'Load more'));
+  const failedPage = nodes(IndexedHolders({ holders: { ...base, pageError: new Error('Temporarily unavailable') }, ticker: 'TOK' }));
+  assert.ok(failedPage.some((node) => node?.props?.role === 'alert'));
+  assert.ok(failedPage.some((node) => node?.type === 'Button' && node.props.children === 'Retry'));
 });

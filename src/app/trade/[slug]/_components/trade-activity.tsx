@@ -18,19 +18,26 @@ import {
 export function TradeActivity({
   trades,
   pools,
+  holders,
+  onHoldersActiveChange,
 }: {
   trades: ReactNode;
   pools: ReactNode;
+  holders?: ReactNode;
+  onHoldersActiveChange?: (active: boolean) => void;
 }) {
   const [active, setActive] = useState('trades');
   useEffect(() => {
     const followHash = () => {
-      if (window.location.hash === '#pools') setActive('pools');
+      if (window.location.hash === '#pools') {
+        setActive('pools');
+        onHoldersActiveChange?.(false);
+      }
     };
     followHash();
     window.addEventListener('hashchange', followHash);
     return () => window.removeEventListener('hashchange', followHash);
-  }, []);
+  }, [onHoldersActiveChange]);
   useEffect(() => {
     if (active !== 'pools' || window.location.hash !== '#pools') return;
     const frame = requestAnimationFrame(() =>
@@ -54,7 +61,10 @@ export function TradeActivity({
       <TradeTabs
         value={active}
         onValueChange={(value) => {
-          if (value !== null) setActive(String(value));
+          if (value !== null) {
+            setActive(String(value));
+            onHoldersActiveChange?.(value === 'holders');
+          }
         }}
       >
         <TradeTabsList
@@ -70,7 +80,7 @@ export function TradeActivity({
         <TradeTabPanels>
           <TradeTabsContent value="trades">{trades}</TradeTabsContent>
           <TradeTabsContent value="holders">
-            {unavailable(
+            {holders ?? unavailable(
               'Holder data unavailable',
               'Holder balances are not indexed. Distinct buyers are not a holder count.',
             )}
