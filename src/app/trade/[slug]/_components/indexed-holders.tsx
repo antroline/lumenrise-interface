@@ -32,23 +32,6 @@ export function IndexedHolders({
   const error = pageError ?? (query.isError ? query.error : undefined);
   return (
     <section className="flex min-w-0 flex-col gap-3" aria-label="Known holders">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-small text-muted-foreground">
-          {query.data
-            ? `${query.data.totalHolders.toLocaleString('en-US')} known holders. `
-            : ''}
-          Known holders from recorded trades; balance updates may be delayed.
-          This is not a complete on-chain holder index.
-        </p>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={query.isFetching || pending}
-          onClick={() => void query.refetch()}
-        >
-          Refresh
-        </Button>
-      </div>
       {query.isPending ? (
         <div role="status" aria-label="Loading holders">
           <Skeleton className="h-44 w-full" />
