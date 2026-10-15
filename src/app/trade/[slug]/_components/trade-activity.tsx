@@ -19,11 +19,13 @@ export function TradeActivity({
   trades,
   pools,
   holders,
+  topTraders,
   onHoldersActiveChange,
 }: {
   trades: ReactNode;
   pools: ReactNode;
   holders?: ReactNode;
+  topTraders?: ReactNode;
   onHoldersActiveChange?: (active: boolean) => void;
 }) {
   const [active, setActive] = useState('trades');
@@ -86,10 +88,10 @@ export function TradeActivity({
             )}
           </TradeTabsContent>
           <TradeTabsContent value="leaders">
-            {unavailable(
+            {active === 'leaders' && (topTraders ?? unavailable(
               'Top trader data unavailable',
               'A complete trader ranking is not connected.',
-            )}
+            ))}
           </TradeTabsContent>
           <TradeTabsContent value="pools">
             <div id="pools" className="scroll-mt-24">

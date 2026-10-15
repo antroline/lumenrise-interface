@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import { Flag } from 'lucide-react';
 import {
   formatAmount,
   type Snapshot,
@@ -23,7 +24,7 @@ import { IndexedHolders } from './indexed-holders';
 import {
   displayAmount,
   pairLabel,
-  roundAmount,
+  compactAmount,
 } from '@/lib/api/launches/display';
 import type { ApiNetwork } from '@/lib/api/launches/types';
 import type { LaunchResult } from '@/lib/api/launches/market';
@@ -39,6 +40,7 @@ import {
 import { TradeActivity } from './trade-activity';
 import { IndexedPriceChart } from './indexed-price-chart';
 import { IndexedTrades } from './indexed-trades';
+import { IndexedTopTraders } from './indexed-top-traders';
 import { PoolTable } from './pool-table';
 
 type Props = {
@@ -48,7 +50,6 @@ type Props = {
   snapshot?: Snapshot;
   tokens?: Tokens;
   loading: boolean;
-  refreshAction: ReactNode;
   feedback: ReactNode;
   walletFeedback?: ReactNode;
   buy: ReactNode;
@@ -62,7 +63,6 @@ export function BondingTradeLayout({
   snapshot,
   tokens,
   loading,
-  refreshAction,
   feedback,
   walletFeedback,
   buy,
@@ -131,8 +131,7 @@ export function BondingTradeLayout({
             ticker={ticker}
             pair={pair}
             address={address}
-            overview={`/launch/${address}?network=${network}`}
-            actions={refreshAction}
+            links={{ website: launch?.metadata.website, x: launch?.metadata.xAccount, github: launch?.metadata.github }}
             status={
               <>
                 <Badge variant="soft" size="sm" className="border-0">
@@ -257,64 +256,57 @@ export function BondingTradeLayout({
       }
       footer={
         <>
-          {finished && (
+          {bonding && (
             <Card
+              variant="surface"
+              size="none"
               role="region"
               aria-labelledby="graduation-heading"
-              className="min-w-0 gap-3"
+              className="min-w-0 gap-3 bg-lime px-4 py-3 text-ink"
             >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <h2
-                    id="graduation-heading"
-                    className="text-title font-semibold"
-                  >
-                    Graduation
-                  </h2>
-                  <span className="text-small text-muted-foreground">
-                    {status}
-                  </span>
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <Flag aria-hidden="true" className="size-4 shrink-0" />
+                  <h2 id="graduation-heading" className="text-sm font-semibold">Graduation</h2>
+                  <Badge variant="lime" size="sm" className="bg-ink/10 text-ink">{status}</Badge>
                 </div>
-                <span className="font-semibold tabular-nums">
-                  {progress === undefined ? '—' : `${progress.toFixed(2)}%`}
+                <span className="text-mid font-semibold tabular-nums">
+                  {progress === undefined ? 'Unavailable' : `${progress.toFixed(2)}%`}
                 </span>
               </div>
               {progress !== undefined && (
                 <Progress
                   value={Math.min(progress, 100)}
-                  tone="lime"
+                  size="thick"
                   aria-label={`${progress.toFixed(2)}% of graduation target`}
+                  className="w-full [&_[data-slot=progress-track]]:bg-transparent [&_[data-slot=progress-track]]:ring-1 [&_[data-slot=progress-track]]:ring-inset [&_[data-slot=progress-track]]:ring-ink/60 [&_[data-slot=progress-indicator]]:bg-ink motion-reduce:[&_[data-slot=progress-indicator]]:transition-none"
                 />
               )}
-              <dl className="flex flex-wrap justify-between gap-2 text-small tabular-nums">
-                <div>
-                  <dt className="text-muted-foreground">Net reserves</dt>
-                  <dd>
-                    {reserve === undefined
-                      ? 'Unavailable'
-                      : `${detailAmount(roundAmount(reserve.toString(), 3))} ${pair}`}
+              <dl className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-small tabular-nums">
+                <div className="flex flex-wrap items-baseline gap-x-1.5">
+                  <dt className="text-ink/80">Net reserves</dt>
+                  <dd className="font-semibold" title={reserve === undefined ? undefined : `${detailAmount(reserve.toString())} ${pair}`}>
+                    {reserve === undefined ? 'Unavailable' : compactAmount(reserve.toString())} {pair}
                   </dd>
                 </div>
-                <div>
-                  <dt className="text-muted-foreground">Target</dt>
-                  <dd>
-                    {target === undefined
-                      ? 'Unavailable'
-                      : `${detailAmount(roundAmount(target.toString(), 3))} ${pair}`}
+                <div className="flex flex-wrap items-baseline gap-x-1.5">
+                  <dt className="text-ink/80">Target</dt>
+                  <dd className="font-semibold" title={target === undefined ? undefined : `${detailAmount(target.toString())} ${pair}`}>
+                    <span>{target === undefined ? 'Unavailable' : compactAmount(target.toString())} {pair}</span>
                   </dd>
                 </div>
               </dl>
-              <p className="text-small text-muted-foreground">
-                {status === 'Graduated'
-                  ? 'Curve trading ended · pool settlement unavailable.'
-                  : 'Target not reached · eligible positions can be sold back.'}
-                {bonding && !snapshot && bonding.stateStale
-                  ? ' Indexed state may be outdated.'
-                  : ''}
-              </p>
+              {(finished || (!snapshot && bonding.stateStale)) && (
+                <p className="text-small text-ink/80">
+                  {status === 'Graduated' ? 'Curve trading ended · pool settlement unavailable.'
+                    : status === 'Failed' ? 'Target not reached · eligible positions can be sold back.' : ''}
+                  {!snapshot && bonding.stateStale ? ' Indexed state may be outdated.' : ''}
+                </p>
+              )}
             </Card>
           )}
           <TradeActivity
+            topTraders={<IndexedTopTraders address={address} network={network} pair={pair} />}
             holders={<IndexedHolders holders={holders} ticker={ticker} />}
             onHoldersActiveChange={setHoldersActive}
             trades={
