@@ -133,7 +133,7 @@
 /* `.theme-reset` restores the light tokens for surfaces nested inside a DarkPanel. */
 :root,
 :root:not(.dark) .theme-reset {
-  --page: #f5f5f2;
+  --page: #f9f9f9;
   --background: #fcfcfc;
   --foreground: #0b0b0b;
   --card: #fff;
@@ -145,16 +145,16 @@
   --popover-foreground: #0b0b0b;
   --primary: #d6ff00;
   --primary-foreground: #0b0b0b;
-  --secondary: #f0f0ec;
-  --secondary-foreground: #2e2e2c;
-  --muted: #f7f7f5;
-  --muted-foreground: #62625e;
-  --faint: #70706b;
+  --secondary: #efefef;
+  --secondary-foreground: #2e2e2e;
+  --muted: #f6f6f6;
+  --muted-foreground: #5c5c5c;
+  --faint: #6a6a6a;
   --accent: #f4ffc2;
   --accent-foreground: #0b0b0b;
   --destructive: #b42318;
   --border: #e5e5e5;
-  --divider: #efefec;
+  --divider: #ededed;
   --input: #e5e5e5;
   --ring: #0b0b0b;
 
@@ -186,7 +186,7 @@
   --sidebar-foreground: #0b0b0b;
   --sidebar-primary: #0b0b0b;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f0f0ec;
+  --sidebar-accent: #efefef;
   --sidebar-accent-foreground: #0b0b0b;
   --sidebar-border: #e5e5e5;
   --sidebar-ring: #0b0b0b;
