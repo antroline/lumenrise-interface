@@ -69,6 +69,8 @@
 }
 
 @theme inline {
+  /* The page ground under cards. Controls keep --background so they stay lighter than it. */
+  --color-page: var(--page);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -131,6 +133,7 @@
 /* `.theme-reset` restores the light tokens for surfaces nested inside a DarkPanel. */
 :root,
 :root:not(.dark) .theme-reset {
+  --page: #f5f5f2;
   --background: #fcfcfc;
   --foreground: #0b0b0b;
   --card: #fff;
@@ -192,6 +195,7 @@
 /* Dark: warm near-black paper, not an inverted light theme. Ink emphasis
    hands over to lime so selected state keeps the same contrast weight. */
 .dark {
+  --page: #0e0e0d;
   --background: #0e0e0d;
   --foreground: #f4f4ef;
   --card: #1a1a18;
@@ -264,7 +268,7 @@
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
-    @apply bg-background text-foreground;
+    @apply bg-page text-foreground;
   }
 
   button,
@@ -302,9 +306,9 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    border: 3px solid var(--background);
+    border: 3px solid transparent;
     border-radius: 999px;
-    background: var(--border);
+    background: var(--border) padding-box;
   }
 
   :focus-visible {

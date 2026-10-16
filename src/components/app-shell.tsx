@@ -42,11 +42,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (bareRoutes.has(pathname)) return children;
 
   return (
-    <div className="relative isolate min-h-screen bg-background">
+    <div className="relative isolate min-h-screen bg-page">
       <header
         className={cn(
           'sticky top-0 z-30 transition-colors duration-200',
-          scrolled && 'bg-background/95 backdrop-blur-sm',
+          scrolled && 'bg-page/95 backdrop-blur-sm',
         )}
       >
         <div className="flex h-[68px] w-full items-center gap-2 px-4 sm:gap-3 sm:px-5 lg:px-6">
