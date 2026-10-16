@@ -41,36 +41,6 @@ export function AllocationChart({
       aria-hidden="true"
       onPointerLeave={() => setHovered(null)}
     >
-      <circle
-        cx="120"
-        cy="120"
-        r="100"
-        fill="none"
-        stroke="var(--border)"
-        strokeWidth="1"
-      />
-      {Array.from({ length: 20 }, (_, index) => {
-        const angle = (index * Math.PI) / 10 - Math.PI / 2;
-        return (
-          <line
-            key={index}
-            x1={120 + Math.cos(angle) * 98}
-            y1={120 + Math.sin(angle) * 98}
-            x2={120 + Math.cos(angle) * (index % 5 === 0 ? 105 : 102)}
-            y2={120 + Math.sin(angle) * (index % 5 === 0 ? 105 : 102)}
-            stroke="var(--muted-foreground)"
-            strokeWidth="1"
-          />
-        );
-      })}
-      <circle
-        cx="120"
-        cy="120"
-        r="57"
-        fill="none"
-        stroke="var(--border)"
-        strokeWidth="1"
-      />
       {segments.map((segment) => (
         <circle
           key={segment.key}
@@ -79,8 +49,10 @@ export function AllocationChart({
           r={radius}
           fill="none"
           stroke={toneFor(segment.toneIndex ?? segment.index).color}
-          strokeWidth={hovered === segment.index ? 27 : 23}
-          strokeDasharray={`${Math.max(0, segment.length - Math.min(3, segment.length / 10))} ${circumference}`}
+          strokeWidth={hovered === segment.index ? 22 : 18}
+          strokeLinecap="round"
+          className="transition-[stroke-width] duration-200 motion-reduce:transition-none"
+          strokeDasharray={`${Math.max(0, segment.length - Math.min(12, segment.length / 3))} ${circumference}`}
           strokeDashoffset={-segment.offset}
           transform="rotate(-90 120 120)"
           onPointerEnter={() => setHovered(segment.index)}

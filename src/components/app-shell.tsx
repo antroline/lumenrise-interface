@@ -1,23 +1,30 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
-import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
-import { Menu } from 'lucide-react';
-import { LogoHorizontal } from '@/components/logo';
-import { ThemeToggle } from '@/components/theme-toggle';
-import { Button } from '@/components/ui/button';
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
-import { HeaderNavigation, MobileNavigation } from './shell/navigation-menu';
 import { Breadcrumbs } from './shell/breadcrumbs';
-import { GlobalSearch } from './shell/global-search';
-import { WalletButton } from './shell/wallet-button';
+import { SideNavigation } from './shell/side-navigation';
+
+// Top header — commented out while the side navigation is tested.
+// To restore it, uncomment this block, the state/effect in AppShell and the
+// <header> JSX below, then remove <SideNavigation /> and its wrapper.
+//
+// import { useEffect, useState, type ReactNode } from 'react';
+// import Link from 'next/link';
+// import { Menu } from 'lucide-react';
+// import { LogoHorizontal } from '@/components/logo';
+// import { ThemeToggle } from '@/components/theme-toggle';
+// import { Button } from '@/components/ui/button';
+// import {
+//   Sheet,
+//   SheetContent,
+//   SheetTitle,
+//   SheetTrigger,
+// } from '@/components/ui/sheet';
+// import { HeaderNavigation, MobileNavigation } from './shell/navigation-menu';
+// import { GlobalSearch } from './shell/global-search';
+// import { WalletButton } from './shell/wallet-button';
 
 /** Routes that render as a focused flow without the site navigation. */
 const bareRoutes = new Set(['/onboarding', '/register']);
@@ -28,25 +35,28 @@ function isFullWidth(pathname: string) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const [navOpen, setNavOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  // const [navOpen, setNavOpen] = useState(false);
+  // const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
 
-  useEffect(() => {
-    const updateHeader = () => setScrolled(window.scrollY > 0);
-    updateHeader();
-    window.addEventListener('scroll', updateHeader, { passive: true });
-    return () => window.removeEventListener('scroll', updateHeader);
-  }, []);
+  // useEffect(() => {
+  //   const updateHeader = () => setScrolled(window.scrollY > 0);
+  //   updateHeader();
+  //   window.addEventListener('scroll', updateHeader, { passive: true });
+  //   return () => window.removeEventListener('scroll', updateHeader);
+  // }, []);
 
   if (bareRoutes.has(pathname)) return children;
 
   return (
-    <div className="relative isolate min-h-screen bg-background">
+    <div className="relative isolate min-h-screen bg-page lg:flex">
+      <SideNavigation />
+
+      {/*
       <header
         className={cn(
           'sticky top-0 z-30 transition-colors duration-200',
-          scrolled && 'bg-background/95 backdrop-blur-sm',
+          scrolled && 'bg-page/95 backdrop-blur-sm',
         )}
       >
         <div className="flex h-[68px] w-full items-center gap-2 px-4 sm:gap-3 sm:px-5 lg:px-6">
@@ -95,19 +105,22 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
+      */}
 
-      <main
-        className={cn(
-          'animate-settle relative z-10 mx-auto w-full px-4 pt-6 pb-16 sm:pt-8 lg:pt-10 lg:pb-[72px]',
-          isFullWidth(pathname)
-            ? 'sm:px-5 lg:px-6'
-            : 'max-w-[1200px] sm:px-6 lg:px-10',
-          pathname === '/create' && 'pb-4 sm:pt-6 lg:pt-8 lg:pb-4 short:pt-4 short:sm:pt-4 short:lg:pt-5',
-        )}
-      >
-        <Breadcrumbs />
-        {children}
-      </main>
+      <div className="min-w-0 flex-1">
+        <main
+          className={cn(
+            'animate-settle relative z-10 mx-auto w-full px-4 pt-6 pb-16 sm:pt-8 lg:pt-10 lg:pb-[72px]',
+            isFullWidth(pathname)
+              ? 'sm:px-5 lg:px-6'
+              : 'max-w-[1200px] sm:px-6 lg:px-10',
+            pathname === '/create' && 'pb-4 sm:pt-6 lg:pt-8 lg:pb-4 short:pt-4 short:sm:pt-4 short:lg:pt-5',
+          )}
+        >
+          <Breadcrumbs />
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

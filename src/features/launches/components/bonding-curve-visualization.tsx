@@ -18,7 +18,7 @@ import {
 } from '../lib/curve-model';
 import { detailAmount } from '../lib/bonding-details';
 import { UNIT } from '../bonding/contract';
-import styles from './project-detail.module.css';
+import { compactLaunchAmount } from '../lib/compact-launch-amount';
 
 export function BondingCurveVisualization({
   input,
@@ -36,12 +36,9 @@ export function BondingCurveVisualization({
   const model = curveModel(input);
   if (!model)
     return (
-      <section className={styles.chartSection}>
-        <h2 className="text-h2 font-semibold">Bonding curve</h2>
-        <p className={styles.chartNote}>
-          The available parameters cannot produce a valid pricing model.
-        </p>
-      </section>
+      <p className="text-[13px] text-muted-foreground">
+        The available parameters cannot produce a valid pricing model.
+      </p>
     );
   const observed = currentPrice == null ? null : BigInt(currentPrice);
   let minimum = model.points[0].price;
@@ -72,27 +69,13 @@ export function BondingCurveVisualization({
         : quantity >= UNIT
           ? UNIT / BigInt(100)
           : BigInt(1);
-    return detailAmount(
+    return compactLaunchAmount(detailAmount(
       (((quantity + step / BigInt(2)) / step) * step).toString(),
-    );
+    ));
   };
   return (
-    <section className={styles.chartSection} aria-labelledby="model-heading">
-      <div className={styles.chartHeader}>
-        <h2 id="model-heading">Bonding curve</h2>
-        <p>Model-based pricing · Not price history</p>
-      </div>
-      <div className={styles.chartWrap}>
-        <div className={styles.chartReadout}>
-          <span>
-            Current contract price{stale ? ' · snapshot may be outdated' : ''}
-          </span>
-          <strong>
-            {observed === null
-              ? 'Unavailable'
-              : `${detailAmount(observed.toString())} ${pair} / ${ticker}`}
-          </strong>
-        </div>
+    <figure className="min-w-0" aria-label={`Bonding curve pricing model for ${ticker} in ${pair}`}>
+      <div className="min-w-0 overflow-hidden">
         <ChartContainer
           config={{ y: { label: 'Model price', color: 'var(--foreground)' } }}
           className="h-[280px] w-full aspect-auto"
@@ -204,34 +187,34 @@ export function BondingCurveVisualization({
                   maximum,
                 )}
                 r={3}
-                fill="var(--background)"
+                fill="var(--card)"
                 stroke="var(--foreground)"
               />
             )}
           </LineChart>
         </ChartContainer>
-        <div className={styles.chartLegend}>
-          <span>
-            <span className="h-px w-4 bg-foreground" />
+        <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-border pt-4 text-[12px] text-muted-foreground">
+          <span className="inline-flex items-center gap-2">
+            <span className="h-0.5 w-4 rounded-full bg-foreground" />
             Marginal price · {pair} / {ticker}
           </span>
-          <span>
+          <span className="inline-flex items-center gap-2">
             <span className="size-2 rounded-full bg-lime ring-1 ring-foreground/30" />
             {observed === null
               ? 'Model at current position'
-              : 'Current position'}
+              : `Current position${stale ? ' · may be outdated' : ''}`}
           </span>
           <span>Horizontal axis: net {ticker} sold</span>
         </div>
       </div>
-      <p className={styles.chartNote}>
+      <figcaption className="mt-3 max-w-[72ch] text-[12.5px] leading-relaxed text-muted-foreground">
         Calculated from the configured virtual reserves, with the contract’s
-        rounding. Axes are auto-scaled around the current position and target.{' '}
+        rounding.{' '}
         {model.graduation !== null
-          ? `The target estimate is ${detailAmount(model.graduation.toString())} ${ticker} net sold; only the contract status confirms graduation.`
+          ? `The target estimate is ${compactLaunchAmount(detailAmount(model.graduation.toString()))} ${ticker} net sold; only the contract status confirms graduation.`
           : 'A target position is unavailable within the curve allocation.'}{' '}
         This is a pricing model, not recorded trading activity.
-      </p>
-    </section>
+      </figcaption>
+    </figure>
   );
 }

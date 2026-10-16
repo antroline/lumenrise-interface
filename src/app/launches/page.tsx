@@ -1,22 +1,40 @@
-import { PublicProjects } from '../../features/launches/components/public-projects'
-import { API_NETWORK } from '@/lib/stellar/network'
+import { PublicProjects } from '../../features/launches/components/public-projects';
+import { API_NETWORK } from '@/lib/stellar/network';
 // import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 // import { ProjectsTable, ProjectsTableSkeleton } from '@/components/projects-table'
 // import { ResultsStack } from '@/components/results-transition'
-import { ResultsLink, ResultsTransition } from '@/components/results-transition'
-import { projectColumns, type ProjectColumn, type SortDirection } from '@/lib/project-table'
-import { cn } from '@/lib/utils'
+import {
+  ResultsLink,
+  ResultsTransition,
+} from '@/components/results-transition';
+import {
+  projectColumns,
+  type ProjectColumn,
+  type SortDirection,
+} from '@/lib/project-table';
+import { cn } from '@/lib/utils';
 // import { type ProjectListing } from './_data/projects'
 // import { projects, type ProjectCategory } from './_data/projects'
 
-type Category = 'All' | 'Bonding Curve' | 'Auction' | 'pre-sale'
-type SearchParams = Promise<{ category?: string; sort?: string; dir?: string; page?: string; livePage?: string; network?: string; owner?: string }>
+type Category = 'All' | 'Bonding Curve' | 'Auction' | 'pre-sale';
+type SearchParams = Promise<{
+  category?: string;
+  sort?: string;
+  dir?: string;
+  page?: string;
+  livePage?: string;
+  network?: string;
+  owner?: string;
+}>;
 
 // const PAGE_SIZE = 10
-const categories: Category[] = ['All', 'Bonding Curve', 'Auction', 'pre-sale']
+const categories: Category[] = ['All', 'Bonding Curve', 'Auction', 'pre-sale'];
 const categoryLabels: Record<Category, string> = {
-  All: 'All', 'Bonding Curve': 'Bonding Curve', Auction: 'Auction', 'pre-sale': 'pre-sale',
-}
+  All: 'All',
+  'Bonding Curve': 'Bonding Curve',
+  Auction: 'Auction',
+  'pre-sale': 'pre-sale',
+};
 
 // const pagerItem = 'grid size-8 place-items-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-lime'
 
@@ -25,7 +43,9 @@ const categoryLabels: Record<Category, string> = {
 // }
 
 function defaultDirection(sort: ProjectColumn): SortDirection {
-  return sort === 'figure' || sort === 'participants' || sort === 'date' ? 'desc' : 'asc'
+  return sort === 'figure' || sort === 'participants' || sort === 'date'
+    ? 'desc'
+    : 'asc';
 }
 
 // function sortValue(project: ProjectListing, sort: ProjectColumn): string | number | null {
@@ -52,37 +72,69 @@ function defaultDirection(sort: ProjectColumn): SortDirection {
 //   })
 // }
 
-function projectsUrl(category: Category, sort: ProjectColumn, direction: SortDirection, page: number, context: { network?: string; owner?: string } = {}) {
-  const query = new URLSearchParams({ category, sort, dir: direction, page: String(page) })
-  if (context.network) query.set('network', context.network)
-  if (context.owner) query.set('owner', context.owner)
-  return `/launches?${query}`
+function projectsUrl(
+  category: Category,
+  sort: ProjectColumn,
+  direction: SortDirection,
+  page: number,
+  context: { network?: string; owner?: string } = {},
+) {
+  const query = new URLSearchParams({
+    category,
+    sort,
+    dir: direction,
+    page: String(page),
+  });
+  if (context.network) query.set('network', context.network);
+  if (context.owner) query.set('owner', context.owner);
+  return `/launches?${query}`;
 }
 
 // function paginationItems(page: number, pageCount: number): Array<number | 'ellipsis'> {
-  // const visible = Array.from({ length: pageCount }, (_, index) => index + 1)
+// const visible = Array.from({ length: pageCount }, (_, index) => index + 1)
 //     .filter((number) => number === 1 || number === pageCount || Math.abs(number - page) <= 1)
 //   return visible.flatMap((number, index) =>
 //     index > 0 && number - visible[index - 1] > 1 ? ['ellipsis' as const, number] : [number],
 //   )
 // }
 
-export default async function ProjectsPage({ searchParams }: { searchParams: SearchParams }) {
-  const params = await searchParams
-  const network = params.network === 'public' ? 'public' : API_NETWORK
-  const livePage = Math.max(1, Math.min(100000, Number(params.livePage) || 1))
-  const url = (category: Category, sort: ProjectColumn, direction: SortDirection, page: number) => projectsUrl(category, sort, direction, page, { network, owner: params.owner })
-  const category = categories.find((item) => item.toLowerCase() === params.category?.toLowerCase()) ?? 'All'
-  const requestedSort = projectColumns.find((column) => column.key === params.sort)?.key
-  const sort = requestedSort ?? 'name'
-  const direction = params.dir === 'asc' || params.dir === 'desc' ? params.dir : defaultDirection(sort)
+export default async function ProjectsPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const params = await searchParams;
+  const network = params.network === 'public' ? 'public' : API_NETWORK;
+  const livePage = Math.max(1, Math.min(100000, Number(params.livePage) || 1));
+  const url = (
+    category: Category,
+    sort: ProjectColumn,
+    direction: SortDirection,
+    page: number,
+  ) =>
+    projectsUrl(category, sort, direction, page, {
+      network,
+      owner: params.owner,
+    });
+  const category =
+    categories.find(
+      (item) => item.toLowerCase() === params.category?.toLowerCase(),
+    ) ?? 'All';
+  const requestedSort = projectColumns.find(
+    (column) => column.key === params.sort,
+  )?.key;
+  const sort = requestedSort ?? 'name';
+  const direction =
+    params.dir === 'asc' || params.dir === 'desc'
+      ? params.dir
+      : defaultDirection(sort);
   // const matching = category === 'All' ? projects : projects.filter((project) => project.category === category)
   // const sorted = sortProjects(matching, sort, direction)
   // const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
   // const requestedPage = Number(params.page)
   // const page = Number.isInteger(requestedPage) && requestedPage > 0
-//     ? Math.min(requestedPage, pageCount)
-//     : 1
+  //     ? Math.min(requestedPage, pageCount)
+  //     : 1
   // const first = (page - 1) * PAGE_SIZE
   // const visible = sorted.slice(first, first + PAGE_SIZE)
 
@@ -90,16 +142,23 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
     <ResultsTransition>
       <div className="w-full pb-12">
         <div className="mx-auto mb-8 w-full max-w-[1400px]">
-          <h1 className="text-[36px] leading-none font-bold tracking-[-0.04em] sm:text-[48px]">Projects</h1>
-          <p className="mt-3 text-body text-muted-foreground sm:text-base">Explore launches, auctions, and live markets on Stellar.</p>
+          <h1 className="text-[36px] leading-none font-bold tracking-[-0.04em] sm:text-[48px]">
+            Projects
+          </h1>
+          <p className="mt-3 text-body text-muted-foreground sm:text-base">
+            Explore launches, auctions, and live markets on Stellar.
+          </p>
         </div>
 
         <div className="mx-auto w-full max-w-[1400px]">
           <div className="flex flex-wrap items-center gap-3">
-            <nav aria-label="Project category" className="-mx-4 max-w-[calc(100%+2rem)] overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:max-w-full sm:px-0">
+            <nav
+              aria-label="Project category"
+              className="-mx-4 max-w-[calc(100%+2rem)] overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:max-w-full sm:px-0"
+            >
               <div className="flex w-fit gap-1 rounded-xl bg-secondary p-1">
                 {categories.map((item) => {
-                  const active = item === category
+                  const active = item === category;
                   return (
                     <ResultsLink
                       key={item}
@@ -115,13 +174,23 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
                     >
                       {categoryLabels[item]}
                     </ResultsLink>
-                  )
+                  );
                 })}
               </div>
             </nav>
           </div>
 
-          <div className="mt-4"><PublicProjects key={network + ':' + (params.owner ?? '')} network={network} owner={params.owner} page={Math.floor(livePage)} category={category} sort={requestedSort} direction={direction} /></div>
+          <div className="mt-4">
+            <PublicProjects
+              key={network + ':' + (params.owner ?? '')}
+              network={network}
+              owner={params.owner}
+              page={Math.floor(livePage)}
+              category={category}
+              sort={requestedSort}
+              direction={direction}
+            />
+          </div>
         </div>
         {/* Mock project previews are temporarily disabled.
         <section className="mt-4" aria-label="Project results">
@@ -190,5 +259,5 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
         */}
       </div>
     </ResultsTransition>
-  )
+  );
 }

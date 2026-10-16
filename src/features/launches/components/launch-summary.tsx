@@ -71,7 +71,7 @@ export function LaunchSummary({
           </div>
         </div>
 
-        {launch.description && <p className={cn('mt-5 text-[16px] leading-relaxed text-muted-foreground', eligibilityNote && 'line-clamp-3')}>{launch.description}</p>}
+        {launch.description && <div className="mt-5"><p className={cn('text-[15px] leading-relaxed text-muted-foreground', content.overview && 'line-clamp-2')}>{launch.description}</p>{content.overview && <a href="#about-heading" className="mt-2 inline-flex items-center text-sm font-medium underline underline-offset-4 hover:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring">About this project <ArrowRight className="ml-1 size-4" aria-hidden="true" /></a>}</div>}
 
         {content.links && (
           <ul className="mt-5 flex flex-wrap gap-2">
@@ -84,7 +84,7 @@ export function LaunchSummary({
                     target="_blank"
                     rel="noreferrer noopener"
                     aria-label={`${launch.name} ${name}`}
-                    className="grid size-10 place-items-center rounded-xl bg-background text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-lime/55 focus-visible:outline-none"
+                    className="grid size-10 place-items-center rounded-2xl bg-background text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-lime/55 focus-visible:outline-none"
                   >
                     <Icon className="size-[17px]" />
                   </a>
@@ -109,12 +109,12 @@ export function LaunchSummary({
             </Eligibility>
           </dd>
         </dl>}
-        <p className="mt-5 text-[14px] leading-relaxed text-muted-foreground">
+        <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
           {eligibilityNote ?? (action ? 'Eligibility evaluation is unavailable for this launch.' : 'Reference data for this testnet preview. Eligibility, project links and transactions are not connected.')}
         </p>
         {action ?? <Button
           size="lg"
-          className="mt-6 h-[52px] w-full text-[16px]"
+          className="mt-6 h-[52px] w-full rounded-2xl text-[16px]"
           render={<Link href={`/launch/${launch.slug}/participate`} />}
           nativeButton={false}
         >

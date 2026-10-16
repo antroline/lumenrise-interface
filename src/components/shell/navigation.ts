@@ -4,6 +4,7 @@ import {
   Compass,
   Gavel,
   Hexagon,
+  LayoutDashboard,
   LayoutGrid,
   Plus,
   Rocket,
@@ -75,7 +76,7 @@ export const projectItems: HeaderNavItem[] = [
     label: 'Project dashboard',
     description: 'Review and manage your projects.',
     href: '/dashboard',
-    icon: LayoutGrid,
+    icon: LayoutDashboard,
     match: ['/campaigns'],
   },
 ];

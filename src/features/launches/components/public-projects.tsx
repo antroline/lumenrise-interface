@@ -17,7 +17,10 @@ import {
 } from '@/components/ui/empty';
 import { getLaunchList } from '@/lib/api/launches/market';
 import { compactAmount, pairLabel, unixDate } from '@/lib/api/launches/display';
-import { publicQueryOptions, usePageVisible } from '@/features/launches/hooks/queries';
+import {
+  publicQueryOptions,
+  usePageVisible,
+} from '@/features/launches/hooks/queries';
 import type { ApiNetwork } from '@/lib/api/launches/types';
 import {
   projectColumns,
@@ -192,7 +195,11 @@ export function PublicProjects({
       </div>
       <div className="overflow-hidden rounded-2xl">
         {query.isPending ? (
-          <ProjectsTableSkeleton rows={5} directory figureLabel="Pool Balance" />
+          <ProjectsTableSkeleton
+            rows={5}
+            directory
+            figureLabel="Pool Balance"
+          />
         ) : query.isError && !query.data ? (
           <Empty>
             <EmptyHeader>

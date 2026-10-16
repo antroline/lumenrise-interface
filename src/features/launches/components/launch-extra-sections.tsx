@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import type { LaunchContent } from '../data/launch-content';
 import { toneFor } from '../data/allocation-tones';
 import { AllocationChart, type AllocationSlice } from './allocation-chart';
-import styles from './project-detail.module.css';
+import { LaunchDisplayAmount } from './launch-display-amount';
 
 function Section({
   titleId,
@@ -37,6 +37,7 @@ function Section({
       <div className={styles.sectionHead}>
         <h2
           id={titleId}
+          tabIndex={-1}
           className="text-[22px] font-semibold tracking-[-0.025em] sm:text-[25px]"
         >
           {title}
@@ -171,7 +172,11 @@ export function LaunchExtraSections({
                   <dl className={styles.allocationDetail}>
                     <div>
                       <dt className="sr-only">Token quantity</dt>
-                      <dd>{allocation.tokens} tokens</dd>
+                      <dd>
+                        <LaunchDisplayAmount
+                          value={`${allocation.tokens} tokens`}
+                        />
+                      </dd>
                     </div>
                     <div>
                       <dt className="sr-only">Unlock terms</dt>
@@ -218,6 +223,7 @@ export function LaunchExtraSections({
           <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 px-6 sm:px-8">
             <h2
               id="team-heading"
+              tabIndex={-1}
               className="text-[22px] font-semibold tracking-[-0.025em] sm:text-[25px]"
             >
               Team

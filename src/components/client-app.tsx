@@ -46,7 +46,7 @@ const bluxConfig: Parameters<typeof BluxProvider>[0]['config'] = {
   transports: {
     [NETWORK]: { horizon: HORIZON_URL, soroban: SOROBAN_URL },
   },
-  loginMethods: ['wallet', 'email', 'passkey', 'twitter', 'github', 'gitlab'],
+  loginMethods: ['wallet'],
   appearance: {
     background: '#ffffff',
     fieldBackground: '#f7f7f5',

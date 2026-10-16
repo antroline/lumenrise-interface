@@ -15,7 +15,10 @@ import {
 } from './contract';
 import { TradeForm } from './trade-form';
 import { ApiError } from '@/lib/api/client';
-import { useLaunchDetail, usePageVisible } from '@/features/launches/hooks/queries';
+import {
+  useLaunchDetail,
+  usePageVisible,
+} from '@/features/launches/hooks/queries';
 import { useTradeQueue } from '@/features/launches/hooks/use-trade-queue';
 import { resumeTradeIdentity } from '@/lib/api/launches/trade-queue';
 import type { ApiNetwork } from '@/lib/api/launches/types';
@@ -50,27 +53,28 @@ export function BondingCurvePage({
   const { records: queued, recoveryError } = useTradeQueue(network, address);
   const visible = usePageVisible();
   const liveEnabled = visible && network === API_NETWORK;
-  const queueFeedback =
-    queued.some((trade) => trade.state === 'invalid' || trade.state === 'identity') ? (
-      <p role="status" className="text-small text-muted-foreground">
-        {queued.some((t) => t.state === 'invalid')
-          ? 'A trade could not be recorded. Its transaction confirmation is unchanged.'
-          : 'Sign in again to finish recording your trades.'}
-        {queued.some((t) => t.state === 'identity') && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              retryStatusCheck();
-              if (user?.address)
-                resumeTradeIdentity(network, address, user.address);
-            }}
-          >
-            Retry account verification
-          </Button>
-        )}
-      </p>
-    ) : null;
+  const queueFeedback = queued.some(
+    (trade) => trade.state === 'invalid' || trade.state === 'identity',
+  ) ? (
+    <p role="status" className="text-small text-muted-foreground">
+      {queued.some((t) => t.state === 'invalid')
+        ? 'A trade could not be recorded. Its transaction confirmation is unchanged.'
+        : 'Sign in again to finish recording your trades.'}
+      {queued.some((t) => t.state === 'identity') && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            retryStatusCheck();
+            if (user?.address)
+              resumeTradeIdentity(network, address, user.address);
+          }}
+        >
+          Retry account verification
+        </Button>
+      )}
+    </p>
+  ) : null;
   const indexedFeedback = (
     <>
       {indexed.isPending && <p role="status">Loading launch information…</p>}

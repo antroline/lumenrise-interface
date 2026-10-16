@@ -18,10 +18,20 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { shortAddress } from '@/lib/connections';
 import { useLaunchpad } from '@/lib/launchpad';
+import { cn } from '@/lib/utils';
 import { useBlux } from '@bluxcc/react';
 import { settingsItem } from './navigation';
 
-export function WalletButton() {
+export function WalletButton({
+  compact = false,
+  menuSide = 'bottom',
+  className,
+}: {
+  /** Icon-only trigger for narrow containers such as a collapsed sidebar. */
+  compact?: boolean;
+  menuSide?: 'bottom' | 'top' | 'right';
+  className?: string;
+}) {
   const { isSignedIn, address, login, logout, loginPending, loginPhase, notify } =
     useLaunchpad();
 
@@ -31,18 +41,20 @@ export function WalletButton() {
   );
 
   if (!isSignedIn || !address) {
+    const label = loginPending
+      ? loginPhase === 'checking'
+        ? 'Checking…'
+        : 'Connecting…'
+      : 'Connect wallet';
     return (
       <Button
-        className="h-10 rounded-full"
+        className={cn('h-10 rounded-full', compact && 'w-10 px-0', className)}
         onClick={() => void login()}
         disabled={loginPending}
+        aria-label={compact ? label : undefined}
       >
         <Wallet data-icon="inline-start" />
-        {loginPending
-          ? loginPhase === 'checking'
-            ? 'Checking…'
-            : 'Connecting…'
-          : 'Connect wallet'}
+        {!compact && label}
       </Button>
     );
   }
@@ -64,16 +76,30 @@ export function WalletButton() {
         render={
           <Button
             variant="ghost"
-            className="h-10 gap-2 rounded-full bg-ink px-2.5 font-mono text-small font-medium text-white hover:bg-ink/85 hover:text-white aria-expanded:bg-ink/85 dark:bg-lime dark:text-ink dark:hover:bg-lime-hover dark:hover:text-ink dark:aria-expanded:bg-lime-hover"
+            className={cn(
+              'h-10 gap-2 rounded-full bg-ink px-2.5 font-mono text-small font-medium text-white hover:bg-ink/85 hover:text-white aria-expanded:bg-ink/85 dark:bg-lime dark:text-ink dark:hover:bg-lime-hover dark:hover:text-ink dark:aria-expanded:bg-lime-hover',
+              compact && 'w-10 px-0',
+              className,
+            )}
           >
             <Blockie seed={address} size={24} radius={6} />
-            <span className="hidden sm:inline">{shortAddress(address)}</span>
-            <span className="sr-only sm:hidden">Wallet menu</span>
-            <ChevronDown className="size-3.5 text-white/70 dark:text-ink/70" />
+            {!compact && (
+              <span className="hidden sm:inline">{shortAddress(address)}</span>
+            )}
+            <span className={compact ? 'sr-only' : 'sr-only sm:hidden'}>
+              Wallet menu
+            </span>
+            {!compact && (
+              <ChevronDown className="size-3.5 text-white/70 dark:text-ink/70" />
+            )}
           </Button>
         }
       />
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent
+        side={menuSide}
+        align={menuSide === 'top' ? 'start' : 'end'}
+        className="w-56"
+      >
         <DropdownMenuGroup>
           <DropdownMenuLabel className="px-2 pt-2">
             Network · display only
