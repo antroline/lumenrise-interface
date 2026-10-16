@@ -31,7 +31,11 @@ const bareRoutes = new Set(['/onboarding', '/register']);
 
 /** Routes that use the full viewport width instead of the centred reading column. */
 function isFullWidth(pathname: string) {
-  return pathname === '/launches' || /^\/launch\/[^/]+$/.test(pathname);
+  return (
+    pathname === '/' ||
+    pathname === '/launches' ||
+    /^\/launch\/[^/]+$/.test(pathname)
+  );
 }
 
 export function AppShell({ children }: { children: ReactNode }) {

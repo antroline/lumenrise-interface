@@ -24,6 +24,8 @@ function crumbsFor(pathname: string): Crumb[] {
       return [{ label: 'Explore' }, { label: 'Discover' }];
     case 'launches':
       return [{ label: 'Explore' }, { label: 'Projects' }];
+    case 'guide':
+      return [{ label: 'Explore' }, { label: 'How it works' }];
     case 'launch':
     case 'trade':
     case 'auction': {

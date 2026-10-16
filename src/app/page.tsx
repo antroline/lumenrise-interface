@@ -1,178 +1,67 @@
-import { Suspense } from 'react'
-import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
-import { ProjectsTable } from '@/components/projects-table'
-import { Button } from '@/components/ui/button'
-import {
-  auctions,
-  completedRaises,
-  featuredLaunch,
-  liveLaunches,
-  tradingTokens,
-  upcomingLaunches,
-  type Auction,
-  type CompletedRaise,
-  type Eligibility,
-  type Launch,
-  type TradingToken,
-} from '@/lib/data'
-import type { ProjectTableRow } from '@/lib/project-table'
-import { DiscoverResults } from './_discover/discover-results'
-import { FeaturedLaunch } from './_discover/featured-launch'
-import { parseView } from './_discover/views'
+import Link from 'next/link';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { EngravedField } from '@/features/launches/components/engraving';
+import { API_NETWORK } from '@/lib/stellar/network';
+import { GraduationBoard } from './_home/graduation-board';
+import { HomeRail } from './_home/home-rail';
+import { LaunchBrowser } from './_home/launch-browser';
 
-const DISCOVER_LIMIT = 5
-
-type SearchParams = Promise<{
-  view?: string;
-  model?: string;
-  eligible?: string;
-}>;
-
-function countValue(value: string) {
-  const count = Number(value.match(/^[\d,]+/)?.[0].replaceAll(',', ''))
-  return Number.isFinite(count) && count > 0 ? count : null
-}
-
-function launchRow(launch: Launch): ProjectTableRow {
-  return {
-    id: `launch-${launch.slug}`,
-    name: launch.name,
-    ticker: launch.ticker,
-    href: `/launch/${launch.slug}`,
-    category: 'Launch',
-    phase: launch.phase,
-    figure: launch.phase === 'live' ? launch.raised : launch.target,
-    figureContext: launch.phase === 'live' ? 'raised' : 'target',
-    participants: countValue(launch.participants),
-    date: launch.date.split(' · ')[0],
-    dateLabel: launch.dateLabel.toLowerCase(),
-  };
-}
-
-function auctionRow(auction: Auction): ProjectTableRow {
-  return {
-    id: `auction-${auction.slug}`,
-    name: auction.name,
-    ticker: auction.ticker,
-    href: `/auction/${auction.slug}`,
-    category: 'Auction',
-    phase: auction.phase,
-    figure: auction.minBid,
-    figureContext: 'min bid',
-    participants: auction.phase === 'live' ? countValue(auction.bidders) : null,
-    date: auction.time.split(' · ')[0],
-    dateLabel: auction.timeLabel.toLowerCase(),
-  };
-}
-
-function tradingRow(token: TradingToken): ProjectTableRow {
-  return {
-    id: `trading-${token.slug}`,
-    name: token.name,
-    ticker: token.ticker,
-    href: `/trade/${token.slug}`,
-    category: 'Trading',
-    phase: 'launched',
-    figure: token.price,
-    figureContext: 'price',
-    participants: null,
-    date: token.launched,
-    dateLabel: 'launched',
-  };
-}
-
-function completedRow(raise: CompletedRaise): ProjectTableRow {
-  return {
-    id: `completed-${raise.title}`,
-    name: raise.mark,
-    title: raise.title,
-    category: 'Launch',
-    phase: raise.outcome === 'completed' ? 'completed' : 'refunded',
-    figure: raise.raised,
-    figureContext: 'raised',
-    participants: countValue(raise.participants),
-    date: raise.date,
-  };
-}
-
-export default async function DiscoverPage({
+export default async function HomePage({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<{ network?: string }>;
 }) {
   const params = await searchParams;
-  const view = parseView(params.view);
-  const modelEntries =
-    view === 'upcoming'
-      ? upcomingLaunches
-      : view === 'auction'
-        ? auctions
-        : liveLaunches;
-  const models = [...new Set(modelEntries.map((entry) => entry.model))];
-  const matches = (entry: { model: string; eligibility: Eligibility }) => {
-    if (view === 'all') return true;
-    return (
-      (!params.model || entry.model === params.model) &&
-      (params.eligible !== '1' || entry.eligibility.state === 'ok')
-    );
-  };
-
-  const rows: ProjectTableRow[] = [
-    ...(view === 'all' || view === 'live'
-      ? liveLaunches.filter(matches).map(launchRow)
-      : []),
-    ...(view === 'all' || view === 'upcoming'
-      ? upcomingLaunches.filter(matches).map(launchRow)
-      : []),
-    ...(view === 'all' || view === 'auction'
-      ? auctions.filter(matches).map(auctionRow)
-      : []),
-    ...(view === 'all' || view === 'launched'
-      ? tradingTokens.map(tradingRow)
-      : []),
-    ...(view === 'all' || view === 'completed'
-      ? completedRaises.map(completedRow)
-      : []),
-  ];
-  const shown = rows.slice(0, DISCOVER_LIMIT);
+  const network = params.network === 'public' ? 'public' : API_NETWORK;
 
   return (
-    <div className="w-full">
-      <h1 className="text-[36px] leading-none font-bold tracking-[-0.04em] sm:text-[48px]">
-        Launches
-      </h1>
-
-      <div className="mt-8">
-        <FeaturedLaunch launch={featuredLaunch} />
-      </div>
-
-      <Suspense>
-        <DiscoverResults
-          view={view}
-          models={models}
-          hasResults={rows.length > 0}
-          skeletonRows={shown.length || DISCOVER_LIMIT}
+    <div className="mx-auto grid w-full max-w-[1680px] gap-6 xl:grid-cols-[minmax(0,1fr)_19rem] xl:items-start 2xl:grid-cols-[minmax(0,1fr)_21rem]">
+      <div className="flex min-w-0 flex-col gap-8">
+        <section
+          aria-labelledby="home-heading"
+          className="relative isolate overflow-hidden rounded-2xl bg-panel text-white ring-1 ring-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.06),0_16px_32px_-24px_rgb(0_0_0/0.45)] dark:shadow-none dark:ring-white/[0.07]"
         >
-          {rows.length > 0 && (
-            <>
-              <ProjectsTable
-                rows={shown}
-                caption={`${shown.length} of ${rows.length} ${rows.length === 1 ? 'project' : 'projects'}`}
-              />
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                <p className="caps tabular-nums">
-                  Showing {shown.length} of {rows.length} · Preview data
+          <EngravedField className="-z-10 text-white opacity-[0.05] [mask-image:linear-gradient(100deg,transparent_45%,black_95%)]" />
+          <div className="px-4 py-5 sm:px-6 sm:py-6">
+            <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+              <div className="min-w-0">
+                <h1
+                  id="home-heading"
+                  className="text-[22px] leading-tight font-semibold tracking-[-0.03em] text-balance sm:text-[26px]"
+                >
+                  Bonding launches on Stellar
+                </h1>
+                <p className="mt-1.5 max-w-[72ch] text-[13.5px] leading-relaxed text-pretty text-white/65">
+                  Each token sells along its own published curve until it reaches its graduation target.
                 </p>
-                <Button variant="outline" size="sm" render={<Link href="/launches" />} nativeButton={false}>
-                  View all projects
-                  <ArrowRight data-icon="inline-end" />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="ghost"
+                  className="text-white/80 hover:bg-white/10 hover:text-white focus-visible:ring-lime/60"
+                  render={<Link href="/guide" />}
+                  nativeButton={false}
+                >
+                  How it works
+                </Button>
+                <Button render={<Link href="/create" />} nativeButton={false}>
+                  <Plus data-icon="inline-start" />
+                  Create a launch
                 </Button>
               </div>
-            </>
-          )}
-        </DiscoverResults>
-      </Suspense>
+            </div>
+
+            <div className="mt-5 border-t border-white/10 pt-4 sm:mt-6 sm:pt-5">
+              <GraduationBoard network={network} />
+            </div>
+          </div>
+        </section>
+
+        <LaunchBrowser network={network} />
+      </div>
+
+      <HomeRail network={network} />
     </div>
   );
 }
