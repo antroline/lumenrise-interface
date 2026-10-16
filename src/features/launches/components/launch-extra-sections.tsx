@@ -16,6 +16,7 @@ import type { LaunchContent } from '../data/launch-content';
 import { toneFor } from '../data/allocation-tones';
 import { AllocationChart, type AllocationSlice } from './allocation-chart';
 import { LaunchDisplayAmount } from './launch-display-amount';
+import styles from './project-detail.module.css';
 
 function Section({
   titleId,
