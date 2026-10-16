@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { useRevealed } from '../hooks/use-revealed';
-import { curveModel, type CurveModelInput } from '../lib/curve-model';
+import { curveShape, type CurveModelInput } from '../lib/curve-model';
 import { useSvgId } from '../hooks/use-svg-id';
 import { EngravePattern } from './engraving';
 import { LaunchPanel } from './launch-panel';
@@ -14,35 +14,13 @@ const WIDTH = 1000;
 const HEIGHT = 240;
 const SAMPLES = 96;
 
-/**
- * Plot geometry for the configured curve. Price is proportional to (base / (base − sold))², so the shape
- * is drawn from that ratio; the area under it up to a point equals the quote raised by then.
- */
 function curveGeometry(input: CurveModelInput) {
-  const model = curveModel(input);
-  if (!model || model.end <= BigInt(0)) return null;
-  const base = Number(input.base);
-  const end = Number(model.end);
-  const ratio = (sold: number) => (base / (base - sold)) ** 2;
-  const ceiling = ratio(end) * 1.14;
-  const height = (sold: number) => ratio(sold) / ceiling;
-  const clamp = (value: number) => Math.max(0, Math.min(value, 1));
-
-  const line = Array.from({ length: SAMPLES + 1 }, (_, index) => {
-    const x = (index / SAMPLES) * WIDTH;
-    const y = HEIGHT - height((end * index) / SAMPLES) * HEIGHT;
-    return `${index ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`;
-  }).join(' ');
-  const sold = clamp(Number(input.sold) / end);
-
-  return {
-    line,
-    area: `${line} L${WIDTH} ${HEIGHT} L0 ${HEIGHT} Z`,
-    sold,
-    soldHeight: height(sold * end),
-    graduation: model.graduation === null ? null : clamp(Number(model.graduation) / end),
-    end: model.end,
-  };
+  const shape = curveShape(input, SAMPLES);
+  if (!shape) return null;
+  const line = shape.points
+    .map(({ x, y }, index) => `${index ? 'L' : 'M'}${(x * WIDTH).toFixed(1)} ${(HEIGHT - y * HEIGHT).toFixed(1)}`)
+    .join(' ');
+  return { ...shape, line, area: `${line} L${WIDTH} ${HEIGHT} L0 ${HEIGHT} Z` };
 }
 
 function CurvePlot({
