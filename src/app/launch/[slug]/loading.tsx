@@ -1,1 +1,1 @@
-export { LaunchPageSkeleton as default } from './_components/launch-page-skeleton';
+export { LaunchPageSkeleton as default } from '../../../features/launches/components/launch-page-skeleton';

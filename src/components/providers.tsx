@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
-import { LaunchPageSkeleton } from '@/app/launch/[slug]/_components/launch-page-skeleton'
+import { LaunchPageSkeleton } from '@/features/launches/components/launch-page-skeleton'
 
 function ClientAppLoading() {
   const pathname = usePathname()

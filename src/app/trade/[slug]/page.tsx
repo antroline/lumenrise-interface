@@ -1,18 +1,13 @@
 import { notFound } from 'next/navigation'
 import { StrKey } from '@stellar/stellar-sdk'
-import { BondingCurvePage } from '@/app/launch/[slug]/_bonding/bonding-curve-page'
+import { BondingCurvePage } from '@/features/launches/bonding'
 import { ProjectMark } from '@/components/project-mark'
 import { Badge } from '@/components/ui/badge'
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
 import { getTradingToken } from '@/lib/data'
-import { PoolTable } from './_components/pool-table'
-import { PriceChart } from './_components/price-chart'
-import { SwapPanel } from './_components/swap-panel'
-import { TradePageTemplate } from './_components/trade-page-template'
-import { TradeHeader } from './_components/trade-header'
-import { TradeActivity } from './_components/trade-activity'
-import { API_NETWORK } from '@/app/create/_launch/transactions'
-import { getLaunchContent } from '@/app/launch/[slug]/_data/launch-content'
+import { PoolTable, PriceChart, SwapPanel, TradePageTemplate, TradeHeader, TradeActivity } from '@/features/launches/trading'
+import { API_NETWORK } from '@/lib/stellar/network'
+import { getLaunchContent } from '@/features/launches/data/launch-content'
 
 export default async function TradePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ network?: string }> }) {
   const { slug } = await params

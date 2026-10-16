@@ -1,5 +1,5 @@
-import { PublicProjects } from './public-projects'
-import { API_NETWORK } from '@/app/create/_launch/transactions'
+import { PublicProjects } from '../../features/launches/components/public-projects'
+import { API_NETWORK } from '@/lib/stellar/network'
 // import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 // import { ProjectsTable, ProjectsTableSkeleton } from '@/components/projects-table'
 // import { ResultsStack } from '@/components/results-transition'

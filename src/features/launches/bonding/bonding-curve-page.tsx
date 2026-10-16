@@ -1,0 +1,400 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { useAccount, useBlux, useReadContracts } from '@bluxcc/react';
+import { StrKey } from '@stellar/stellar-sdk';
+import { Button } from '@/components/ui/button';
+import { useLaunchpad } from '@/lib/launchpad';
+import { API_NETWORK, NETWORK } from '@/lib/stellar/network';
+import {
+  decodeSnapshot,
+  decodeTokens,
+  errorMessage,
+  integer,
+  trusts,
+} from './contract';
+import { TradeForm } from './trade-form';
+import { ApiError } from '@/lib/api/client';
+import { useLaunchDetail, usePageVisible } from '@/features/launches/hooks/queries';
+import { useTradeQueue } from '@/features/launches/hooks/use-trade-queue';
+import { resumeTradeIdentity } from '@/lib/api/launches/trade-queue';
+import type { ApiNetwork } from '@/lib/api/launches/types';
+import { IndexedLaunchOverview } from '../components/indexed-launch-overview';
+import { BondingTechnicalDetails } from '../components/bonding-technical-details';
+import { LaunchPageSkeleton } from '../components/launch-page-skeleton';
+import { BondingTradeLayout } from '@/features/launches/trading/bonding-trade-layout';
+
+function decodeRead<T>(
+  values: readonly unknown[] | undefined,
+  decode: (values: readonly unknown[]) => T,
+) {
+  try {
+    return { value: values ? decode(values) : undefined, error: undefined };
+  } catch (cause) {
+    return { value: undefined, error: errorMessage(cause) };
+  }
+}
+
+export function BondingCurvePage({
+  address,
+  surface = 'launch',
+  network = API_NETWORK,
+}: {
+  address: string;
+  network?: ApiNetwork;
+  surface?: 'launch' | 'trade';
+}) {
+  const { user, isReady } = useBlux();
+  const { retryStatusCheck } = useLaunchpad();
+  const indexed = useLaunchDetail(address, network);
+  const { records: queued, recoveryError } = useTradeQueue(network, address);
+  const visible = usePageVisible();
+  const liveEnabled = visible && network === API_NETWORK;
+  const queueFeedback =
+    queued.some((trade) => trade.state === 'invalid' || trade.state === 'identity') ? (
+      <p role="status" className="text-small text-muted-foreground">
+        {queued.some((t) => t.state === 'invalid')
+          ? 'A trade could not be recorded. Its transaction confirmation is unchanged.'
+          : 'Sign in again to finish recording your trades.'}
+        {queued.some((t) => t.state === 'identity') && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              retryStatusCheck();
+              if (user?.address)
+                resumeTradeIdentity(network, address, user.address);
+            }}
+          >
+            Retry account verification
+          </Button>
+        )}
+      </p>
+    ) : null;
+  const indexedFeedback = (
+    <>
+      {indexed.isPending && <p role="status">Loading launch information…</p>}
+      {indexed.isError && (
+        <p role="alert" className="text-small text-muted-foreground">
+          {indexed.error instanceof ApiError && indexed.error.status === 404
+            ? surface === 'launch'
+              ? 'This launch has not been indexed yet. Contract information is shown when available.'
+              : 'Waiting for launch indexing. Live contract trading remains available.'
+            : indexed.error instanceof ApiError && indexed.error.status === 400
+              ? 'The launch address or network is invalid.'
+              : 'Launch information is temporarily unavailable.'}{' '}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void indexed.refetch()}
+          >
+            Retry
+          </Button>
+        </p>
+      )}
+      {network !== API_NETWORK && (
+        <p className="text-small text-muted-foreground">
+          Wallet trading is currently configured for Testnet.
+        </p>
+      )}
+      {queueFeedback}
+      {recoveryError && (
+        <p role="status" className="text-small text-muted-foreground">
+          Trade registration will be checked again. Keep your transaction hashes
+          until recorded.
+        </p>
+      )}
+    </>
+  );
+  const [locked, setLocked] = useState(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const reads = useReadContracts(
+    [
+      'get_config',
+      'get_state',
+      'status',
+      'current_price',
+      'buyer_count',
+      'claimable_team',
+      'graduation_preview',
+    ].map((fn) => ({ address, fn, args: [] })),
+    { network: NETWORK },
+    { enabled: isReady && liveEnabled, refetchInterval: 15_000, retry: false },
+  );
+  const decoded = decodeRead(
+    network === API_NETWORK ? reads.data?.values : undefined,
+    decodeSnapshot,
+  );
+  const snapshot = decoded.value;
+  const params = snapshot?.config.params;
+  const tokensRead = useReadContracts(
+    [
+      ...['name', 'symbol', 'decimals'].map((fn) => ({
+        address: params?.asset ?? '',
+        fn,
+        args: [],
+      })),
+      ...['name', 'symbol', 'decimals'].map((fn) => ({
+        address: params?.pair ?? '',
+        fn,
+        args: [],
+      })),
+      { address: params?.asset ?? '', fn: 'balance', args: [address] },
+      { address: params?.pair ?? '', fn: 'balance', args: [address] },
+    ],
+    { network: NETWORK },
+    {
+      enabled: isReady && liveEnabled && !!params,
+      refetchInterval: 15_000,
+      retry: false,
+    },
+  );
+  const decodedTokens = decodeRead(
+    network === API_NETWORK ? tokensRead.data?.values : undefined,
+    (values) => {
+      if (!snapshot) throw new Error('Launch configuration is unavailable.');
+      const tokens = decodeTokens(values, snapshot.config, NETWORK);
+      if (
+        tokens.assetDecimals !== BigInt(7) ||
+        tokens.pairDecimals !== BigInt(7)
+      )
+        throw new Error(
+          'This page requires the contract’s 7-decimal Stellar assets.',
+        );
+      return tokens;
+    },
+  );
+  const tokens = decodedTokens.value;
+  const owner = user?.address;
+  const validWallet = !!owner && StrKey.isValidEd25519PublicKey(owner);
+  const walletRead = useReadContracts(
+    [
+      { address: params?.asset ?? '', fn: 'balance', args: [owner ?? ''] },
+      { address: params?.pair ?? '', fn: 'balance', args: [owner ?? ''] },
+      { address, fn: 'sellable_balance', args: [owner ?? ''] },
+    ],
+    { network: NETWORK },
+    {
+      enabled: isReady && liveEnabled && !!params && validWallet,
+      refetchInterval: 15_000,
+      retry: false,
+    },
+  );
+  const wallet = decodeRead(
+    network === API_NETWORK ? walletRead.data?.values : undefined,
+    (values) => ({
+      held: integer(values[0]),
+      pairHeld: integer(values[1]),
+      position: integer(values[2]),
+    }),
+  );
+  const account = useAccount(
+    { address: owner, network: NETWORK },
+    {
+      enabled: isReady && liveEnabled && validWallet,
+      refetchInterval: 15_000,
+      retry: false,
+    },
+  );
+
+  async function refresh() {
+    if (!mounted.current || !liveEnabled) return;
+    await Promise.allSettled([
+      reads.refetch(),
+      ...(params ? [tokensRead.refetch()] : []),
+      ...(validWallet && params
+        ? [walletRead.refetch(), account.refetch()]
+        : []),
+    ]);
+  }
+
+  const coreError =
+    network === API_NETWORK
+      ? decoded.error || (reads.error && errorMessage(reads.error))
+      : undefined;
+  const missingTrustlines =
+    !!account.data &&
+    !!tokens &&
+    (!trusts(account.data, tokens.asset) || !trusts(account.data, tokens.pair));
+  const loadingWallet =
+    validWallet &&
+    !wallet.value &&
+    !walletRead.error &&
+    !wallet.error &&
+    network === API_NETWORK;
+  const hasWalletFeedback =
+    !validWallet || account.data === null || missingTrustlines || loadingWallet;
+  const walletFeedback =
+    user && hasWalletFeedback ? (
+      <>
+        {!validWallet && (
+          <p role="alert" className="text-destructive">
+            A Stellar account address is required to trade.
+          </p>
+        )}
+        {account.data === null && (
+          <p role="alert" className="text-destructive">
+            This wallet is not funded on Testnet. Fund it with XLM before
+            trading.
+          </p>
+        )}
+        {missingTrustlines && (
+          <p className="text-muted-foreground">
+            Missing trustlines require a separate wallet approval. Keep XLM for
+            fees and reserves.
+          </p>
+        )}
+
+        {loadingWallet && (
+          <p role="status" className="text-muted-foreground">
+            Loading wallet balances…
+          </p>
+        )}
+      </>
+    ) : null;
+  const buyForm =
+    snapshot && tokens ? (
+      <TradeForm
+        key={`buy:${owner ?? 'disconnected'}`}
+        address={address}
+        network={network}
+        snapshot={snapshot}
+        tokens={tokens}
+        side="buy"
+        locked={locked}
+        setLocked={setLocked}
+        refresh={refresh}
+        balances={walletRead.error || wallet.error ? undefined : wallet.value}
+      />
+    ) : null;
+  const sellForm =
+    snapshot && tokens ? (
+      <TradeForm
+        key={`sell:${owner ?? 'disconnected'}`}
+        address={address}
+        network={network}
+        snapshot={snapshot}
+        tokens={tokens}
+        side="sell"
+        locked={locked}
+        setLocked={setLocked}
+        refresh={refresh}
+        balances={walletRead.error || wallet.error ? undefined : wallet.value}
+      />
+    ) : null;
+  const rawResponses = (
+    <details className="min-w-0 border-t border-border pt-5">
+      <summary className="cursor-pointer font-semibold">
+        Raw contract responses
+      </summary>
+      <pre className="mt-3 max-w-full overflow-x-auto rounded-lg bg-muted p-4 text-xs">
+        {JSON.stringify(
+          {
+            get_config: reads.data?.values[0],
+            get_state: reads.data?.values[1],
+            status: reads.data?.values[2],
+            current_price: reads.data?.values[3],
+            buyer_count: reads.data?.values[4],
+            claimable_team: reads.data?.values[5],
+            graduation_preview: reads.data?.values[6],
+          },
+          (_, value: unknown) =>
+            typeof value === 'bigint' ? value.toString() : value,
+          2,
+        )}
+      </pre>
+    </details>
+  );
+  const feedback = (
+    <>
+      {liveEnabled && (!isReady || (!snapshot && !coreError)) ? (
+        <p role="status">Loading contract data…</p>
+      ) : null}
+      {coreError && (
+        <p role="alert" className="break-words text-sm text-destructive">
+          Could not read this bonding curve: {coreError}. Check the address and
+          retry.
+        </p>
+      )}
+      {network === API_NETWORK && (tokensRead.error || decodedTokens.error) && (
+        <p role="alert" className="break-words text-sm text-destructive">
+          Token data unavailable:{' '}
+          {decodedTokens.error || errorMessage(tokensRead.error)}. Trading is
+          unavailable until the token identities can be verified.
+        </p>
+      )}
+    </>
+  );
+  if (surface === 'trade')
+    return (
+      <BondingTradeLayout
+        launch={indexed.data}
+        address={address}
+        network={network}
+        snapshot={snapshot}
+        tokens={tokens}
+        loading={
+          network === API_NETWORK &&
+          (!isReady ||
+            (!snapshot && !coreError) ||
+            (!!snapshot &&
+              !tokens &&
+              !tokensRead.error &&
+              !decodedTokens.error))
+        }
+        feedback={
+          <>
+            {indexedFeedback}
+            {feedback}
+          </>
+        }
+        walletFeedback={walletFeedback}
+        buy={buyForm}
+        sell={sellForm}
+      />
+    );
+  if (
+    indexed.isPending &&
+    !indexed.data &&
+    !snapshot &&
+    !indexed.isError &&
+    !coreError
+  )
+    return <LaunchPageSkeleton />;
+
+  return (
+    <IndexedLaunchOverview
+      address={address}
+      network={network}
+      launch={indexed.data}
+      snapshot={snapshot}
+      tokens={tokens}
+      loading={
+        indexed.isPending ||
+        (network === API_NETWORK && !snapshot && !coreError)
+      }
+      feedback={
+        <>
+          {indexedFeedback}
+          {feedback}
+        </>
+      }
+    >
+      <BondingTechnicalDetails
+        address={address}
+        network={network}
+        launch={indexed.data}
+        snapshot={snapshot}
+        tokens={tokens}
+      >
+        {snapshot && rawResponses}
+      </BondingTechnicalDetails>
+    </IndexedLaunchOverview>
+  );
+}

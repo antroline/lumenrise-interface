@@ -1,5 +1,5 @@
 import { Asset, Networks } from '@stellar/stellar-sdk';
-import { formatAmount } from '@/app/launch/[slug]/_bonding/contract';
+import { formatAmount } from '@/lib/stellar/amount';
 import type { ApiNetwork } from './types';
 import type { ChartHistory } from './market';
 

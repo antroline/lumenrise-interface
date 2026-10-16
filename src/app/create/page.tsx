@@ -1,4 +1,4 @@
-import { LaunchStudio } from './_components/launch-studio'
+import { LaunchStudio } from '@/features/create-launch'
 
 export default async function CreateLaunchPage({
   searchParams,
