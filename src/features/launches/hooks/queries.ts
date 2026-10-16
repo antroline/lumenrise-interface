@@ -3,7 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../../../lib/api/client';
-import { getLaunchDetail, getMarket } from '../../../lib/api/launches/market';
+import {
+  getLaunchDetail,
+  getLaunchList,
+  getMarket,
+} from '../../../lib/api/launches/market';
 import type { ApiNetwork } from '../../../lib/api/launches/types';
 
 export const launchKey = (network: ApiNetwork, contractId: string) =>
@@ -48,6 +52,26 @@ export function useLaunchDetail(id: string, network: ApiNetwork) {
         queryKey: [...launchKey(network, id), 'detail'],
       });
   }, [client, id, network, visible]);
+  return query;
+}
+
+/** First page of a creator's launches; shares its cache key with the owner-filtered projects list. */
+export function useCreatorLaunches(owner: string | undefined, network: ApiNetwork) {
+  const visible = usePageVisible();
+  const client = useQueryClient();
+  const queryKey = ['launch-list', network, owner ?? '', 1];
+  const query = useQuery({
+    ...publicQueryOptions,
+    queryKey,
+    queryFn: ({ signal }) => getLaunchList(network, 1, 20, owner, signal),
+    enabled: visible && !!owner,
+  });
+  useEffect(() => {
+    if (!visible)
+      void client.cancelQueries({
+        queryKey: ['launch-list', network, owner ?? '', 1],
+      });
+  }, [client, network, owner, visible]);
   return query;
 }
 

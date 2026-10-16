@@ -1,21 +1,17 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { Accordion } from '@base-ui/react/accordion';
-import { ChevronDown, Copy, ExternalLink } from 'lucide-react';
+// The "Full contract accounting" panel below is commented out; restore these imports with it.
+// import { Accordion } from '@base-ui/react/accordion';
+// import { ChevronDown } from 'lucide-react';
+// import { pairLabel } from '@/lib/api/launches/display';
+// import { detailAmount, detailDate, durationLabel } from '../lib/bonding-details';
+import { Copy, ExternalLink } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
-import styles from './project-detail.module.css';
-import { pairLabel } from '@/lib/api/launches/display';
 import type { LaunchResult } from '@/lib/api/launches/market';
 import type { ApiNetwork } from '@/lib/api/launches/types';
 import type { Snapshot, Tokens } from '../bonding/contract';
-import {
-  bondingDetails,
-  durationLabel,
-  indexedContract,
-  detailDate,
-  detailAmount,
-} from '../lib/bonding-details';
+import { bondingDetails, indexedContract } from '../lib/bonding-details';
 
 function Address({ value, network }: { value: string; network: ApiNetwork }) {
   const [message, setMessage] = useState('');
@@ -28,26 +24,30 @@ function Address({ value, network }: { value: string; network: ApiNetwork }) {
     }
   }
   return (
-    <div className="flex min-w-0 flex-col gap-2">
-      <span className="break-all font-mono text-small">{value}</span>
-      <div className="flex flex-wrap gap-2">
+    <div className="flex min-w-0 flex-col gap-1">
+      <div className="flex min-w-0 items-center gap-1">
+        <span
+          title={value}
+          className="min-w-0 flex-1 truncate font-mono text-[13.5px]"
+        >
+          {value.slice(0, 8)}…{value.slice(-8)}
+        </span>
         <Button
-          size="sm"
-          variant="outline"
+          size="icon-sm"
+          variant="ghost"
           onClick={() => void copy()}
           aria-label={`Copy ${value}`}
         >
-          <Copy data-icon="inline-start" />
-          Copy
+          <Copy />
         </Button>
         <a
-          className={buttonVariants({ size: 'sm', variant: 'outline' })}
+          className={buttonVariants({ size: 'icon-sm', variant: 'ghost' })}
           href={`https://stellar.expert/explorer/${network}/${value.startsWith('C') ? 'contract' : 'account'}/${value}`}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label={`View ${value} on Stellar Expert`}
         >
-          Explorer
-          <ExternalLink data-icon="inline-end" />
+          <ExternalLink />
         </a>
       </div>
       {message && (
@@ -59,6 +59,7 @@ function Address({ value, network }: { value: string; network: ApiNetwork }) {
   );
 }
 
+/* Used only by the commented-out "Full contract accounting" panel.
 function Group({
   title,
   rows,
@@ -68,7 +69,7 @@ function Group({
 }) {
   return (
     <section className="flex min-w-0 flex-col gap-4">
-      <h3 className="text-[18px] font-semibold">{title}</h3>
+      <h4 className="text-[15px] font-semibold">{title}</h4>
       <dl className="flex min-w-0 flex-col gap-4 text-sm">
         {rows.map(([label, value]) => (
           <div
@@ -85,27 +86,30 @@ function Group({
     </section>
   );
 }
+*/
 
 export function BondingTechnicalDetails({
   address,
   network,
   launch,
   snapshot,
-  tokens,
-  children,
 }: {
   address: string;
   network: ApiNetwork;
   launch?: LaunchResult;
   snapshot?: Snapshot;
   tokens?: Tokens;
+  /** Rendered inside the full contract accounting panel, which is currently commented out. */
   children?: ReactNode;
 }) {
   const raw = indexedContract(launch);
   const c = snapshot?.config ?? raw.config;
-  const state = snapshot?.state ?? raw.state;
   const b = bondingDetails(launch, snapshot);
   const p = c?.params;
+  const addr = (value: string | undefined) =>
+    value ? <Address value={value} network={network} /> : 'Unavailable';
+  /* Used only by the commented-out "Full contract accounting" panel.
+  const state = snapshot?.state ?? raw.state;
   const pair = tokens
     ? tokens.pair.isNative()
       ? 'XLM'
@@ -118,23 +122,46 @@ export function BondingTechnicalDetails({
     value === undefined ? 'Unavailable' : `${detailAmount(value)} ${ticker}`;
   const pairAmount = (value: string | undefined) =>
     value === undefined ? 'Unavailable' : `${detailAmount(value)} ${pair}`;
-  const addr = (value: string | undefined) =>
-    value ? <Address value={value} network={network} /> : 'Unavailable';
   const cliff = b
     ? BigInt(b.startsAt) + BigInt(b.vesting.cliffSeconds)
     : undefined;
+  */
   return (
-    <section className={styles.technical}>
-      <Accordion.Root>
+    <div className="min-w-0">
+      <dl className="flex flex-col text-[14px]">
+        {(
+          [
+            ['Launch contract', addr(address)],
+            ['Token contract', addr(p?.asset ?? launch?.asset)],
+            ['Quote token contract', addr(p?.pair ?? launch?.pair)],
+            [
+              'Administrative controls',
+              b
+                ? `The creator claims vested team tokens and accrued trading fees. The platform receives a ${b.curve.platformFeeBps / 100}% fee share at graduation.`
+                : 'Unavailable until the contract configuration loads.',
+            ],
+          ] satisfies [string, ReactNode][]
+        ).map(([label, value]) => (
+          <div
+            key={label}
+            className="grid min-w-0 gap-1 border-t border-divider py-3.5 first:border-t-0 first:pt-0 last:pb-0 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-6"
+          >
+            <dt className="text-muted-foreground">{label}</dt>
+            <dd className="min-w-0 break-words leading-relaxed">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {/* Full contract accounting is hidden on the launch page for now.
+      <Accordion.Root className="mt-4 border-t border-border pt-5">
         <Accordion.Item value="technical">
-          <Accordion.Header render={<h2 />}>
-            <Accordion.Trigger className="group flex w-full items-center justify-between gap-4 rounded-md text-left text-[22px] font-semibold tracking-[-0.025em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-[25px]">
-              Technical details
+          <Accordion.Header render={<h3 />}>
+            <Accordion.Trigger className="group flex w-full items-center justify-between gap-4 rounded-md text-left text-[16px] font-semibold tracking-[-0.015em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              Full contract accounting
               <ChevronDown className="size-5 shrink-0 transition-transform group-data-[panel-open]:rotate-180 motion-reduce:transition-none" />
             </Accordion.Trigger>
           </Accordion.Header>
           <Accordion.Panel className="h-[var(--accordion-panel-height)] overflow-hidden transition-[height] duration-200 data-[ending-style]:h-0 data-[starting-style]:h-0 motion-reduce:transition-none">
-            <div className="flex min-w-0 flex-col gap-8 border-t border-divider pt-6 mt-6">
+            <div className="mt-6 flex min-w-0 flex-col gap-8">
               {!snapshot && raw.error && (
                 <p role="status" className="text-small text-muted-foreground">
                   Raw contract configuration unavailable: {raw.error} The
@@ -142,12 +169,8 @@ export function BondingTechnicalDetails({
                 </p>
               )}
               <Group
-                title="Contract addresses"
+                title="Administrative addresses"
                 rows={[
-                  ['Launch contract', addr(address)],
-                  ['Launch token contract', addr(p?.asset ?? launch?.asset)],
-                  ['Quote token contract', addr(p?.pair ?? launch?.pair)],
-                  ['Creator', addr(p?.owner ?? launch?.owner)],
                   ['Factory', addr(c?.factory ?? launch?.factoryContractId)],
                   ['Platform', addr(c?.platform)],
                 ]}
@@ -367,6 +390,7 @@ export function BondingTechnicalDetails({
           </Accordion.Panel>
         </Accordion.Item>
       </Accordion.Root>
-    </section>
+      */}
+    </div>
   );
 }
