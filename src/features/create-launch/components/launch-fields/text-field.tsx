@@ -1,8 +1,8 @@
 'use client';
 
-import { FieldLabel, Field } from '@/components/ui/field';
+import { FieldDescription, FieldLabel, Field } from '@/components/ui/field';
 import { LaunchFieldError } from '../launch-motion';
-import { Input } from '@/components/ui/input';
+import { FieldSurface, LaunchInput } from './field-controls';
 
 export function TextField({
   id,
@@ -11,6 +11,10 @@ export function TextField({
   onChange,
   placeholder,
   error,
+  type = 'url',
+  maxLength,
+  required,
+  hint,
 }: {
   id: string;
   label: string;
@@ -18,23 +22,34 @@ export function TextField({
   onChange: (value: string) => void;
   placeholder?: string;
   error?: string;
+  type?: 'text' | 'url';
+  maxLength?: number;
+  required?: boolean;
+  hint?: string;
 }) {
   return (
-    <Field>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Input
-        id={id}
-        type="url"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        aria-invalid={!!error}
-        aria-describedby={error ? `${id}-error` : undefined}
-        className="aria-invalid:border-input aria-invalid:ring-0"
-      />
+    <Field data-invalid={!!error}>
+      <FieldSurface>
+        <FieldLabel htmlFor={id} className="text-small text-muted-foreground">
+          {label}
+        </FieldLabel>
+        <LaunchInput
+          id={id}
+          type={type}
+          maxLength={maxLength}
+          required={required}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
+          className={type === 'url' ? 'text-base font-normal' : undefined}
+        />
+      </FieldSurface>
       <LaunchFieldError id={`${id}-error`} className="text-small text-bad">
         {error}
       </LaunchFieldError>
+      {hint && <FieldDescription id={`${id}-hint`}>{hint}</FieldDescription>}
     </Field>
   );
 }
