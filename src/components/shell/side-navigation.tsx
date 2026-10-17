@@ -217,8 +217,7 @@ function SidebarPanel({
                   />
                 </div>
                 {group.items.map((item) => {
-                  const active =
-                    item.href === '/launches' ? false : isActive(pathname, item);
+                  const active = isActive(pathname, item);
                   return (
                     <RailItem
                       key={item.href}
