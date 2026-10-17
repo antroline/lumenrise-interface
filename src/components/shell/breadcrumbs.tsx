@@ -21,9 +21,11 @@ function crumbsFor(pathname: string): Crumb[] {
   const [first, second, third] = pathname.split('/').filter(Boolean);
   switch (first) {
     case undefined:
-      return [{ label: 'Explore' }, { label: 'Discover' }];
+      return [{ label: 'Home' }];
     case 'launches':
       return [{ label: 'Explore' }, { label: 'Projects' }];
+    case 'guide':
+      return [{ label: 'Explore' }, { label: 'How it works' }];
     case 'launch':
     case 'trade':
     case 'auction': {
@@ -39,7 +41,7 @@ function crumbsFor(pathname: string): Crumb[] {
       const projectHref =
         first === 'launch' && tail ? `/launch/${second}` : undefined;
       return [
-        { label: 'Discover', href: '/' },
+        { label: 'Home', href: '/' },
         { label: name, href: projectHref },
         ...(tail ? [{ label: tail }] : []),
       ];
@@ -77,6 +79,7 @@ function crumbsFor(pathname: string): Crumb[] {
 
 export function Breadcrumbs() {
   const pathname = usePathname();
+  if (/^\/launch\/[^/]+\/?$/.test(pathname)) return null;
   if (!/^\/(launch|trade|auction)\//.test(pathname)) return null;
   if (pathname.startsWith('/trade/')) return (
     <nav aria-label="Back to projects" className="mb-6 min-w-0">

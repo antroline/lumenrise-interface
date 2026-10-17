@@ -317,7 +317,7 @@ export function BondingCurvePage({
   );
   const feedback = (
     <>
-      {liveEnabled && (!isReady || (!snapshot && !coreError)) ? (
+      {surface === 'trade' && liveEnabled && (!isReady || (!snapshot && !coreError)) ? (
         <p role="status">Loading contract data…</p>
       ) : null}
       {coreError && (

@@ -77,7 +77,7 @@ function DockedIdentity({ logo, name, ticker, seed }: { logo?: string; name: str
           animate={{ opacity: 1, x: 0, filter: 'blur(0px)', transition: { delay: 0.16, duration: 0.45, ease: easeOut } }}
           exit={{ opacity: 0, x: -6, filter: 'blur(4px)', transition: { duration: 0.14 } }}
         >
-          <p className="truncate text-[17px] leading-tight font-semibold tracking-[-0.025em]">{name}</p>
+          <p className="truncate text-[16px] leading-tight font-semibold tracking-[-0.025em]">{name}</p>
           <p className="mt-0.5 text-[13px] text-muted-foreground">${ticker}</p>
         </motion.div>
       </div>
@@ -123,7 +123,7 @@ export function LaunchActionCard({
       </AnimatePresence>
 
       <p className="text-[13px] text-muted-foreground">Current price</p>
-      <p className="mt-1 break-words text-[28px] leading-tight font-semibold tracking-[-0.035em] tabular-nums">{price}</p>
+      <p className="mt-1 break-words text-[24px] leading-tight font-semibold tracking-[-0.035em] tabular-nums">{price}</p>
       <p className="mt-1 flex items-center gap-1.5 text-[13px] text-muted-foreground tabular-nums">
         {stale && <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-chart-5" />}
         {stale ? 'Before fee · may be outdated' : priceHint}

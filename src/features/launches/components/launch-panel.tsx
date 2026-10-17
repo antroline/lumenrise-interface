@@ -1,5 +1,6 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { LaunchReveal } from './launch-reveal';
 
 /** Keyboard focus that stays visible on white, ink and lime surfaces alike. */
 export const launchFocus =
@@ -38,14 +39,16 @@ export function LaunchSection({
   children: ReactNode;
 }) {
   return (
-    <LaunchPanel id={id} aria-labelledby={`${id}-heading`} tabIndex={-1} className="scroll-mt-24 p-5 outline-none sm:p-8">
-      <header className="mb-6 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h2 id={`${id}-heading`} className="text-[22px] leading-tight font-semibold tracking-[-0.03em] sm:text-[24px]">
+    <LaunchReveal>
+    <LaunchPanel id={id} aria-labelledby={`${id}-heading`} tabIndex={-1} className="scroll-mt-24 p-5 outline-none sm:p-6">
+      <header className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <h2 id={`${id}-heading`} className="text-[18px] leading-tight font-semibold tracking-[-0.03em] sm:text-[20px]">
           {title}
         </h2>
         {meta && <p className="text-[13px] text-muted-foreground tabular-nums">{meta}</p>}
       </header>
       {children}
     </LaunchPanel>
+    </LaunchReveal>
   );
 }

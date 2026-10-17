@@ -6,12 +6,14 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import type { Launch } from '@/lib/data'
 import { FeaturedProjectLink } from './featured-project-link'
+import { cn } from '@/lib/utils'
+import styles from './discover.module.css'
 
 export function FeaturedLaunch({ launch }: { launch: Launch }) {
   return (
-    <DarkPanel className="grid gap-5 border border-panel-line p-5 sm:p-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:grid-rows-[1fr_auto] lg:gap-x-10 lg:gap-y-8">
+    <DarkPanel className={cn(styles.featured, 'grid gap-5 border border-panel-line p-5 sm:p-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:grid-rows-[1fr_auto] lg:gap-x-10 lg:gap-y-6')}>
       <div className="min-w-0 lg:col-start-1 lg:row-start-1">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <ProjectMark name={launch.name} size={56} />
           <Badge variant="live" size="sm">
             <StatusDot tone="lime" />
@@ -25,6 +27,7 @@ export function FeaturedLaunch({ launch }: { launch: Launch }) {
           <span className="text-body font-medium tracking-normal text-muted-foreground">{launch.ticker}</span>
         </h2>
         <p className="mt-2 max-w-md text-body text-muted-foreground sm:text-[15px]">{launch.description}</p>
+        <p className="mt-4 text-small text-muted-foreground"><span className="font-medium text-foreground">Entry requirement: </span>{launch.requirement}</p>
       </div>
 
       <div className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">

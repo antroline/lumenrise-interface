@@ -62,6 +62,34 @@ export function curveModel(input: CurveModelInput) {
   };
 }
 
+/**
+ * Drawing geometry for the configured curve, normalised to 0–1 on both axes (y = 0 at the bottom).
+ * Price is proportional to (base / (base − sold))², so the shape is drawn from that ratio; the area
+ * under it up to a point equals the quote raised by then. Visualization only.
+ */
+export function curveShape(input: CurveModelInput, samples = 96) {
+  const model = curveModel(input);
+  if (!model || model.end <= BigInt(0)) return null;
+  const base = Number(input.base);
+  const end = Number(model.end);
+  const ratio = (sold: number) => (base / (base - sold)) ** 2;
+  const ceiling = ratio(end) * 1.14;
+  const height = (sold: number) => ratio(sold) / ceiling;
+  const clamp = (value: number) => Math.max(0, Math.min(value, 1));
+  const sold = clamp(Number(input.sold) / end);
+  return {
+    points: Array.from({ length: samples + 1 }, (_, index) => ({
+      x: index / samples,
+      y: height((end * index) / samples),
+    })),
+    sold,
+    soldHeight: height(sold * end),
+    graduation:
+      model.graduation === null ? null : clamp(Number(model.graduation) / end),
+    end: model.end,
+  };
+}
+
 /** Normalize only the SVG coordinate, keeping raw amount/price arithmetic exact. */
 export function plotRatio(value: bigint, min: bigint, max: bigint) {
   return max === min

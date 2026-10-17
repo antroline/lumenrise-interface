@@ -31,7 +31,11 @@ const bareRoutes = new Set(['/onboarding', '/register']);
 
 /** Routes that use the full viewport width instead of the centred reading column. */
 function isFullWidth(pathname: string) {
-  return pathname === '/launches' || /^\/launch\/[^/]+$/.test(pathname);
+  return (
+    pathname === '/' ||
+    pathname === '/launches' ||
+    /^\/launch\/[^/]+$/.test(pathname)
+  );
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -46,7 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   //   return () => window.removeEventListener('scroll', updateHeader);
   // }, []);
 
-  if (bareRoutes.has(pathname)) return children;
+  if (bareRoutes.has(pathname) || (process.env.NODE_ENV === 'development' && pathname === '/design-lab')) return children;
 
   return (
     <div className="relative isolate min-h-screen bg-page lg:flex">
@@ -107,7 +111,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
       */}
 
-      <div className="min-w-0 flex-1">
+      <div className="page-dot-background min-w-0 flex-1">
         <main
           className={cn(
             'animate-settle relative z-10 mx-auto w-full px-4 pt-6 pb-16 sm:pt-8 lg:pt-10 lg:pb-[72px]',

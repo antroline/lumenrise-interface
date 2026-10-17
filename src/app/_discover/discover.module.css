@@ -1,0 +1,179 @@
+.canvas {
+  --discover-accent-ink: #3e4d00;
+  --discover-orange-ink: #9b3800;
+  --discover-warm-surface: #fff1e5;
+  position: relative;
+  isolation: isolate;
+}
+
+:global(.dark) .canvas {
+  --discover-accent-ink: #d6ff00;
+  --discover-orange-ink: #ffab70;
+  --discover-warm-surface: #291b13;
+}
+
+.intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(240px, 0.8fr);
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+}
+
+.headlineAccent {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-decoration-color: var(--color-lime);
+  text-decoration-thickness: 0.07em;
+  text-underline-offset: 0.12em;
+}
+
+.modelLink {
+  color: var(--discover-accent-ink);
+}
+
+.canvas :focus-visible {
+  --tw-ring-color: var(--discover-accent-ink);
+  outline-color: var(--discover-accent-ink);
+}
+
+.browseAction.browseAction {
+  color: var(--discover-orange-ink);
+  background: var(--discover-warm-surface);
+  border-color: color-mix(in srgb, var(--discover-orange-ink) 45%, var(--background));
+}
+
+.browseAction.browseAction:hover {
+  background: color-mix(in srgb, var(--color-orange) 20%, var(--background));
+}
+
+.orbit {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 1.6;
+}
+
+.orbitRule {
+  stroke: color-mix(in srgb, var(--foreground) 25%, transparent);
+}
+
+.orbitPoint { fill: var(--foreground); }
+
+.orbitCaption {
+  display: block;
+  margin-top: -8px;
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.orbitTrail {
+  stroke-dasharray: 1;
+  animation: orbit-trace 1100ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.featured {
+  --panel-line: var(--border);
+  background: var(--panel);
+  border-color: var(--border);
+}
+
+.featured > div[aria-hidden='true'] {
+  display: none;
+  background-image: none;
+}
+
+.featured :focus-visible {
+  --tw-ring-color: var(--color-lime);
+  outline-color: var(--color-lime);
+}
+
+.featured [data-slot='progress-indicator'] {
+  transform-origin: left;
+  animation: funding-fill 850ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.card {
+  background: var(--card);
+  border-color: var(--border);
+  transition: border-color 180ms ease-out, background-color 180ms ease-out;
+  animation: result-in 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: -1px 24px auto;
+  height: 2px;
+  background: var(--color-lime);
+}
+
+.card:hover,
+.card:focus-within { border-color: var(--discover-accent-ink); }
+
+.card:nth-child(2) { animation-delay: 45ms; }
+.card:nth-child(3) { animation-delay: 90ms; }
+
+.cardArrow {
+  width: 24px;
+  height: 24px;
+  padding: 4px;
+  border-radius: 8px;
+  color: var(--color-ink);
+  background: var(--color-lime);
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.guidePanel {
+  background: var(--card);
+}
+
+.modelLink:focus-visible { outline-color: var(--discover-accent-ink); }
+
+.card:hover .cardArrow,
+.card:focus-within .cardArrow {
+  transform: translate(2px, -2px);
+}
+
+.modelDetails[open] > p {
+  animation: result-in 200ms ease-out;
+}
+
+@keyframes funding-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes orbit-trace {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes result-in {
+  from { opacity: 0.65; clip-path: inset(0 0 8% 0); }
+  to { opacity: 1; clip-path: inset(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbitTrail,
+  .featured [data-slot='progress-indicator'],
+  .card,
+  .modelDetails[open] > p {
+    animation: none;
+  }
+
+  .cardArrow { transition: none; }
+  .card:hover .cardArrow,
+  .card:focus-within .cardArrow { transform: none; }
+}
+
+@media (max-width: 767px) {
+  .intro { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 20px; }
+  .orbit { width: min(100%, 330px); justify-self: center; margin-top: -12px; }
+  .orbitCaption { margin-top: -16px; }
+}

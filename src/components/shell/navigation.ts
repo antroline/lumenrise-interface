@@ -1,7 +1,8 @@
 import {
   ArrowLeftRight,
+  BookOpen,
   ChartPie,
-  Compass,
+  House,
   Gavel,
   Hexagon,
   LayoutDashboard,
@@ -23,7 +24,8 @@ export type NavItem = {
 };
 export type HeaderNavItem = NavItem & { description: string };
 
-export const discoverItem: NavItem = { label: 'Discover', href: '/', icon: Compass };
+export const discoverItem: NavItem = { label: 'Home', href: '/', icon: House };
+export const guideItem: NavItem = { label: 'How it works', href: '/guide', icon: BookOpen };
 export const projectBrowseItems: HeaderNavItem[] = [
   {
     label: 'All projects',
@@ -106,6 +108,7 @@ export const settingsItem: NavItem = {
 };
 export const searchPages = [
   discoverItem,
+  guideItem,
   ...projectBrowseItems,
   reputationItem,
   explorerItem,
@@ -118,7 +121,7 @@ export const searchPages = [
 export const navGroups: Array<{ label: string; items: NavItem[] }> = [
   {
     label: 'Explore',
-    items: [discoverItem],
+    items: [discoverItem, guideItem],
   },
   {
     label: 'Projects',

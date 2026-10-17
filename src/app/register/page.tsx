@@ -39,7 +39,7 @@ export default function RegisterPage() {
   const redirecting = account.status === 'registered' || account.status === 'preview'
 
   return (
-    <div className="min-h-screen bg-page">
+    <div className="page-dot-background min-h-screen bg-page">
       <header className="mx-auto flex max-w-7xl items-center justify-between border-b px-5 py-6 sm:px-8">
         <LogoHorizontal height={24} />
       </header>

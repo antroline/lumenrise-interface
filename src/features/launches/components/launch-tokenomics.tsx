@@ -158,7 +158,7 @@ export function LaunchTokenomics({
                 </p>
               </div>
               <div className="shrink-0 text-right">
-                <p className="text-[20px] leading-tight font-semibold tracking-[-0.03em] tabular-nums">
+                <p className="text-[18px] leading-tight font-semibold tracking-[-0.03em] tabular-nums">
                   {allocation.share}
                 </p>
                 <p
@@ -174,7 +174,7 @@ export function LaunchTokenomics({
       </div>
 
       <div className="mt-8 border-t border-divider pt-6">
-        <h3 className="text-[16px] font-semibold tracking-[-0.01em]">
+        <h3 className="text-[15px] font-semibold tracking-[-0.01em]">
           Team vesting
         </h3>
         <p className="mt-1.5 max-w-[68ch] text-[14px] leading-relaxed text-muted-foreground">

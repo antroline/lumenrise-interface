@@ -62,7 +62,7 @@ export function LaunchCreator({
         <div className="min-w-0 flex-1">
           <p
             title={owner}
-            className="truncate text-[22px] leading-tight font-semibold tracking-[-0.03em]"
+            className="truncate text-[18px] leading-tight font-semibold tracking-[-0.03em]"
           >
             {owner.slice(0, 6)}…{owner.slice(-6)}
           </p>
@@ -90,7 +90,7 @@ export function LaunchCreator({
             <dt className="text-[12.5px] text-muted-foreground">
               {item.label}
             </dt>
-            <dd className="mt-0.5 text-[20px] leading-tight font-semibold tracking-[-0.03em] tabular-nums">
+            <dd className="mt-0.5 text-[18px] leading-tight font-semibold tracking-[-0.03em] tabular-nums">
               {item.value}
             </dd>
             {item.hint && (
@@ -104,7 +104,7 @@ export function LaunchCreator({
 
       <div className="mt-7">
         <div className="flex items-baseline justify-between gap-4">
-          <h3 className="text-[16px] font-semibold tracking-[-0.01em]">
+          <h3 className="text-[15px] font-semibold tracking-[-0.01em]">
             Other launches by this creator
           </h3>
           {others.length > OTHERS_SHOWN || partial ? (

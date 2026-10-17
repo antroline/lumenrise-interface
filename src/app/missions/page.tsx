@@ -43,7 +43,7 @@ export default function MissionsPage() {
             const Icon = focusIcons[index]
             return (
               <div key={step.title} className="flex items-center gap-3 border-b border-[#e5e5e5] px-5 py-4 last:border-0">
-                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#f0f0ec] [&_svg]:size-4"><Icon /></span>
+                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-secondary [&_svg]:size-4"><Icon /></span>
                 <span className="min-w-0 flex-1 text-ui font-semibold">{step.title}</span>
                 <span className="hidden font-mono text-2xs text-faint sm:block">{step.award}</span>
                 <ArrowRight className="size-4" aria-hidden="true" />

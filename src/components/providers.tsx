@@ -9,8 +9,14 @@ function ClientAppLoading() {
   const pathname = usePathname()
   if (!/^\/launch\/[^/]+\/?$/.test(pathname)) return null
   return (
-    <div className="px-4 pt-[92px] sm:px-5 sm:pt-[122px] lg:px-6 lg:pt-[130px]">
+    <div className="min-h-screen bg-page lg:flex">
+      <div aria-hidden="true" className="hidden h-svh w-62 shrink-0 border-r border-sidebar-border bg-sidebar lg:block" />
+      <div className="page-dot-background min-w-0 flex-1">
+      <div aria-hidden="true" className="h-14 border-b border-sidebar-border lg:hidden" />
+      <div className="px-4 pt-6 sm:px-5 sm:pt-8 lg:px-6 lg:pt-10">
       <LaunchPageSkeleton />
+      </div>
+      </div>
     </div>
   )
 }
