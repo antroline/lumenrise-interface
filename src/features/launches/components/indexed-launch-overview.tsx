@@ -28,6 +28,7 @@ import {
 } from '../lib/bonding-details';
 import { LaunchActionCard } from './launch-action-card';
 import { LaunchCover } from './launch-cover';
+import { LaunchReveal } from './launch-reveal';
 import { LaunchCreator } from './launch-creator';
 import { LaunchHero, type LaunchFigure } from './launch-hero';
 import { LaunchSection } from './launch-panel';
@@ -74,7 +75,7 @@ function relativeTime(seconds: string, now: number) {
 /** Term/value rows separated by hairlines. */
 function FactRows({ rows }: { rows: (readonly [string, ReactNode])[] }) {
   return (
-    <dl className="flex flex-col text-[14.5px]">
+    <dl className="flex flex-col text-[14px]">
       {rows.map(([term, value]) => (
         <div
           key={term}
@@ -327,114 +328,112 @@ export function IndexedLaunchOverview({
           {feedback}
         </div>
 
-        <LaunchCover
-          logo={metadata?.logo}
-          name={name}
-          ticker={ticker}
-          seed={address}
-          status={status}
-          networkName={networkName}
-          progress={progress}
-          links={links}
-          address={address}
-          network={network}
-          docked={docked}
-          identityRef={identityRef}
-        />
-
-        <div className="mt-4 grid gap-4 lg:mt-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
           <aside
             aria-label="Trade"
-            className="min-w-0 lg:sticky lg:top-[88px] lg:col-start-2 lg:row-start-1 lg:self-start"
+            className="order-2 min-w-0 lg:order-none lg:sticky lg:top-10 lg:col-start-2 lg:row-start-1 lg:self-start"
           >
-            <LaunchActionCard
-              name={name}
-              ticker={ticker}
-              logo={metadata?.logo}
-              seed={address}
-              docked={docked}
-              status={status}
-              network={network}
-              address={address}
-              price={
-                price == null
-                  ? market.isPending
-                    ? 'Loading…'
-                    : 'Unavailable'
-                  : `${detailAmount(price)} ${pair}`
-              }
-              priceHint={
-                price == null
-                  ? undefined
-                  : [multiple(BigInt(price)), 'before fee']
-                      .filter(Boolean)
-                      .join(' · ')
-              }
-              stale={stale}
-              opensIn={
-                b?.status === 'Scheduled'
-                  ? relativeTime(b.startsAt, now)
-                  : undefined
-              }
-              terms={
-                b
-                  ? [
-                      [
-                        'After graduation',
-                        'Curve trading closes. The contract does not create a DEX pool.',
-                      ],
-                      ['Team', teamTerm],
-                      [
-                        'Trading fee',
-                        b.curve.creatorFeeBps
-                          ? `${b.curve.creatorFeeBps / 100}% to the creator, included in every quote`
-                          : 'No creator fee',
-                      ],
-                    ]
-                  : []
-              }
-            />
+            <LaunchReveal>
+              <LaunchActionCard
+                name={name}
+                ticker={ticker}
+                logo={metadata?.logo}
+                seed={address}
+                docked={docked}
+                status={status}
+                network={network}
+                address={address}
+                price={
+                  price == null
+                    ? market.isPending
+                      ? 'Loading…'
+                      : 'Unavailable'
+                    : `${detailAmount(price)} ${pair}`
+                }
+                priceHint={
+                  price == null
+                    ? undefined
+                    : [multiple(BigInt(price)), 'before fee']
+                        .filter(Boolean)
+                        .join(' · ')
+                }
+                stale={stale}
+                opensIn={
+                  b?.status === 'Scheduled'
+                    ? relativeTime(b.startsAt, now)
+                    : undefined
+                }
+                terms={
+                  b
+                    ? [
+                        [
+                          'After graduation',
+                          'Curve trading closes. The contract does not create a DEX pool.',
+                        ],
+                        ['Team', teamTerm],
+                        [
+                          'Trading fee',
+                          b.curve.creatorFeeBps
+                            ? `${b.curve.creatorFeeBps / 100}% to the creator, included in every quote`
+                            : 'No creator fee',
+                        ],
+                      ]
+                    : []
+                }
+              />
+            </LaunchReveal>
           </aside>
 
-          <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-1 lg:gap-6">
-            <LaunchHero
-              status={status}
-              progress={progress}
-              raised={b ? headline(b.state.quoteReserve) : '—'}
-              raisedTitle={
-                b ? `${detailAmount(b.state.quoteReserve)} ${pair}` : undefined
-              }
-              target={b ? headline(b.curve.graduationTarget) : '—'}
-              remaining={
-                remaining === undefined
-                  ? undefined
-                  : headline(remaining.toString())
-              }
-              pair={pair}
-              stale={stale}
-              freshness={
-                !b
-                  ? unavailable
-                  : b.stateStale
-                    ? 'Snapshot may be outdated'
-                    : snapshot
-                      ? 'Live contract snapshot'
-                      : 'Indexed contract snapshot'
-              }
-              curve={
-                b && curveInput
-                  ? {
-                      input: curveInput,
-                      soldLabel: `Now · ${compactAmount(b.state.sold)} sold`,
-                      targetLabel: `Graduation · ${compactAmount(b.curve.graduationTarget)} ${pair}`,
-                      axisEnd: (end) =>
-                        `${compactAmount(end.toString())} ${ticker}`,
-                    }
-                  : undefined
-              }
-              figures={figures}
-              note="The curve is modelled from the contract settings, not from trade history. Raised means net quote reserves, excluding fees; only the contract status confirms graduation."
-            />
+          <div className="order-1 flex min-w-0 flex-col gap-4 lg:order-none lg:col-start-1 lg:row-start-1 lg:gap-5">
+            <LaunchReveal>
+              <LaunchHero
+                header={
+                  <LaunchCover
+                    integrated
+                    logo={metadata?.logo}
+                    name={name}
+                    ticker={ticker}
+                    seed={address}
+                    status={status}
+                    networkName={networkName}
+                    links={links}
+                    address={address}
+                    network={network}
+                    docked={docked}
+                    identityRef={identityRef}
+                  />
+                }
+                status={status}
+                progress={progress}
+                raised={b ? headline(b.state.quoteReserve) : '—'}
+                raisedTitle={
+                  b
+                    ? `${detailAmount(b.state.quoteReserve)} ${pair}`
+                    : undefined
+                }
+                target={b ? headline(b.curve.graduationTarget) : '—'}
+                remaining={
+                  remaining === undefined
+                    ? undefined
+                    : headline(remaining.toString())
+                }
+                pair={pair}
+                stale={stale}
+                curve={
+                  b && curveInput
+                    ? {
+                        input: curveInput,
+                        soldLabel: `Now · ${compactAmount(b.state.sold)} sold`,
+                        targetLabel: `Graduation · ${compactAmount(b.curve.graduationTarget)} ${pair}`,
+                        axisEnd: (end) =>
+                          `${compactAmount(end.toString())} ${ticker}`,
+                      }
+                    : undefined
+                }
+                figures={figures}
+                note="The curve is modelled from the contract settings, not from trade history. Raised means net quote reserves, excluding fees; only the contract status confirms graduation."
+              />
+            </LaunchReveal>
 
             <LaunchSection
               id="about"
@@ -442,7 +441,7 @@ export function IndexedLaunchOverview({
               meta="From the creator"
             >
               {description ? (
-                <p className="max-w-[68ch] whitespace-pre-line break-words text-[16px] leading-[1.7] text-foreground/85">
+                <p className="max-w-[68ch] whitespace-pre-line break-words text-[14px] leading-[1.7] text-foreground/85">
                   {description}
                 </p>
               ) : (

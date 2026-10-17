@@ -70,7 +70,12 @@ export function LaunchProjectLinks({
 }) {
   const available = linkKinds.filter(({ key }) => safeExternalUrl(links[key]));
   return (
-    <div className={cn('flex flex-wrap items-center gap-1', className)}>
+    <div className={cn('flex flex-wrap items-center justify-between gap-x-3 gap-y-1', className)}>
+      <div className="-ml-3 flex min-w-0 items-center">
+        <span className="sr-only">Contract address</span>
+        <CopyAddress address={address} label="launch contract address" />
+        <ExplorerLink address={address} network={network} label="launch contract" />
+      </div>
       {available.length > 0 && (
         <>
           <ul className="flex" aria-label="Project links">
@@ -82,13 +87,8 @@ export function LaunchProjectLinks({
               </li>
             ))}
           </ul>
-          <span aria-hidden="true" className="mx-1 h-5 w-px bg-border" />
         </>
       )}
-      <span className="flex min-w-0 items-center">
-        <CopyAddress address={address} label="launch contract address" />
-        <ExplorerLink address={address} network={network} label="launch contract" />
-      </span>
     </div>
   );
 }

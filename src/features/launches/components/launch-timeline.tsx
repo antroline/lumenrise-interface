@@ -31,7 +31,7 @@ export function LaunchTimeline({ steps }: { steps: TimelineStep[] }) {
             {step.label}
             <span className="sr-only">, {stateLabel[step.state]}</span>
           </p>
-          <p className={cn('mt-1 text-[22px] leading-tight font-semibold tracking-[-0.03em] tabular-nums', step.state === 'upcoming' && 'text-foreground/70')}>
+          <p className={cn('mt-1 text-[18px] leading-tight font-semibold tracking-[-0.03em] tabular-nums', step.state === 'upcoming' && 'text-foreground/70')}>
             {step.value}
           </p>
           <p className="mt-1.5 text-[13px] leading-snug text-muted-foreground">{step.detail}</p>

@@ -188,12 +188,8 @@ export function PublicProjects({
   };
   return (
     <section className="mb-8 flex flex-col gap-4" aria-label="Launched tokens">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <span className="text-small text-muted-foreground">
-          Filters and sorting apply to this page
-        </span>
-      </div>
-      <div className="overflow-hidden rounded-2xl">
+      <div className="flex flex-wrap items-baseline justify-between gap-3"></div>
+      <div className="overflow-hidden rounded-2xl shadow-[0_3px_8px_-3px_rgb(24_24_12/0.09)] dark:shadow-[0_3px_8px_-3px_rgb(0_0_0/0.22)]">
         {query.isPending ? (
           <ProjectsTableSkeleton
             rows={5}
