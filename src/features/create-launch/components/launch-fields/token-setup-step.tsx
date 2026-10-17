@@ -2,7 +2,6 @@
 
 import { Check, TriangleAlert } from 'lucide-react';
 import {
-  FieldDescription,
   FieldGroup,
   FieldLegend,
   FieldSet,
@@ -10,7 +9,6 @@ import {
 import { cn } from '@/lib/utils';
 import {
   allocationLabels,
-  formatAmount,
   formatSupplyShare,
   numberValue,
   validPercent,
@@ -75,45 +73,12 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
     },
   ];
   return (
-    <FieldGroup className="gap-7 short:gap-5">
-      <div>
-        <NumberField
-          id="launch-supply"
-          label="Total supply"
-          value={draft.supply}
-          onChange={(supply) => setDraft((current) => ({ ...current, supply }))}
-          unit={draft.symbol || 'tokens'}
-          help="Choose a preset or enter an exact supply. You can change it before launching."
-          groupThousands
-          error={errors['launch-supply']}
-          presets={[
-            { label: '10M', value: '10000000' },
-            { label: '100M', value: '100000000' },
-            { label: '1B', value: '1000000000' },
-            { label: '10B', value: '10000000000' },
-            { label: '100B', value: '100000000000' },
-          ]}
-        />
-      </div>
-      <FieldSet className="border-t border-divider pt-5 short:pt-4">
-        <FieldLegend className="flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 text-lg! font-semibold tracking-[-0.01em]">
-          Token allocation
-          <span className="ml-auto whitespace-nowrap text-sm font-semibold tracking-normal tabular-nums">
-            {formatAmount(draft.supply)}{' '}
-            <span className="text-xs font-normal text-muted-foreground">
-              {draft.symbol || 'tokens'}
-            </span>
-          </span>
-        </FieldLegend>
-        <FieldDescription>
-          Allocate supply across bonding curve, liquidity, and team. Total must
-          equal 100%.
-        </FieldDescription>
-        <FieldGroup className="short:gap-4">
+    <FieldGroup className="gap-4">
+      <FieldSet className="gap-4">
+        <FieldLegend className="sr-only">Token allocation</FieldLegend>
+        <FieldGroup className="gap-4">
           <div>
-            <p className="mb-3 text-small text-muted-foreground">
-              Allocation presets
-            </p>
+            <p className="mb-2 studio-compact:mb-1 text-small text-muted-foreground">Allocation presets</p>
             <AllocationPresets
               label="Launch, pool and team allocation"
               value={
@@ -137,13 +102,13 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
             />
           </div>
           <div>
-            <div className="mb-2.5 flex items-center justify-between gap-3">
+            <div className="mb-2.5 studio-compact:mb-1 flex items-center justify-between gap-3">
               <span className="text-small text-muted-foreground">
                 Distribution
               </span>
               <span
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-small font-semibold tabular-nums transition-colors duration-200',
+                  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 studio-compact:py-0 text-small font-semibold tabular-nums transition-colors duration-200',
                   invalidAllocation
                     ? 'bg-bad-soft text-bad'
                     : 'bg-ok-soft text-ok',
@@ -216,7 +181,7 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
           <LaunchReveal show={numberValue(draft.allocation.teamShare) > 0}>
             <FieldSet>
               <FieldLegend variant="label">Team vesting</FieldLegend>
-              <FieldGroup className="grid gap-4 @md/launch:grid-cols-2">
+              <FieldGroup className="grid gap-4 studio-compact:gap-2 @md/launch:grid-cols-2">
                 <NumberField
                   id="team-cliff"
                   label="Team cliff"
