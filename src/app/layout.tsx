@@ -7,11 +7,8 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import './globals.css'
 
 const bricolage = localFont({
-  src: [
-    { path: '../../public/fonts/Bricolage-Regular.ttf', weight: '400', style: 'normal' },
-    { path: '../../public/fonts/Bricolage-Medium.ttf', weight: '500', style: 'normal' },
-    { path: '../../public/fonts/Bricolage-Bold.ttf', weight: '700', style: 'normal' },
-  ],
+  src: '../../public/fonts/BricolageGrotesque-Variable.ttf',
+  weight: '200 800',
   variable: '--font-bricolage',
   display: 'swap',
 })
