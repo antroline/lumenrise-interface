@@ -1,54 +1,29 @@
 'use client';
 
-import { Gavel, LineChart, Tag, Wallet } from 'lucide-react';
 import type { LaunchMethod } from '../lib/launch-draft';
 import { MethodCard } from './method-card';
+import { LaunchFieldError } from './launch-motion';
 
-export function MethodChoice({
-  onChoose,
-  selected,
-}: {
-  onChoose: (method: LaunchMethod) => void;
+const methods = [
+  { method: 'bonding', detail: 'Price follows demand.' },
+  { method: 'fixed', detail: 'One price per token.' },
+  { method: 'auction', detail: 'Bids set the price.' },
+] as const;
+
+export function MethodChoice({ selected, onChoose, error }: {
   selected: LaunchMethod | null;
+  onChoose: () => void;
+  error?: string;
 }) {
   return (
-    <div id="launch-methods" className="grid gap-3 @lg/launch:grid-cols-2">
-      <MethodCard
-        icon={Wallet}
-        title="Basic"
-        detail="Create a fixed-supply Stellar testnet token. No sale is configured."
-        illustration="/illustrations/launch-methods/basic.png"
-        badge="Live on testnet"
-        selected={selected === 'basic'}
-        onClick={() => onChoose('basic')}
-      />
-      <MethodCard
-        icon={LineChart}
-        title="Bonding curve"
-        detail="Let the price respond to purchases, then move to a pool at your raise target."
-        illustration="/illustrations/launch-methods/bonding-curve.png"
-        badge="Coming soon"
-        selected={selected === 'bonding'}
-        onClick={() => onChoose('bonding')}
-      />
-      <MethodCard
-        icon={Tag}
-        title="Fixed price"
-        detail="Offer an allocation at one price during a defined sale window."
-        illustration="/illustrations/launch-methods/fixed-price.png"
-        badge="Coming soon"
-        selected={selected === 'fixed'}
-        onClick={() => onChoose('fixed')}
-      />
-      <MethodCard
-        icon={Gavel}
-        title="Auction"
-        detail="Set a floor price and sale window, then plan post-auction liquidity."
-        illustration="/illustrations/launch-methods/auction.png"
-        badge="Coming soon"
-        selected={selected === 'auction'}
-        onClick={() => onChoose('auction')}
-      />
-    </div>
+    <fieldset id="launch-methods" tabIndex={-1} aria-describedby={error ? 'launch-methods-error' : undefined} className="min-w-0 outline-none focus-visible:ring-2 focus-visible:ring-foreground">
+      <legend className="mb-3 studio-compact:mb-2 text-sm font-medium">Launch method</legend>
+      <div className="grid gap-2 @min-[480px]/launch:grid-cols-3">
+        {methods.map(({ method, detail }) => (
+          <MethodCard key={method} method={method} detail={detail} selected={selected === method} onChoose={method === 'bonding' ? onChoose : undefined} />
+        ))}
+      </div>
+      <LaunchFieldError id="launch-methods-error" className="mt-2 text-small text-bad">{error}</LaunchFieldError>
+    </fieldset>
   );
 }

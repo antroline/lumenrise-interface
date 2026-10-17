@@ -13,7 +13,7 @@ import {
   FieldLabel,
   FieldGroup,
 } from '@/components/ui/field';
-import { Textarea } from '@/components/ui/textarea';
+import { LaunchTextarea } from './field-controls';
 import { ChoiceCards } from './choice-cards';
 import type { DraftProps } from './types';
 import { LaunchFieldError, LaunchReveal } from '../launch-motion';
@@ -63,7 +63,7 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
           <FieldLabel htmlFor="eligibility-requirements">
             Participation requirements *
           </FieldLabel>
-          <Textarea
+          <LaunchTextarea
             id="eligibility-requirements"
             maxLength={600}
             value={draft.eligibility.requirements}
@@ -83,7 +83,6 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
                 ? 'eligibility-requirements-error'
                 : 'eligibility-requirements-hint'
             }
-            className="aria-invalid:border-input aria-invalid:ring-0"
           />
           <LaunchFieldError
             id="eligibility-requirements-error"
@@ -127,7 +126,7 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
           <FieldLabel htmlFor="identification-requirements">
             Identification requirements *
           </FieldLabel>
-          <Textarea
+          <LaunchTextarea
             id="identification-requirements"
             maxLength={600}
             value={draft.eligibility.identificationRequirements}
@@ -147,7 +146,6 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
                 ? 'identification-requirements-error'
                 : 'identification-requirements-hint'
             }
-            className="aria-invalid:border-input aria-invalid:ring-0"
           />
           <LaunchFieldError
             id="identification-requirements-error"
