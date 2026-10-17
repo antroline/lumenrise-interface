@@ -43,7 +43,7 @@ export function AllocationBar({
         .map((share, index) => `${share.label} ${values[index]}%`)
         .join(', ')}. Total ${Math.round(total * 100) / 100}% of 100%.`}
       className={cn(
-        'flex h-10 overflow-hidden rounded-full border transition-[background-color,border-color] duration-200 short:h-9',
+        'flex h-7 lg:short:h-5 overflow-hidden rounded-full border transition-[background-color,border-color] duration-200',
         invalid ? 'border-bad-line bg-bad-soft' : 'border-border bg-muted',
       )}
     >

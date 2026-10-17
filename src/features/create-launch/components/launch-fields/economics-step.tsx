@@ -23,7 +23,7 @@ export function EconomicsStep({ draft, setDraft, errors = {} }: DraftProps) {
       auction: { ...current.auction, ...patch },
     }));
   return (
-    <FieldGroup>
+    <FieldGroup className="gap-4 studio-compact:gap-3">
       <QuoteChoice
         value={draft.quote}
         highlightSelection={draft.method === 'bonding'}

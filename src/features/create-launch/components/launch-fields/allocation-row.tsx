@@ -30,8 +30,8 @@ export function AllocationRow({
   descriptionId?: string;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3.5 short:py-3">
-      <div className="flex min-w-0 flex-1 items-center gap-3 sm:max-w-56">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2 studio-compact:py-1">
+      <div className="flex min-w-0 flex-1 items-center gap-3 @lg/launch:max-w-56">
         <span
           aria-hidden="true"
           className={cn('size-2.5 shrink-0 rounded-full', swatch)}
@@ -46,12 +46,12 @@ export function AllocationRow({
             </FieldLabel>
             {help && <HelpTooltip label={label}>{help}</HelpTooltip>}
           </div>
-          <p className="mt-0.5 break-all text-small tabular-nums text-muted-foreground">
+          <p className="mt-0.5 studio-compact:mt-0 break-all text-small tabular-nums text-muted-foreground">
             {amount}
           </p>
         </div>
       </div>
-      <div className="order-3 w-full sm:order-2 sm:w-auto sm:min-w-28 sm:flex-1">
+      <div className="order-3 w-full @lg/launch:order-2 @lg/launch:w-auto @lg/launch:min-w-28 @lg/launch:flex-1">
         <AllocationSlider
           label={label}
           value={value}
@@ -60,7 +60,7 @@ export function AllocationRow({
           descriptionId={descriptionId}
         />
       </div>
-      <div className="relative order-2 shrink-0 sm:order-3">
+      <div className="relative order-2 shrink-0 @lg/launch:order-3">
         <Input
           id={id}
           type="text"
@@ -70,7 +70,7 @@ export function AllocationRow({
           placeholder="0"
           aria-invalid={invalid || undefined}
           aria-describedby={descriptionId}
-          className="h-10 w-19 pr-7 text-right font-semibold tabular-nums sm:w-24"
+          className="h-11 studio-compact:h-9 w-19 border-transparent bg-secondary/70 pr-7 text-right font-semibold tabular-nums @lg/launch:w-24"
         />
         <span
           aria-hidden="true"
