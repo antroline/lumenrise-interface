@@ -166,7 +166,7 @@ export default async function ProjectsPage({
                       scroll={false}
                       aria-current={active ? 'page' : undefined}
                       className={cn(
-                        'inline-flex h-11 shrink-0 items-center gap-2 rounded-lg px-5 text-body font-medium sm:px-6 sm:text-base transition-colors focus-visible:outline-2 focus-visible:outline-lime',
+                        'inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-4 text-[13px] font-medium sm:px-5 sm:text-sm transition-colors focus-visible:outline-2 focus-visible:outline-lime',
                         active
                           ? 'bg-background text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:bg-card'
                           : 'text-muted-foreground hover:text-foreground',

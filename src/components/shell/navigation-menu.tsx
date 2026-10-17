@@ -181,7 +181,7 @@ export function HeaderNavigation() {
             closeOnClick
             className={cn(headerNavItem, pathname === '/' && 'text-foreground')}
           >
-            Discover
+            {discoverItem.label}
           </NavigationMenu.Link>
         </NavigationMenu.Item>
         <HeaderDropdown

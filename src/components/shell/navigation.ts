@@ -2,7 +2,7 @@ import {
   ArrowLeftRight,
   BookOpen,
   ChartPie,
-  Compass,
+  House,
   Gavel,
   Hexagon,
   LayoutDashboard,
@@ -24,7 +24,7 @@ export type NavItem = {
 };
 export type HeaderNavItem = NavItem & { description: string };
 
-export const discoverItem: NavItem = { label: 'Discover', href: '/', icon: Compass };
+export const discoverItem: NavItem = { label: 'Home', href: '/', icon: House };
 export const guideItem: NavItem = { label: 'How it works', href: '/guide', icon: BookOpen };
 export const projectBrowseItems: HeaderNavItem[] = [
   {
