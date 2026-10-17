@@ -31,7 +31,7 @@ export function PageHeader({
     <div className={cn('flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between lg:gap-10', className)}>
       <div className="flex min-w-0 flex-col gap-3">
         <Eyebrow>{eyebrow}</Eyebrow>
-        <h1 className="text-[34px] leading-[1.02] font-bold tracking-[-0.04em] sm:text-h1">{title}</h1>
+        <h1 className="text-display leading-[1.02] font-bold tracking-[-0.04em] sm:text-h1">{title}</h1>
         {description && <p className="max-w-[60ch] text-base leading-[1.55] text-muted-foreground">{description}</p>}
       </div>
       {actions}
@@ -107,7 +107,7 @@ export function ProjectHeading({
         <div className="flex min-w-0 flex-col gap-1.5">
           {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-[26px] leading-[1.05] font-bold tracking-[-0.04em] sm:text-[34px]">{title}</h1>
+            <h1 className="text-big leading-[1.05] font-bold tracking-[-0.04em] sm:text-display">{title}</h1>
             {meta}
           </div>
           {description}
