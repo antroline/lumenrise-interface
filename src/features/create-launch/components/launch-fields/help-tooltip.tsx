@@ -22,7 +22,7 @@ export function HelpTooltip({
   children: string;
 }) {
   const triggerClassName =
-    'size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground';
+    'size-11 [@media(hover:hover)]:size-7 studio-compact:[@media(hover:hover)]:size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground';
   return (
     <>
       <Tooltip>

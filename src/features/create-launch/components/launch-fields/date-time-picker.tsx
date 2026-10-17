@@ -16,6 +16,7 @@ import {
 import { cn } from '@/lib/utils';
 import { isoToLocalDateTime } from '../../lib/launch-draft';
 import { LaunchFieldError, LaunchReveal } from '../launch-motion';
+import { launchFieldSurfaceClassName } from './field-controls';
 
 export function DateTimePicker({
   id,
@@ -84,7 +85,7 @@ export function DateTimePicker({
               variant="outline"
               aria-invalid={!!error}
               aria-describedby={error ? `${id}-error` : undefined}
-              className="h-auto min-h-20 w-full justify-between rounded-xl bg-surface px-4 py-3.5 text-left hover:border-foreground hover:bg-muted aria-expanded:border-foreground aria-invalid:border-border short:min-h-18"
+              className={cn(launchFieldSurfaceClassName, 'h-auto min-h-18 w-full justify-between text-left hover:bg-secondary aria-expanded:bg-secondary')}
             />
           }
         >
