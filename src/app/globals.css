@@ -133,7 +133,7 @@
 /* `.theme-reset` restores the light tokens for surfaces nested inside a DarkPanel. */
 :root,
 :root:not(.dark) .theme-reset {
-  --page: #f9f9f9;
+  --page: #fdfdfd;
   --background: #fcfcfc;
   --foreground: #0b0b0b;
   --card: #fff;
@@ -412,6 +412,11 @@
   mask-image: linear-gradient(90deg, transparent 45%, #000 90%);
 }
 
+.page-dot-background {
+  background-image: radial-gradient(circle, var(--header-dot) 1px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+
 /* A quiet dot matrix behind the shared header and the start of each page. */
 .page-dot-field {
   position: absolute;
@@ -498,10 +503,10 @@
 }
 
 :root {
-  --header-dot: rgb(11 11 11 / 16%);
+  --header-dot: rgb(11 11 11 / 8%);
 }
 .dark {
-  --header-dot: rgb(244 244 239 / 20%);
+  --header-dot: rgb(244 244 239 / 10%);
 }
 
 /* The coordinate field is reserved for page specimens and diagrams. */
