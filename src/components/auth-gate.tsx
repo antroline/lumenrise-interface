@@ -85,8 +85,7 @@ export function AuthGate({ destination, description }: { destination: string; de
         <EmptyDescription>{description}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent className="gap-4">
-        <Button size="lg" disabled={loginPending} onClick={() => void login(destination)}>
-          {loginPending ? <Spinner data-icon="inline-start" /> : null}
+        <Button size="lg" loading={loginPending} onClick={() => void login(destination)}>
           {loginPending
             ? loginPhase === 'checking'
               ? 'Checking your account…'
