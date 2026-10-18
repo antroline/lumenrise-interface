@@ -7,16 +7,8 @@ import test from 'node:test';
 import ts from 'typescript';
 
 const directory = dirname(fileURLToPath(import.meta.url));
-for (const [surface, state] of [
-  ['launch', 'loaded'],
-  ['trade', 'loaded'],
-  ['launch', 'initial'],
-  ['launch', 'error'],
-  ['launch', 'refresh'],
-  ['trade', 'initial'],
-  ['trade', 'wallet-ready'],
-])
-  test(`${surface} on Public (${state}) keeps loading and network isolation correct`, () => {
+for (const state of ['loaded', 'initial', 'error', 'refresh', 'wallet-ready'])
+  test(`launch on Public (${state}) keeps loading and network isolation correct`, () => {
     const observers = [],
       module = { exports: {} };
     const jsx = (type, props) => ({ type, props });
@@ -96,9 +88,7 @@ for (const [surface, state] of [
         LaunchPageSkeleton: 'LaunchPageSkeleton',
       },
       '@/components/ui/card': { cardVariants: () => '' },
-      '@/features/launches/trading/bonding-trade-layout': {
-        BondingTradeLayout: 'BondingTradeLayout',
-      },
+      '@/components/ui/skeleton': { Skeleton: 'Skeleton' },
       '@/features/launches/trading/trade-disclosure': { TradeDisclosure: 'TradeDisclosure' },
       './trade-form': { TradeForm: 'TradeForm' },
       './contract': {
@@ -119,20 +109,17 @@ for (const [surface, state] of [
     const result = module.exports.BondingCurvePage({
       address: 'contract',
       network: 'public',
-      surface,
     });
     assert.ok(observers.every((observer) => observer.enabled === false));
-    if (surface === 'launch' && state === 'initial') {
+    if (state === 'initial') {
       assert.equal(result.type, 'LaunchPageSkeleton');
       return;
     }
-    assert.equal(result.type, surface === 'trade' ? 'BondingTradeLayout' : 'IndexedLaunchOverview');
+    assert.equal(result.type, 'IndexedLaunchOverview');
     assert.equal(result.props.snapshot, undefined);
     assert.equal(result.props.network, 'public');
-    if (surface === 'trade') {
-      assert.equal(result.props.loading, false);
-      assert.equal(result.props.buy, null);
-      assert.equal(result.props.sell, null);
-      if (state === 'wallet-ready') assert.equal(result.props.walletFeedback, null, 'A connected wallet without a message must not render an empty feedback panel');
-    }
+    assert.equal(result.props.tradingLoading, false);
+    assert.equal(result.props.buy, null);
+    assert.equal(result.props.sell, null);
+    if (state === 'wallet-ready') assert.equal(result.props.walletFeedback, null, 'A connected wallet without a message must not render an empty feedback panel');
   });

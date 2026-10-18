@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import { StrKey } from '@stellar/stellar-sdk';
 import { BondingCurvePage } from '@/features/launches/bonding';
-import { getLaunch } from '@/lib/data';
+import { PreviewTradingLaunch } from '@/features/launches/components/preview-trading-launch';
+import { getLaunch, getTradingToken } from '@/lib/data';
 import { LaunchPageTemplate } from '@/features/launches/components/launch-page-template';
 import { getLaunchContent } from '@/features/launches/data/launch-content';
 import { API_NETWORK } from '@/lib/stellar/network';
@@ -20,9 +21,10 @@ export default async function LaunchDetailPage({
       <BondingCurvePage
         key={network + ':' + slug}
         address={slug}
-        network={network === 'public' ? 'public' : API_NETWORK}
+        network={network === 'public' || network === 'mainnet' ? 'public' : API_NETWORK}
       />
     );
+  if (getTradingToken(slug)) return <PreviewTradingLaunch slug={slug} />;
   const launch = getLaunch(slug);
   if (!launch) notFound();
   return (
