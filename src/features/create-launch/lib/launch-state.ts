@@ -1,9 +1,6 @@
 import { StrKey } from '@stellar/stellar-sdk';
 import { horizon, soroban } from './transactions';
 
-const STORAGE_KEY = 'launchpad:last-testnet-launch';
-const STORAGE_PREFIX = 'launchpad:testnet-launch:';
-export const BASIC_AUTH_RETURN_KEY = 'launchpad:basic-auth-return';
 const MAX_AMOUNT = BigInt('9223372036854775807');
 const TOKEN_UNIT = BigInt(10_000_000);
 
@@ -50,38 +47,6 @@ export function isLaunchRecord(value: unknown): value is LaunchRecord {
     'sac',
     'setupHash',
   ].every((key) => key in value && typeof Reflect.get(value, key) === 'string');
-}
-
-function readStoredLaunch(value: string | null): LaunchRecord | null {
-  if (!value) return null;
-  try {
-    const record: unknown = JSON.parse(value);
-    if (!isLaunchRecord(record)) return null;
-    return record;
-  } catch {
-    return null;
-  }
-}
-
-export function loadLaunch(issuer: string): LaunchRecord | null {
-  if (typeof window === 'undefined') return null;
-  if (!StrKey.isValidEd25519PublicKey(issuer)) return null;
-  try {
-    for (const key of [`${STORAGE_PREFIX}${issuer}`, STORAGE_KEY]) {
-      const record = readStoredLaunch(localStorage.getItem(key));
-      if (record?.issuer === issuer) return record;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
-export function saveLaunch(record: LaunchRecord) {
-  localStorage.setItem(
-    `${STORAGE_PREFIX}${record.issuer}`,
-    JSON.stringify(record),
-  );
 }
 
 export function toUnits(amount: string): bigint {
