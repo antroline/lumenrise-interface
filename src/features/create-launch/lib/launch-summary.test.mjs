@@ -17,7 +17,7 @@ function loadSource(filename) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
   runInNewContext(output, {
-    module, exports: module.exports,
+    module, exports: module.exports, URL,
     require: (name) => loadSource(resolve(dirname(path), `${name}.ts`)),
   }, { filename: path });
   return module.exports;
@@ -27,6 +27,24 @@ const { initialLaunchDraft } = loadSource('launch-draft.ts');
 const { launchSummaryRows } = loadSource('launch-summary.ts');
 const { launchStages, launchStageIndex, validateLaunchStage } = loadSource('launch-stages.ts');
 const rowsFor = (draft, step) => JSON.parse(JSON.stringify(launchSummaryRows(draft, step)));
+
+test('project stage requires both links and validates their HTTPS format', () => {
+  const stage = launchStages[launchStageIndex('project')];
+  const draft = { ...structuredClone(initialLaunchDraft),
+    website: ' https://example.com ', xAccount: ' https://x.com/project ' };
+  let errors = validateLaunchStage(draft, stage);
+  assert.equal(errors['launch-website'], undefined);
+  assert.equal(errors['launch-x'], undefined);
+  for (const [field, errorKey] of [['website', 'launch-website'], ['xAccount', 'launch-x']]) {
+    for (const value of ['', '   ', 'http://example.com', 'invalid', '/relative',
+      'https://user:password@example.com', `https://example.com/${'a'.repeat(2029)}`]) {
+      errors = validateLaunchStage({ ...draft, [field]: value }, stage);
+      assert.ok(errors[errorKey], `${field}: ${value}`);
+    }
+    errors = validateLaunchStage({ ...draft, [field]: `https://example.com/${'a'.repeat(2028)}` }, stage);
+    assert.equal(errors[errorKey], undefined);
+  }
+});
 
 test('empty identity and unselected method do not generate placeholder summary facts', () => {
   assert.deepEqual(rowsFor(initialLaunchDraft, 'project'), []);

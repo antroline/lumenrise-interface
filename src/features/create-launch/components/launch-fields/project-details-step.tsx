@@ -1,17 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus } from 'lucide-react';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import type { LaunchDraft } from '../../lib/launch-draft';
-import { LaunchFieldError, LaunchReveal } from '../launch-motion';
-import { LaunchTextarea } from './field-controls';
+import { LaunchFieldError } from '../launch-motion';
+import { FieldSurface, LaunchTextarea } from './field-controls';
 import { ProjectImageField } from './project-image-field';
 import { TextField } from './text-field';
 import type { DraftProps } from './types';
 
 export function ProjectDetailsStep({ draft, setDraft, errors = {} }: DraftProps) {
-  const [showLinks, setShowLinks] = useState(Boolean(draft.xAccount || draft.website));
   function update<K extends keyof LaunchDraft>(key: K, value: LaunchDraft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
   }
@@ -27,7 +24,7 @@ export function ProjectDetailsStep({ draft, setDraft, errors = {} }: DraftProps)
           value={draft.name}
           onChange={(value) => update('name', value)}
           maxLength={40}
-          placeholder="Name your project"
+          placeholder="e.g. Tide Finance"
           required
           error={errors['project-name']}
         />
@@ -38,37 +35,35 @@ export function ProjectDetailsStep({ draft, setDraft, errors = {} }: DraftProps)
           value={draft.symbol}
           onChange={(value) => update('symbol', value.toUpperCase())}
           maxLength={12}
-          placeholder="TIDE"
+          placeholder="e.g. TIDE"
           required
           hint="1–12 letters or numbers."
           error={errors['launch-symbol']}
         />
       </FieldGroup>
       <Field data-invalid={!!errors['launch-description']}>
-        <FieldLabel htmlFor="launch-description">Description *</FieldLabel>
-        <LaunchTextarea
-          className="h-20 min-h-20 resize-none"
-          id="launch-description"
-          maxLength={500}
-          value={draft.description}
-          onChange={(event) => update('description', event.target.value)}
-          placeholder="Describe your project"
-          aria-invalid={!!errors['launch-description']}
-          aria-describedby={errors['launch-description'] ? 'launch-description-error' : undefined}
-        />
+        <FieldSurface>
+          <FieldLabel htmlFor="launch-description" className="text-small text-muted-foreground">
+            Description *
+          </FieldLabel>
+          <LaunchTextarea
+            className="h-24 min-h-24 studio-compact:h-20 studio-compact:min-h-20 resize-none rounded-none bg-transparent px-0 py-1 focus-visible:ring-0"
+            id="launch-description"
+            maxLength={500}
+            required
+            value={draft.description}
+            onChange={(event) => update('description', event.target.value)}
+            placeholder="What are you building, and what is your token used for?"
+            aria-invalid={!!errors['launch-description']}
+            aria-describedby={errors['launch-description'] ? 'launch-description-error' : undefined}
+          />
+        </FieldSurface>
         <LaunchFieldError id="launch-description-error" className="text-small text-bad">{errors['launch-description']}</LaunchFieldError>
       </Field>
-      <LaunchReveal show={showLinks}>
-        <FieldGroup className="grid gap-3 sm:grid-cols-2">
-          <TextField id="launch-x" label="X account (optional)" value={draft.xAccount} onChange={(value) => update('xAccount', value)} placeholder="https://x.com/yourproject" error={errors['launch-x']} />
-          <TextField id="launch-website" label="Website (optional)" value={draft.website} onChange={(value) => update('website', value)} placeholder="https://yourproject.com" error={errors['launch-website']} />
-        </FieldGroup>
-      </LaunchReveal>
-      <LaunchReveal show={!showLinks}>
-        <button type="button" aria-expanded={showLinks} onClick={() => setShowLinks(true)} className="inline-flex min-h-10 w-fit items-center gap-2 rounded-md text-small font-semibold text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground">
-          <Plus className="size-4" aria-hidden="true" /> Add links
-        </button>
-      </LaunchReveal>
+      <FieldGroup className="grid gap-3 sm:grid-cols-2">
+        <TextField id="launch-x" label="X account *" value={draft.xAccount} onChange={(value) => update('xAccount', value)} placeholder="https://x.com/yourproject" required maxLength={2048} error={errors['launch-x']} />
+        <TextField id="launch-website" label="Website *" value={draft.website} onChange={(value) => update('website', value)} placeholder="https://yourproject.com" required maxLength={2048} error={errors['launch-website']} />
+      </FieldGroup>
     </FieldGroup>
   );
 }

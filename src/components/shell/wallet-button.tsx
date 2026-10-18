@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, Copy, LogOut, Settings, Wallet } from 'lucide-react';
+import { ChevronDown, Copy, LogOut, Settings, UserRound, Wallet } from 'lucide-react';
 import { Blockie } from '@/components/blockie';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,13 +31,10 @@ export function WalletButton({
   menuSide?: 'bottom' | 'top' | 'right';
   className?: string;
 }) {
-  const { isSignedIn, address, login, logout, loginPending, loginPhase, notify } =
+  const { isSignedIn, address, account, login, logout, loginPending, loginPhase, notify } =
     useLaunchpad();
 
   const { profile } = useBlux();
-  const [displayNetwork, setDisplayNetwork] = useState<'Testnet' | 'Mainnet'>(
-    'Testnet',
-  );
 
   if (!isSignedIn || !address) {
     const label = loginPending
@@ -99,52 +95,56 @@ export function WalletButton({
       <DropdownMenuContent
         side={menuSide}
         align={menuSide === 'top' ? 'start' : 'end'}
-        className="w-56"
+        sideOffset={8}
+        className="w-72 max-w-[calc(100vw-1.5rem)] rounded-2xl bg-card p-2 text-card-foreground ring-border"
       >
+        <div className="flex min-w-0 items-center gap-3 px-3 py-3">
+          <Blockie seed={address} size={40} radius={10} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold" title={account.status === 'registered' ? account.profile.name : undefined}>
+              {account.status === 'registered' ? account.profile.name : 'Connected wallet'}
+            </p>
+            <p className="mt-1 font-mono text-xs text-muted-foreground" title={address}>
+              {shortAddress(address)}
+            </p>
+          </div>
+        </div>
+        <DropdownMenuSeparator className="mx-1 my-2 bg-divider" />
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="px-2 pt-2">
-            Network · display only
+          <DropdownMenuLabel className="px-3 pb-2 text-xs font-medium text-muted-foreground">
+            Network display
           </DropdownMenuLabel>
           <DropdownMenuRadioGroup
-            value={displayNetwork}
-            onValueChange={(value) => {
-              if (value === 'Testnet' || value === 'Mainnet')
-                setDisplayNetwork(value);
-            }}
+            value="Testnet"
+            className="grid grid-cols-2 gap-1 rounded-xl bg-secondary/70 p-1"
           >
-            <DropdownMenuRadioItem value="Testnet">
+            <DropdownMenuRadioItem value="Testnet" className="min-h-11 rounded-lg pl-3 text-xs font-medium focus:bg-card focus:text-foreground data-checked:bg-card data-checked:text-foreground">
               Testnet
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="Mainnet">
-              Mainnet{' '}
-              <span className="text-caption text-muted-foreground">
-                Preview
-              </span>
+            <DropdownMenuRadioItem value="Mainnet" disabled className="min-h-11 gap-1 rounded-lg pl-2 text-xs font-medium focus:bg-card focus:text-foreground data-checked:bg-card data-checked:text-foreground">
+              Mainnet
             </DropdownMenuRadioItem>
           </DropdownMenuRadioGroup>
-          <p className="px-2 py-1 text-caption leading-relaxed text-muted-foreground">
-            Wallet remains on Stellar Testnet.
-          </p>
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="mx-1 my-2 bg-divider" />
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={() => void profile()}>
-            <Settings />
-            Wallet Profile
+          <DropdownMenuItem className="min-h-11 gap-3 rounded-lg px-3 focus:bg-secondary focus:text-foreground" onClick={() => void profile()}>
+            <UserRound className="text-muted-foreground" />
+            Wallet profile
           </DropdownMenuItem>
-          <DropdownMenuItem render={<Link href={settingsItem.href} />}>
-            <Settings />
+          <DropdownMenuItem className="min-h-11 gap-3 rounded-lg px-3 focus:bg-secondary focus:text-foreground" render={<Link href={settingsItem.href} />}>
+            <Settings className="text-muted-foreground" />
             Account settings
           </DropdownMenuItem>
 
-          <DropdownMenuItem onClick={() => void copyAddress()}>
-            <Copy />
+          <DropdownMenuItem className="min-h-11 gap-3 rounded-lg px-3 focus:bg-secondary focus:text-foreground" onClick={() => void copyAddress()}>
+            <Copy className="text-muted-foreground" />
             Copy address
           </DropdownMenuItem>
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="mx-1 my-2 bg-divider" />
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={logout}>
+          <DropdownMenuItem variant="destructive" className="min-h-11 gap-3 rounded-lg px-3" onClick={logout}>
             <LogOut />
             Disconnect
           </DropdownMenuItem>

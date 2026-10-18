@@ -68,7 +68,7 @@ function harness(handler) {
   };
 }
 
-test('image upload posts exactly network, ownerAddress and one image file with the user header', async () => {
+test('prelaunch posts required fields with optional links omitted and the user header', async () => {
   const h = harness(() =>
     response({
       status: 201,
@@ -88,7 +88,7 @@ test('image upload posts exactly network, ownerAddress and one image file with t
   });
   assert.equal(h.calls.length, 1);
   const { url, init } = h.calls[0];
-  assert.equal(url, 'http://localhost:5000/v1/launches/images');
+  assert.equal(url, 'http://localhost:5000/v1/launches/prelaunch');
   assert.equal(init.method, 'POST');
   assert.equal(init.headers['X-User-Id'], '42');
   // The multipart boundary comes from the browser, never a manual header.
@@ -100,6 +100,44 @@ test('image upload posts exactly network, ownerAddress and one image file with t
   assert.equal(sent.name, 'logo.png');
   assert.equal(sent.type, 'image/png');
   same(result, { imageId: 'img-1', publicUrl: IMAGE_URL, status: 'pending' });
+});
+
+test('prelaunch trims optional HTTPS links without rewriting them and omits blank values', async () => {
+  const h = harness(() => response({ body: successBody({ imageId: 'img-1', publicUrl: IMAGE_URL, status: 'pending' }) }));
+  const image = new File(['image'], 'logo.png', { type: 'image/png' });
+  const website = `https://example.com/${'a'.repeat(2028)}`;
+  assert.equal(website.length, 2048);
+  await h.images.uploadLaunchImage({ network: 'testnet', ownerAddress: OWNER, image,
+    website: `  ${website}  `, xAccount: ' https://x.com/Project?ref=launch ' });
+  const body = h.calls[0].init.body;
+  assert.deepEqual([...body.keys()].sort(), ['image', 'network', 'ownerAddress', 'website', 'xAccount']);
+  assert.equal(body.get('website'), website);
+  assert.equal(body.get('xAccount'), 'https://x.com/Project?ref=launch');
+  await h.images.uploadLaunchImage({ network: 'testnet', ownerAddress: OWNER, image,
+    website: '  ', xAccount: '\t\n' });
+  assert.deepEqual([...h.calls[1].init.body.keys()].sort(), ['image', 'network', 'ownerAddress']);
+  for (const field of ['website', 'xAccount']) {
+    await h.images.uploadLaunchImage({ network: 'testnet', ownerAddress: OWNER, image,
+      [field]: 'https://example.com/project' });
+    assert.equal(h.calls.at(-1).init.body.get(field), 'https://example.com/project');
+  }
+});
+
+test('invalid prelaunch links stop before a request and display the validation message', async () => {
+  for (const field of ['website', 'xAccount']) {
+    for (const value of ['not a URL', '/relative', 'http://example.com', 'javascript:alert(1)',
+      'https://user@example.com', 'https://:secret@example.com', 'https://user:secret@example.com',
+      `https://example.com/${'a'.repeat(2029)}`]) {
+      const h = harness();
+      await assert.rejects(() => h.images.uploadLaunchImage({
+        network: 'testnet', ownerAddress: OWNER, image: new File(['image'], 'logo.png'), [field]: value,
+      }), (error) => {
+        assert.match(h.images.launchImageErrorMessage(error), new RegExp(`${field} must be an HTTPS URL`));
+        return true;
+      });
+      assert.equal(h.calls.length, 0);
+    }
+  }
 });
 
 test('upload responses with missing fields are rejected instead of guessed', async () => {
@@ -170,7 +208,7 @@ test('image status reads validate the lifecycle fields and require a user', asyn
   };
   const h = harness(() => response({ body: successBody(info) }));
   same(await h.images.getLaunchImage('img-1'), info);
-  assert.equal(h.calls[0].url, 'http://localhost:5000/v1/launches/images/img-1');
+  assert.equal(h.calls[0].url, 'http://localhost:5000/v1/launches/prelaunch/img-1');
   assert.equal(h.calls[0].init.headers['X-User-Id'], '42');
 
   const signedOut = harness(() => response({ body: successBody(info) }));

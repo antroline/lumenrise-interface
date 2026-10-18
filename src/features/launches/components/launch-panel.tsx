@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { LaunchReveal } from './launch-reveal';
-import { Accordion } from '@/components/ui/accordion';
+import { Accordion, type AccordionProps } from '@/components/ui/accordion';
 
 /** Keyboard focus that stays visible on white, ink and lime surfaces alike. */
 export const launchFocus =
@@ -39,6 +39,7 @@ export function LaunchSection({
   children,
   collapsible = false,
   defaultOpen = true,
+  accordionVariant = 'surface',
 }: {
   id: string;
   title: string;
@@ -46,6 +47,7 @@ export function LaunchSection({
   children: ReactNode;
   collapsible?: boolean;
   defaultOpen?: boolean;
+  accordionVariant?: AccordionProps['variant'];
 }) {
   if (collapsible)
     return (
@@ -59,7 +61,15 @@ export function LaunchSection({
           <h2 id={`${id}-heading`} className="sr-only">
             {title}
           </h2>
-          <Accordion title={title} defaultOpen={defaultOpen}>
+          <Accordion
+            title={
+              accordionVariant === 'plain' ? (
+                <span className="text-xl font-semibold tracking-tight sm:text-[22px]">{title}</span>
+              ) : title
+            }
+            defaultOpen={defaultOpen}
+            variant={accordionVariant}
+          >
             {meta && (
               <p className="text-xs text-muted-foreground tabular-nums">
                 {meta}

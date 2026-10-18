@@ -130,7 +130,11 @@ export function BondingTradeLayout({
             ticker={ticker}
             pair={pair}
             address={address}
-            links={{ website: launch?.metadata.website, x: launch?.metadata.xAccount, github: launch?.metadata.github }}
+            links={{
+              website: launch?.metadata.website,
+              x: launch?.metadata.xAccount,
+              github: launch?.metadata.github,
+            }}
             status={
               <>
                 <Badge variant="soft" size="sm" className="border-0">
@@ -185,10 +189,18 @@ export function BondingTradeLayout({
                 <div>
                   <dt className="text-small text-muted-foreground">Holders</dt>
                   <dd className="mt-1 text-mid font-semibold">
-                    {holders.query.data?.totalHolders.toLocaleString('en-US') ?? '—'}
+                    {holders.query.data?.totalHolders.toLocaleString('en-US') ??
+                      '—'}
                   </dd>
-                  <span className="text-small text-muted-foreground" title="Known holders from recorded trades; updates may be delayed. Not a complete on-chain holder index.">
-                    {holders.query.isPending ? 'Loading…' : holders.query.isError ? 'Unavailable' : 'Known holders'}
+                  <span
+                    className="text-small text-muted-foreground"
+                    title="Known holders from recorded trades; updates may be delayed. Not a complete on-chain holder index."
+                  >
+                    {holders.query.isPending
+                      ? 'Loading…'
+                      : holders.query.isError
+                        ? 'Unavailable'
+                        : 'Known holders'}
                   </span>
                 </div>
               </>
@@ -232,7 +244,12 @@ export function BondingTradeLayout({
               </TradeTabPanels>
             </TradeTabs>
           ) : loading ? (
-            <div role="status" aria-label="Loading trading configuration" aria-busy="true" className="flex flex-col gap-3">
+            <div
+              role="status"
+              aria-label="Loading trading configuration"
+              aria-busy="true"
+              className="flex flex-col gap-3"
+            >
               <Skeleton className="h-36 w-full rounded-2xl" />
               <Skeleton className="h-24 w-full rounded-2xl" />
             </div>
@@ -263,11 +280,21 @@ export function BondingTradeLayout({
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <Flag aria-hidden="true" className="size-4 shrink-0" />
-                  <h2 id="graduation-heading" className="text-sm font-semibold">Graduation</h2>
-                  <Badge variant="lime" size="sm" className="bg-ink/10 text-ink">{status}</Badge>
+                  <h2 id="graduation-heading" className="text-sm font-semibold">
+                    Graduation
+                  </h2>
+                  <Badge
+                    variant="lime"
+                    size="sm"
+                    className="bg-ink/10 text-ink"
+                  >
+                    {status}
+                  </Badge>
                 </div>
                 <span className="text-mid font-semibold tabular-nums">
-                  {progress === undefined ? 'Unavailable' : `${progress.toFixed(2)}%`}
+                  {progress === undefined
+                    ? 'Unavailable'
+                    : `${progress.toFixed(2)}%`}
                 </span>
               </div>
               {progress !== undefined && (
@@ -281,22 +308,49 @@ export function BondingTradeLayout({
               <dl className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-small tabular-nums">
                 <div className="flex flex-wrap items-baseline gap-x-1.5">
                   <dt className="text-ink/80">Net reserves</dt>
-                  <dd className="font-semibold" title={reserve === undefined ? undefined : `${detailAmount(reserve.toString())} ${pair}`}>
-                    {reserve === undefined ? 'Unavailable' : compactAmount(reserve.toString())} {pair}
+                  <dd
+                    className="font-semibold"
+                    title={
+                      reserve === undefined
+                        ? undefined
+                        : `${detailAmount(reserve.toString())} ${pair}`
+                    }
+                  >
+                    {reserve === undefined
+                      ? 'Unavailable'
+                      : compactAmount(reserve.toString())}{' '}
+                    {pair}
                   </dd>
                 </div>
                 <div className="flex flex-wrap items-baseline gap-x-1.5">
                   <dt className="text-ink/80">Target</dt>
-                  <dd className="font-semibold" title={target === undefined ? undefined : `${detailAmount(target.toString())} ${pair}`}>
-                    <span>{target === undefined ? 'Unavailable' : compactAmount(target.toString())} {pair}</span>
+                  <dd
+                    className="font-semibold"
+                    title={
+                      target === undefined
+                        ? undefined
+                        : `${detailAmount(target.toString())} ${pair}`
+                    }
+                  >
+                    <span>
+                      {target === undefined
+                        ? 'Unavailable'
+                        : compactAmount(target.toString())}{' '}
+                      {pair}
+                    </span>
                   </dd>
                 </div>
               </dl>
               {(finished || (!snapshot && bonding.stateStale)) && (
                 <p className="text-small text-ink/80">
-                  {status === 'Graduated' ? 'Curve trading ended · pool settlement unavailable.'
-                    : status === 'Failed' ? 'Target not reached · eligible positions can be sold back.' : ''}
-                  {!snapshot && bonding.stateStale ? ' Indexed state may be outdated.' : ''}
+                  {status === 'Graduated'
+                    ? 'Curve trading ended · pool settlement unavailable.'
+                    : status === 'Failed'
+                      ? 'Target not reached · eligible positions can be sold back.'
+                      : ''}
+                  {!snapshot && bonding.stateStale
+                    ? ' Indexed state may be outdated.'
+                    : ''}
                 </p>
               )}
             </Card>

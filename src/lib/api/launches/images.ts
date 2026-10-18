@@ -1,9 +1,9 @@
 /**
- * Token image endpoints.
+ * Bonding Curve prelaunch endpoints.
  *
- * `POST /launches/images` stores exactly one logo file for the signed-in
+ * `POST /launches/prelaunch` stores a logo and optional project links for the signed-in
  * user's wallet before the launch transaction; the returned `publicUrl` goes
- * into the contract's `metadata.logo` unchanged. `GET /launches/images/:id`
+ * into the contract's `metadata.logo` unchanged. `GET /launches/prelaunch/:id`
  * reports the image lifecycle to its owner, so a retry can reuse a still
  * valid upload instead of uploading again.
  */
@@ -95,22 +95,39 @@ export function fileFromDataUrl(dataUrl: string): File {
 }
 
 /**
- * POST /launches/images — multipart with exactly `network`, `ownerAddress`,
- * and one `image` file. Identified by `X-User-Id`; the FormData boundary is
+ * POST /launches/prelaunch — multipart with `network`, `ownerAddress`,
+ * one `image` file, and optional links stored by the server for confirmed
+ * launch metadata. Identified by `X-User-Id`; the FormData boundary is
  * left to the browser.
  */
 export async function uploadLaunchImage(input: {
   network: ApiNetwork;
   ownerAddress: string;
   image: File;
+  website?: string;
+  xAccount?: string;
   signal?: AbortSignal;
 }): Promise<UploadedLaunchImage> {
   const formData = new FormData();
   formData.append('network', input.network);
   formData.append('ownerAddress', input.ownerAddress);
   formData.append('image', input.image);
+  for (const field of ['website', 'xAccount'] as const) {
+    const value = input[field]?.trim();
+    if (!value) continue;
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      throw new Error(`${field} must be an HTTPS URL of up to 2048 characters without embedded credentials.`);
+    }
+    if (value.length > 2048 || url.protocol !== 'https:' || url.username || url.password) {
+      throw new Error(`${field} must be an HTTPS URL of up to 2048 characters without embedded credentials.`);
+    }
+    formData.append(field, value);
+  }
   return readUpload(
-    await apiRequest<unknown>('/launches/images', {
+    await apiRequest<unknown>('/launches/prelaunch', {
       method: 'POST',
       formData,
       user: true,
@@ -119,14 +136,14 @@ export async function uploadLaunchImage(input: {
   );
 }
 
-/** GET /launches/images/:imageId — lifecycle of an owned upload. */
+/** GET /launches/prelaunch/:imageId — lifecycle of an owned upload. */
 export async function getLaunchImage(
   imageId: string,
   options?: { signal?: AbortSignal },
 ): Promise<LaunchImageInfo> {
   const record = asRecord(
     await apiRequest<unknown>(
-      `/launches/images/${encodeURIComponent(imageId)}`,
+      `/launches/prelaunch/${encodeURIComponent(imageId)}`,
       { user: true, signal: options?.signal },
     ),
   );
@@ -185,5 +202,7 @@ export function launchImageErrorMessage(error: unknown): string {
     }
     return error.message;
   }
-  return 'The project image could not be uploaded. Try again.';
+  return error instanceof Error
+    ? error.message
+    : 'The project image could not be uploaded. Try again.';
 }

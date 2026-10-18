@@ -143,11 +143,13 @@ function saveRecord(record: BondingRecord) {
 }
 
 /**
- * Detects image, owner, or network changes without persisting the image
- * itself: two FNV-1a passes over the preview data URL plus its length.
+ * Detects image, link, owner, or network changes without persisting the image
+ * itself: two FNV-1a passes over the prelaunch input plus its length.
  */
-function imageFingerprint(dataUrl: string, owner: string) {
-  const input = `${API_NETWORK}:${owner}:${dataUrl}`;
+function imageFingerprint(draft: LaunchDraft, owner: string) {
+  const input = JSON.stringify([
+    API_NETWORK, owner, draft.logo, draft.website.trim(), draft.xAccount.trim(),
+  ]);
   let first = 0x811c9dc5;
   let second = 0x811c9dc5 ^ 0x9e3779b9;
   for (let index = 0; index < input.length; index++) {
@@ -247,7 +249,7 @@ export function useBondingLaunch() {
 
   /**
    * Uploads the project image before any wallet transaction, or reuses the
-   * stored upload when the image, owner, and network are unchanged and the
+   * stored upload when the image, links, owner, and network are unchanged and the
    * server still holds it. The returned publicUrl goes to the contract as-is.
    */
   async function resolveLaunchImage(
@@ -255,7 +257,7 @@ export function useBondingLaunch() {
     saved: BondingRecord | null,
     owner: string,
   ): Promise<LaunchImageRecord> {
-    const fingerprint = imageFingerprint(draft.logo, owner);
+    const fingerprint = imageFingerprint(draft, owner);
     const existing = saved?.image;
     if (existing && existing.fingerprint === fingerprint) {
       report('logo', 'Checking your uploaded project image.');
@@ -291,6 +293,8 @@ export function useBondingLaunch() {
         network: API_NETWORK,
         ownerAddress: owner,
         image: fileFromDataUrl(draft.logo),
+        website: draft.website,
+        xAccount: draft.xAccount,
       });
       return { ...uploaded, fingerprint };
     } catch (cause) {

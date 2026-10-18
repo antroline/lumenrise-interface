@@ -7,18 +7,20 @@ import {
   EmptyTitle,
   EmptyDescription,
 } from '@/components/ui/empty';
-import { Accordion } from '@/components/ui/accordion';
+import { Accordion, type AccordionProps } from '@/components/ui/accordion';
 
 export function TradeActivity({
   trades,
   pools,
   holders,
   onHoldersActiveChange,
+  accordionVariant = 'surface',
 }: {
   trades: ReactNode;
   pools: ReactNode;
   holders?: ReactNode;
   onHoldersActiveChange?: (active: boolean) => void;
+  accordionVariant?: AccordionProps['variant'];
 }) {
   const [open, setOpen] = useState({
     trades: true,
@@ -70,6 +72,7 @@ export function TradeActivity({
           className="min-w-0 scroll-mt-24"
         >
           <Accordion
+            variant={accordionVariant}
             title={title}
             open={open[key]}
             onOpenChange={(expanded) => {

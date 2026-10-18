@@ -208,10 +208,12 @@ export function isoToLocalDateTime(value: string) {
 }
 
 export function validOptionalUrl(value: string) {
-  if (!value.trim()) return true;
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  if (trimmed.length > 2048) return false;
   try {
-    const url = new URL(value);
-    return url.protocol === 'https:' && !!url.hostname.includes('.');
+    const url = new URL(trimmed);
+    return url.protocol === 'https:' && !!url.hostname && !url.username && !url.password;
   } catch {
     return false;
   }

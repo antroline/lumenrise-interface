@@ -36,6 +36,7 @@ import {
 import { LaunchActionCard, type TradeFormRenderer } from './launch-action-card';
 import { LaunchCover } from './launch-cover';
 import { LaunchCreator } from './launch-creator';
+import { LaunchTeam } from './launch-team';
 import { LaunchHero, type LaunchFigure } from './launch-hero';
 import { LaunchSection } from './launch-panel';
 import { LaunchReveal } from './launch-reveal';
@@ -519,6 +520,7 @@ export function IndexedLaunchOverview({
               <LaunchSection
                 id="market-stats"
                 title="Market stats"
+                accordionVariant="inset"
                 collapsible
                 defaultOpen
               >
@@ -585,7 +587,8 @@ export function IndexedLaunchOverview({
               </LaunchSection>
 
               {owner && (
-                <LaunchSection id="creator" title="Team" collapsible>
+                <LaunchSection id="creator" title="Team" collapsible accordionVariant="soft">
+                  {launch && <LaunchTeam owner={launch.owner} contractId={address} network={network} />}
                   <LaunchCreator
                     owner={owner}
                     network={network}
@@ -597,6 +600,7 @@ export function IndexedLaunchOverview({
               {(b || loading) && (
                 <LaunchSection
                   id="tokenomics"
+                  accordionVariant="inset"
                   collapsible
                   title="Tokenomics"
                   meta={
@@ -648,6 +652,7 @@ export function IndexedLaunchOverview({
               {(b || loading) && (
                 <LaunchSection
                   id="rules"
+                  accordionVariant="inset"
                   collapsible
                   defaultOpen={false}
                   title="How this launch works"
@@ -688,6 +693,7 @@ export function IndexedLaunchOverview({
 
               <LaunchSection
                 id="contracts"
+                accordionVariant="inset"
                 collapsible
                 defaultOpen={false}
                 title="Contracts"
@@ -695,6 +701,7 @@ export function IndexedLaunchOverview({
                 {children}
               </LaunchSection>
               <TradeActivity
+                accordionVariant="inset"
                 onHoldersActiveChange={setHoldersActive}
                 trades={
                   <IndexedTrades

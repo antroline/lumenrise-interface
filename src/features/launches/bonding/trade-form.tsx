@@ -88,6 +88,7 @@ export function TradeForm(props: TradeFormProps) {
         {[25, 50, 75, 100].map((percent) => (
           <Button
             key={percent}
+            data-trade-control=""
             type="button"
             variant="ghost"
             size="sm"
@@ -111,8 +112,9 @@ export function TradeForm(props: TradeFormProps) {
       </div>
       <FieldGroup>
         <Field
+          data-trade-input=""
           data-invalid={!!inputError}
-          className="gap-1 rounded-lg bg-secondary/70 px-3 py-2.5"
+          className="gap-1 rounded-lg bg-neutral-100 px-3 py-2.5"
         >
           <div className="flex min-w-0 items-center justify-between gap-3">
             <FieldLabel

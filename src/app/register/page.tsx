@@ -14,28 +14,24 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { PROFILE_IMAGE_MIN_DIMENSION, PROFILE_IMAGE_TYPES, validateProfileImage } from '@/lib/image'
 import { useLaunchpad } from '@/lib/launchpad'
+import { consumeAuthReturnTo } from '@/lib/auth-return'
 
-const DEFAULT_DESTINATION = '/portfolio'
-
-function readReturnTo() {
-  return window.sessionStorage.getItem('launchpad:returnTo') || DEFAULT_DESTINATION
-}
+const DEFAULT_DESTINATION = '/'
 
 export default function RegisterPage() {
   const router = useRouter()
   const { isSignedIn, account, retryStatusCheck } = useLaunchpad()
-  const [justRegistered, setJustRegistered] = useState(false)
+  const redirectStarted = useRef(false)
 
   // A user who is already registered never sees the form: they continue to
   // their saved destination (or the default) straight away. The dev preview
   // has no provider session to register with, so it passes through as well.
   useEffect(() => {
-    if (account.status === 'registered' && justRegistered) return
     if (account.status !== 'registered' && account.status !== 'preview') return
-    const destination = readReturnTo()
-    window.sessionStorage.removeItem('launchpad:returnTo')
-    router.replace(destination)
-  }, [account.status, justRegistered, router])
+    if (redirectStarted.current) return
+    redirectStarted.current = true
+    router.replace(consumeAuthReturnTo())
+  }, [account.status, router])
 
   const redirecting = account.status === 'registered' || account.status === 'preview'
 
@@ -48,7 +44,7 @@ export default function RegisterPage() {
         {!isSignedIn ? (
           <AuthGate destination={DEFAULT_DESTINATION} description="Connect your account with Blux to set up your LumenRise profile." />
         ) : account.status === 'unregistered' ? (
-          <RegistrationForm onRegistered={() => setJustRegistered(true)} />
+          <RegistrationForm />
         ) : account.status === 'error' ? (
           <Empty className="min-h-[60vh] border">
             <EmptyHeader className="max-w-md">
@@ -87,8 +83,7 @@ function StatusPanel({ title, description }: { title: string; description: strin
   )
 }
 
-function RegistrationForm({ onRegistered }: { onRegistered: () => void }) {
-  const router = useRouter()
+function RegistrationForm() {
   const { register } = useLaunchpad()
   const [name, setName] = useState('')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
@@ -148,8 +143,6 @@ function RegistrationForm({ onRegistered }: { onRegistered: () => void }) {
     const result = await register({ name: trimmed, avatar: avatarFile })
     setSubmitting(false)
     if (result.ok) {
-      onRegistered()
-      router.push('/onboarding')
       return
     }
     // On failure the entered name and chosen photo stay in place.

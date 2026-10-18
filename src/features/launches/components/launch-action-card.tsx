@@ -54,13 +54,13 @@ export function LaunchActionCard({
             <TabsList aria-label="Trade direction" className="h-8 w-fit">
               <TabsTrigger
                 value="buy"
-                className="px-3! text-[11px]! data-active:bg-ink! data-active:text-white!"
+                className="px-3! text-[11px]! data-active:bg-neutral-900! data-active:text-white!"
               >
                 Buy
               </TabsTrigger>
               <TabsTrigger
                 value="sell"
-                className="px-3! text-[11px]! data-active:bg-ink! data-active:text-white!"
+                className="px-3! text-[11px]! data-active:bg-neutral-900! data-active:text-white!"
               >
                 Sell
               </TabsTrigger>
@@ -97,7 +97,7 @@ export function LaunchActionCard({
 
   return (
     <>
-      <LaunchPanel className="relative z-10 overflow-hidden rounded-3xl border-2 border-border bg-white shadow-none ring-0 dark:bg-card dark:ring-0 lg:max-h-[calc(100svh-48px)] lg:overflow-y-auto [scrollbar-width:thin]">
+      <LaunchPanel className="trade-panel-neutral relative z-10 overflow-hidden rounded-3xl border-2 border-border bg-white shadow-none ring-0 dark:bg-card dark:ring-0 lg:max-h-[calc(100svh-48px)] lg:overflow-y-auto [scrollbar-width:thin]">
         {identity}
         {wide ? (
           form
@@ -116,7 +116,7 @@ export function LaunchActionCard({
             <SheetContent
               side="bottom"
               keepMounted
-              className="max-h-[90svh] overflow-y-auto rounded-t-2xl"
+              className="trade-panel-neutral max-h-[90svh] overflow-y-auto rounded-t-2xl"
             >
               <div className="px-5 pt-5 pr-12">
                 <SheetTitle>Trade {name}</SheetTitle>
@@ -130,7 +130,7 @@ export function LaunchActionCard({
           </Sheet>
         )}
       </LaunchPanel>
-      {wide && <div ref={setQuoteHost} className="relative -mt-3" />}
+      {wide && <div ref={setQuoteHost} className="trade-panel-neutral relative -mt-3" />}
     </>
   );
 }
