@@ -51,21 +51,21 @@ export const LaunchStepPanel = forwardRef<
       custom={direction}
       variants={{
         enter: (next: 'forward' | 'back') => ({
-          opacity: 0,
-          x: reduced ? 0 : next === 'forward' ? 4 : -4,
-          filter: reduced ? 'blur(0px)' : 'blur(3px)',
+          opacity: reduced ? 0 : 0.3,
+          x: reduced ? 0 : next === 'forward' ? 12 : -12,
+          filter: reduced ? 'blur(0px)' : 'blur(10px)',
         }),
         active: {
           opacity: 1,
           x: 0,
           filter: 'blur(0px)',
-          transition: { ...launchTransition, duration: reduced ? 0 : 0.26 },
+          transition: { ...launchTransition, duration: reduced ? 0 : 0.42 },
         },
         exit: (next: 'forward' | 'back') => ({
           opacity: 0,
-          x: reduced ? 0 : next === 'forward' ? -4 : 4,
-          filter: reduced ? 'blur(0px)' : 'blur(2px)',
-          transition: { duration: reduced ? 0 : 0.14, ease: [0.4, 0, 1, 1] },
+          x: reduced ? 0 : next === 'forward' ? -8 : 8,
+          filter: reduced ? 'blur(0px)' : 'blur(6px)',
+          transition: { duration: reduced ? 0 : 0.18, ease: [0.4, 0, 1, 1] },
         }),
       }}
       initial="enter"
@@ -73,6 +73,13 @@ export const LaunchStepPanel = forwardRef<
       exit="exit"
       onAnimationComplete={(definition) => {
         if (present && definition === 'active') {
+          // Respect interaction that began while the step was animating in.
+          const activeElement = document.activeElement;
+          if (
+            activeElement &&
+            activeElement !== document.body &&
+            activeElement !== document.documentElement
+          ) return;
           document
             .getElementById('wizard-title')
             ?.focus({ preventScroll: true });
@@ -80,11 +87,11 @@ export const LaunchStepPanel = forwardRef<
       }}
       className="flex min-h-0 min-w-0 flex-1 flex-col"
     >
-      <div className="mb-6 shrink-0 short:mb-4">
+      <div className="mb-5 shrink-0 studio-compact:mb-3">
         <h2
           id={present ? 'wizard-title' : undefined}
           tabIndex={-1}
-          className="text-[24px] font-semibold leading-[1.2] tracking-[-0.035em] outline-none sm:text-[28px] xl:text-[32px] short:sm:text-[28px]"
+          className="text-2xl font-semibold leading-[1.2] tracking-[-0.03em] outline-none sm:text-[28px] studio-compact:text-2xl"
         >
           {heading}
         </h2>
@@ -98,7 +105,7 @@ export const LaunchStepPanel = forwardRef<
         data-launch-fields=""
         role="region"
         aria-label="Step fields"
-        className="-mx-1 min-w-0 px-1 pb-1"
+        className="-mx-1 min-w-0 flex-1 px-1 pb-1"
       >
         {children}
       </div>
@@ -160,22 +167,3 @@ export function LaunchFieldError({ children, ...props }: ComponentProps<'p'>) {
     </LaunchReveal>
   );
 }
-
-export const LaunchStatePanel = forwardRef<
-  HTMLDivElement,
-  { children: ReactNode }
->(function LaunchStatePanel({ children }, ref) {
-  const present = useIsPresent();
-  const reduced = useLaunchReducedMotion();
-  return (
-    <motion.div
-      ref={ref}
-      inert={!present}
-      aria-hidden={!present || undefined}
-      initial={{ opacity: reduced ? 1 : 0.85 }}
-      animate={{ opacity: 1 }}
-    >
-      {children}
-    </motion.div>
-  );
-});
