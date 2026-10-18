@@ -8,10 +8,11 @@ import { useState, type ReactNode } from 'react';
 // import { detailAmount, detailDate, durationLabel } from '../lib/bonding-details';
 import { Copy, ExternalLink } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { LaunchResult } from '@/lib/api/launches/market';
 import type { ApiNetwork } from '@/lib/api/launches/types';
 import type { Snapshot, Tokens } from '../bonding/contract';
-import { bondingDetails, indexedContract } from '../lib/bonding-details';
+import { indexedContract } from '../lib/bonding-details';
 
 function Address({ value, network }: { value: string; network: ApiNetwork }) {
   const [message, setMessage] = useState('');
@@ -24,11 +25,11 @@ function Address({ value, network }: { value: string; network: ApiNetwork }) {
     }
   }
   return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <div className="flex min-w-0 items-center gap-1">
+    <div className="flex min-w-0 flex-col items-end gap-1">
+      <div className="flex w-full min-w-0 items-center justify-end gap-1">
         <span
           title={value}
-          className="min-w-0 flex-1 truncate font-mono text-[13.5px]"
+          className="min-w-0 truncate text-right font-mono text-xs sm:text-[13.5px]"
         >
           {value.slice(0, 8)}…{value.slice(-8)}
         </span>
@@ -93,21 +94,28 @@ export function BondingTechnicalDetails({
   network,
   launch,
   snapshot,
+  loading = false,
 }: {
   address: string;
   network: ApiNetwork;
   launch?: LaunchResult;
   snapshot?: Snapshot;
   tokens?: Tokens;
+  loading?: boolean;
   /** Rendered inside the full contract accounting panel, which is currently commented out. */
   children?: ReactNode;
 }) {
   const raw = indexedContract(launch);
   const c = snapshot?.config ?? raw.config;
-  const b = bondingDetails(launch, snapshot);
   const p = c?.params;
   const addr = (value: string | undefined) =>
-    value ? <Address value={value} network={network} /> : 'Unavailable';
+    value ? (
+      <Address value={value} network={network} />
+    ) : loading ? (
+      <Skeleton className="ml-auto h-4 w-40 motion-reduce:animate-none" />
+    ) : (
+      'Unavailable'
+    );
   /* Used only by the commented-out "Full contract accounting" panel.
   const state = snapshot?.state ?? raw.state;
   const pair = tokens
@@ -133,21 +141,14 @@ export function BondingTechnicalDetails({
           [
             ['Launch contract', addr(address)],
             ['Token contract', addr(p?.asset ?? launch?.asset)],
-            ['Quote token contract', addr(p?.pair ?? launch?.pair)],
-            [
-              'Administrative controls',
-              b
-                ? `The creator claims vested team tokens and accrued trading fees. The platform receives a ${b.curve.platformFeeBps / 100}% fee share at graduation.`
-                : 'Unavailable until the contract configuration loads.',
-            ],
           ] satisfies [string, ReactNode][]
         ).map(([label, value]) => (
           <div
             key={label}
-            className="grid min-w-0 gap-1 border-t border-divider py-3.5 first:border-t-0 first:pt-0 last:pb-0 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-6"
+            className="grid min-w-0 grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-center gap-3 border-t border-divider py-3.5 first:border-t-0 first:pt-0 last:pb-0 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-6"
           >
-            <dt className="text-muted-foreground">{label}</dt>
-            <dd className="min-w-0 break-words leading-relaxed">{value}</dd>
+            <dt className="text-xs text-muted-foreground sm:text-sm">{label}</dt>
+            <dd className="min-w-0 break-words text-right leading-relaxed">{value}</dd>
           </div>
         ))}
       </dl>
