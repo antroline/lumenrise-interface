@@ -91,7 +91,7 @@ export function LaunchCover({
     <header
       className={cn(
         'relative bg-card p-5 sm:p-6',
-        compact && 'bg-transparent',
+        compact && 'bg-transparent p-4 sm:p-5',
         integrated
           ? 'border-b border-divider'
           : ['rounded-2xl', launchElevationRaised],
@@ -99,7 +99,7 @@ export function LaunchCover({
     >
       {compact && (
         <div className="mb-4 flex flex-wrap items-center gap-1.5">
-          <LaunchTypeBadge className={cn(projectBadge, 'py-0')}>
+          <LaunchTypeBadge className={cn(projectBadge, 'bg-secondary py-0 text-muted-foreground dark:bg-secondary dark:text-muted-foreground')}>
             Bonding curve launch
           </LaunchTypeBadge>
           <StatusPill status={status} unified />

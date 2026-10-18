@@ -391,7 +391,7 @@ export function IndexedLaunchOverview({
     <TradeMotion>
       <div
         data-launch-page
-        className="mx-auto w-full max-w-[1320px] pb-24 lg:pb-16 selection:bg-lime selection:text-ink [&_section]:shadow-none [&_[data-slot=card]]:shadow-none"
+        className="launch-details mx-auto w-full max-w-[1320px] pb-24 lg:pb-16 selection:bg-lime selection:text-ink [&_section]:shadow-none [&_[data-slot=card]]:shadow-none"
       >
         <div className="mb-4 md:hidden">
           <BackLink href={`/launches?network=${network}`}>Projects</BackLink>
@@ -467,7 +467,7 @@ export function IndexedLaunchOverview({
               }
               loading={loading && !b}
             />
-            <div className="flex min-w-0 flex-col gap-4 lg:gap-5">
+            <div className="launch-sections flex min-w-0 flex-col rounded-2xl bg-card px-4 text-card-foreground sm:px-5">
               <LaunchReveal>
                 <section
                   id="about"
@@ -517,7 +517,7 @@ export function IndexedLaunchOverview({
               <LaunchSection
                 id="market-stats"
                 title="Market stats"
-                accordionVariant="inset"
+                accordionVariant="plain"
                 collapsible
                 defaultOpen
               >
@@ -584,7 +584,7 @@ export function IndexedLaunchOverview({
               </LaunchSection>
 
               {owner && (
-                <LaunchSection id="creator" title="Team" collapsible accordionVariant="soft">
+                <LaunchSection id="creator" title="Team" collapsible accordionVariant="plain">
                   {launch && <LaunchTeam owner={launch.owner} contractId={address} network={network} />}
                   <LaunchCreator
                     owner={owner}
@@ -597,7 +597,7 @@ export function IndexedLaunchOverview({
               {(b || loading) && (
                 <LaunchSection
                   id="tokenomics"
-                  accordionVariant="inset"
+                  accordionVariant="plain"
                   collapsible
                   title="Tokenomics"
                   meta={
@@ -649,7 +649,7 @@ export function IndexedLaunchOverview({
               {(b || loading) && (
                 <LaunchSection
                   id="rules"
-                  accordionVariant="inset"
+                  accordionVariant="plain"
                   collapsible
                   defaultOpen={false}
                   title="How this launch works"
@@ -690,7 +690,7 @@ export function IndexedLaunchOverview({
 
               <LaunchSection
                 id="contracts"
-                accordionVariant="inset"
+                accordionVariant="plain"
                 collapsible
                 defaultOpen={false}
                 title="Contracts"
@@ -698,7 +698,8 @@ export function IndexedLaunchOverview({
                 {children}
               </LaunchSection>
               <TradeActivity
-                accordionVariant="inset"
+                accordionVariant="plain"
+                className="gap-0 lg:gap-0"
                 onHoldersActiveChange={setHoldersActive}
                 trades={
                   <IndexedTrades

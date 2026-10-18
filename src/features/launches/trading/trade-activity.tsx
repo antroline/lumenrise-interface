@@ -8,6 +8,7 @@ import {
   EmptyDescription,
 } from '@/components/ui/empty';
 import { Accordion, type AccordionProps } from '@/components/ui/accordion';
+import { cn } from '@/lib/utils';
 
 export function TradeActivity({
   trades,
@@ -15,12 +16,14 @@ export function TradeActivity({
   holders,
   onHoldersActiveChange,
   accordionVariant = 'surface',
+  className,
 }: {
   trades: ReactNode;
   pools: ReactNode;
   holders?: ReactNode;
   onHoldersActiveChange?: (active: boolean) => void;
   accordionVariant?: AccordionProps['variant'];
+  className?: string;
 }) {
   const [open, setOpen] = useState({
     trades: true,
@@ -63,7 +66,7 @@ export function TradeActivity({
     { key: 'pools', title: 'Liquidity pools', content: pools },
   ] as const;
   return (
-    <div className="flex min-w-0 flex-col gap-4 lg:gap-5">
+    <div className={cn('flex min-w-0 flex-col gap-4 lg:gap-5', className)}>
       {sections.map(({ key, title, content }) => (
         <section
           key={key}

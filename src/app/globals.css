@@ -494,6 +494,119 @@
   opacity: 0.55;
 }
 
+/* Launch details share one neutral palette across content, trading, and portals. */
+.launch-details {
+  --background: var(--color-white);
+  --foreground: var(--color-neutral-900);
+  --card: var(--color-white);
+  --card-foreground: var(--color-neutral-900);
+  --popover: var(--color-white);
+  --popover-foreground: var(--color-neutral-900);
+  --secondary: var(--color-neutral-100);
+  --secondary-foreground: var(--color-neutral-900);
+  --muted: var(--color-neutral-50);
+  --muted-foreground: var(--color-neutral-500);
+  --faint: var(--color-neutral-500);
+  --surface: var(--color-neutral-50);
+  --border: var(--color-neutral-200);
+  --divider: var(--color-neutral-100);
+  --input: var(--color-neutral-200);
+  --accent: var(--color-neutral-100);
+  --accent-foreground: var(--color-neutral-900);
+  --primary: var(--color-brand-lime);
+  --primary-foreground: var(--color-neutral-900);
+  --color-lime: var(--color-brand-lime);
+  --color-lime-hover: color-mix(in srgb, var(--color-brand-lime) 90%, var(--color-neutral-900));
+}
+
+.dark .launch-details,
+.launch-details.dark {
+  --background: var(--color-neutral-950);
+  --foreground: var(--color-neutral-50);
+  --card: var(--color-neutral-900);
+  --card-foreground: var(--color-neutral-50);
+  --popover: var(--color-neutral-900);
+  --popover-foreground: var(--color-neutral-50);
+  --secondary: var(--color-neutral-800);
+  --secondary-foreground: var(--color-neutral-100);
+  --muted: var(--color-neutral-900);
+  --muted-foreground: var(--color-neutral-400);
+  --faint: var(--color-neutral-500);
+  --surface: var(--color-neutral-950);
+  --border: var(--color-neutral-800);
+  --divider: var(--color-neutral-800);
+  --input: var(--color-neutral-700);
+  --accent: var(--color-neutral-800);
+  --accent-foreground: var(--color-neutral-50);
+}
+
+/* Flat disclosure rows form a continuous reading surface, rather than nested cards. */
+.launch-sections #about,
+.launch-sections [data-slot='accordion'] {
+  border-bottom: 1px solid var(--divider);
+}
+
+.launch-sections [data-slot='accordion'] > button {
+  width: calc(100% + 16px);
+  min-height: 56px;
+  margin-inline: -8px;
+  padding: 12px 8px;
+  border-radius: var(--radius-lg);
+  color: var(--foreground);
+  transition: background-color 150ms, color 150ms;
+}
+
+.launch-sections [data-slot='accordion'] > button > span:first-child > span:first-child {
+  font-size: var(--text-title);
+  line-height: 1.5;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+
+.launch-sections [data-slot='accordion'][data-state='open'] > button > span:first-child > span:first-child {
+  font-weight: 600;
+}
+
+.launch-sections [data-slot='accordion'] > button > span:first-child > span:first-child > span {
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+.launch-sections [data-slot='accordion'] > button > span:last-child > svg {
+  width: 16px;
+  height: 16px;
+  color: var(--muted-foreground);
+}
+
+.launch-sections [data-slot='accordion-body'] {
+  padding: 0 0 20px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.launch-sections :where([aria-label='Founder'], [aria-label='Team members'] > li) {
+  padding-inline: 0;
+  border: 0;
+  background: transparent;
+}
+
+.launch-sections [aria-label='Holder wallets'] > li {
+  border-color: transparent;
+  background: var(--muted);
+}
+
+@media (hover: hover) {
+  .launch-sections [data-slot='accordion'] > button:hover {
+    background: var(--accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .launch-sections [data-slot='accordion'] > button {
+    transition: none;
+  }
+}
+
 /* Price history keeps a neutral palette without changing surrounding launch UI. */
 .price-history {
   --foreground: var(--color-neutral-900);
@@ -552,11 +665,11 @@
   --secondary-foreground: var(--color-neutral-900);
   --muted-foreground: var(--color-neutral-500);
   --border: var(--color-neutral-200);
-  --divider: var(--color-neutral-200);
+  --divider: var(--color-neutral-100);
   --input: var(--color-neutral-200);
   --trade-input-background: var(--color-neutral-50);
-  --trade-control-hover: var(--color-neutral-200);
-  --trade-disabled-background: var(--color-neutral-200);
+  --trade-control-hover: var(--color-neutral-100);
+  --trade-disabled-background: var(--color-neutral-100);
   --trade-disabled-text: var(--color-neutral-400);
 }
 

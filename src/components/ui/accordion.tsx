@@ -108,6 +108,7 @@ export function Accordion({
         </motion.span>
       </button>
       <motion.div
+        data-slot="accordion-content"
         id={id}
         inert={!open}
         aria-hidden={!open}
@@ -126,6 +127,7 @@ export function Accordion({
           }
         >
           <div
+            data-slot="accordion-body"
             className={cn(
               'flex min-w-0 flex-col gap-3',
               variant === 'surface'

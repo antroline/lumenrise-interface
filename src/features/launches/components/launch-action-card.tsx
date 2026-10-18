@@ -41,7 +41,7 @@ export function LaunchActionCard({
   const [quoteHost, setQuoteHost] = useState<HTMLDivElement | null>(null);
   const [direction, setDirection] = useState('buy');
   const form = (
-    <div className="flex min-w-0 flex-col gap-3 p-5">
+    <div className="flex min-w-0 flex-col gap-3 p-4 sm:p-5">
       {trade ??
         (buy || sell ? (
           <Tabs
@@ -54,13 +54,13 @@ export function LaunchActionCard({
             <TabsList aria-label="Trade direction" className="h-8 w-fit">
               <TabsTrigger
                 value="buy"
-                className="px-3! text-[11px]! data-active:bg-neutral-900! data-active:text-white!"
+                className="px-3! text-xs! data-active:bg-neutral-900! data-active:text-white! dark:data-active:bg-neutral-700!"
               >
                 Buy
               </TabsTrigger>
               <TabsTrigger
                 value="sell"
-                className="px-3! text-[11px]! data-active:bg-neutral-900! data-active:text-white!"
+                className="px-3! text-xs! data-active:bg-neutral-900! data-active:text-white! dark:data-active:bg-neutral-700!"
               >
                 Sell
               </TabsTrigger>
@@ -97,13 +97,13 @@ export function LaunchActionCard({
 
   return (
     <>
-      <LaunchPanel className="trade-panel-neutral relative z-10 overflow-hidden rounded-3xl border-2 border-border bg-white shadow-none ring-0 dark:bg-card dark:ring-0 lg:max-h-[calc(100svh-48px)] lg:overflow-y-auto [scrollbar-width:thin]">
+      <LaunchPanel className="trade-panel-neutral relative z-10 overflow-hidden rounded-2xl border border-border bg-white shadow-none ring-0 dark:bg-card dark:ring-0 lg:max-h-[calc(100svh-48px)] lg:overflow-y-auto [scrollbar-width:thin]">
         {identity}
         {wide ? (
           form
         ) : (
           <Sheet open={open} onOpenChange={setOpen}>
-            <div className="p-5">
+            <div className="p-4 sm:p-5">
               <Button className="w-full" onClick={() => setOpen(true)}>
                 Buy / Sell
               </Button>
@@ -116,16 +116,16 @@ export function LaunchActionCard({
             <SheetContent
               side="bottom"
               keepMounted
-              className="trade-panel-neutral max-h-[90svh] overflow-y-auto rounded-t-2xl"
+              className="launch-details trade-panel-neutral max-h-[90svh] overflow-y-auto rounded-t-2xl"
             >
-              <div className="px-5 pt-5 pr-12">
+              <div className="px-4 pt-4 pr-12 sm:px-5 sm:pt-5 sm:pr-12">
                 <SheetTitle>Trade {name}</SheetTitle>
                 <SheetDescription>
                   Buy or sell on the bonding curve.
                 </SheetDescription>
               </div>
               {form}
-              <div ref={setQuoteHost} className="mx-5 -mt-5 mb-5" />
+              <div ref={setQuoteHost} className="mx-4 -mt-4 mb-4 sm:mx-5 sm:-mt-5 sm:mb-5" />
             </SheetContent>
           </Sheet>
         )}
