@@ -28,11 +28,11 @@ import { WalletButton } from './wallet-button';
 const sideNavId = 'side-navigation';
 
 const rowClass =
-  'flex h-10 w-full items-center overflow-hidden rounded-lg text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-lime/55 focus-visible:outline-none';
+  'relative flex h-10 w-full items-center overflow-hidden rounded-lg text-sm font-medium whitespace-nowrap text-neutral-500 transition-colors duration-150 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-inset focus-visible:outline-none motion-reduce:transition-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 dark:focus-visible:ring-neutral-500';
 
 const fadeClass = 'transition-opacity duration-200 motion-reduce:transition-none';
 
-const iconButtonClass = 'shrink-0 text-muted-foreground hover:text-foreground';
+const iconButtonClass = 'shrink-0 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-neutral-400 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 dark:focus-visible:ring-neutral-500';
 
 export function SideNavigation() {
   const [expanded, setExpanded] = useState(true);
@@ -88,7 +88,7 @@ export function SideNavigation() {
         />
       </div>
 
-      <div className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-sidebar-border bg-page px-4 lg:hidden">
+      <div className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-sidebar-border bg-sidebar px-4 lg:hidden">
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger
             render={
@@ -105,7 +105,7 @@ export function SideNavigation() {
           <SheetContent
             side="left"
             showCloseButton={false}
-            className="w-[280px] gap-0 bg-sidebar p-0 text-sidebar-foreground duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            className="w-[280px] gap-0 border-sidebar-border bg-sidebar p-0 text-sidebar-foreground duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
           >
             <SheetTitle className="sr-only">Navigation</SheetTitle>
             <SidebarPanel
@@ -172,7 +172,7 @@ function SidebarPanel({
               type="button"
               onClick={onSearch}
               aria-keyshortcuts="/ Control+K Meta+K"
-              className={cn(rowClass, 'bg-sidebar-accent/60')}
+              className={cn(rowClass, 'bg-neutral-100 hover:bg-neutral-200/70 dark:bg-neutral-800 dark:hover:bg-neutral-700')}
             />
           }
         >
@@ -180,13 +180,13 @@ function SidebarPanel({
           <span className={cn(fadeClass, collapsed && 'opacity-0')}>Search</span>
           <Kbd
             aria-hidden="true"
-            className={cn('mr-2.5 ml-auto', fadeClass, collapsed && 'opacity-0')}
+            className={cn('mr-2.5 ml-auto border-neutral-200 text-neutral-500 dark:border-neutral-700 dark:text-neutral-400', fadeClass, collapsed && 'opacity-0')}
           >
             /
           </Kbd>
         </RailItem>
 
-        <nav aria-label="Primary" className="mt-3 flex flex-col gap-2">
+        <nav aria-label="Primary" className="mt-3 flex flex-col gap-3">
           {navGroups.map((group, index) => {
             const labelId = `${id}-group-${index}`;
             return (
@@ -196,11 +196,11 @@ function SidebarPanel({
                 aria-labelledby={labelId}
                 className="flex flex-col gap-0.5"
               >
-                <div className="relative flex h-7 items-center overflow-hidden px-2.5">
+                <div className="relative flex h-6 items-center overflow-hidden px-2.5">
                   <span
                     id={labelId}
                     className={cn(
-                      'font-mono text-2xs font-medium tracking-[0.16em] whitespace-nowrap text-faint uppercase',
+                      'text-2xs font-medium tracking-[0.14em] whitespace-nowrap text-neutral-500 uppercase dark:text-neutral-400',
                       fadeClass,
                       collapsed && 'opacity-0',
                     )}
@@ -210,7 +210,7 @@ function SidebarPanel({
                   <span
                     aria-hidden="true"
                     className={cn(
-                      'absolute inset-x-2 top-1/2 h-px bg-sidebar-border opacity-0',
+                      'absolute inset-x-2 top-1/2 h-px bg-neutral-200 opacity-0 dark:bg-neutral-800',
                       fadeClass,
                       collapsed && 'opacity-100',
                     )}
@@ -231,7 +231,7 @@ function SidebarPanel({
                           className={cn(
                             rowClass,
                             active &&
-                              'bg-sidebar-accent text-foreground hover:bg-sidebar-accent',
+                              'bg-neutral-100 font-semibold text-neutral-950 before:absolute before:inset-y-2.5 before:left-0 before:w-[3px] before:rounded-full before:bg-[#CBFF18] hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-50 dark:hover:bg-neutral-800',
                           )}
                         />
                       }
@@ -243,7 +243,7 @@ function SidebarPanel({
                       {item.count && (
                         <span
                           className={cn(
-                            'mr-2.5 ml-auto font-mono text-caption text-faint',
+                            'mr-2.5 ml-auto font-mono text-caption text-neutral-500 dark:text-neutral-400',
                             fadeClass,
                             collapsed && 'opacity-0',
                           )}
@@ -262,11 +262,13 @@ function SidebarPanel({
 
       <div
         className={cn(
-          'flex shrink-0 gap-2 border-t border-sidebar-border p-3',
+          'flex shrink-0 gap-2 border-t border-neutral-200 p-3 dark:border-neutral-800',
           collapsed ? 'flex-col' : 'items-center',
         )}
       >
-        <ThemeToggle />
+        <div className="shrink-0 [&>button]:text-neutral-500 [&>button]:hover:bg-neutral-100 [&>button]:hover:text-neutral-900 [&>button]:focus-visible:ring-neutral-400 dark:[&>button]:text-neutral-400 dark:[&>button]:hover:bg-neutral-800 dark:[&>button]:hover:text-neutral-100 dark:[&>button]:focus-visible:ring-neutral-500">
+          <ThemeToggle />
+        </div>
         <WalletButton
           compact={collapsed}
           menuSide={walletMenuSide}
@@ -301,7 +303,7 @@ function RailItem({
 
 function RowIcon({ icon: Icon }: { icon: NavItem['icon'] }) {
   return (
-    <span className="grid size-10 shrink-0 place-items-center" aria-hidden="true">
+    <span className="grid size-10 shrink-0 place-items-center text-neutral-500 dark:text-neutral-400" aria-hidden="true">
       <Icon className="size-[18px]" />
     </span>
   );
@@ -319,7 +321,7 @@ function HomeLink({
       href="/"
       aria-label="LumenRise home"
       onClick={onClick}
-      className="flex h-10 shrink-0 items-center rounded-lg px-1.5 focus-visible:ring-3 focus-visible:ring-lime/55 focus-visible:outline-none"
+      className="flex h-10 shrink-0 items-center rounded-lg px-1.5 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none dark:focus-visible:ring-neutral-500"
     >
       <LogoHorizontal height={height} variant="lime" className="max-w-none" />
     </Link>

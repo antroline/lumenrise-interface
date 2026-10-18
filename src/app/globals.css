@@ -19,6 +19,8 @@
   --color-lime: #d6ff00;
   --color-lime-hover: #c8ef00;
   --color-orange: #ff7315;
+  --color-brand-lime: #cbff18;
+  --color-price-area: var(--color-brand-lime);
 
   /* Type scale from the LumenRise product mockups. */
   --text-3xs: 0.625rem;
@@ -92,6 +94,19 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-faint: var(--faint);
+  /* Soft surfaces, controls, and their supporting colors. */
+  --color-soft-background: var(--soft-background);
+  --color-soft-foreground: var(--soft-foreground);
+  --color-soft-secondary: var(--soft-secondary);
+  --color-soft-inset: var(--soft-inset);
+  --color-soft-muted-foreground: var(--soft-muted-foreground);
+  --color-soft-border: var(--soft-border);
+  --color-soft-outline: var(--soft-outline);
+  --color-soft-primary: var(--soft-primary);
+  --color-soft-primary-foreground: var(--soft-primary-foreground);
+  --color-soft-primary-hover: var(--soft-primary-hover);
+  --color-soft-hover: var(--soft-hover);
+  --color-soft-icon: var(--soft-icon);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
@@ -139,7 +154,7 @@
 /* `.theme-reset` restores the light tokens for surfaces nested inside a DarkPanel. */
 :root,
 :root:not(.dark) .theme-reset {
-  --page: #ffffff;
+  --page: #fafafa;
   --background: #ffffff;
   --foreground: #0b0b0b;
   --card: #fff;
@@ -163,6 +178,19 @@
   --divider: #ededed;
   --input: #e5e5e5;
   --ring: #0b0b0b;
+
+  --soft-background: #ffffff;
+  --soft-foreground: #181a17;
+  --soft-secondary: #fafaf8;
+  --soft-inset: #fafafa;
+  --soft-muted-foreground: #71756f;
+  --soft-border: #e8eae6;
+  --soft-outline: #e5e7e4;
+  --soft-primary: #cbff18;
+  --soft-primary-foreground: #171a12;
+  --soft-primary-hover: #b9ed08;
+  --soft-hover: #f7f8f5;
+  --soft-icon: #626761;
 
   --emphasis: #0b0b0b;
   --emphasis-foreground: #ffffff;
@@ -188,23 +216,23 @@
   --chart-5: #ff7315;
   --chart-6: #3d6b8f;
 
-  --sidebar: #ffffff;
-  --sidebar-foreground: #0b0b0b;
+  --sidebar: var(--color-white);
+  --sidebar-foreground: var(--color-neutral-900);
   --sidebar-primary: #0b0b0b;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #efefef;
   --sidebar-accent-foreground: #0b0b0b;
-  --sidebar-border: #e5e5e5;
+  --sidebar-border: var(--color-neutral-200);
   --sidebar-ring: #0b0b0b;
 }
 
 /* Dark: warm near-black paper, not an inverted light theme. Ink emphasis
    hands over to lime so selected state keeps the same contrast weight. */
 .dark {
-  --page: #0e0e0d;
+  --page: #020202;
   --background: #0e0e0d;
   --foreground: #f4f4ef;
-  --card: #1a1a18;
+  --card: #080808;
   --card-foreground: #f4f4ef;
   --surface: #19191a;
   --surface-divider: #2f2f30;
@@ -212,7 +240,7 @@
   --popover-foreground: #f4f4ef;
   --primary: #d6ff00;
   --primary-foreground: #0b0b0b;
-  --secondary: #292926;
+  --secondary: #121212;
   --secondary-foreground: #d9d9d3;
   --muted: #22221f;
   --muted-foreground: #a3a39e;
@@ -224,6 +252,19 @@
   --divider: #2d2d29;
   --input: #2f2f2c;
   --ring: #d6ff00;
+
+  --soft-background: var(--card);
+  --soft-foreground: var(--foreground);
+  --soft-secondary: var(--secondary);
+  --soft-inset: var(--secondary);
+  --soft-muted-foreground: var(--muted-foreground);
+  --soft-border: var(--border);
+  --soft-outline: var(--border);
+  --soft-primary: var(--primary);
+  --soft-primary-foreground: var(--primary-foreground);
+  --soft-primary-hover: var(--color-lime-hover);
+  --soft-hover: var(--secondary);
+  --soft-icon: var(--muted-foreground);
 
   --emphasis: #d6ff00;
   --emphasis-foreground: #0b0b0b;
@@ -249,13 +290,13 @@
   --chart-5: #ff7315;
   --chart-6: #6f9cc0;
 
-  --sidebar: #0e0e0d;
-  --sidebar-foreground: #f4f4ef;
+  --sidebar: var(--color-neutral-950);
+  --sidebar-foreground: var(--color-neutral-100);
   --sidebar-primary: #d6ff00;
   --sidebar-primary-foreground: #0b0b0b;
   --sidebar-accent: #232321;
   --sidebar-accent-foreground: #f4f4ef;
-  --sidebar-border: #2a2a28;
+  --sidebar-border: var(--color-neutral-800);
   --sidebar-ring: #d6ff00;
 }
 
@@ -453,31 +494,44 @@
   opacity: 0.55;
 }
 
-/* A scoped launch-team palette; other accordion variants retain their tokens. */
+/* Price history keeps a neutral palette without changing surrounding launch UI. */
+.price-history {
+  --foreground: var(--color-neutral-900);
+  --card: var(--color-white);
+  --muted-foreground: var(--color-neutral-500);
+  --border: var(--color-neutral-100);
+}
+
+.dark .price-history {
+  --foreground: var(--color-neutral-100);
+  --card: var(--color-neutral-900);
+  --muted-foreground: var(--color-neutral-400);
+  --border: var(--color-neutral-800);
+}
+
+/* Apply the shared soft palette locally; other variants retain their tokens. */
 .accordion-soft {
-  --accordion-header-hover: var(--secondary);
-  --accordion-icon: var(--muted-foreground);
+  --accordion-header-hover: var(--soft-hover);
+  --accordion-icon: var(--soft-icon);
 }
 
 :root:not(.dark) .accordion-soft {
-  --background: #ffffff;
-  --foreground: #181a17;
-  --card: #ffffff;
-  --card-foreground: #181a17;
-  --secondary: #fafaf8;
-  --secondary-foreground: #181a17;
-  --muted-foreground: #71756f;
-  --border: #e8eae6;
-  --primary: #cbff18;
-  --primary-foreground: #171a12;
-  --color-lime-hover: #b9ed08;
-  --accordion-header-hover: #f7f8f5;
-  --accordion-icon: #626761;
-  border-color: #e5e7e4;
+  --background: var(--soft-background);
+  --foreground: var(--soft-foreground);
+  --card: var(--soft-background);
+  --card-foreground: var(--soft-foreground);
+  --secondary: var(--soft-secondary);
+  --secondary-foreground: var(--soft-foreground);
+  --muted-foreground: var(--soft-muted-foreground);
+  --border: var(--soft-border);
+  --primary: var(--soft-primary);
+  --primary-foreground: var(--soft-primary-foreground);
+  --color-lime-hover: var(--soft-primary-hover);
+  border-color: var(--soft-outline);
 }
 
 .accordion-soft > button > span:last-child > svg,
-.accordion-soft :where(button:not([class~="bg-primary"]), a) svg {
+.accordion-soft :where(button:not([class~='bg-primary']), a) svg {
   color: var(--accordion-icon);
 }
 
@@ -510,7 +564,8 @@
   background-color: var(--trade-input-background);
 }
 
-.trade-panel-neutral [data-slot='button']:is(:disabled, [aria-disabled='true']) {
+.trade-panel-neutral
+  [data-slot='button']:is(:disabled, [aria-disabled='true']) {
   background-color: var(--trade-disabled-background);
   color: var(--trade-disabled-text);
 }
@@ -520,7 +575,8 @@
 }
 
 @media (hover: hover) {
-  .trade-panel-neutral [data-trade-control]:not(:disabled):not([aria-disabled='true']):hover,
+  .trade-panel-neutral
+    [data-trade-control]:not(:disabled):not([aria-disabled='true']):hover,
   .trade-panel-neutral [data-slot='tabs-trigger']:not([data-active]):hover {
     background-color: var(--trade-control-hover);
   }

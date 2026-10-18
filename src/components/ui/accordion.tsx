@@ -131,7 +131,7 @@ export function Accordion({
               variant === 'surface'
                 ? 'rounded-2xl bg-secondary/50 p-5 shadow-[0_1px_2px_rgb(0_0_0/0.05)]'
                 : framed
-                  ? 'rounded-2xl bg-[#FAFAFA] p-4 sm:p-5 dark:bg-secondary'
+                  ? 'rounded-2xl bg-soft-inset p-4 sm:p-5'
                   : 'py-2',
             )}
           >
