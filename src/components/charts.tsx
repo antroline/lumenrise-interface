@@ -32,7 +32,7 @@ export function Sparkline({
   )
 }
 
-const AXIS_TEXT = 'fill-faint font-mono text-[10.5px]'
+const AXIS_TEXT = 'fill-faint font-mono text-2xs'
 
 export function LineChart({
   data,
