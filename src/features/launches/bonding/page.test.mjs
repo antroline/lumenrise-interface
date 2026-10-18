@@ -51,6 +51,7 @@ for (const state of ['loaded', 'initial', 'error', 'refresh', 'wallet-ready'])
         StrKey: { isValidEd25519PublicKey: () => state === 'wallet-ready' },
       },
       '@/components/ui/button': { Button: 'Button' },
+      '@/components/ui/toast': { useNotify: () => () => {} },
       '@/lib/launchpad': {
         useLaunchpad: () => ({ login() {}, retryStatusCheck() {} }),
       },
