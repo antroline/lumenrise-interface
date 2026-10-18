@@ -7,6 +7,9 @@ export type TradeFormProps = {
   snapshot: Snapshot;
   tokens: Tokens;
   side: 'buy' | 'sell';
+  compact?: boolean;
+  quoteHost?: HTMLElement | null;
+  active?: boolean;
   locked: boolean;
   setLocked: (value: boolean) => void;
   refresh: () => Promise<void>;
