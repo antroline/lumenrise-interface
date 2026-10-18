@@ -25,11 +25,13 @@ export function WalletButton({
   compact = false,
   menuSide = 'bottom',
   className,
+  onNavigate,
 }: {
   /** Icon-only trigger for narrow containers such as a collapsed sidebar. */
   compact?: boolean;
   menuSide?: 'bottom' | 'top' | 'right';
   className?: string;
+  onNavigate?: () => void;
 }) {
   const { isSignedIn, address, account, login, logout, loginPending, loginPhase, notify } =
     useLaunchpad();
@@ -133,7 +135,7 @@ export function WalletButton({
             <UserRound className="text-muted-foreground" />
             Wallet profile
           </DropdownMenuItem>
-          <DropdownMenuItem className="min-h-11 gap-3 rounded-lg px-3 focus:bg-secondary focus:text-foreground" render={<Link href={settingsItem.href} />}>
+          <DropdownMenuItem className="min-h-11 gap-3 rounded-lg px-3 focus:bg-secondary focus:text-foreground" render={<Link href={settingsItem.href} onClick={onNavigate} />}>
             <Settings className="text-muted-foreground" />
             Account settings
           </DropdownMenuItem>

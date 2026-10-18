@@ -154,7 +154,7 @@
 /* `.theme-reset` restores the light tokens for surfaces nested inside a DarkPanel. */
 :root,
 :root:not(.dark) .theme-reset {
-  --page: #fafafa;
+  --page: #f6f6f6;
   --background: #ffffff;
   --foreground: #0b0b0b;
   --card: #fff;
@@ -516,7 +516,11 @@
   --primary: var(--color-brand-lime);
   --primary-foreground: var(--color-neutral-900);
   --color-lime: var(--color-brand-lime);
-  --color-lime-hover: color-mix(in srgb, var(--color-brand-lime) 90%, var(--color-neutral-900));
+  --color-lime-hover: color-mix(
+    in srgb,
+    var(--color-brand-lime) 90%,
+    var(--color-neutral-900)
+  );
 }
 
 .dark .launch-details,
@@ -553,21 +557,36 @@
   padding: 12px 8px;
   border-radius: var(--radius-lg);
   color: var(--foreground);
-  transition: background-color 150ms, color 150ms;
+  transition:
+    background-color 150ms,
+    color 150ms;
 }
 
-.launch-sections [data-slot='accordion'] > button > span:first-child > span:first-child {
+.launch-sections
+  [data-slot='accordion']
+  > button
+  > span:first-child
+  > span:first-child {
   font-size: var(--text-title);
   line-height: 1.5;
   font-weight: 500;
   letter-spacing: -0.015em;
 }
 
-.launch-sections [data-slot='accordion'][data-state='open'] > button > span:first-child > span:first-child {
+.launch-sections
+  [data-slot='accordion'][data-state='open']
+  > button
+  > span:first-child
+  > span:first-child {
   font-weight: 600;
 }
 
-.launch-sections [data-slot='accordion'] > button > span:first-child > span:first-child > span {
+.launch-sections
+  [data-slot='accordion']
+  > button
+  > span:first-child
+  > span:first-child
+  > span {
   font: inherit;
   letter-spacing: inherit;
 }
@@ -584,7 +603,8 @@
   box-shadow: none;
 }
 
-.launch-sections :where([aria-label='Founder'], [aria-label='Team members'] > li) {
+.launch-sections
+  :where([aria-label='Founder'], [aria-label='Team members'] > li) {
   padding-inline: 0;
   border: 0;
   background: transparent;

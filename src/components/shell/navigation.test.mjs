@@ -36,11 +36,61 @@ test('project listing, launch, participation and auction have one active entry',
 });
 
 test('other sections retain a unique active entry', () => {
-  for (const pathname of ['/', '/guide', '/portfolio', '/reputation', '/create', '/dashboard']) {
+  for (const pathname of ['/', '/reputation', '/create']) {
     const active = items.filter((item) => isActive(pathname, item));
     assert.deepEqual(active.map((item) => item.href), [pathname], pathname);
   }
-  assert.ok(isActive('/campaigns', items.find((item) => item.href === '/dashboard')));
+});
+
+test('documentation replaces the removed guide in navigation', () => {
+  const docs = items.find((item) => item.label === 'Documentation');
+  assert.equal(docs?.href, 'https://docs.lumenrise.app');
+  assert.ok([...items, ...navigation.searchPages].every((item) => item.href !== '/guide'));
+  assert.equal(isActive('/', docs), false);
+});
+
+test('unavailable destinations are absent from desktop and mobile navigation', () => {
+  for (const pathname of ['/missions', '/portfolio', '/dashboard', '/explorer']) {
+    for (const surface of [items, navigation.mobilePrimaryItems, navigation.mobileDrawerItems, navigation.searchPages]) {
+      assert.ok(surface.every((item) => item.href !== pathname), pathname);
+    }
+  }
+  assert.ok(navGroups.every((group) => group.items.length > 0));
+});
+
+test('mobile primary navigation has exactly the four requested destinations', () => {
+  assert.deepEqual(navigation.mobilePrimaryItems.map(({ label, href }) => [label, href]), [
+    ['Home', '/'], ['Projects', '/launches'], ['Create', '/create'], ['Reputation', '/reputation'],
+  ]);
+  assert.deepEqual(navigation.mobileDrawerItems.map(({ label, href }) => [label, href]), items.map(({ label, href }) => [label, href]));
+  assert.equal(new Set(navigation.mobileDrawerItems.map(item => item.href)).size, items.length);
+  assert.deepEqual(items.map(item => item.href), ['/', 'https://docs.lumenrise.app', '/launches', '/reputation', '/create', '/settings']);
+  assert.deepEqual(navigation.searchPages.map(item => item.href), items.map(item => item.href));
+});
+
+test('mobile active states follow nested routes and leave secondary destinations unselected', () => {
+  for (const [pathname, expected] of [
+    ['/', '/'], ['/launches', '/launches'], ['/launch/contract', '/launches'],
+    ['/launch/contract/participate', '/launches'], ['/create', '/create'],
+    ['/create/review', '/create'], ['/reputation', '/reputation'],
+    ['/settings', undefined], ['/documentation', undefined], ['/launcher', undefined],
+  ]) {
+    assert.deepEqual(navigation.mobilePrimaryItems.filter(item => isActive(pathname, item)).map(item => item.href), expected ? [expected] : [], pathname);
+  }
+  assert.equal(isActive('/settings', navigation.settingsItem), true);
+});
+
+test('discovery navigation preserves supported networks without leaking filters or changing creation', () => {
+  const { navigationHref } = navigation;
+  for (const href of ['/', '/launches']) {
+    assert.equal(navigationHref(href, 'public'), `${href}?network=public`);
+    assert.equal(navigationHref(href, 'mainnet'), `${href}?network=public`);
+    assert.equal(navigationHref(href, 'testnet'), `${href}?network=testnet`);
+    for (const invalid of [null, undefined, '', 'invalid']) assert.equal(navigationHref(href, invalid), href);
+  }
+  for (const href of ['/create', '/settings', '/reputation', 'https://docs.lumenrise.app']) {
+    assert.equal(navigationHref(href, 'public'), href);
+  }
 });
 
 test('active matching respects path boundaries', () => {
