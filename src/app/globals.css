@@ -452,3 +452,76 @@
   );
   opacity: 0.55;
 }
+
+/* A scoped launch-team palette; other accordion variants retain their tokens. */
+.accordion-soft {
+  --accordion-header-hover: var(--secondary);
+  --accordion-icon: var(--muted-foreground);
+}
+
+:root:not(.dark) .accordion-soft {
+  --background: #ffffff;
+  --foreground: #181a17;
+  --card: #ffffff;
+  --card-foreground: #181a17;
+  --secondary: #fafaf8;
+  --secondary-foreground: #181a17;
+  --muted-foreground: #71756f;
+  --border: #e8eae6;
+  --primary: #cbff18;
+  --primary-foreground: #171a12;
+  --color-lime-hover: #b9ed08;
+  --accordion-header-hover: #f7f8f5;
+  --accordion-icon: #626761;
+  border-color: #e5e7e4;
+}
+
+.accordion-soft > button > span:last-child > svg,
+.accordion-soft :where(button:not([class~="bg-primary"]), a) svg {
+  color: var(--accordion-icon);
+}
+
+/* Scoped to the launch trading card, its quote panel, and its mobile sheet. */
+.trade-panel-neutral {
+  --trade-input-background: var(--secondary);
+  --trade-control-hover: var(--secondary);
+  --trade-disabled-background: var(--secondary);
+  --trade-disabled-text: var(--faint);
+}
+
+:root:not(.dark) .trade-panel-neutral {
+  --background: var(--color-white);
+  --card: var(--color-white);
+  --foreground: var(--color-neutral-900);
+  --card-foreground: var(--color-neutral-900);
+  --secondary: var(--color-neutral-100);
+  --secondary-foreground: var(--color-neutral-900);
+  --muted-foreground: var(--color-neutral-500);
+  --border: var(--color-neutral-200);
+  --divider: var(--color-neutral-200);
+  --input: var(--color-neutral-200);
+  --trade-input-background: var(--color-neutral-50);
+  --trade-control-hover: var(--color-neutral-200);
+  --trade-disabled-background: var(--color-neutral-200);
+  --trade-disabled-text: var(--color-neutral-400);
+}
+
+.trade-panel-neutral [data-trade-input] {
+  background-color: var(--trade-input-background);
+}
+
+.trade-panel-neutral [data-slot='button']:is(:disabled, [aria-disabled='true']) {
+  background-color: var(--trade-disabled-background);
+  color: var(--trade-disabled-text);
+}
+
+.trade-panel-neutral :where(button:not([class~='bg-primary']), a) svg {
+  color: var(--muted-foreground);
+}
+
+@media (hover: hover) {
+  .trade-panel-neutral [data-trade-control]:not(:disabled):not([aria-disabled='true']):hover,
+  .trade-panel-neutral [data-slot='tabs-trigger']:not([data-active]):hover {
+    background-color: var(--trade-control-hover);
+  }
+}
