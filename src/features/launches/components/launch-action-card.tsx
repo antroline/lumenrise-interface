@@ -1,151 +1,136 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import Link from 'next/link';
-import { AnimatePresence, motion } from 'motion/react';
-import { ArrowUpRight } from 'lucide-react';
-import type { ApiNetwork } from '@/lib/api/launches/types';
-import { cn } from '@/lib/utils';
-import { LaunchLogoMark } from './launch-logo-mark';
-import { LaunchPanel, launchFocus } from './launch-panel';
+import { useState, type ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { useWideLayout } from '../hooks/use-scrolled-past';
+import { LaunchPanel } from './launch-panel';
 
-const action = 'flex h-12 items-center justify-center gap-2 rounded-xl text-[15px] font-semibold';
-const easeOut = [0.16, 1, 0.3, 1] as const;
+export type TradeFormRenderer = (
+  host: HTMLElement | null,
+  active: boolean,
+) => ReactNode;
 
-/** The trade route handles execution; this only reflects what the contract currently allows. */
-function TradeAction({ status, ticker, href, opensIn }: { status: string; ticker: string; href: string; opensIn?: string }) {
-  if (status === 'Open' || status === 'Failed') {
-    const failed = status === 'Failed';
-    return (
-      <>
-        <Link
-          href={href}
-          className={cn(
-            action,
-            'transition-colors',
-            failed ? 'bg-foreground text-background hover:bg-foreground/85' : 'bg-lime text-ink hover:bg-lime-hover',
-            launchFocus,
-          )}
-        >
-          {failed ? `Sell back $${ticker}` : `Trade $${ticker}`}
-          <ArrowUpRight className="size-4" aria-hidden="true" />
-        </Link>
-        {failed && (
-          <p className="mt-2.5 text-[13px] leading-snug text-muted-foreground">
-            The target was not reached. Buying has stopped; holders can sell back to the curve.
+/** Keep both directions mounted when switching tabs or closing the mobile sheet. */
+export function LaunchActionCard({
+  identity,
+  name,
+  buy,
+  sell,
+  trade,
+  walletFeedback,
+  loading,
+}: {
+  identity: ReactNode;
+  name: string;
+  buy?: TradeFormRenderer | null;
+  sell?: TradeFormRenderer | null;
+  trade?: ReactNode;
+  walletFeedback?: ReactNode;
+  loading: boolean;
+}) {
+  const wide = useWideLayout();
+  const [open, setOpen] = useState(false);
+  const [quoteHost, setQuoteHost] = useState<HTMLDivElement | null>(null);
+  const [direction, setDirection] = useState('buy');
+  const form = (
+    <div className="flex min-w-0 flex-col gap-3 p-5">
+      {trade ??
+        (buy || sell ? (
+          <Tabs
+            value={direction}
+            onValueChange={(value) => {
+              if (value === 'buy' || value === 'sell') setDirection(value);
+            }}
+            className="relative gap-3"
+          >
+            <TabsList aria-label="Trade direction" className="h-8 w-fit">
+              <TabsTrigger
+                value="buy"
+                className="px-3! text-[11px]! data-active:bg-ink! data-active:text-white!"
+              >
+                Buy
+              </TabsTrigger>
+              <TabsTrigger
+                value="sell"
+                className="px-3! text-[11px]! data-active:bg-ink! data-active:text-white!"
+              >
+                Sell
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="buy" keepMounted>
+              {buy?.(quoteHost, direction === 'buy')}
+            </TabsContent>
+            <TabsContent value="sell" keepMounted>
+              {sell?.(quoteHost, direction === 'sell')}
+            </TabsContent>
+          </Tabs>
+        ) : loading ? (
+          <div
+            role="status"
+            aria-label="Loading trading configuration"
+            aria-busy="true"
+            className="flex flex-col gap-3"
+          >
+            <Skeleton className="h-8 w-24 motion-reduce:animate-none" />
+            <Skeleton className="h-[76px] w-full rounded-lg motion-reduce:animate-none" />
+            <Skeleton className="h-11 w-full rounded-lg motion-reduce:animate-none" />
+            <Skeleton className="h-3 w-40 motion-reduce:animate-none" />
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Verified token and contract data are required to trade.
           </p>
-        )}
-      </>
-    );
-  }
-  const [label, detail] =
-    status === 'Scheduled'
-      ? [opensIn ? `Opens ${opensIn}` : 'Not open yet', 'Curve trading has not started.']
-      : status === 'Graduated'
-        ? ['Curve closed', 'Curve trading ended at graduation.']
-        : status === 'Loading'
-          ? ['Loading…', 'Reading the contract status.']
-          : ['Trading unavailable', 'The contract status could not be read.'];
+        ))}
+      {walletFeedback && (
+        <div className="text-xs text-muted-foreground">{walletFeedback}</div>
+      )}
+    </div>
+  );
+
   return (
     <>
-      <p aria-disabled="true" className={cn(action, 'bg-secondary text-muted-foreground tabular-nums')}>
-        {label}
-      </p>
-      <p className="mt-2.5 text-[13px] leading-snug text-muted-foreground">{detail}</p>
-    </>
-  );
-}
-
-/**
- * Project identity that joins the card once the cover has scrolled away. It repeats the page h1,
- * so it is hidden from assistive technology.
- */
-function DockedIdentity({ logo, name, ticker, seed }: { logo?: string; name: string; ticker: string; seed: string }) {
-  return (
-    <motion.div
-      aria-hidden="true"
-      initial={{ height: 0, marginBottom: 0 }}
-      animate={{ height: 'auto', marginBottom: 20 }}
-      exit={{ height: 0, marginBottom: 0, transition: { duration: 0.32, ease: easeOut } }}
-      transition={{ duration: 0.5, ease: easeOut }}
-    >
-      <div className="flex items-center gap-3">
-        <LaunchLogoMark logo={logo} name={name} seed={seed} size={44} className="ring-1 ring-border" />
-        <motion.div
-          className="min-w-0"
-          initial={{ opacity: 0, x: -10, filter: 'blur(6px)' }}
-          animate={{ opacity: 1, x: 0, filter: 'blur(0px)', transition: { delay: 0.16, duration: 0.45, ease: easeOut } }}
-          exit={{ opacity: 0, x: -6, filter: 'blur(4px)', transition: { duration: 0.14 } }}
-        >
-          <p className="truncate text-[16px] leading-tight font-semibold tracking-[-0.025em]">{name}</p>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">${ticker}</p>
-        </motion.div>
-      </div>
-    </motion.div>
-  );
-}
-
-/** Price, status-aware trade link and the terms worth knowing before following it. */
-export function LaunchActionCard({
-  name,
-  ticker,
-  logo,
-  seed,
-  docked,
-  status,
-  network,
-  address,
-  price,
-  priceHint,
-  stale,
-  opensIn,
-  terms,
-}: {
-  name: string;
-  ticker: string;
-  logo?: string;
-  seed: string;
-  /** Show the project identity here, once the cover is out of view. */
-  docked: boolean;
-  status: string;
-  network: ApiNetwork;
-  address: string;
-  price: string;
-  priceHint?: string;
-  stale: boolean;
-  opensIn?: string;
-  terms: (readonly [string, ReactNode])[];
-}) {
-  return (
-    <LaunchPanel raised aria-label={`Trade ${name}`} className="p-5 sm:p-6">
-      <AnimatePresence initial={false}>
-        {docked && <DockedIdentity key="identity" logo={logo} name={name} ticker={ticker} seed={seed} />}
-      </AnimatePresence>
-
-      <p className="text-[13px] text-muted-foreground">Current price</p>
-      <p className="mt-1 break-words text-[24px] leading-tight font-semibold tracking-[-0.035em] tabular-nums">{price}</p>
-      <p className="mt-1 flex items-center gap-1.5 text-[13px] text-muted-foreground tabular-nums">
-        {stale && <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-chart-5" />}
-        {stale ? 'Before fee · may be outdated' : priceHint}
-      </p>
-
-      <div className="mt-5">
-        <TradeAction status={status} ticker={ticker} href={`/trade/${address}?network=${network}`} opensIn={opensIn} />
-      </div>
-
-      {terms.length > 0 && (
-        <div className="mt-6 border-t border-divider pt-5">
-          <h2 className="text-[15px] font-semibold tracking-[-0.01em]">Key terms</h2>
-          <dl className="mt-3 flex flex-col gap-3 text-[13.5px]">
-            {terms.map(([term, value]) => (
-              <div key={term} className="grid grid-cols-[minmax(0,104px)_minmax(0,1fr)] gap-3">
-                <dt className="text-muted-foreground">{term}</dt>
-                <dd className="min-w-0 leading-snug break-words">{value}</dd>
+      <LaunchPanel className="relative z-10 overflow-hidden rounded-3xl border-2 border-border bg-white shadow-none ring-0 dark:bg-card dark:ring-0 lg:max-h-[calc(100svh-48px)] lg:overflow-y-auto [scrollbar-width:thin]">
+        {identity}
+        {wide ? (
+          form
+        ) : (
+          <Sheet open={open} onOpenChange={setOpen}>
+            <div className="p-5">
+              <Button className="w-full" onClick={() => setOpen(true)}>
+                Buy / Sell
+              </Button>
+            </div>
+            <div className="fixed inset-x-0 bottom-0 z-30 border-t border-divider bg-card px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] lg:hidden">
+              <Button className="w-full" onClick={() => setOpen(true)}>
+                Buy / Sell {name}
+              </Button>
+            </div>
+            <SheetContent
+              side="bottom"
+              keepMounted
+              className="max-h-[90svh] overflow-y-auto rounded-t-2xl"
+            >
+              <div className="px-5 pt-5 pr-12">
+                <SheetTitle>Trade {name}</SheetTitle>
+                <SheetDescription>
+                  Buy or sell on the bonding curve.
+                </SheetDescription>
               </div>
-            ))}
-          </dl>
-        </div>
-      )}
-    </LaunchPanel>
+              {form}
+              <div ref={setQuoteHost} className="mx-5 -mt-5 mb-5" />
+            </SheetContent>
+          </Sheet>
+        )}
+      </LaunchPanel>
+      {wide && <div ref={setQuoteHost} className="relative -mt-3" />}
+    </>
   );
 }
