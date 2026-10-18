@@ -1,7 +1,7 @@
 /**
  * Shared types for the launches API.
  *
- * The server only stores the token image before a launch; the launch itself
+ * The server stores the token image and optional links before a launch; the launch itself
  * is read back from the factory contract after the transaction confirms.
  */
 
@@ -16,7 +16,7 @@ export type LaunchImageStatus =
   | 'finalized'
   | 'expired';
 
-/** Result of `POST /launches/images`. */
+/** Result of `POST /launches/prelaunch`. */
 export type UploadedLaunchImage = {
   imageId: string;
   /** Server-issued URL, stored verbatim in the launch's `metadata.logo`. */
@@ -24,7 +24,7 @@ export type UploadedLaunchImage = {
   status: LaunchImageStatus;
 };
 
-/** Result of `GET /launches/images/:imageId` (owner only). */
+/** Result of `GET /launches/prelaunch/:imageId` (owner only). */
 export type LaunchImageInfo = UploadedLaunchImage & {
   network: ApiNetwork;
   ownerAddress: string;

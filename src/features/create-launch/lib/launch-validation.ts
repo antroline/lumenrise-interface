@@ -89,12 +89,16 @@ export function validateLaunchStep(
         'Add a project image (PNG, JPG or WebP, under 1 MB).';
     if (!draft.description.trim())
       errors['launch-description'] = 'Briefly describe the project.';
-    if (!validOptionalUrl(draft.xAccount))
+    if (!draft.xAccount.trim())
+      errors['launch-x'] = 'Enter your project’s X account link.';
+    else if (!validOptionalUrl(draft.xAccount))
       errors['launch-x'] =
-        'Enter a complete https:// link or leave this blank.';
-    if (!validOptionalUrl(draft.website))
+        'Enter an HTTPS URL of up to 2048 characters without embedded credentials.';
+    if (!draft.website.trim())
+      errors['launch-website'] = 'Enter your project’s website link.';
+    else if (!validOptionalUrl(draft.website))
       errors['launch-website'] =
-        'Enter a complete https:// link or leave this blank.';
+        'Enter an HTTPS URL of up to 2048 characters without embedded credentials.';
   }
 
   if (step === 'method' && !draft.methodSelected)

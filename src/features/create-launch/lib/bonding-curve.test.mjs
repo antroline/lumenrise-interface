@@ -363,6 +363,49 @@ test('a changed project image uploads again instead of reusing the previous uplo
   assert.equal(h.progress.at(-1).status, 'success');
 });
 
+test('optional links reach prelaunch but never enter contract metadata', async () => {
+  const h = harness();
+  const links = { website: ' https://example.com/project ', xAccount: ' https://x.com/project ' };
+  await h.flow.launch({ ...draft(), ...links });
+  assert.equal(h.uploads[0].website, links.website);
+  assert.equal(h.uploads[0].xAccount, links.xAccount);
+  const params = h.calls[0].call.args[0];
+  assert.equal(params.metadata.logo, IMAGE_URL);
+  assert.equal('website' in params.metadata, false);
+  assert.equal('xAccount' in params.metadata, false);
+  assert.equal(JSON.stringify(params).includes('https://example.com/project'), false);
+  assert.equal(JSON.stringify(params).includes('https://x.com/project'), false);
+});
+
+test('adding, changing, or clearing either optional link forces a fresh prelaunch on retry', async () => {
+  for (const field of ['website', 'xAccount']) {
+    for (const [before, after] of [
+      ['', 'https://example.com/new'],
+      ['https://example.com/old', 'https://example.com/new'],
+      ['https://example.com/old', ''],
+      ['https://example.com/old', '   '],
+    ]) {
+      const h = harness({ rejectSac: true });
+      await h.flow.launch({ ...draft(), [field]: before });
+      await h.flow.launch({ ...draft(), [field]: after });
+      assert.equal(h.uploads.length, 2, `${field}: ${before} -> ${after}`);
+      assert.equal(h.uploads[1][field], after);
+      assert.equal(h.statusChecks.length, 0);
+      assert.equal(h.progress.at(-1).status, 'success');
+      assert.equal(h.sends.filter((send) => send.xdr.startsWith('setup:')).length, 1);
+    }
+  }
+});
+
+test('surrounding whitespace in optional links reuses the same prelaunch on retry', async () => {
+  const h = harness({ rejectSac: true });
+  await h.flow.launch({ ...draft(), website: 'https://example.com', xAccount: 'https://x.com/project' });
+  await h.flow.launch({ ...draft(), website: ' https://example.com ', xAccount: ' https://x.com/project ' });
+  assert.equal(h.uploads.length, 1);
+  assert.equal(h.statusChecks.length, 1);
+  assert.equal(h.progress.at(-1).status, 'success');
+});
+
 test('an expired stored image uploads again before any transaction', async () => {
   const h = harness({ rejectSac: true, imageStatus: 'expired' });
   await h.flow.launch(draft());
