@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { LineChart } from '@/components/charts';
+import { PriceHistoryPlot } from './price-history-plot';
+import { formatExactPrice } from './price-history-format';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,17 +44,6 @@ export function IndexedPriceChart({
   embedded?: boolean;
 }) {
   const [range, setRange] = useState<ChartRange>('1D');
-  const chartContainer = useRef<HTMLDivElement>(null);
-  const [chartWidth, setChartWidth] = useState(680);
-  useEffect(() => {
-    const element = chartContainer.current;
-    if (!element) return;
-    const observer = new ResizeObserver(([entry]) => {
-      setChartWidth(Math.max(240, Math.round(entry.contentRect.width)));
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
   const visible = usePageVisible() && active;
   const client = useQueryClient();
   const query = useQuery({
@@ -84,23 +74,11 @@ export function IndexedPriceChart({
         ? error.message
         : 'These prices cannot be plotted accurately.';
   }
-  const data = points.map((p) => p.price),
-    min = Math.min(...data),
-    max = Math.max(...data);
   const timeDomain = query.data ? chartWindow(query.data) : undefined;
-  const lastCandle = query.data?.items.at(-1);
-  const stepEndTime =
-    lastCandle && query.data
-      ? Math.min(Date.parse(lastCandle.endsAt), Date.parse(query.data.asOf))
-      : undefined;
-  const padding = Math.max((max - min) * 0.1, Math.abs(max) * 0.01, 0.0000001);
-  const formatDate = (time: number) =>
-    new Date(time).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const exactPrices = new Map(query.data?.items.map(candle => [
+    Date.parse(candle.timestamp),
+    formatExactPrice(candle.close ?? candle.latestPrice, query.data.priceScale),
+  ]));
   const content = query.isPending ? (
     <Skeleton className={embedded ? 'h-full min-h-0 w-full' : 'h-60 w-full'} />
   ) : query.isError && !query.data ? (
@@ -113,58 +91,29 @@ export function IndexedPriceChart({
         Retry
       </Button>
     </Empty>
-  ) : precisionError || !points.length ? (
+  ) : precisionError || points.length < 2 ? (
     <Empty className={embedded ? 'h-full min-h-0 p-3' : 'min-h-60'}>
       <EmptyHeader>
         <EmptyTitle>
           {precisionError
             ? 'Price chart unavailable'
-            : 'Price history not available yet'}
+            : points.length === 1 ? 'Not enough price history' : 'Price history not available yet'}
         </EmptyTitle>
         <EmptyDescription>
-          {precisionError || 'Recorded prices will appear here when available.'}
+          {precisionError || (points.length === 1
+            ? 'At least two recorded prices are needed to draw price history.'
+            : 'Recorded prices will appear here when available.')}
         </EmptyDescription>
       </EmptyHeader>
     </Empty>
   ) : (
     <>
-      <LineChart
-        data={data}
-        timestamps={points.map((p) => p.time)}
+      <PriceHistoryPlot
+        points={points.map(point => ({ ...point, exactPrice: exactPrices.get(point.time) ?? String(point.price) }))}
         timeDomain={timeDomain}
-        stepEndTime={stepEndTime}
-        interpolation="step"
-        fill={false}
-        className={
-          embedded
-            ? 'h-full min-h-0 flex-1 [&_line]:stroke-transparent [&_text]:fill-muted-foreground'
-            : '[&_line]:stroke-transparent [&_text]:fill-muted-foreground'
-        }
-        width={chartWidth}
-        axisWidth={90}
-        height={240}
-        min={min - padding}
-        max={max + padding}
-        yTicks={[min, (min + max) / 2, max].filter(
-          (v, i, a) => a.indexOf(v) === i,
-        )}
-        xLabels={[
-          formatDate(timeDomain?.[0] ?? points[0].time),
-          formatDate(timeDomain?.[1] ?? points[points.length - 1].time),
-        ]}
-        formatTick={(v) =>
-          v.toLocaleString('en-US', {
-            maximumSignificantDigits: 8,
-            notation:
-              Math.abs(v) >= 1000
-                ? 'compact'
-                : Math.abs(v) > 0 && Math.abs(v) < 0.00001
-                  ? 'scientific'
-                  : 'standard',
-          })
-        }
-        marker={false}
-        label={`${ticker} observed contract prices in ${pair} over ${range}`}
+        ticker={ticker}
+        pair={pair}
+        embedded={embedded}
       />
     </>
   );
@@ -180,7 +129,6 @@ export function IndexedPriceChart({
           onRangeChange: setRange,
           content: (
             <div
-              ref={chartContainer}
               className={
                 embedded ? 'flex h-full min-h-0 flex-1 flex-col' : 'min-h-60'
               }

@@ -40,14 +40,14 @@ export function PriceChart({
       aria-label="Price analysis"
       className={
         embedded
-          ? 'flex h-full min-w-0 flex-col bg-transparent text-card-foreground'
-          : 'flex min-w-0 flex-col rounded-2xl border border-border bg-card p-4 text-card-foreground sm:p-5'
+          ? 'price-history flex h-full min-w-0 flex-col bg-transparent text-neutral-900 dark:text-neutral-50'
+          : 'price-history flex min-w-0 flex-col rounded-2xl border border-neutral-200 bg-white p-4 text-neutral-900 sm:p-5 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-50'
       }
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h2 className="text-title font-semibold">Price history</h2>
-          <div className="flex flex-wrap items-baseline gap-2.5 text-small text-muted-foreground">
+          <div className="flex flex-wrap items-baseline gap-2.5 text-small text-neutral-500 dark:text-neutral-400">
             <span>
               {ticker} / {quoteSymbol}
             </span>
@@ -67,14 +67,14 @@ export function PriceChart({
                 else setTimeframe(next as ChartTimeframe);
               }
             }}
-            className="flex-wrap"
+            className="flex-wrap data-[variant=default]:bg-neutral-100 dark:data-[variant=default]:bg-neutral-800"
           >
             {timeframes.map((option) => (
               <ToggleGroupItem
                 key={option}
                 value={option}
                 disabled={!series && !history}
-                className="min-h-10 text-meta"
+                className="min-h-8 px-2.5 text-meta text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900 data-pressed:bg-white data-pressed:text-neutral-900 motion-reduce:transition-none dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-50 dark:data-pressed:bg-neutral-700 dark:data-pressed:text-white"
               >
                 {option}
               </ToggleGroupItem>
