@@ -43,6 +43,7 @@ import { LaunchReveal } from './launch-reveal';
 import { LaunchTimeline, type TimelineStep } from './launch-timeline';
 import { TradeTooltipText } from '../trading/trade-tooltip';
 import { LaunchTokenomics, type VestingPlan } from './launch-tokenomics';
+import { LaunchDescription } from './launch-description';
 
 const UNIT = BigInt(10_000_000);
 
@@ -87,7 +88,7 @@ function TimelineSkeleton() {
       role="status"
       aria-label="Loading launch timeline"
       aria-busy="true"
-      className="relative my-5 grid grid-cols-3 py-3 before:absolute before:inset-x-0 before:top-[70px] before:h-px before:bg-border"
+      className="relative grid grid-cols-3 before:absolute before:inset-x-[16.6667%] before:top-14 before:h-px before:bg-neutral-200 dark:before:bg-neutral-700"
     >
       <span className="sr-only">Loading launch timeline…</span>
       {[0, 1, 2].map((step) => (
@@ -97,10 +98,10 @@ function TimelineSkeleton() {
           className="relative flex min-w-0 flex-col items-center px-1"
         >
           <div className="flex h-8 items-center">
-            <Skeleton className="h-4 w-20 motion-reduce:animate-none" />
+            <Skeleton className="h-4 w-16 max-w-full motion-reduce:animate-none" />
           </div>
-          <Skeleton className="mt-2 h-9 w-12 rounded-full motion-reduce:animate-none sm:w-14" />
-          <Skeleton className="mt-3 h-4 w-16 motion-reduce:animate-none" />
+          <Skeleton className="mt-2 size-8 rounded-full motion-reduce:animate-none" />
+          <Skeleton className="mt-2 h-4 w-16 max-w-full motion-reduce:animate-none" />
           <Skeleton className="mt-1 h-3 w-12 motion-reduce:animate-none" />
         </div>
       ))}
@@ -472,26 +473,22 @@ export function IndexedLaunchOverview({
                   id="about"
                   aria-labelledby="about-heading"
                   tabIndex={-1}
-                  className="min-w-0 scroll-mt-24 py-6 outline-none sm:py-8"
+                  className="min-w-0 scroll-mt-24 py-4 outline-none sm:py-5"
                 >
-                  <header className="mb-5 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-                    <h2
-                      id="about-heading"
-                      className="text-[24px] leading-tight font-medium tracking-[-0.035em] sm:text-[28px]"
-                    >
-                      About the project
-                    </h2>
-                  </header>
+                  <h2
+                    id="about-heading"
+                    className="mb-4 text-xl font-semibold tracking-tight text-neutral-900 sm:text-2xl dark:text-neutral-50"
+                  >
+                    About the project
+                  </h2>
                   {description ? (
-                    <p className="max-w-[64ch] whitespace-pre-line break-words text-[15px] leading-[1.85] text-foreground/80 sm:text-base">
-                      {description}
-                    </p>
+                    <LaunchDescription key={address} description={description} />
                   ) : loading ? (
                     <div
                       role="status"
                       aria-label="Loading project description"
                       aria-busy="true"
-                      className="flex max-w-[64ch] flex-col gap-2.5"
+                      className="flex max-w-3xl flex-col gap-2.5"
                     >
                       <span className="sr-only">
                         Loading project description…
@@ -510,7 +507,7 @@ export function IndexedLaunchOverview({
                       />
                     </div>
                   ) : (
-                    <p className="text-[14px] text-muted-foreground">
+                    <p className="text-sm text-neutral-500">
                       The creator has not provided a project description.
                     </p>
                   )}
