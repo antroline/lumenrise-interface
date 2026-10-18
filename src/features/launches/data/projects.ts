@@ -87,7 +87,7 @@ export const projects: ProjectListing[] = [
     id: `trading-${token.slug}`,
     name: token.name,
     ticker: token.ticker,
-    href: `/trade/${token.slug}`,
+    href: `/launch/${token.slug}`,
     category: 'Trading' as const,
     phase: 'launched' as const,
     figure: token.price,

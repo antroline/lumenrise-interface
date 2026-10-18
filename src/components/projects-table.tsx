@@ -51,7 +51,7 @@ const headClass =
   'border-0 bg-secondary py-3 align-middle first:rounded-l-lg first:pl-4 last:rounded-r-lg last:pr-4 dark:bg-muted';
 const cellClass = 'py-2.5 first:pl-4 last:pr-4';
 const nameClass = 'flex min-w-0 items-center gap-3';
-const directoryTableClass = 'min-w-[1120px] table-fixed bg-card text-[15px] dark:bg-muted';
+const directoryTableClass = 'min-w-[1120px] table-fixed bg-card text-sm dark:bg-muted';
 const directoryHeadClass =
   'border-0 bg-secondary py-4 align-middle font-sans! text-sm! font-bold! tracking-normal! text-muted-foreground first:pl-4 last:pr-4';
 const directoryCellClass =
