@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Check, ChevronDown, ImagePlus, Pencil } from 'lucide-react';
+import { Check, ChevronDown, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   launchDurationOptions,
@@ -21,6 +21,7 @@ import {
   type LaunchStageId,
 } from '../lib/launch-stages';
 import { QuoteIcon } from './launch-fields/quote-icon';
+import { LaunchReveal } from './launch-motion';
 
 export type LaunchSummaryProps = {
   draft: LaunchDraft;
@@ -34,6 +35,8 @@ export type LaunchSummaryProps = {
 type ChecklistItem = { label: string; value?: string };
 
 const settingsIndex = launchStages.findIndex((stage) => stage.id === 'settings');
+const tokenIndex = launchStages.findIndex((stage) => stage.id === 'token');
+const projectIndex = launchStages.findIndex((stage) => stage.id === 'project');
 const compactNumber = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 });
 
 function rowValue(rows: LaunchSummaryRow[], label: string) {
@@ -42,15 +45,6 @@ function rowValue(rows: LaunchSummaryRow[], label: string) {
 
 function stageChecklist(draft: LaunchDraft, stage: LaunchStage): ChecklistItem[] {
   switch (stage.id) {
-    case 'project': {
-      const rows = launchSummaryRows(draft, 'project');
-      return [
-        { label: 'Project image', value: draft.logo ? 'Added' : undefined },
-        { label: 'Name', value: rowValue(rows, 'Name') },
-        { label: 'Symbol', value: rowValue(rows, 'Symbol') },
-        { label: 'Description', value: draft.description.trim() ? 'Added' : undefined },
-      ];
-    }
     case 'token': {
       const rows = launchSummaryRows(draft, 'token');
       const { saleShare, poolShare, teamShare } = draft.allocation;
@@ -71,6 +65,7 @@ function stageChecklist(draft: LaunchDraft, stage: LaunchStage): ChecklistItem[]
         { label: 'Creator fee', value: rowValue(rows, 'Creator fee') },
       ];
     }
+    case 'project':
     case 'review':
       return [];
   }
@@ -88,46 +83,76 @@ function summaryChips(draft: LaunchDraft, reachedIndex: number) {
   ];
 }
 
-function SummaryFigure({ label, value, unit }: { label: string; value: string | null; unit: string }) {
+function SummaryFigure({ label, value, unit }: { label: string; value: string; unit: string }) {
   return (
-    <div className="min-w-0">
+    <>
       <dt className="text-small text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 truncate text-mid font-semibold tabular-nums">
-        {value ?? <span className="text-muted-foreground">—</span>}
-        {value && <span className="text-small font-medium tracking-normal text-muted-foreground"> {unit}</span>}
+        {value}
+        <span className="text-small font-medium tracking-normal text-muted-foreground"> {unit}</span>
       </dd>
-    </div>
+    </>
   );
 }
 
 /** Identity block shared by the desktop summary and the compact stepper menu. */
-export function LaunchSummaryHeader({ draft, reachedIndex }: { draft: LaunchDraft; reachedIndex: number }) {
+export function LaunchSummaryHeader({ draft, reachedIndex, onEdit, locked = false }: {
+  draft: LaunchDraft;
+  reachedIndex: number;
+  onEdit?: () => void;
+  locked?: boolean;
+}) {
   const reduced = useLaunchReducedMotion();
   const name = draft.name.trim();
+  const symbol = draft.symbol.trim();
   const chips = summaryChips(draft, reachedIndex);
   const transition = reduced ? { duration: 0 } : launchTransition;
+  const supply = reachedIndex >= tokenIndex && validSupply(draft.supply)
+    ? compactNumber.format(Number(draft.supply)) : null;
+  const target = validPositive(draft.bonding.target)
+    ? compactNumber.format(Number(draft.bonding.target)) : null;
+  const reveal = {
+    initial: { opacity: 0, y: reduced ? 0 : 6 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: reduced ? 0 : -4 },
+    transition,
+  };
 
   return (
-    <div className="rounded-xl bg-secondary p-3">
-      <div className="flex items-center gap-3">
-        <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-card">
-          {draft.logo
-            ? <img src={draft.logo} alt="" className="size-full object-cover" />
-            : <ImagePlus className="size-5 text-muted-foreground" aria-hidden="true" />}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className={cn('truncate text-title font-semibold', !name && 'text-muted-foreground')}>
-            {name || 'Untitled launch'}
-          </p>
-          <p className="mt-0.5 truncate text-small tabular-nums text-muted-foreground">
-            {draft.symbol ? `$${draft.symbol}` : 'No symbol yet'}
-          </p>
+    <motion.div layout={!reduced} transition={transition} className="relative min-h-24 rounded-xl bg-secondary p-3">
+      <LaunchReveal show={!!(draft.logo || name || symbol)}>
+        <div className={cn('relative flex min-h-12 items-center gap-3', onEdit && 'pr-10')}>
+          <AnimatePresence initial={false} mode="popLayout">
+            {draft.logo && (
+              <motion.span key="logo" layout={!reduced} {...reveal} className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-card">
+                <img src={draft.logo} alt="" className="size-full object-cover" />
+              </motion.span>
+            )}
+          </AnimatePresence>
+          <motion.div layout={!reduced} transition={transition} className="min-w-0 flex-1">
+            <AnimatePresence initial={false}>
+              {name && <motion.p key="name" {...reveal} className="truncate text-title font-semibold">{name}</motion.p>}
+              {symbol && <motion.p key="symbol" {...reveal} className="mt-0.5 truncate text-small tabular-nums text-muted-foreground">${symbol}</motion.p>}
+            </AnimatePresence>
+          </motion.div>
         </div>
-      </div>
+        {onEdit && (
+          <button
+            type="button"
+            disabled={locked}
+            onClick={onEdit}
+            aria-label="Edit project details"
+            title="Edit project details"
+            className="absolute right-1.5 top-1.5 grid size-11 [@media(hover:hover)]:size-8 cursor-pointer place-items-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-card hover:text-foreground focus-visible:ring-2 focus-visible:ring-foreground disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none"
+          >
+            <Pencil className="size-3.5" aria-hidden="true" />
+          </button>
+        )}
+      </LaunchReveal>
 
-      <p className="mt-3 text-small text-muted-foreground">Included in this launch</p>
-      {chips.length ? (
-        <ul className="mt-1.5 flex flex-wrap gap-1.5">
+      <LaunchReveal show={chips.length > 0}>
+        <p className="mt-3 text-small text-muted-foreground">Included in this launch</p>
+        <ul className="relative mt-1.5 flex flex-wrap gap-1.5">
           <AnimatePresence initial={false} mode="popLayout">
             {chips.map((chip) => (
               <motion.li
@@ -145,15 +170,17 @@ export function LaunchSummaryHeader({ draft, reachedIndex }: { draft: LaunchDraf
             ))}
           </AnimatePresence>
         </ul>
-      ) : (
-        <p className="mt-1.5 text-small text-muted-foreground">Your choices appear here as you set them.</p>
-      )}
+      </LaunchReveal>
 
-      <dl className="mt-3 grid grid-cols-2 gap-3">
-        <SummaryFigure label="Supply" value={validSupply(draft.supply) ? compactNumber.format(Number(draft.supply)) : null} unit={draft.symbol || 'tokens'} />
-        <SummaryFigure label="Target" value={validPositive(draft.bonding.target) ? compactNumber.format(Number(draft.bonding.target)) : null} unit={`/ ${draft.quote}`} />
-      </dl>
-    </div>
+      <LaunchReveal show={!!(supply || target)}>
+        <dl className="relative mt-3 grid grid-cols-2 gap-3">
+          <AnimatePresence initial={false} mode="popLayout">
+            {supply && <motion.div key="supply" layout={!reduced} {...reveal} className="min-w-0"><SummaryFigure label="Supply" value={supply} unit={symbol || 'tokens'} /></motion.div>}
+            {target && <motion.div key="target" layout={!reduced} {...reveal} className="min-w-0"><SummaryFigure label="Target" value={target} unit={`/ ${draft.quote}`} /></motion.div>}
+          </AnimatePresence>
+        </dl>
+      </LaunchReveal>
+    </motion.div>
   );
 }
 
@@ -235,20 +262,25 @@ function SummaryStage({ draft, stage, index, currentIndex, reachedIndex, locked,
             transition={reduced ? { duration: 0 } : launchTransition}
             className="overflow-hidden"
           >
-            <dl className="flex flex-col gap-2 pb-3 pl-7 pr-1.5 text-small">
-              {items.map((item) => (
-                <div key={item.label} className="flex min-w-0 items-start justify-between gap-3">
-                  <dt className="min-w-0 text-muted-foreground">{item.label}</dt>
-                  <dd className="min-w-0 max-w-[62%] break-words text-right font-medium tabular-nums">
-                    {item.value ?? (
-                      <span className="text-muted-foreground">
-                        <span aria-hidden="true">—</span>
-                        <span className="sr-only">Not set</span>
-                      </span>
-                    )}
-                  </dd>
-                </div>
-              ))}
+            <dl className="relative flex flex-col gap-2 pb-3 pl-7 pr-1.5 text-small">
+              <AnimatePresence initial={false} mode="popLayout">
+                {items.filter((item) => item.value).map((item) => (
+                  <motion.div
+                    key={item.label}
+                    layout={!reduced}
+                    initial={{ opacity: 0, y: reduced ? 0 : 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: reduced ? 0 : -4 }}
+                    transition={reduced ? { duration: 0 } : launchTransition}
+                    className="flex min-w-0 items-start justify-between gap-3"
+                  >
+                    <dt className="min-w-0 text-muted-foreground">{item.label}</dt>
+                    <dd className="min-w-0 max-w-[62%] break-words text-right font-medium tabular-nums">
+                      {item.value}
+                    </dd>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </dl>
           </motion.div>
         )}
@@ -268,7 +300,7 @@ export function LaunchSummary({ draft, steps, currentIndex, reachedIndex, locked
       aria-label="Your launch summary"
       className="sticky top-18 order-last hidden max-h-[calc(100svh-5.5rem)] min-h-0 min-w-0 flex-col self-start rounded-2xl border border-border bg-card p-2 lg:top-4 lg:max-h-[calc(100svh-2rem)] @min-[800px]/studio:flex"
     >
-      <LaunchSummaryHeader draft={draft} reachedIndex={reachedIndex} />
+      <LaunchSummaryHeader draft={draft} reachedIndex={reachedIndex} onEdit={() => onNavigate(projectIndex)} locked={locked} />
       <div className="shrink-0 px-1.5 pt-3">
         <div className="flex items-baseline justify-between gap-2">
           <h2 className="text-body font-semibold">Your launch</h2>
@@ -287,7 +319,7 @@ export function LaunchSummary({ draft, steps, currentIndex, reachedIndex, locked
         className="mt-1 min-h-24 min-w-0 flex-1 overflow-y-auto overscroll-contain px-0.5 pb-5 [mask-image:linear-gradient(to_bottom,#000_calc(100%-1.25rem),transparent)] [scrollbar-width:thin]"
       >
         <ol className="flex min-w-0 flex-col">
-          {steps.map((stage, index) => stage.id !== 'review' && (
+          {steps.map((stage, index) => stage.id !== 'project' && stage.id !== 'review' && (
             <SummaryStage
               key={stage.id}
               draft={draft}
