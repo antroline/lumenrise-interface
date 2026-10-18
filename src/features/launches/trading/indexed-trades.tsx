@@ -134,7 +134,7 @@ export function IndexedTrades({
               ].map((label) => (
                 <TableHead
                   key={label}
-                  className="h-10 bg-foreground py-3 text-small font-medium normal-case tracking-normal text-background first:rounded-l-2xl last:rounded-r-2xl"
+                  className="h-10 bg-foreground py-3 text-small font-medium normal-case tracking-normal text-background first:rounded-l-2xl last:rounded-r-2xl dark:bg-secondary dark:text-foreground"
                 >
                   <TradeTooltipText
                     content={
