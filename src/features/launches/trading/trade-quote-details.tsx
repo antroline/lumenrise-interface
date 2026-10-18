@@ -29,9 +29,9 @@ export function TradeQuoteDetails({
           transition={{ ...tradeTransition, duration: reduced ? 0 : 0.22 }}
           className="overflow-hidden"
         >
-          <div className="rounded-b-2xl border border-t-0 border-border bg-secondary/60 px-4 pt-3 pb-1">
-            <TradeDisclosure title="Quote details">{children}</TradeDisclosure>
-          </div>
+          <TradeDisclosure title="Quote details" variant="attached">
+            {children}
+          </TradeDisclosure>
         </motion.div>
       )}
     </AnimatePresence>
