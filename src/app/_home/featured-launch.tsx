@@ -50,7 +50,7 @@ export function FeaturedLaunch({ network }: { network: ApiNetwork }) {
             </h1>
             {launch.metadata.description && <p className="mt-2 line-clamp-3 max-w-[60ch] break-words text-sm leading-relaxed text-muted-foreground">{launch.metadata.description}</p>}
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Button size="lg" render={<Link href={`/trade/${launch.contractId}?network=${network}`} />} nativeButton={false}>
+              <Button size="lg" render={<Link href={`/launch/${launch.contractId}?network=${network}`} />} nativeButton={false}>
                 Participate <ArrowRight data-icon="inline-end" />
               </Button>
               <Button variant="ghost" render={<Link href={launchHref(launch, network)} />} nativeButton={false}>View launch</Button>

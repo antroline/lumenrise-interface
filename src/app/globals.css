@@ -6,6 +6,7 @@
 
 /* Short viewports: compact density for tall sticky UI like the create stepper. */
 @custom-variant short (@media (max-height: 800px));
+@custom-variant studio-compact (@media (min-width: 1024px) and (max-height: 900px));
 
 @theme {
   --font-sans:
@@ -58,6 +59,11 @@
 
   --tracking-caps: 0.14em;
   --tracking-eyebrow: 0.18em;
+
+  /* Shared form-control heights; icon-only buttons retain their compact sizes. */
+  --spacing-control: 2.875rem;
+  --spacing-control-sm: 2.125rem;
+  --spacing-control-lg: 3.125rem;
 
   --radius-xs: 5px;
   --radius-sm: 6px;
@@ -133,8 +139,8 @@
 /* `.theme-reset` restores the light tokens for surfaces nested inside a DarkPanel. */
 :root,
 :root:not(.dark) .theme-reset {
-  --page: #fdfdfd;
-  --background: #fcfcfc;
+  --page: #ffffff;
+  --background: #ffffff;
   --foreground: #0b0b0b;
   --card: #fff;
   --card-foreground: #0b0b0b;
@@ -410,103 +416,6 @@
     linear-gradient(90deg, var(--divider) 1px, transparent 1px);
   background-size: 40px 40px;
   mask-image: linear-gradient(90deg, transparent 45%, #000 90%);
-}
-
-.page-dot-background {
-  background-image: radial-gradient(circle, var(--header-dot) 1px, transparent 1.5px);
-  background-size: 24px 24px;
-}
-
-/* A quiet dot matrix behind the shared header and the start of each page. */
-.page-dot-field {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 440px;
-  pointer-events: none;
-  background-image: radial-gradient(
-    circle at center,
-    var(--header-dot) 1.4px,
-    transparent 2px
-  );
-  background-position: center top;
-  background-size: 38px 38px;
-  mask-image: linear-gradient(
-    to bottom,
-    #000 0%,
-    #000 14%,
-    rgb(0 0 0 / 85%) 36%,
-    rgb(0 0 0 / 45%) 68%,
-    transparent 100%
-  );
-}
-
-.page-dot-field::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  --dot-lime: color-mix(in srgb, var(--color-lime) 68%, transparent);
-  --dot-orange: color-mix(in srgb, var(--color-orange) 62%, transparent);
-  /* A two-step rise with an orange trail. `--rise-y` keeps both rows inside the band
-     between the sticky header and the first panel, so neither edge ever crops them. */
-  --rise-y: 95px;
-  background-image:
-    radial-gradient(
-      circle at 38px calc(var(--rise-y) + 38px),
-      var(--dot-orange) 0 3px,
-      transparent 4.2px
-    ),
-    radial-gradient(
-      circle at 76px calc(var(--rise-y) + 38px),
-      var(--dot-orange) 0 3px,
-      transparent 4.2px
-    ),
-    radial-gradient(
-      circle at 114px calc(var(--rise-y) + 38px),
-      var(--dot-orange) 0 3px,
-      transparent 4.2px
-    ),
-    radial-gradient(
-      circle at 152px calc(var(--rise-y) + 38px),
-      var(--dot-orange) 0 3px,
-      transparent 4.2px
-    ),
-    radial-gradient(
-      circle at 190px var(--rise-y),
-      var(--dot-lime) 0 3px,
-      transparent 4.2px
-    ),
-    radial-gradient(
-      circle at 228px var(--rise-y),
-      var(--dot-lime) 0 3px,
-      transparent 4.2px
-    ),
-    radial-gradient(
-      circle at 266px var(--rise-y),
-      var(--dot-lime) 0 3px,
-      transparent 4.2px
-    ),
-    radial-gradient(
-      circle at 304px var(--rise-y),
-      var(--dot-lime) 0 3px,
-      transparent 4.2px
-    );
-  background-position: center top;
-  background-repeat: no-repeat;
-  background-size: 342px 342px;
-}
-
-/* The band is shorter on phones, where page content starts higher. */
-@media (max-width: 639px) {
-  .page-dot-field::after {
-    --rise-y: 76px;
-  }
-}
-
-:root {
-  --header-dot: rgb(11 11 11 / 8%);
-}
-.dark {
-  --header-dot: rgb(244 244 239 / 10%);
 }
 
 /* The coordinate field is reserved for page specimens and diagrams. */

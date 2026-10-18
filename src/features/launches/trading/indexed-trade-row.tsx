@@ -2,6 +2,7 @@ import { TableRow, TableCell } from '@/components/ui/table';
 import { Blockie } from '@/components/blockie';
 import { displayAmount } from '@/lib/api/launches/display';
 import type { getTrades } from '@/lib/api/launches/market';
+import { TradeTooltipText } from './trade-tooltip';
 export function IndexedTradeRow({
   trade,
   asOf,
@@ -12,18 +13,16 @@ export function IndexedTradeRow({
   return (
     <TableRow className="rounded-2xl">
       <TableCell>
-        <time
-          dateTime={trade.tradedAt}
-          title={new Date(trade.tradedAt).toLocaleString('en-US')}
-          className="whitespace-nowrap"
-        >
-          {new Date(trade.tradedAt).toLocaleString(
-            'en-US',
-            asOf - Date.parse(trade.tradedAt) < 86_400_000
-              ? { hour: '2-digit', minute: '2-digit' }
-              : { month: 'short', day: 'numeric' },
-          )}
-        </time>
+        <TradeTooltipText content={new Date(trade.tradedAt).toUTCString()}>
+          <time dateTime={trade.tradedAt} className="whitespace-nowrap">
+            {new Date(trade.tradedAt).toLocaleString(
+              'en-US',
+              asOf - Date.parse(trade.tradedAt) < 86_400_000
+                ? { hour: '2-digit', minute: '2-digit' }
+                : { month: 'short', day: 'numeric' },
+            )}
+          </time>
+        </TradeTooltipText>
       </TableCell>
       <TableCell
         className={
@@ -52,11 +51,13 @@ export function IndexedTradeRow({
       <TableCell className="tabular-nums">
         {displayAmount(trade.executionPrice)}
       </TableCell>
-      <TableCell title={trade.trader}>
+      <TableCell>
         <div className="flex items-center gap-2 whitespace-nowrap">
           <Blockie seed={trade.trader} size={16} className="rounded-full" />
           <span className="text-muted-foreground">
-            {trade.trader.slice(0, 6)}…{trade.trader.slice(-4)}
+            <TradeTooltipText content={trade.trader}>
+              {trade.trader.slice(0, 6)}…{trade.trader.slice(-4)}
+            </TradeTooltipText>
           </span>
         </div>
       </TableCell>

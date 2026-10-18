@@ -9,17 +9,9 @@ import {
   EmptyDescription,
 } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { formatHolderBalance } from '@/lib/api/launches/holders';
 import type { useHolders } from '@/features/launches/hooks/use-holders';
-import { tradeTableClass } from './trade-table-style';
+import { TradeTooltipText } from './trade-tooltip';
 
 export function IndexedHolders({
   holders,
@@ -33,8 +25,17 @@ export function IndexedHolders({
   return (
     <section className="flex min-w-0 flex-col gap-3" aria-label="Known holders">
       {query.isPending ? (
-        <div role="status" aria-label="Loading holders">
-          <Skeleton className="h-44 w-full" />
+        <div
+          role="status"
+          aria-label="Loading holders"
+          className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+        >
+          {[0, 1, 2].map((key) => (
+            <Skeleton
+              key={key}
+              className="h-24 w-full rounded-lg motion-reduce:animate-none"
+            />
+          ))}
         </div>
       ) : query.isError && !query.data ? (
         <Empty>
@@ -60,45 +61,41 @@ export function IndexedHolders({
           </EmptyHeader>
         </Empty>
       ) : (
-        <Table className={tradeTableClass}>
-          <TableHeader>
-            <TableRow>
-              {['Holder', `Balance · ${ticker}`].map((label) => (
-                <TableHead
-                  key={label}
-                  className="h-10 bg-muted py-3 text-small normal-case tracking-normal first:rounded-l-2xl last:rounded-r-2xl"
-                >
-                  {label}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((holder) => (
-              <TableRow key={holder.address} className="rounded-2xl">
-                <TableCell title={holder.address}>
-                  <div className="flex items-center gap-2 whitespace-nowrap">
-                    <Blockie
-                      seed={holder.address}
-                      size={16}
-                      className="rounded-full"
-                    />
-                    <span className="text-muted-foreground">
-                      {holder.address.slice(0, 6)}…{holder.address.slice(-4)}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell
-                  className="tabular-nums"
-                  title={`Snapshot: ${holder.observedAt}`}
+        <ul
+          aria-label="Holder wallets"
+          className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3"
+        >
+          {items.map((holder) => (
+            <li
+              key={holder.address}
+              className="flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <Blockie
+                  seed={holder.address}
+                  size={20}
+                  className="shrink-0 rounded-full"
+                />
+                <span className="truncate text-[11px] text-muted-foreground">
+                  <TradeTooltipText content={holder.address}>
+                    {holder.address.slice(0, 4)}…{holder.address.slice(-4)}
+                  </TradeTooltipText>
+                </span>
+              </div>
+              <p className="min-w-0 break-words text-base leading-tight font-medium tabular-nums">
+                <TradeTooltipText
+                  content={`Indexed balance observed at ${new Date(holder.observedAt).toUTCString()}. May be delayed.`}
                 >
                   {query.data &&
                     formatHolderBalance(holder.balance, query.data.amountScale)}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                </TradeTooltipText>
+                <span className="mt-1 block text-[11px] font-normal text-muted-foreground">
+                  {ticker}
+                </span>
+              </p>
+            </li>
+          ))}
+        </ul>
       )}
       {error && query.data && (
         <p role="alert" className="text-small text-destructive">

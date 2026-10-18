@@ -529,7 +529,7 @@ export function useBondingLaunch() {
           : current,
       );
       // Signed-out failures have no launch operation dialog to display them.
-      if (!user) account.notify(message);
+      if (!user) account.notify(message, { tone: 'error' });
     } finally {
       running.current = false;
       setWorking(false);

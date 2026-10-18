@@ -6,6 +6,7 @@ import { ArrowRight, CircleAlert, ImagePlus, UserRound, X } from 'lucide-react'
 import { AuthGate } from '@/components/auth-gate'
 import { LogoHorizontal } from '@/components/logo'
 import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
@@ -39,7 +40,7 @@ export default function RegisterPage() {
   const redirecting = account.status === 'registered' || account.status === 'preview'
 
   return (
-    <div className="page-dot-background min-h-screen bg-page">
+    <div className="min-h-screen bg-page">
       <header className="mx-auto flex max-w-7xl items-center justify-between border-b px-5 py-6 sm:px-8">
         <LogoHorizontal height={24} />
       </header>
@@ -234,14 +235,13 @@ function RegistrationForm({ onRegistered }: { onRegistered: () => void }) {
               </div>
             </FieldGroup>
             {formError ? (
-              <p role="alert" className="text-small text-bad">
-                {formError}
-              </p>
+              <Alert variant="destructive">
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
             ) : null}
             <div className="flex flex-col items-start justify-between gap-4 border-t pt-5 sm:flex-row sm:items-center">
               <p className="text-small text-muted-foreground">This creates your LumenRise profile.</p>
-              <Button size="lg" type="submit" disabled={submitting}>
-                {submitting ? <Spinner data-icon="inline-start" /> : null}
+              <Button size="lg" type="submit" loading={submitting}>
                 {submitting ? 'Creating your account…' : 'Create account'}
                 {!submitting && <ArrowRight data-icon="inline-end" />}
               </Button>

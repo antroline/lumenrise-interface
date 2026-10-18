@@ -1,5 +1,5 @@
 export type SaleMethod = 'bonding' | 'fixed' | 'auction';
-export type LaunchMethod = 'basic' | SaleMethod;
+export type LaunchMethod = SaleMethod;
 export type QuoteToken = 'XLM' | 'USDC';
 export type LaunchDurationDays = '7' | '14' | '30' | '60';
 
@@ -56,7 +56,7 @@ export type LaunchDraft = {
 };
 
 export const initialLaunchDraft: LaunchDraft = {
-  method: 'basic',
+  method: 'bonding',
   methodSelected: false,
   name: '',
   symbol: '',
@@ -111,14 +111,12 @@ export const initialLaunchDraft: LaunchDraft = {
 };
 
 export const methodLabels: Record<LaunchMethod, string> = {
-  basic: 'Basic',
   bonding: 'Bonding curve',
   fixed: 'Fixed price',
   auction: 'Auction',
 };
 
 export const allocationLabels: Record<LaunchMethod, string> = {
-  basic: 'Launch',
   bonding: 'Bonding curve',
   fixed: 'Presale',
   auction: 'Auction',

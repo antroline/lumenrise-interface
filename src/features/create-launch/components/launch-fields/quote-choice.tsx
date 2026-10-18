@@ -35,7 +35,7 @@ export function QuoteChoice({
             value={quote}
             aria-label={quote}
             className={cn(
-              'relative h-auto min-h-24 min-w-0 flex-col items-stretch rounded-xl border-border bg-card px-4 py-4 text-left data-pressed:border-foreground data-pressed:bg-muted data-pressed:text-foreground short:min-h-20 short:py-3',
+              'relative h-auto min-h-15 studio-compact:min-h-12 min-w-0 flex-col items-stretch rounded-xl border-border bg-card px-3 py-3 studio-compact:py-2 text-left data-pressed:border-foreground data-pressed:bg-muted data-pressed:text-foreground ',
               highlightSelection && 'transition-[border-color,background-color,box-shadow] duration-200 data-pressed:ring-3 data-pressed:ring-lime/40 focus-visible:ring-lime/40',
             )}
           >

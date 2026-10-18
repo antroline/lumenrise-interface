@@ -32,7 +32,7 @@ export function ChoiceCards<T extends string>({
           const choice = options.find((option) => option.value === next);
           if (choice) onChange(choice.value);
         }}
-        className="grid gap-3 @lg/launch:grid-cols-2"
+        className="grid gap-3 @md/launch:grid-cols-2"
       >
         {options.map((option) => (
           <FieldLabel
@@ -46,11 +46,11 @@ export function ChoiceCards<T extends string>({
           >
             <Field
               orientation="horizontal"
-              className="min-h-24 items-start gap-3 short:min-h-20 short:p-3!"
+              className="min-h-24 items-start gap-2 @md/launch:p-3! short:min-h-20 short:p-3!"
             >
               <span
                 className={cn(
-                  'grid size-9 shrink-0 place-items-center rounded-lg transition-colors duration-150',
+                  'grid size-8 shrink-0 place-items-center rounded-lg transition-colors duration-150',
                   selectedValue === option.value
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground',

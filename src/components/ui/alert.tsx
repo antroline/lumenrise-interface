@@ -10,6 +10,7 @@ const alertVariants = cva(
         default: "bg-muted",
         info: "bg-info-soft",
         warn: "bg-warn-soft",
+        destructive: "bg-bad-soft text-bad [&>svg]:text-bad [&_b]:text-bad",
       },
       size: {
         default: "",
@@ -32,7 +33,8 @@ function Alert({
   return (
     <div
       data-slot="alert"
-      role="note"
+      data-variant={variant ?? "default"}
+      role={variant === "destructive" ? "alert" : "note"}
       className={cn(alertVariants({ variant, size }), className)}
       {...props}
     />
@@ -43,7 +45,7 @@ function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="alert-title"
-      className={cn("font-semibold text-foreground", className)}
+      className={cn("font-semibold text-foreground group-data-[variant=destructive]/alert:text-bad", className)}
       {...props}
     />
   )

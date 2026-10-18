@@ -65,7 +65,7 @@ function harness({
   const jsx = (type, props) => ({ type, props });
   const mockUi = (name) => ({ [name]: name });
   const mocks = {
-    './trade-form.module.css': { default: { pay: 'pay', presets: 'presets' } },
+    '@/lib/utils': { cn: (...classes) => classes.filter(Boolean).join(' ') },
     react: {
       useState(initial) {
         const index = stateIndex++;
@@ -98,18 +98,20 @@ function harness({
         isFetching: false,
       }),
       readContracts: async () => ({
-        values: [quote, '100000000', '100000000', '100000000'],
+        values: side === 'buy' ? [quote, '100000000'] : [quote, '100000000', '100000000'],
       }),
     },
     '@/components/ui/button': mockUi('Button'),
     '@/components/ui/input': mockUi('Input'),
     '@/components/ui/input-group': { InputGroup: 'InputGroup', InputGroupAddon: 'InputGroupAddon', InputGroupInput: 'InputGroupInput' },
     '@/features/launches/trading/trade-value': { TradeValue: 'TradeValue' },
+    '@/features/launches/trading/trade-tooltip': { TradeTooltipText: 'TradeTooltipText' },
     '@/features/launches/trading/trade-feedback': { TradeFeedback: 'TradeFeedback' },
     '@/features/launches/trading/trade-token-pill': { TradeTokenPill: 'TradeTokenPill' },
     '@/lib/launchpad': { useLaunchpad: () => ({ loginPending, login: async (destination) => { events.push(`connect:${destination}`); } }) },
     './trade-result-dialog': { TradeResultDialog: 'TradeResultDialog' },
     '@/components/token-logo': mockUi('TokenLogo'),
+    '@/features/launches/trading/trade-quote-details': { TradeQuoteDetails: 'TradeQuoteDetails' },
     '@/features/launches/trading/trade-disclosure': mockUi('TradeDisclosure'),
     '@/components/ui/field': Object.fromEntries(
       ['Field', 'FieldDescription', 'FieldGroup', 'FieldLabel'].map((n) => [
@@ -233,10 +235,22 @@ function elements(node) {
   return [node, ...[node.props?.children].flat().flatMap(elements)];
 }
 
-test('All sell uses the lesser of held tokens and eligible curve purchases without losing stroops', () => {
+test('balance presets retain exact stroops on both sides', () => {
+  for (const side of ['buy', 'sell']) {
+    for (const [percent, expected] of [[25, '3.0864197'], [50, '6.1728394'], [75, '9.2592591'], [100, '12.3456789']]) {
+      const h = harness({ side, balances: { held: 123456790n, position: 123456789n, pairHeld: 123456789n } });
+      const preset = elements(h.form).find(node => node.type === 'Button' && node.props.children === percent + '%');
+      assert.equal(preset.props.disabled, false);
+      preset.props.onClick();
+      assert.ok(h.states.includes(expected), side + ' ' + percent + '% must round down in raw units');
+    }
+  }
+});
+
+test('100% sell uses the lesser of held tokens and eligible curve purchases without losing stroops', () => {
   for (const [held, position] of [[90071992547409930n, 90071992547409931n], [90071992547409931n, 90071992547409930n]]) {
     const h = harness({ side: 'sell', balances: { held, position, pairHeld: 0n } });
-    const max = elements(h.form).find(node => node.type === 'Button' && node.props.children === 'All');
+    const max = elements(h.form).find(node => node.type === 'Button' && node.props.children === '100%');
     assert.equal(max.props.disabled, false);
     max.props.onClick();
     assert.ok(h.states.includes('9007199254.740993'));
@@ -264,7 +278,7 @@ for (const side of ['buy', 'sell']) test(`signed-out ${side} connects the wallet
   assert.equal(action.props.type, 'button');
   assert.equal(action.props.disabled, false);
   action.props.onClick();
-  assert.deepEqual(h.events, ['connect:/trade/launch-contract?network=testnet']);
+  assert.deepEqual(h.events, ['connect:/launch/launch-contract?network=testnet']);
   await h.submit();
   assert.equal(h.writes(), 0);
 });

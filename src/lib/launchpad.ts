@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from 'react'
 import type { AccountProfile } from '@/lib/api/auth'
+import type { NotificationOptions } from '@/lib/notifications'
 
 export type AccountState =
   | { status: 'signed-out' }
@@ -21,7 +22,7 @@ export type LaunchpadContextValue = {
   loginPhase: 'connecting' | 'checking' | null
   login: (destination?: string) => Promise<void>
   logout: () => void
-  notify: (message: string) => void
+  notify: (message: string, options?: NotificationOptions) => void
   /** Registration state of the signed-in provider user. */
   account: AccountState
   /** True when account-only pages may render (registered user or dev preview). */

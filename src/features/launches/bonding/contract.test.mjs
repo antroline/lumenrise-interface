@@ -148,19 +148,22 @@ test('frozen trustlines and full receiving limits are rejected', async () => {
   assert.throws(() => tx.checkReceivingCapacity(withOffer, tokens, true, 1n), /limit is too low/);
 });
 
-function renderTrade(side, position = '20000000', confirmation = 'SUCCESS') {
+function renderTrade(side, position = '20000000', confirmation = 'SUCCESS', missingPairTrustline = false) {
   const calls = [];
   const stored = new Map();
   const states = ['2', '2', '', false, '', '', undefined, undefined, '', null];
   let index = 0;
   let loads = 0;
   let written;
+  const currentWallet = () => wallet([
+    ...(!missingPairTrustline || loads > 1 ? [line(usdc, '10')] : []),
+    ...(loads > 1 || !buying ? [line(asset, '2')] : []),
+  ]);
   const buying = side === 'buy';
   const curve = asset.contractId(Networks.TESTNET);
   const quote = { gross: '30000000', creator_fee: '300000', user_amount: buying ? '30300000' : '29700000' };
   const primitives = Object.fromEntries(['Button', 'Input', 'Field', 'FieldDescription', 'FieldGroup', 'FieldLabel'].map(name => [name, () => null]));
   const mocks = {
-    './trade-form.module.css': { default: { pay: 'pay', presets: 'presets' } },
     react: {
       useState: () => { const at = index++; return [states[at], value => { states[at] = value; }]; },
       useRef: () => ({ current: false }), useEffect: () => {},
@@ -174,13 +177,23 @@ function renderTrade(side, position = '20000000', confirmation = 'SUCCESS') {
         assert.equal(requests[0].fn, buying ? 'quote_buy' : 'quote_sell');
         // Buys invert the cumulative curve cost in exact units before requesting a quote.
         assert.equal(requests[0].args[0], buying ? '19999600007' : '20000000');
-        return { values: [quote, '20000000', '100000000', position] };
+        // Model SAC behavior: balance() fails before the receiving trustline exists.
+        for (const request of requests) {
+          if (request.fn !== 'balance') continue;
+          const token = request.address === asset.contractId(Networks.TESTNET) ? asset : usdc;
+          const account = currentWallet();
+          if (!domain.trusts(account, token))
+            throw new Error('HostError: Error(Contract, #13): trustline entry is missing for account');
+        }
+        assert.equal(requests.length, buying ? 2 : 3);
+        assert.equal(requests[1].address, (buying ? usdc : asset).contractId(Networks.TESTNET));
+        return { values: buying ? [quote, '100000000'] : [quote, '20000000', position] };
       },
     },
     '@/lib/stellar/clients': {
       API_NETWORK: 'testnet',
       NETWORK: Networks.TESTNET,
-      horizon: { loadAccount: async () => { loads++; return wallet([line(usdc, '10'), ...(loads > 1 || !buying ? [line(asset, '2')] : [])]); } },
+      horizon: { loadAccount: async () => { loads++; return currentWallet(); } },
       soroban: {
         pollTransaction: async hash => { calls.push(`${hash} confirmed`); return { status: confirmation }; },
         getTransaction: async () => ({ status: confirmation }),
@@ -188,6 +201,8 @@ function renderTrade(side, position = '20000000', confirmation = 'SUCCESS') {
     },
     '@/components/ui/button': primitives, '@/components/ui/field': primitives, '@/components/ui/input': primitives,
     '@/components/ui/input-group': { InputGroup: () => null, InputGroupAddon: () => null, InputGroupInput: () => null },
+    '@/features/launches/trading/trade-quote-details': { TradeQuoteDetails: 'TradeQuoteDetails' },
+    '@/features/launches/trading/trade-tooltip': { TradeTooltipText: 'TradeTooltipText' },
     '@/features/launches/trading/trade-disclosure': { TradeDisclosure: () => null },
     '@/features/launches/trading/trade-value': { TradeValue: 'TradeValue' },
     '@/features/launches/trading/trade-feedback': { TradeFeedback: 'TradeFeedback' },
@@ -223,6 +238,13 @@ test('sell passes seller, exact token amount and minimum pair receipt', async ()
   assert.equal(trade.written.call.fn, 'sell');
   assert.deepEqual(Array.from(trade.written.call.args), [owner, '20000000', '29551500']);
   assert.deepEqual(trade.calls, ['trade submitted', 'trade-hash confirmed', 'refreshed']);
+});
+
+test('sell can create a missing receiving pair trustline without reading its SAC balance first', async () => {
+  const trade = renderTrade('sell', '20000000', 'SUCCESS', true);
+  await trade.submit();
+  assert.equal(trade.written.call.fn, 'sell');
+  assert.deepEqual(trade.calls, ['trustline submitted', 'trustline-hash confirmed', 'trade submitted', 'trade-hash confirmed', 'refreshed']);
 });
 
 test('a transferred token balance without enough curve purchases cannot submit a sell', async () => {

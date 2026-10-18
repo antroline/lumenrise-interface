@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import type { WizardStep } from '../../lib/launch-validation';
 import {
   allocationLabels,
   formatAmount,
@@ -20,9 +21,8 @@ export function ReviewStep({
   onEdit,
 }: {
   draft: LaunchDraft;
-  onEdit: (step: number) => void;
+  onEdit: (step: WizardStep) => void;
 }) {
-  if (draft.method === 'basic') return null;
   const row = (label: string, value: ReactNode): [string, ReactNode] => [
     label,
     value,
@@ -59,8 +59,8 @@ export function ReviewStep({
           id="review-token-heading"
           title="Token info"
           actions={[
-            { label: 'Edit project', onClick: () => onEdit(0) },
-            { label: 'Edit token', onClick: () => onEdit(2) },
+            { label: 'Edit project', onClick: () => onEdit('project') },
+            { label: 'Edit token', onClick: () => onEdit('token') },
           ]}
         />
         <div className="flex items-center gap-4 py-4">
@@ -105,8 +105,8 @@ export function ReviewStep({
       <ReviewSection
         title={`${methodLabels[draft.method]} details`}
         actions={[
-          { label: 'Edit terms', onClick: () => onEdit(3) },
-          { label: 'Edit dates', onClick: () => onEdit(4) },
+          { label: 'Edit terms', onClick: () => onEdit('sale') },
+          { label: 'Edit dates', onClick: () => onEdit('settings') },
         ]}
         rows={[
           row(
@@ -160,7 +160,7 @@ export function ReviewStep({
       />
       <ReviewSection
         title="Supply & allocation"
-        actions={[{ label: 'Edit allocation', onClick: () => onEdit(2) }]}
+        actions={[{ label: 'Edit allocation', onClick: () => onEdit('allocation') }]}
         rows={[
           ['Total supply', `${formatAmount(draft.supply)} ${draft.symbol}`],
           [allocationLabels[draft.method], `${draft.allocation.saleShare}%`],
@@ -184,7 +184,7 @@ export function ReviewStep({
       {draft.method === 'bonding' && (
         <ReviewSection
           title="Creator fees"
-          actions={[{ label: 'Edit settings', onClick: () => onEdit(4) }]}
+          actions={[{ label: 'Edit settings', onClick: () => onEdit('settings') }]}
           rows={[
             [
               'Creator fee share',
@@ -199,10 +199,10 @@ export function ReviewStep({
           actions={
             draft.method === 'auction'
               ? [
-                  { label: 'Edit proceeds', onClick: () => onEdit(3) },
-                  { label: 'Edit lock', onClick: () => onEdit(4) },
+                  { label: 'Edit proceeds', onClick: () => onEdit('sale') },
+                  { label: 'Edit lock', onClick: () => onEdit('settings') },
                 ]
-              : [{ label: 'Edit settings', onClick: () => onEdit(4) }]
+              : [{ label: 'Edit settings', onClick: () => onEdit('settings') }]
           }
           rows={
             draft.method === 'fixed'
@@ -231,7 +231,7 @@ export function ReviewStep({
       )}
       <ReviewSection
         title="Eligibility"
-        actions={[{ label: 'Edit eligibility', onClick: () => onEdit(5) }]}
+        actions={[]}
         rows={[
           [
             'Participation',
@@ -264,7 +264,7 @@ export function ReviewStep({
       {draft.method !== 'bonding' && (
         <ReviewSection
           title="Participant vesting"
-          actions={[{ label: 'Edit vesting', onClick: () => onEdit(6) }]}
+          actions={[{ label: 'Edit vesting', onClick: () => onEdit('vesting') }]}
           rows={
             draft.participantVesting.mode === 'immediate'
               ? [['Release', 'All tokens at launch']]
@@ -280,8 +280,9 @@ export function ReviewStep({
         />
       )}
       <p className="text-small text-muted-foreground">
-        Preview only. Launching requires the matching contract and server
-        connection.
+        {draft.method === 'bonding'
+          ? 'Launching on Stellar Testnet. Your wallet will ask you to approve the required transactions.'
+          : 'Preview only. Launching requires the matching contract and server connection.'}
       </p>
     </div>
   );

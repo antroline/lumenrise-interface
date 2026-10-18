@@ -21,9 +21,9 @@ const positions: { name: ProjectMarkName; subtitle: string; position: string; am
   { name: 'Meridian', subtitle: 'Ends Sep 30', position: 'Bid #2 · 0.26', amount: '1,560 USDC', allocation: '—', status: 'Below range · est.', href: '/auction/meridian' },
 ]
 const allocations: { name: ProjectMarkName; ticker: string; total: string; claimed: string; claimable: string; locked: string; progress: number; value: string; href: string }[] = [
-  { name: 'Harbor', ticker: 'HBR', total: '4,000', claimed: '1,500', claimable: '1,250', locked: '1,250', progress: 69, value: '$830', href: '/trade/harbor' },
-  { name: 'Kiln', ticker: 'KILN', total: '6,200', claimed: '3,100', claimable: '0', locked: '3,100', progress: 50, value: '$663', href: '/trade/kiln' },
-  { name: 'Contour', ticker: 'CNTR', total: '12,500', claimed: '12,500', claimable: '0', locked: '0', progress: 100, value: '$1,164', href: '/trade/contour' },
+  { name: 'Harbor', ticker: 'HBR', total: '4,000', claimed: '1,500', claimable: '1,250', locked: '1,250', progress: 69, value: '$830', href: '/launch/harbor' },
+  { name: 'Kiln', ticker: 'KILN', total: '6,200', claimed: '3,100', claimable: '0', locked: '3,100', progress: 50, value: '$663', href: '/launch/kiln' },
+  { name: 'Contour', ticker: 'CNTR', total: '12,500', claimed: '12,500', claimable: '0', locked: '0', progress: 100, value: '$1,164', href: '/launch/contour' },
 ]
 
 function ProjectCell({ name, subtitle }: { name: ProjectMarkName; subtitle: string }) {

@@ -11,7 +11,11 @@ import {
   EmptyTitle,
   EmptyDescription,
 } from '@/components/ui/empty';
-import { chartTimeframes, getChart, type ChartRange } from '@/lib/api/launches/market';
+import {
+  chartTimeframes,
+  getChart,
+  type ChartRange,
+} from '@/lib/api/launches/market';
 import { chartPoints, chartWindow } from '@/lib/api/launches/display';
 import {
   launchKey,
@@ -27,12 +31,16 @@ export function IndexedPriceChart({
   ticker,
   pair,
   price,
+  active = true,
+  embedded = false,
 }: {
   address: string;
   network: ApiNetwork;
   ticker: string;
   pair: string;
   price: string;
+  active?: boolean;
+  embedded?: boolean;
 }) {
   const [range, setRange] = useState<ChartRange>('1D');
   const chartContainer = useRef<HTMLDivElement>(null);
@@ -46,11 +54,17 @@ export function IndexedPriceChart({
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-  const visible = usePageVisible();
+  const visible = usePageVisible() && active;
   const client = useQueryClient();
   const query = useQuery({
     ...publicQueryOptions,
-    queryKey: [...launchKey(network, address), 'chart', range, chartTimeframes[range], { limit: 1000, window: range, to: 'server-now' }],
+    queryKey: [
+      ...launchKey(network, address),
+      'chart',
+      range,
+      chartTimeframes[range],
+      { limit: 1000, window: range, to: 'server-now' },
+    ],
     queryFn: ({ signal }) => getChart(address, network, range, signal),
     enabled: visible,
   });
@@ -75,9 +89,10 @@ export function IndexedPriceChart({
     max = Math.max(...data);
   const timeDomain = query.data ? chartWindow(query.data) : undefined;
   const lastCandle = query.data?.items.at(-1);
-  const stepEndTime = lastCandle && query.data
-    ? Math.min(Date.parse(lastCandle.endsAt), Date.parse(query.data.asOf))
-    : undefined;
+  const stepEndTime =
+    lastCandle && query.data
+      ? Math.min(Date.parse(lastCandle.endsAt), Date.parse(query.data.asOf))
+      : undefined;
   const padding = Math.max((max - min) * 0.1, Math.abs(max) * 0.01, 0.0000001);
   const formatDate = (time: number) =>
     new Date(time).toLocaleString('en-US', {
@@ -87,9 +102,9 @@ export function IndexedPriceChart({
       minute: '2-digit',
     });
   const content = query.isPending ? (
-    <Skeleton className="h-60 w-full" />
+    <Skeleton className={embedded ? 'h-full min-h-0 w-full' : 'h-60 w-full'} />
   ) : query.isError && !query.data ? (
-    <Empty>
+    <Empty className={embedded ? 'h-full min-h-0 p-3' : undefined}>
       <EmptyHeader>
         <EmptyTitle>Could not load price history</EmptyTitle>
         <EmptyDescription>{query.error.message}</EmptyDescription>
@@ -99,7 +114,7 @@ export function IndexedPriceChart({
       </Button>
     </Empty>
   ) : precisionError || !points.length ? (
-    <Empty className="min-h-60">
+    <Empty className={embedded ? 'h-full min-h-0 p-3' : 'min-h-60'}>
       <EmptyHeader>
         <EmptyTitle>
           {precisionError
@@ -120,7 +135,11 @@ export function IndexedPriceChart({
         stepEndTime={stepEndTime}
         interpolation="step"
         fill={false}
-        className="[&_.stroke-foreground]:stroke-lime [&_line]:stroke-transparent [&_text]:fill-muted-foreground"
+        className={
+          embedded
+            ? 'h-full min-h-0 flex-1 [&_line]:stroke-transparent [&_text]:fill-muted-foreground'
+            : '[&_line]:stroke-transparent [&_text]:fill-muted-foreground'
+        }
         width={chartWidth}
         axisWidth={90}
         height={240}
@@ -147,14 +166,12 @@ export function IndexedPriceChart({
         marker={false}
         label={`${ticker} observed contract prices in ${pair} over ${range}`}
       />
-      <p className="mt-3 text-small text-muted-foreground">
-        Observed contract prices · before fees · held between observations
-      </p>
     </>
   );
   return (
     <>
       <PriceChart
+        embedded={embedded}
         ticker={ticker}
         price={price}
         quoteSymbol={pair}
@@ -162,12 +179,21 @@ export function IndexedPriceChart({
           range,
           onRangeChange: setRange,
           content: (
-            <div ref={chartContainer} className="min-h-60">
+            <div
+              ref={chartContainer}
+              className={
+                embedded ? 'flex h-full min-h-0 flex-1 flex-col' : 'min-h-60'
+              }
+            >
               {content}
               {query.isError && query.data && (
                 <p role="alert" className="text-small text-destructive">
                   Could not refresh price history.{' '}
-                  <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void query.refetch()}
+                  >
                     Retry
                   </Button>
                 </p>

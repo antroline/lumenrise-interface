@@ -1,8 +1,16 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { MotionConfig } from 'motion/react';
+import { Coins, Clock3 } from 'lucide-react';
+import { TradeMotion } from '../trading/trade-motion';
+import { IndexedPriceChart } from '../trading/indexed-price-chart';
+import { TradeActivity } from '../trading/trade-activity';
+import { IndexedTrades } from '../trading/indexed-trades';
+import { IndexedHolders } from '../trading/indexed-holders';
+import { PoolTable } from '../trading/pool-table';
+import { useHolders } from '../hooks/use-holders';
 import { BackLink } from '@/components/page-header';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   compactAmount,
   pairLabel,
@@ -12,7 +20,6 @@ import type { LaunchResult } from '@/lib/api/launches/market';
 import { useMarket } from '@/features/launches/hooks/queries';
 import type { ApiNetwork } from '@/lib/api/launches/types';
 import type { Snapshot, Tokens } from '../bonding/contract';
-import { useScrolledPast, useWideLayout } from '../hooks/use-scrolled-past';
 import {
   curveModel,
   modelPrice,
@@ -26,13 +33,14 @@ import {
   detailDate,
   detailAmount,
 } from '../lib/bonding-details';
-import { LaunchActionCard } from './launch-action-card';
+import { LaunchActionCard, type TradeFormRenderer } from './launch-action-card';
 import { LaunchCover } from './launch-cover';
-import { LaunchReveal } from './launch-reveal';
 import { LaunchCreator } from './launch-creator';
 import { LaunchHero, type LaunchFigure } from './launch-hero';
 import { LaunchSection } from './launch-panel';
+import { LaunchReveal } from './launch-reveal';
 import { LaunchTimeline, type TimelineStep } from './launch-timeline';
+import { TradeTooltipText } from '../trading/trade-tooltip';
 import { LaunchTokenomics, type VestingPlan } from './launch-tokenomics';
 
 const UNIT = BigInt(10_000_000);
@@ -72,17 +80,120 @@ function relativeTime(seconds: string, now: number) {
   return diff >= 0 ? `in ${text}` : `${text} ago`;
 }
 
+function TimelineSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-label="Loading launch timeline"
+      aria-busy="true"
+      className="relative my-5 grid grid-cols-3 py-3 before:absolute before:inset-x-0 before:top-[70px] before:h-px before:bg-border"
+    >
+      <span className="sr-only">Loading launch timeline…</span>
+      {[0, 1, 2].map((step) => (
+        <div
+          key={step}
+          aria-hidden="true"
+          className="relative flex min-w-0 flex-col items-center px-1"
+        >
+          <div className="flex h-8 items-center">
+            <Skeleton className="h-4 w-20 motion-reduce:animate-none" />
+          </div>
+          <Skeleton className="mt-2 h-9 w-12 rounded-full motion-reduce:animate-none sm:w-14" />
+          <Skeleton className="mt-3 h-4 w-16 motion-reduce:animate-none" />
+          <Skeleton className="mt-1 h-3 w-12 motion-reduce:animate-none" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TokenomicsSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-label="Loading tokenomics"
+      aria-busy="true"
+      className="flex min-w-0 flex-col gap-6"
+    >
+      <span className="sr-only">Loading tokenomics…</span>
+      <div aria-hidden="true" className="flex flex-col gap-6 sm:flex-row">
+        <Skeleton className="aspect-square w-full max-w-[232px] shrink-0 motion-reduce:animate-none" />
+        <div className="flex min-w-0 flex-1 flex-col gap-5">
+          {[0, 1, 2].map((row) => (
+            <div key={row} className="flex flex-col gap-2">
+              <Skeleton className="h-4 w-32 motion-reduce:animate-none" />
+              <Skeleton className="h-3.5 w-full max-w-[360px] motion-reduce:animate-none" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RulesSkeleton() {
+  return (
+    <div role="status" aria-label="Loading launch rules" aria-busy="true">
+      <span className="sr-only">Loading launch rules…</span>
+      <div aria-hidden="true" className="flex flex-col">
+        {[0, 1, 2, 3, 4, 5].map((row) => (
+          <div
+            key={row}
+            className="grid min-w-0 gap-1 border-t border-divider py-4 first:border-t-0 first:pt-0 last:pb-0 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-6"
+          >
+            <Skeleton className="h-4 w-24 motion-reduce:animate-none" />
+            <Skeleton className="h-4 w-full max-w-[420px] motion-reduce:animate-none" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const marketHelp: Record<string, string> = {
+  FDV: 'Fully diluted value: total token supply multiplied by the current marginal price. This is not the amount raised.',
+  Price: 'Current marginal price on the bonding curve, before trading fees.',
+  '24h Volume':
+    'Gross payment-asset volume from recorded buys and sells in the last 24 hours.',
+  '24h trades':
+    'Number of recorded buy and sell transactions in the last 24 hours.',
+  Holders:
+    'Known balances derived from processed trades. This is not a complete on-chain holder index and may be delayed.',
+};
+
 /** Term/value rows separated by hairlines. */
-function FactRows({ rows }: { rows: (readonly [string, ReactNode])[] }) {
+function FactRows({
+  rows,
+  compact = false,
+}: {
+  rows: (readonly [string, ReactNode])[];
+  compact?: boolean;
+}) {
   return (
     <dl className="flex flex-col text-[14px]">
       {rows.map(([term, value]) => (
         <div
           key={term}
-          className="grid min-w-0 gap-1 border-t border-divider py-4 first:border-t-0 first:pt-0 last:pb-0 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-6"
+          className={
+            compact
+              ? 'grid min-h-11 min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-4 border-t border-divider py-2.5 first:border-t-0'
+              : 'grid min-w-0 gap-1 border-t border-divider py-4 first:border-t-0 first:pt-0 last:pb-0 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-6'
+          }
         >
-          <dt className="text-muted-foreground">{term}</dt>
-          <dd className="min-w-0 break-words leading-relaxed">{value}</dd>
+          <dt className="text-muted-foreground">
+            <TradeTooltipText content={compact ? marketHelp[term] : undefined}>
+              {term}
+            </TradeTooltipText>
+          </dt>
+          <dd
+            className={
+              compact
+                ? 'min-w-0 break-words text-right font-medium tabular-nums'
+                : 'min-w-0 break-words leading-relaxed'
+            }
+          >
+            {value}
+          </dd>
         </div>
       ))}
     </dl>
@@ -98,6 +209,10 @@ export function IndexedLaunchOverview({
   loading = false,
   feedback,
   children,
+  buy,
+  sell,
+  walletFeedback,
+  tradingLoading = false,
 }: {
   address: string;
   network: ApiNetwork;
@@ -107,12 +222,15 @@ export function IndexedLaunchOverview({
   loading?: boolean;
   feedback: ReactNode;
   children: ReactNode;
+  buy?: TradeFormRenderer | null;
+  sell?: TradeFormRenderer | null;
+  walletFeedback?: ReactNode;
+  tradingLoading?: boolean;
 }) {
   const market = useMarket(address, network);
   const now = useNow(30_000);
-  // 68px is the sticky app header; the identity docks into the sticky action card, which exists from `lg`.
-  const [identityRef, scrolledPast] = useScrolledPast<HTMLDivElement>(68);
-  const docked = useWideLayout() && scrolledPast;
+  const [holdersActive, setHoldersActive] = useState(false);
+  const holders = useHolders(address, network, holdersActive);
   const b = bondingDetails(launch, snapshot);
   const status = b?.status ?? (loading ? 'Loading' : 'Unavailable');
   const metadata = snapshot?.config.params.metadata ?? launch?.metadata;
@@ -132,7 +250,9 @@ export function IndexedLaunchOverview({
   const price =
     snapshot?.price.toString() ?? market.data?.currentPrice ?? undefined;
   const stale = !!b?.stateStale || (!snapshot && !!market.data?.stateStale);
-  const unavailable = loading ? 'Loading…' : 'Unavailable';
+  const pendingAmount = (
+    <Skeleton className="ml-auto h-4 w-20 motion-reduce:animate-none" />
+  );
   const networkName = `Stellar ${network === 'public' ? 'Mainnet' : 'Testnet'}`;
 
   const supply = b ? BigInt(b.totalSupply) : undefined;
@@ -140,15 +260,6 @@ export function IndexedLaunchOverview({
     price != null && supply !== undefined
       ? (BigInt(price) * supply) / UNIT
       : undefined;
-  const target = b ? BigInt(b.curve.graduationTarget) : undefined;
-  const reserve = b ? BigInt(b.state.quoteReserve) : undefined;
-  const remaining =
-    target !== undefined && reserve !== undefined
-      ? target > reserve
-        ? target - reserve
-        : BigInt(0)
-      : undefined;
-
   const share = (amount: string) =>
     b ? allocationShare(amount, b.totalSupply) : '—';
   const bps = (amount: string) =>
@@ -166,80 +277,40 @@ export function IndexedLaunchOverview({
       }
     : undefined;
   const model = curveInput ? curveModel(curveInput) : null;
-  const startPrice = curveInput
-    ? modelPrice(curveInput.base, curveInput.quote, BigInt(0))
-    : undefined;
   const graduationPrice =
     curveInput && model?.graduation != null
       ? modelPrice(curveInput.base, curveInput.quote, model.graduation)
       : undefined;
-  const multiple = (value: bigint | undefined) =>
-    value !== undefined && startPrice && startPrice > BigInt(0)
-      ? `${(Number((value * BigInt(100)) / startPrice) / 100).toLocaleString('en-US')}× launch price`
-      : undefined;
 
   const figures: LaunchFigure[] = [
     {
-      label: 'Launch price',
-      value:
-        startPrice === undefined
-          ? unavailable
-          : `${detailAmount(startPrice.toString())} ${pair}`,
-      hint: 'Before any tokens are sold',
-    },
-    {
-      label: 'Price at graduation',
-      value:
-        graduationPrice === undefined
-          ? unavailable
-          : `${detailAmount(graduationPrice.toString())} ${pair}`,
-      hint:
-        graduationPrice === undefined
-          ? b
-            ? 'Target is beyond the curve allocation'
-            : undefined
-          : `Estimate · ${multiple(graduationPrice)}`,
-    },
-    {
-      label: 'Fully diluted value',
-      value:
-        fdv === undefined
-          ? unavailable
-          : `${compactAmount(fdv.toString())} ${pair}`,
-      title:
-        fdv === undefined
-          ? undefined
-          : `${detailAmount(fdv.toString())} ${pair}`,
-      hint: 'Total supply × current price',
-    },
-    {
-      label: 'Sold on the curve',
-      value: b ? `${compactAmount(b.state.sold)} ${ticker}` : unavailable,
+      icon: Coins,
+      label: 'Tokens sold',
+      help: 'Net tokens sold on the curve after sell-backs, compared with the public curve allocation.',
+      value: b
+        ? `${compactAmount(b.state.sold)} / ${compactAmount(b.buckets.curve)} ${ticker}`
+        : 'Unavailable',
       title: b
-        ? `${detailAmount(b.state.sold)} ${ticker}, net of sell-backs`
+        ? `${detailAmount(b.state.sold)} of ${detailAmount(b.buckets.curve)} ${ticker}, net of sell-backs`
         : undefined,
-      hint: b ? `of ${compactAmount(b.buckets.curve)} for sale` : undefined,
     },
     {
-      label: 'Buyers',
-      value: b ? b.state.buyerCount.toLocaleString('en-US') : unavailable,
-      hint: 'Distinct wallets',
+      icon: Clock3,
+      label: b?.status === 'Scheduled' ? 'Trading opens' : 'Configured end',
+      help:
+        b?.status === 'Scheduled'
+          ? 'The configured start of curve trading.'
+          : 'The configured end date. This contract does not define an automatic action at that date.',
+      value: b
+        ? relativeTime(b.status === 'Scheduled' ? b.startsAt : b.endsAt, now)
+        : 'Unavailable',
+      hint: b
+        ? detailDate(b.status === 'Scheduled' ? b.startsAt : b.endsAt)
+        : undefined,
     },
-    b?.status === 'Scheduled'
-      ? {
-          label: 'Trading opens',
-          value: relativeTime(b.startsAt, now),
-          hint: detailDate(b.startsAt),
-        }
-      : {
-          label: 'Configured end',
-          value: b ? relativeTime(b.endsAt, now) : unavailable,
-          hint: b ? detailDate(b.endsAt) : undefined,
-        },
   ];
 
   let vesting: VestingPlan = { kind: 'none', summary: 'No team allocation.' };
-  let teamTerm = 'No team allocation';
   if (b && BigInt(b.buckets.team) > BigInt(0)) {
     const cliff = BigInt(b.vesting.cliffSeconds);
     const duration = BigInt(b.vesting.durationSeconds);
@@ -248,10 +319,6 @@ export function IndexedLaunchOverview({
       cliff === BigInt(0)
         ? 'no cliff'
         : `a ${durationLabel(b.vesting.cliffSeconds)} cliff`;
-    teamTerm =
-      duration === BigInt(0)
-        ? `${share(b.buckets.team)} of supply, claimable immediately`
-        : `${share(b.buckets.team)} of supply, unlocks over ${durationLabel(b.vesting.durationSeconds)}${cliff === BigInt(0) ? ' with no cliff' : ` after ${cliffText}`}`;
     vesting =
       duration === BigInt(0)
         ? {
@@ -275,6 +342,7 @@ export function IndexedLaunchOverview({
         {
           label: 'Trading opens',
           value: shortDate(BigInt(b.startsAt)),
+          caption: `${new Date(Number(b.startsAt) * 1000).toLocaleTimeString('en-GB', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' })} UTC`,
           detail:
             b.status === 'Scheduled'
               ? `Opens ${relativeTime(b.startsAt, now)}`
@@ -284,6 +352,7 @@ export function IndexedLaunchOverview({
         {
           label: 'Graduation',
           value: `${compactAmount(b.curve.graduationTarget)} ${pair}`,
+          caption: 'Reserve target',
           detail:
             b.status === 'Graduated'
               ? 'Reached and confirmed by the contract. Curve trading is closed.'
@@ -302,6 +371,7 @@ export function IndexedLaunchOverview({
         {
           label: 'Configured end',
           value: shortDate(BigInt(b.endsAt)),
+          caption: `${new Date(Number(b.endsAt) * 1000).toLocaleTimeString('en-GB', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' })} UTC`,
           detail:
             'Set in the configuration; the contract does not define what happens at this date.',
           state: now / 1000 >= Number(b.endsAt) ? 'done' : 'upcoming',
@@ -316,10 +386,10 @@ export function IndexedLaunchOverview({
   };
 
   return (
-    <MotionConfig reducedMotion="user">
+    <TradeMotion>
       <div
         data-launch-page
-        className="mx-auto w-full max-w-[1320px] pb-16 selection:bg-lime selection:text-ink"
+        className="mx-auto w-full max-w-[1320px] pb-24 lg:pb-16 selection:bg-lime selection:text-ink [&_section]:shadow-none [&_[data-slot=card]]:shadow-none"
       >
         <div className="mb-4 md:hidden">
           <BackLink href={`/launches?network=${network}`}>Projects</BackLink>
@@ -328,226 +398,325 @@ export function IndexedLaunchOverview({
           {feedback}
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
           <aside
             aria-label="Trade"
-            className="order-2 min-w-0 lg:order-none lg:sticky lg:top-10 lg:col-start-2 lg:row-start-1 lg:self-start"
+            className="order-1 min-w-0 lg:order-none lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1 lg:self-start"
           >
-            <LaunchReveal>
-              <LaunchActionCard
-                name={name}
-                ticker={ticker}
-                logo={metadata?.logo}
-                seed={address}
-                docked={docked}
-                status={status}
-                network={network}
-                address={address}
-                price={
-                  price == null
-                    ? market.isPending
-                      ? 'Loading…'
-                      : 'Unavailable'
-                    : `${detailAmount(price)} ${pair}`
-                }
-                priceHint={
-                  price == null
-                    ? undefined
-                    : [multiple(BigInt(price)), 'before fee']
-                        .filter(Boolean)
-                        .join(' · ')
-                }
-                stale={stale}
-                opensIn={
-                  b?.status === 'Scheduled'
-                    ? relativeTime(b.startsAt, now)
-                    : undefined
-                }
-                terms={
-                  b
-                    ? [
-                        [
-                          'After graduation',
-                          'Curve trading closes. The contract does not create a DEX pool.',
-                        ],
-                        ['Team', teamTerm],
-                        [
-                          'Trading fee',
-                          b.curve.creatorFeeBps
-                            ? `${b.curve.creatorFeeBps / 100}% to the creator, included in every quote`
-                            : 'No creator fee',
-                        ],
-                      ]
-                    : []
-                }
-              />
-            </LaunchReveal>
+            <LaunchActionCard
+              name={name}
+              identity={
+                <LaunchCover
+                  integrated
+                  compact
+                  logo={metadata?.logo}
+                  name={name}
+                  ticker={ticker}
+                  seed={address}
+                  status={status}
+                  networkName={networkName}
+                  links={links}
+                  address={address}
+                  network={network}
+                  docked={false}
+                  identityRef={null}
+                />
+              }
+              buy={buy}
+              sell={sell}
+              walletFeedback={walletFeedback}
+              loading={tradingLoading}
+            />
           </aside>
 
-          <div className="order-1 flex min-w-0 flex-col gap-4 lg:order-none lg:col-start-1 lg:row-start-1 lg:gap-5">
-            <LaunchReveal>
-              <LaunchHero
-                header={
-                  <LaunchCover
-                    integrated
-                    logo={metadata?.logo}
-                    name={name}
-                    ticker={ticker}
-                    seed={address}
-                    status={status}
-                    networkName={networkName}
-                    links={links}
-                    address={address}
-                    network={network}
-                    docked={docked}
-                    identityRef={identityRef}
-                  />
-                }
-                status={status}
-                progress={progress}
-                raised={b ? headline(b.state.quoteReserve) : '—'}
-                raisedTitle={
-                  b
-                    ? `${detailAmount(b.state.quoteReserve)} ${pair}`
-                    : undefined
-                }
-                target={b ? headline(b.curve.graduationTarget) : '—'}
-                remaining={
-                  remaining === undefined
-                    ? undefined
-                    : headline(remaining.toString())
-                }
-                pair={pair}
-                stale={stale}
-                curve={
-                  b && curveInput
-                    ? {
-                        input: curveInput,
-                        soldLabel: `Now · ${compactAmount(b.state.sold)} sold`,
-                        targetLabel: `Graduation · ${compactAmount(b.curve.graduationTarget)} ${pair}`,
-                        axisEnd: (end) =>
-                          `${compactAmount(end.toString())} ${ticker}`,
-                      }
-                    : undefined
-                }
-                figures={figures}
-                note="The curve is modelled from the contract settings, not from trade history. Raised means net quote reserves, excluding fees; only the contract status confirms graduation."
-              />
-            </LaunchReveal>
-
-            <LaunchSection
-              id="about"
-              title={`About ${name}`}
-              meta="From the creator"
-            >
-              {description ? (
-                <p className="max-w-[68ch] whitespace-pre-line break-words text-[14px] leading-[1.7] text-foreground/85">
-                  {description}
-                </p>
-              ) : (
-                <p className="text-[14px] text-muted-foreground">
-                  {loading
-                    ? 'Loading…'
-                    : 'The creator has not provided a project description.'}
-                </p>
-              )}
-            </LaunchSection>
-
-            {owner && (
-              <LaunchSection id="creator" title="Creator" meta={networkName}>
-                <LaunchCreator
-                  owner={owner}
+          <div className="order-2 flex min-w-0 flex-col gap-4 lg:order-none lg:col-start-1 lg:row-start-1 lg:gap-5">
+            <LaunchHero
+              priceChart={
+                <IndexedPriceChart
+                  embedded
+                  address={address}
                   network={network}
-                  currentId={address}
+                  ticker={ticker}
+                  pair={pair}
+                  price={price == null ? '—' : `${detailAmount(price)} ${pair}`}
                 />
-              </LaunchSection>
-            )}
+              }
+              status={status}
+              progress={progress}
+              raised={b ? headline(b.state.quoteReserve) : '—'}
+              raisedTitle={
+                b ? `${detailAmount(b.state.quoteReserve)} ${pair}` : undefined
+              }
+              target={b ? headline(b.curve.graduationTarget) : '—'}
+              pair={pair}
+              stale={stale}
+              figures={figures}
+              graduationPrice={
+                graduationPrice === undefined
+                  ? undefined
+                  : `${detailAmount(graduationPrice.toString())} ${pair}`
+              }
+              timeline={
+                timeline.length > 0 ? (
+                  <LaunchTimeline steps={timeline} />
+                ) : loading ? (
+                  <TimelineSkeleton />
+                ) : undefined
+              }
+              loading={loading && !b}
+            />
+            <div className="flex min-w-0 flex-col gap-4 lg:gap-5">
+              <LaunchReveal>
+                <section
+                  id="about"
+                  aria-labelledby="about-heading"
+                  tabIndex={-1}
+                  className="min-w-0 scroll-mt-24 py-6 outline-none sm:py-8"
+                >
+                  <header className="mb-5 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+                    <h2
+                      id="about-heading"
+                      className="text-[24px] leading-tight font-medium tracking-[-0.035em] sm:text-[28px]"
+                    >
+                      About the project
+                    </h2>
+                  </header>
+                  {description ? (
+                    <p className="max-w-[64ch] whitespace-pre-line break-words text-[15px] leading-[1.85] text-foreground/80 sm:text-base">
+                      {description}
+                    </p>
+                  ) : loading ? (
+                    <div
+                      role="status"
+                      aria-label="Loading project description"
+                      aria-busy="true"
+                      className="flex max-w-[64ch] flex-col gap-2.5"
+                    >
+                      <span className="sr-only">
+                        Loading project description…
+                      </span>
+                      <Skeleton
+                        aria-hidden="true"
+                        className="h-4 w-full motion-reduce:animate-none"
+                      />
+                      <Skeleton
+                        aria-hidden="true"
+                        className="h-4 w-11/12 motion-reduce:animate-none"
+                      />
+                      <Skeleton
+                        aria-hidden="true"
+                        className="h-4 w-2/3 motion-reduce:animate-none"
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-[14px] text-muted-foreground">
+                      The creator has not provided a project description.
+                    </p>
+                  )}
+                </section>
+              </LaunchReveal>
 
-            {b && (
               <LaunchSection
-                id="tokenomics"
-                title="Tokenomics"
-                meta={`${compactAmount(b.totalSupply)} ${ticker} total supply`}
+                id="market-stats"
+                title="Market stats"
+                collapsible
+                defaultOpen
               >
-                <LaunchTokenomics
-                  vesting={vesting}
-                  allocations={[
-                    {
-                      name: 'Bonding curve',
-                      bps: bps(b.buckets.curve),
-                      share: share(b.buckets.curve),
-                      tokens: `${compactAmount(b.buckets.curve)} ${ticker}`,
-                      tokensTitle: `${detailAmount(b.buckets.curve)} ${ticker}`,
-                      detail: 'Sold to the public through curve trading.',
-                    },
-                    {
-                      name: 'Liquidity pool',
-                      bps: bps(b.buckets.pool),
-                      share: share(b.buckets.pool),
-                      tokens: `${compactAmount(b.buckets.pool)} ${ticker}`,
-                      tokensTitle: `${detailAmount(b.buckets.pool)} ${ticker}`,
-                      detail:
-                        'Earmarked for a pool; pool creation is not implemented.',
-                    },
-                    {
-                      name: 'Team',
-                      bps: bps(b.buckets.team),
-                      share: share(b.buckets.team),
-                      tokens: `${compactAmount(b.buckets.team)} ${ticker}`,
-                      tokensTitle: `${detailAmount(b.buckets.team)} ${ticker}`,
-                      detail:
-                        BigInt(b.buckets.team) === BigInt(0)
-                          ? 'No team allocation.'
-                          : 'Vests to the creator.',
-                    },
+                {stale && (
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    Indexed data may be outdated
+                  </p>
+                )}
+                <FactRows
+                  compact
+                  rows={[
+                    [
+                      'FDV',
+                      fdv === undefined
+                        ? loading
+                          ? pendingAmount
+                          : 'Unavailable'
+                        : `${compactAmount(fdv.toString())} ${pair}`,
+                    ],
+                    [
+                      'Price',
+                      price == null
+                        ? loading
+                          ? pendingAmount
+                          : 'Unavailable'
+                        : `${detailAmount(price)} ${pair}`,
+                    ],
+                    [
+                      '24h Volume',
+                      market.data?.volume24h.grossPairAmount == null
+                        ? 'Unavailable'
+                        : `${compactAmount(market.data.volume24h.grossPairAmount)} ${pair}`,
+                    ],
+                    [
+                      '24h trades',
+                      market.data?.volume24h.tradeCount?.toLocaleString(
+                        'en-US',
+                      ) ?? 'Unavailable',
+                    ],
+                    [
+                      'Holders',
+                      holders.query.data?.totalHolders.toLocaleString(
+                        'en-US',
+                      ) ?? 'Unavailable',
+                    ],
                   ]}
                 />
+                <p className="sr-only">
+                  Known holders are derived from recorded trades and may be
+                  delayed. They are not a complete on-chain holder index.
+                </p>
+                {market.isError && (
+                  <p role="alert" className="mt-3 text-sm text-destructive">
+                    Market data unavailable.{' '}
+                    <button
+                      type="button"
+                      className="underline underline-offset-4"
+                      onClick={() => void market.refetch()}
+                    >
+                      Retry
+                    </button>
+                  </p>
+                )}
               </LaunchSection>
-            )}
 
-            {b && (
-              <LaunchSection
-                id="rules"
-                title="How this launch works"
-                meta="From the contract configuration"
-              >
-                <LaunchTimeline steps={timeline} />
-                <div className="mt-8 border-t border-divider pt-6">
-                  <FactRows
-                    rows={[
-                      [
-                        'Mechanism',
-                        `The contract prices ${ticker} from virtual token and quote reserves. Each buy raises the price; each sell-back lowers it.`,
-                      ],
-                      ['Payment asset', pair],
-                      [
-                        'Allocation',
-                        `${detailAmount(b.buckets.curve)} ${ticker} are sold first come, first served, with no per-wallet limit.`,
-                      ],
-                      [
-                        'Fees',
-                        `${b.curve.creatorFeeBps ? `${b.curve.creatorFeeBps / 100}% creator fee on every trade.` : 'No creator fee on trades.'} The platform takes ${b.curve.platformFeeBps / 100}% at graduation.`,
-                      ],
-                      [
-                        'If the target is missed',
-                        'Curve buying stops. Holders can sell tokens back to the curve.',
-                      ],
-                      [
-                        'At graduation',
-                        'The contract calculates pool allocations and payouts, but does not create a DEX pool or transfer proceeds.',
-                      ],
+              {owner && (
+                <LaunchSection id="creator" title="Team" collapsible>
+                  <LaunchCreator
+                    owner={owner}
+                    network={network}
+                    currentId={address}
+                  />
+                </LaunchSection>
+              )}
+
+              {(b || loading) && (
+                <LaunchSection
+                  id="tokenomics"
+                  collapsible
+                  title="Tokenomics"
+                  meta={
+                    b
+                      ? `${compactAmount(b.totalSupply)} ${ticker} total supply`
+                      : undefined
+                  }
+                >
+                  {!b ? (
+                    <TokenomicsSkeleton />
+                  ) : (
+                  <LaunchTokenomics
+                    vesting={vesting}
+                    allocations={[
+                      {
+                        name: 'Bonding curve',
+                        bps: bps(b.buckets.curve),
+                        share: share(b.buckets.curve),
+                        tokens: `${compactAmount(b.buckets.curve)} ${ticker}`,
+                        tokensTitle: `${detailAmount(b.buckets.curve)} ${ticker}`,
+                        detail: 'Sold to the public through curve trading.',
+                      },
+                      {
+                        name: 'Liquidity pool',
+                        bps: bps(b.buckets.pool),
+                        share: share(b.buckets.pool),
+                        tokens: `${compactAmount(b.buckets.pool)} ${ticker}`,
+                        tokensTitle: `${detailAmount(b.buckets.pool)} ${ticker}`,
+                        detail:
+                          'Earmarked for a pool; pool creation is not implemented.',
+                      },
+                      {
+                        name: 'Team',
+                        bps: bps(b.buckets.team),
+                        share: share(b.buckets.team),
+                        tokens: `${compactAmount(b.buckets.team)} ${ticker}`,
+                        tokensTitle: `${detailAmount(b.buckets.team)} ${ticker}`,
+                        detail:
+                          BigInt(b.buckets.team) === BigInt(0)
+                            ? 'No team allocation.'
+                            : 'Vests to the creator.',
+                      },
                     ]}
                   />
-                </div>
-              </LaunchSection>
-            )}
+                  )}
+                </LaunchSection>
+              )}
 
-            <LaunchSection id="contracts" title="Contracts" meta={networkName}>
-              {children}
-            </LaunchSection>
+              {(b || loading) && (
+                <LaunchSection
+                  id="rules"
+                  collapsible
+                  defaultOpen={false}
+                  title="How this launch works"
+                >
+                  {!b ? (
+                    <RulesSkeleton />
+                  ) : (
+                  <div>
+                    <FactRows
+                      rows={[
+                        [
+                          'Mechanism',
+                          `The contract prices ${ticker} from virtual token and quote reserves. Each buy raises the price; each sell-back lowers it.`,
+                        ],
+                        ['Payment asset', pair],
+                        [
+                          'Allocation',
+                          `${detailAmount(b.buckets.curve)} ${ticker} are sold first come, first served, with no per-wallet limit.`,
+                        ],
+                        [
+                          'Fees',
+                          `${b.curve.creatorFeeBps ? `${b.curve.creatorFeeBps / 100}% creator fee on every trade.` : 'No creator fee on trades.'} The platform takes ${b.curve.platformFeeBps / 100}% at graduation.`,
+                        ],
+                        [
+                          'If the target is missed',
+                          'Curve buying stops. Holders can sell tokens back to the curve.',
+                        ],
+                        [
+                          'At graduation',
+                          'The contract calculates pool allocations and payouts, but does not create a DEX pool or transfer proceeds.',
+                        ],
+                      ]}
+                    />
+                  </div>
+                  )}
+                </LaunchSection>
+              )}
+
+              <LaunchSection
+                id="contracts"
+                collapsible
+                defaultOpen={false}
+                title="Contracts"
+              >
+                {children}
+              </LaunchSection>
+              <TradeActivity
+                onHoldersActiveChange={setHoldersActive}
+                trades={
+                  <IndexedTrades
+                    address={address}
+                    network={network}
+                    ticker={ticker}
+                    pair={pair}
+                    tradeCount24h={market.data?.volume24h.tradeCount}
+                  />
+                }
+                holders={<IndexedHolders holders={holders} ticker={ticker} />}
+                pools={
+                  <PoolTable
+                    ticker={ticker}
+                    unavailableReason="External pool data is not connected. This contract version does not create a pool or transfer graduation proceeds."
+                  />
+                }
+              />
+            </div>
           </div>
         </div>
       </div>
-    </MotionConfig>
+    </TradeMotion>
   );
 }

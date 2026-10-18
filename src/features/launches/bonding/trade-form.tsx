@@ -9,43 +9,19 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from '@/components/ui/input-group';
-import { TradeDisclosure } from '@/features/launches/trading/trade-disclosure';
-import { TradeTokenPill } from '@/features/launches/trading/trade-token-pill';
+import { InputGroup, InputGroupInput } from '@/components/ui/input-group';
+import { TradeQuoteDetails } from '@/features/launches/trading/trade-quote-details';
 import { TradeValue } from '@/features/launches/trading/trade-value';
+import { TradeTooltipText } from '@/features/launches/trading/trade-tooltip';
 import { TradeFeedback } from '@/features/launches/trading/trade-feedback';
-import { TokenLogo } from '@/components/token-logo';
-import { formatAmount } from './contract';
+import { Wallet } from 'lucide-react';
+import { formatAmount, UNIT } from './contract';
 import { friendlyError } from './friendly-trade-error';
 import { useTradeForm } from './use-trade-form';
 import type { TradeFormProps } from './trade-form-types';
-import styles from './trade-form.module.css';
-
-function SwapBalance({
-  label = 'Balance',
-  amount,
-  symbol,
-}: {
-  label?: string;
-  amount?: bigint;
-  symbol: string;
-}) {
-  return (
-    <p className="flex min-h-5 flex-wrap items-baseline gap-x-2 text-sm leading-relaxed">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="min-w-0 break-all font-medium text-foreground tabular-nums">
-        {amount === undefined ? '—' : formatAmount(amount, 3)} {symbol}
-      </span>
-    </p>
-  );
-}
 
 export function TradeForm(props: TradeFormProps) {
-  const { address, snapshot, tokens, side, locked, balances } = props;
+  const { address, tokens, side, locked, balances } = props;
   const { login, loginPending } = useLaunchpad();
   const {
     user,
@@ -82,107 +58,80 @@ export function TradeForm(props: TradeFormProps) {
     recoverPending,
     submit,
   } = useTradeForm(props);
-  const assetPill = (
-    <TradeTokenPill
-      symbol={tokens.assetSymbol}
-      mark={
-        <TokenLogo
-          logo={snapshot.config?.params?.metadata?.logo}
-          name={tokens.assetSymbol}
-          seed={address}
-          size={24}
-        />
-      }
-    />
-  );
-  const pairPill = (
-    <TradeTokenPill
-      symbol={pair}
-      mark={<TokenLogo name={pair} seed={`${address}:${pair}`} size={24} />}
-    />
-  );
+  const paySymbol = buying ? pair : tokens.assetSymbol;
+  const receiveSymbol = buying ? tokens.assetSymbol : pair;
+  const available = buying ? balances?.pairHeld : sellable;
+  const received = quote ? (buying ? amount : quote.user_amount) : undefined;
+  const quoteLoading = quoteRead.isFetching && entry.trim().length > 0;
+  const paid = quote ? (buying ? quote.user_amount : amount) : undefined;
+  const rate =
+    paid && paid > BigInt(0) && received !== undefined
+      ? (received * UNIT) / paid
+      : undefined;
+  const needed = buying ? limit : amount;
+  const insufficient =
+    !!user &&
+    available !== undefined &&
+    needed !== undefined &&
+    needed > available;
+
   return (
-    <form onSubmit={submit} className="flex min-w-0 flex-col gap-2">
+    <form
+      id={`${side}-trade`}
+      onSubmit={submit}
+      className="flex min-w-0 flex-col gap-2.5"
+    >
+      <div
+        className="absolute right-0 top-0 flex h-8 items-center gap-1"
+        aria-label="Use a percentage of your available balance"
+      >
+        {[25, 50, 75, 100].map((percent) => (
+          <Button
+            key={percent}
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 rounded-md bg-secondary px-1.5 text-[10px] font-medium tabular-nums"
+            disabled={
+              locked ||
+              !permitted ||
+              available === undefined ||
+              available <= BigInt(0)
+            }
+            onClick={() => {
+              if (available !== undefined)
+                setEntry(
+                  formatAmount((available * BigInt(percent)) / BigInt(100)),
+                );
+            }}
+          >
+            {`${percent}%`}
+          </Button>
+        ))}
+      </div>
       <FieldGroup>
         <Field
           data-invalid={!!inputError}
-          className={`${styles.pay} gap-2 rounded-2xl bg-muted p-4`}
+          className="gap-1 rounded-lg bg-secondary/70 px-3 py-2.5"
         >
-          <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center justify-between gap-3">
             <FieldLabel
               htmlFor={`${side}-amount`}
-              className="text-small font-medium text-muted-foreground"
+              className="text-[11px] font-medium text-muted-foreground"
             >
-              {buying ? 'You pay' : `You sell`}
+              Amount · {paySymbol}
             </FieldLabel>
-            {buying && (
-              <div
-                className={`${styles.presets} grid shrink-0 grid-cols-4 gap-1`}
-              >
-                {['25', '100', '500'].map((value) => (
-                  <Button
-                    key={value}
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-12 rounded-full bg-background px-0 text-small font-medium text-foreground tabular-nums hover:bg-background/35 disabled:bg-lime/10 disabled:text-muted-foreground"
-                    disabled={locked || !permitted}
-                    onClick={() => {
-                      setEntry(value);
-                    }}
-                  >
-                    {value}
-                  </Button>
-                ))}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-12 rounded-full border border-border bg-black px-0 text-small font-medium text-white tabular-nums hover:bg-black/80 disabled:bg-black disabled:text-white/50"
-                  disabled={
-                    locked ||
-                    !permitted ||
-                    !balances ||
-                    balances.pairHeld <= BigInt(0)
-                  }
-                  onClick={() => {
-                    if (balances) {
-                      setEntry(formatAmount(balances.pairHeld));
-                    }
-                  }}
-                >
-                  All
-                </Button>
-              </div>
-            )}
-            {!buying && sellable !== undefined && (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-8 w-12 rounded-full bg-lime/20 px-0 text-small font-medium text-foreground tabular-nums hover:bg-lime/35 disabled:bg-lime/10 disabled:text-muted-foreground"
-                disabled={locked || !permitted || sellable <= BigInt(0)}
-                onClick={() => {
-                  setEntry(formatAmount(sellable));
-                }}
-              >
-                All
-              </Button>
-            )}
+            <span className="text-[10px] text-muted-foreground">
+              <TradeTooltipText content="Estimated tokens or payment asset you receive for this amount, based on the current contract quote. The final amount is subject to slippage.">
+                Est. receive
+              </TradeTooltipText>
+            </span>
           </div>
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-center gap-3">
             <InputGroup
               dir="ltr"
-              className="h-14 flex-1 border-0 bg-transparent has-disabled:bg-transparent has-disabled:opacity-100 has-[>[data-align=inline-start]]:[&>input]:pl-1"
+              className="h-9 min-w-0 border-0 bg-transparent shadow-none has-disabled:bg-transparent has-[[data-slot=input-group-control]:focus-visible]:border-transparent has-[[data-slot=input-group-control]:focus-visible]:ring-0"
             >
-              {buying && pair === 'USDC' && (
-                <InputGroupAddon
-                  aria-hidden="true"
-                  className="pl-0 text-[clamp(1.5rem,2vw,2rem)] font-semibold text-muted-foreground"
-                >
-                  $
-                </InputGroupAddon>
-              )}
               <InputGroupInput
                 id={`${side}-amount`}
                 aria-label={
@@ -190,182 +139,75 @@ export function TradeForm(props: TradeFormProps) {
                     ? `Amount to pay in ${pair}`
                     : `Sell amount in ${tokens.assetSymbol}`
                 }
-                className="h-14 rounded-lg border-0 bg-transparent px-0 text-[clamp(1.5rem,2vw,2rem)] font-semibold tabular-nums"
+                className="h-9 min-w-0 border-0 bg-transparent px-0 text-xl font-semibold tabular-nums"
                 inputMode="decimal"
                 autoComplete="off"
                 value={entry}
                 disabled={locked || !permitted}
                 aria-invalid={!!inputError}
-                onChange={(event) => {
-                  setEntry(event.target.value);
-                }}
-                placeholder="0.0"
+                onChange={(event) => setEntry(event.target.value)}
+                placeholder="0.00"
               />
             </InputGroup>
-            {buying ? pairPill : assetPill}
-          </div>
-          <div className="flex min-h-5 flex-col gap-1 text-sm leading-relaxed text-muted-foreground">
-            {!user ? (
-              'Connect wallet to view balance'
-            ) : !balances ? (
-              'Wallet balance unavailable'
-            ) : buying ? (
-              <SwapBalance amount={balances.pairHeld} symbol={pair} />
-            ) : (
-              <>
-                <SwapBalance
-                  label="Held"
-                  amount={balances.held}
-                  symbol={tokens.assetSymbol}
-                />
-                <SwapBalance
-                  label="Sellable"
-                  amount={sellable}
-                  symbol={tokens.assetSymbol}
-                />
-              </>
-            )}
-          </div>
-          <TradeFeedback>
-            {inputError && (
-              <p role="alert" className="text-sm text-destructive">
-                {inputError}
-              </p>
-            )}
-          </TradeFeedback>
-        </Field>
-      </FieldGroup>
-      <div className="flex min-w-0 flex-col gap-2 rounded-2xl bg-muted p-4">
-        <div className="flex min-h-8 flex-wrap items-center justify-between gap-2 text-small font-medium text-muted-foreground">
-          <p>You receive · estimated</p>
-          <span className="flex items-center gap-2">
-            {quoteRead.isFetching && entry ? (
-              <span role="status">
-                <TradeValue>Updating…</TradeValue>
-              </span>
-            ) : null}
-          </span>
-        </div>
-        <div className="flex min-h-14 min-w-0 items-center gap-2">
-          <p className="min-w-0 flex-1 break-all text-[clamp(1.5rem,2vw,2rem)] font-semibold leading-tight tabular-nums">
-            <TradeValue>
-              {buying
-                ? amount !== undefined
-                  ? formatAmount(amount, 3)
-                  : '—'
-                : quote
-                  ? formatAmount(quote.user_amount, 3)
-                  : '—'}
-            </TradeValue>
-          </p>
-          {buying ? assetPill : pairPill}
-        </div>
-        <SwapBalance
-          amount={buying ? balances?.held : balances?.pairHeld}
-          symbol={buying ? tokens.assetSymbol : pair}
-        />
-      </div>
-      <dl className="mt-2 grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-2 text-small tabular-nums">
-        <dt className="text-muted-foreground">Fee · included</dt>
-        <dd className="break-words text-right">
-          <TradeValue>
-            {quote ? `${formatAmount(quote.creator_fee, 3)} ${pair}` : '—'}
-          </TradeValue>
-        </dd>
-        <dt className="text-muted-foreground">Minimum received</dt>
-        <dd className="break-words text-right">
-          <TradeValue>
-            {quote
-              ? minimumReceived === undefined || limitError
-                ? 'Invalid amount'
-                : `${formatAmount(minimumReceived, 3)} ${buying ? tokens.assetSymbol : pair}`
-              : '—'}
-          </TradeValue>
-        </dd>
-      </dl>
-      <TradeDisclosure
-        title={`Slippage · ${limitError ? 'Invalid percentage' : `${slippage}%`}`}
-      >
-        <FieldGroup className="gap-2">
-          <Field
-            orientation="horizontal"
-            data-invalid={!!limitError}
-            className="justify-between gap-3"
-          >
-            <FieldLabel
-              htmlFor={`${side}-limit`}
-              className="text-small font-medium"
+            <output
+              id={`${side}-receive`}
+              htmlFor={`${side}-amount`}
+              aria-label={`Estimated ${receiveSymbol} received`}
+              aria-busy={quoteLoading}
+              className="min-w-0 break-words text-right text-[13px] leading-5 font-medium text-muted-foreground tabular-nums"
             >
-              Slippage tolerance
-            </FieldLabel>
-            <div className="flex shrink-0 items-center gap-2">
-              <Input
-                id={`${side}-limit`}
-                className="h-11 w-11 shrink-0 rounded-md border border-input bg-muted px-1 text-center text-small tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                type="number"
-                min="0"
-                max="99.99"
-                step="0.01"
-                inputMode="decimal"
-                value={limitEntry}
-                disabled={locked || !permitted}
-                aria-invalid={!!limitError}
-                onChange={(event) => setLimitEntry(event.target.value)}
-                placeholder="0.5"
-                aria-describedby={`${side}-slippage-description`}
-              />
-              <span
-                className="text-small text-muted-foreground"
-                aria-hidden="true"
-              >
-                %
-              </span>
-            </div>
-          </Field>
-          <FieldDescription id={`${side}-slippage-description`}>
-            Blank uses 0.5% slippage.
-          </FieldDescription>
-        </FieldGroup>
-        <TradeFeedback>
-          {quote && (
-            <p className="mt-3 text-small text-muted-foreground tabular-nums">
-              Curve amount before fee:{' '}
-              <TradeValue>{`${formatAmount(quote.gross, 3)} ${pair}`}</TradeValue>
+              {quoteLoading ? (
+                <span
+                  aria-hidden="true"
+                  data-slot="skeleton"
+                  className="ml-auto block h-5 w-28 max-w-full animate-pulse rounded-md bg-foreground/10 motion-reduce:animate-none"
+                />
+              ) : (
+                <>
+                  {received !== undefined && <span aria-hidden="true">≈ </span>}
+                  <TradeValue>
+                    {received === undefined ? '—' : formatAmount(received, 3)}
+                  </TradeValue>{' '}
+                  <span>{receiveSymbol}</span>
+                </>
+              )}
+            </output>
+          </div>
+          {inputError && (
+            <p role="alert" className="text-xs text-destructive">
+              {inputError}
             </p>
           )}
-        </TradeFeedback>
-      </TradeDisclosure>
+        </Field>
+      </FieldGroup>
+
       <TradeFeedback>
         {limitError && (
-          <p role="alert" className="text-small text-destructive">
+          <p role="alert" className="text-xs text-destructive">
             {limitError}
           </p>
         )}
-      </TradeFeedback>
-      <TradeFeedback>
         {(quoteRead.error || quoteError) && (
-          <p role="alert" className="break-words text-sm text-destructive">
+          <p role="alert" className="break-words text-xs text-destructive">
             Quote unavailable.{' '}
             {quoteError ||
               friendlyError(quoteRead.error, 'Check the amount and retry.')}
           </p>
         )}
-      </TradeFeedback>
-      <TradeFeedback>
         {unavailable && (
-          <p className="text-sm text-muted-foreground">{unavailable}</p>
+          <p className="text-xs text-muted-foreground">{unavailable}</p>
         )}
       </TradeFeedback>
+
       <Button
-        size="lg"
-        className="w-full rounded-2xl disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
+        className="h-11 w-full rounded-lg text-sm font-semibold disabled:bg-secondary disabled:text-muted-foreground disabled:opacity-100"
         type={user ? 'submit' : 'button'}
         onClick={
           user
             ? undefined
             : () =>
                 void login(
-                  `/trade/${address}?network=${props.network ?? 'testnet'}`,
+                  `/launch/${address}?network=${props.network ?? 'testnet'}`,
                 )
         }
         disabled={
@@ -378,7 +220,8 @@ export function TradeForm(props: TradeFormProps) {
               !quote ||
               !!quoteRead.error ||
               !!limitError ||
-              limit === undefined
+              limit === undefined ||
+              insufficient
         }
       >
         {!user
@@ -387,13 +230,130 @@ export function TradeForm(props: TradeFormProps) {
             : 'Connect Wallet'
           : working
             ? 'Processing…'
-            : `${buying ? 'Buy' : 'Sell'} ${tokens.assetSymbol}`}
+            : insufficient
+              ? `Insufficient ${paySymbol} balance`
+              : `${buying ? 'Buy' : 'Sell'} ${tokens.assetSymbol}`}
       </Button>
+
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 py-1 text-[11px] text-muted-foreground">
+        <Wallet aria-hidden="true" className="size-3.5 shrink-0" />
+        {!user ? (
+          <span>Connect wallet to view balances</span>
+        ) : !balances ? (
+          <span>Wallet balances unavailable</span>
+        ) : (
+          <>
+            <span className="break-all tabular-nums">
+              {formatAmount(balances.held, 3)} {tokens.assetSymbol}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="break-all tabular-nums">
+              {formatAmount(balances.pairHeld, 3)} {pair}
+            </span>
+            {!buying && sellable !== undefined && (
+              <span className="w-full pl-5 tabular-nums">
+                Sellable: {formatAmount(sellable, 3)} {tokens.assetSymbol}
+              </span>
+            )}
+          </>
+        )}
+      </div>
+
+      <TradeQuoteDetails
+        host={props.quoteHost}
+        visible={(props.active ?? true) && entry.trim().length > 0}
+      >
+        <dl className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-x-3 gap-y-2 text-xs tabular-nums">
+          <dt className="text-muted-foreground">
+            <TradeTooltipText content="Average conversion rate for this quote, including any creator fee.">
+              Rate
+            </TradeTooltipText>
+          </dt>
+          <dd className="break-words text-right font-medium">
+            {rate === undefined
+              ? '—'
+              : `1 ${paySymbol} ≈ ${formatAmount(rate)} ${receiveSymbol}`}
+          </dd>
+          <dt className="text-muted-foreground">
+            <TradeTooltipText content="The creator fee returned by the contract quote. Already included in the quoted payment; network fees are separate.">
+              Fee · included
+            </TradeTooltipText>
+          </dt>
+          <dd className="break-words text-right font-medium">
+            <TradeValue>
+              {quote ? `${formatAmount(quote.creator_fee, 3)} ${pair}` : '—'}
+            </TradeValue>
+          </dd>
+          <dt className="text-muted-foreground">
+            <TradeTooltipText
+              content={
+                buying
+                  ? 'The token amount being purchased. Slippage limits the maximum payment for this buy.'
+                  : 'The minimum payment you accept after your slippage tolerance is applied.'
+              }
+            >
+              Minimum received
+            </TradeTooltipText>
+          </dt>
+          <dd className="break-words text-right font-medium">
+            <TradeValue>
+              {quote
+                ? minimumReceived === undefined || limitError
+                  ? 'Invalid amount'
+                  : `${formatAmount(minimumReceived, 3)} ${receiveSymbol}`
+                : '—'}
+            </TradeValue>
+          </dd>
+        </dl>
+        <FieldGroup className="gap-1">
+          <Field
+            orientation="horizontal"
+            data-invalid={!!limitError}
+            className="items-center justify-between gap-3"
+          >
+            <FieldLabel
+              htmlFor={`${side}-limit`}
+              className="text-xs font-normal text-muted-foreground"
+            >
+              <TradeTooltipText content="How much the execution quote may move before your trade is rejected. A buy limits maximum payment; a sell sets minimum proceeds. Blank uses 0.5%.">
+                Slippage
+              </TradeTooltipText>
+            </FieldLabel>
+            <div className="flex items-center gap-1">
+              <Input
+                id={`${side}-limit`}
+                form={`${side}-trade`}
+                className="h-8 w-16 rounded-md border-input bg-card px-2 text-right text-xs tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                type="number"
+                min="0"
+                max="99.99"
+                step="0.01"
+                inputMode="decimal"
+                value={limitEntry}
+                disabled={locked || !permitted}
+                aria-invalid={!!limitError}
+                onChange={(event) => setLimitEntry(event.target.value)}
+                placeholder={slippage}
+                aria-describedby={`${side}-slippage-description`}
+              />
+              <span aria-hidden="true" className="text-xs">
+                %
+              </span>
+            </div>
+          </Field>
+          <FieldDescription
+            id={`${side}-slippage-description`}
+            className="sr-only"
+          >
+            Blank uses 0.5% slippage.
+          </FieldDescription>
+        </FieldGroup>
+      </TradeQuoteDetails>
 
       <TradeFeedback>
         {pendingHash && !dialogOpen && !working && (
           <>
-            <p className="break-all text-sm">
+            <p className="break-all text-xs">
               A submitted trade needs confirmation: {pendingHash}
             </p>
             <Button

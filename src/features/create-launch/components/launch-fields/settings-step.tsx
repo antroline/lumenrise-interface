@@ -25,7 +25,7 @@ export function SettingsStep({ draft, setDraft, errors = {} }: DraftProps) {
     }));
   if (draft.method === 'bonding')
     return (
-      <FieldGroup className="short:gap-4">
+      <FieldGroup className="studio-compact:gap-4">
         <LaunchScheduleFields
           method="bonding"
           startsAt={draft.bonding.startsAt}
@@ -44,7 +44,7 @@ export function SettingsStep({ draft, setDraft, errors = {} }: DraftProps) {
     );
   if (draft.method === 'fixed')
     return (
-      <FieldGroup className="short:gap-4">
+      <FieldGroup className="studio-compact:gap-4">
         <LaunchScheduleFields
           method="fixed"
           startsAt={draft.fixed.startsAt}
@@ -66,7 +66,7 @@ export function SettingsStep({ draft, setDraft, errors = {} }: DraftProps) {
       </FieldGroup>
     );
   return (
-    <FieldGroup className="short:gap-4">
+    <FieldGroup className="studio-compact:gap-4">
       <LaunchScheduleFields
         method="auction"
         startsAt={draft.auction.startsAt}

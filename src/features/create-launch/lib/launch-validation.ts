@@ -12,12 +12,13 @@ export type WizardStep =
   | 'project'
   | 'method'
   | 'token'
+  | 'supply'
+  | 'allocation'
   | 'sale'
   | 'settings'
   | 'eligibility'
   | 'vesting'
-  | 'review'
-  | 'basic';
+  | 'review';
 export type FieldErrors = Record<string, string>;
 
 export const saleSteps: WizardStep[] = [
@@ -39,18 +40,18 @@ export const bondingSteps: WizardStep[] = [
   'eligibility',
   'review',
 ];
-export const basicSteps: WizardStep[] = ['project', 'method', 'basic'];
 
 export const stepLabels: Record<WizardStep, string> = {
   project: 'Token info',
   method: 'Launch method',
   token: 'Supply & allocation',
+  supply: 'Token setup',
+  allocation: 'Allocation',
   sale: 'Sale terms',
   settings: 'Launch settings',
   eligibility: 'Eligibility',
   vesting: 'Vesting',
   review: 'Review',
-  basic: 'Create token',
 };
 
 export function allocationError(
@@ -99,10 +100,13 @@ export function validateLaunchStep(
   if (step === 'method' && !draft.methodSelected)
     errors['launch-methods'] = 'Choose a launch method to continue.';
 
-  if (step === 'token') {
+  if (step === 'token' || step === 'supply') {
     if (!validSupply(draft.supply))
       errors['launch-supply'] =
         'Enter a positive supply within Stellar’s limit, with up to 7 decimal places.';
+  }
+
+  if (step === 'token' || step === 'allocation') {
     const invalidAllocation = allocationError(draft.allocation);
     if (invalidAllocation) errors['allocation-sale'] = invalidAllocation;
     else if (!validPercent(draft.allocation.saleShare, false))

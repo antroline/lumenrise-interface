@@ -50,10 +50,10 @@ export function WalletButton({
       <Button
         className={cn('h-10 rounded-full', compact && 'w-10 px-0', className)}
         onClick={() => void login()}
-        disabled={loginPending}
+        loading={loginPending}
         aria-label={compact ? label : undefined}
       >
-        <Wallet data-icon="inline-start" />
+        <Wallet data-icon="inline-start" aria-hidden="true" />
         {!compact && label}
       </Button>
     );
@@ -62,10 +62,11 @@ export function WalletButton({
   const copyAddress = async () => {
     try {
       await navigator.clipboard.writeText(address);
-      notify('Address copied to clipboard.');
+      notify('Address copied to clipboard.', { tone: 'success' });
     } catch {
       notify(
         'Could not copy the address. Copy it from your account page instead.',
+        { tone: 'error' },
       );
     }
   };

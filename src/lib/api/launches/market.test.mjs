@@ -772,7 +772,7 @@ test('holder UI distinguishes loading, empty, failures and populated balances wi
   assert.ok(populated.includes('900719925.4740993'));
   assert.ok(!populated.some((node) => typeof node === 'string' && node.includes('known holders.')));
   assert.ok(!populated.some((node) => node?.type === 'Button' && node.props.children === 'Refresh'));
-  assert.ok(populated.some((node) => node?.props?.title === OWNER));
+  assert.ok(populated.some((node) => node?.props?.content === OWNER));
   assert.ok(populated.some((node) => node?.type === 'Button' && node.props.children === 'Load more'));
   const failedPage = nodes(IndexedHolders({ holders: { ...base, pageError: new Error('Temporarily unavailable') }, ticker: 'TOK' }));
   assert.ok(failedPage.some((node) => node?.props?.role === 'alert'));

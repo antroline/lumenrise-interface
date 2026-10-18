@@ -27,6 +27,7 @@ import {
 } from '@/lib/api/client';
 import { getAuthProviderUserId } from '@/lib/auth-provider';
 import { hydrateBluxConnection } from '@/lib/connections';
+import { ToastProvider, useNotify } from '@/components/ui/toast';
 import { HORIZON_URL, NETWORK, SOROBAN_URL } from '@/lib/stellar/network';
 import {
   LaunchpadContext,
@@ -53,12 +54,12 @@ const bluxConfig: Parameters<typeof BluxProvider>[0]['config'] = {
     accentColor: '#0b0b0b',
     textColor: '#0b0b0b',
     fontFamily: 'Bricolage Grotesque, ui-sans-serif, system-ui, sans-serif',
-    borderRadius: '14px',
+    borderRadius: 'var(--radius-2xl)',
     borderColor: '#e5e5e5',
     borderWidth: '1px',
     outlineColor: '#0b0b0b',
     outlineWidth: '2px',
-    outlineRadius: '14px',
+    outlineRadius: 'var(--radius-2xl)',
     logo: `${window.location.origin}/branding/lumenrise-symbol-for-light-background.svg`,
     backdropBlur: '4px',
     backdropColor: 'rgba(11, 11, 11, 0.28)',
@@ -77,7 +78,9 @@ export default function ClientApp({
   configureApi(apiBaseUrl);
   return (
     <BluxProvider config={bluxConfig}>
-      <LaunchpadProvider apiBaseUrl={apiBaseUrl}>{children}</LaunchpadProvider>
+      <ToastProvider>
+        <LaunchpadProvider apiBaseUrl={apiBaseUrl}>{children}</LaunchpadProvider>
+      </ToastProvider>
     </BluxProvider>
   );
 }
@@ -176,7 +179,7 @@ function LaunchpadProvider({
   const [loginPhase, setLoginPhase] = useState<'connecting' | 'checking' | null>(
     null,
   );
-  const [notice, setNotice] = useState<string | null>(null);
+  const notify = useNotify();
   const [account, setAccount] = useState<AccountState>({ status: 'signed-out' });
   const [statusNonce, setStatusNonce] = useState(0);
   const registerInFlight = useRef(false);
@@ -305,10 +308,11 @@ function LaunchpadProvider({
     blux.logout();
     setApiUserId(null);
     setAccount({ status: 'signed-out' });
-    setNotice(
+    notify(
       'Account setup was not completed, so your wallet was disconnected.',
+      { tone: 'warning' },
     );
-  }, [account.status, pathname, isPreview, blux]);
+  }, [account.status, pathname, isPreview, blux, notify]);
 
   const retryStatusCheck = useCallback(() => {
     setStatusNonce((nonce) => nonce + 1);
@@ -502,12 +506,12 @@ function LaunchpadProvider({
           error instanceof Error
             ? error.message
             : 'Blux could not open the login flow.';
-        setNotice(message.replace(/^BLUX:\s*/i, ''));
+        notify(message.replace(/^BLUX:\s*/i, ''), { tone: 'error' });
       } finally {
         setLoginPhase(null);
       }
     },
-    [blux, router, pathname],
+    [blux, router, pathname, notify],
   );
 
   const logout = useCallback(() => {
@@ -518,10 +522,8 @@ function LaunchpadProvider({
     setApiUserId(null);
     setAccount({ status: 'signed-out' });
     router.push('/');
-    setNotice('You are now logged out.');
-  }, [blux, router]);
-
-  const notify = useCallback((message: string) => setNotice(message), []);
+    notify('You are now logged out.', { tone: 'success' });
+  }, [blux, router, notify]);
 
   const accountReady =
     account.status === 'registered' || account.status === 'preview';
@@ -567,22 +569,6 @@ function LaunchpadProvider({
     <LaunchpadContext.Provider value={value}>
       <div className="min-h-screen">
         {children}
-        {notice && (
-          <div
-            role="status"
-            className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-xl bg-ink px-4 py-3 font-mono text-[12px] text-white shadow-[0_18px_50px_rgba(11,11,11,0.35)] dark:bg-foreground dark:text-background"
-          >
-            <span>{notice}</span>
-            <button
-              type="button"
-              aria-label="Dismiss message"
-              onClick={() => setNotice(null)}
-              className="cursor-pointer text-white/70 transition-colors hover:text-white dark:text-background/70 dark:hover:text-background"
-            >
-              ×
-            </button>
-          </div>
-        )}
       </div>
     </LaunchpadContext.Provider>
   );

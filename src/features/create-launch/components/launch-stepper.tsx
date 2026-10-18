@@ -1,105 +1,61 @@
 'use client';
 
+import { AnimatePresence, motion } from 'motion/react';
+import { Check, ChevronDown } from 'lucide-react';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuGroup,
+  DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { methodLabels, type LaunchMethod } from '../lib/launch-draft';
-import { stepLabels, type WizardStep } from '../lib/launch-validation';
+import { launchTransition, useLaunchReducedMotion } from '../lib/launch-motion';
+import { LaunchSummaryHeader, type LaunchSummaryProps } from './launch-summary';
 
-export function LaunchStepper({
-  steps,
-  currentIndex,
-  onNavigate,
-  locked,
-  method,
-}: {
-  steps: WizardStep[];
-  currentIndex: number;
-  onNavigate: (index: number) => void;
-  locked: boolean;
-  method: LaunchMethod;
-}) {
-  const labels: Partial<Record<WizardStep, string>> = {
-    project: 'Token info',
-    method: 'Launch method',
-    token: 'Supply & allocation',
-    sale: `Configure ${methodLabels[method].toLowerCase()}`,
-    settings: method === 'auction' ? 'Schedule auction' : stepLabels.settings,
-  };
+type LaunchStepperProps = Pick<LaunchSummaryProps, 'draft' | 'steps' | 'currentIndex' | 'reachedIndex' | 'locked' | 'onNavigate'>;
+
+export function LaunchStepper({ draft, steps, currentIndex, reachedIndex, locked, onNavigate }: LaunchStepperProps) {
+  const reduced = useLaunchReducedMotion();
+  const currentStep = steps[currentIndex] ?? steps[0];
+  const transition = reduced ? { duration: 0 } : launchTransition;
+
   return (
-    <nav
-      aria-label="Launch steps"
-      className="min-w-80 max-h-[calc(100svh-7rem)] overflow-y-auto rounded-[28px] border border-border bg-card px-4 py-5 short:py-4"
-    >
-      <ol>
-        {steps.map((step, index) => {
-          const active = index === currentIndex;
-          const completed = index < currentIndex;
-          const content = (
-            <>
-              <span
-                className={cn(
-                  'relative z-10 grid size-9 shrink-0 place-items-center rounded-full text-[16px] font-medium tabular-nums transition-colors duration-200 short:size-8 short:text-[15px]',
-                  active
-                    ? 'bg-primary text-black border border-border'
-                    : 'bg-muted text-muted-foreground',
-                )}
-                aria-hidden="true"
-              >
-                {index + 1}
-              </span>
-              <span className="min-w-0">
-                <span
-                  className={cn(
-                    'block text-[13px] leading-5 short:text-[12px] short:leading-4',
-                    active
-                      ? 'text-muted-foreground'
-                      : 'text-muted-foreground/70',
-                  )}
-                >
-                  Step {index + 1}
-                </span>
-                <span
-                  className={cn(
-                    'block whitespace-nowrap text-[15px] font-medium leading-5',
-                    active ? 'text-foreground' : 'text-muted-foreground',
-                  )}
-                >
-                  {labels[step] ?? stepLabels[step]}
-                </span>
-              </span>
-            </>
-          );
-          const rowClassName =
-            'flex min-h-9 w-full items-center gap-3 text-left short:min-h-8';
-          return (
-            <li
-              key={step}
-              aria-current={active ? 'step' : undefined}
-              className="relative pb-6 last:pb-0 short:pb-4"
-            >
-              {index < steps.length - 1 && (
-                <span
-                  className="absolute top-12 bottom-2 left-[17px] w-px bg-border short:top-11 short:left-[15px]"
-                  aria-hidden="true"
-                />
-              )}
-              {completed && !locked ? (
-                <button
-                  type="button"
-                  onClick={() => onNavigate(index)}
-                  className={cn(
-                    rowClassName,
-                    'rounded-lg outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-lime/60',
-                  )}
-                >
-                  {content}
-                </button>
-              ) : (
-                <div className={rowClassName}>{content}</div>
-              )}
-            </li>
-          );
-        })}
-      </ol>
+    <nav aria-label="Launch steps" className="sticky top-14 z-20 -mx-4 flex min-w-0 justify-center bg-page px-4 py-1 sm:-mx-5 sm:px-5 lg:top-0 lg:-mx-6 lg:px-6 @min-[800px]/studio:hidden">
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          disabled={locked}
+          aria-label={`Launch steps: ${currentStep.label}`}
+          render={<button type="button" className="group flex min-h-11 items-center gap-3 rounded-lg px-3 text-small font-medium text-muted-foreground outline-none transition-colors hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-foreground motion-reduce:transition-none" />}
+        >
+          <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
+            {steps.map((step, index) => (
+              <motion.span key={step.id} initial={false} animate={{ width: index === currentIndex ? 16 : 4 }} transition={transition}
+                className={cn('h-1 rounded-full transition-colors motion-reduce:transition-none', index === currentIndex ? 'bg-primary' : index < currentIndex ? 'bg-foreground/50' : 'bg-border')} />
+            ))}
+          </span>
+          <span className="relative grid w-36 text-left">
+            <AnimatePresence initial={false} mode="popLayout">
+              <motion.span key={currentStep.id} initial={{ opacity: 0, y: reduced ? 0 : 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reduced ? 0 : -4 }} transition={transition}>
+                {currentStep.label}
+              </motion.span>
+            </AnimatePresence>
+          </span>
+          <ChevronDown className="size-3 shrink-0 transition-transform group-aria-expanded:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="center" sideOffset={6} className="w-[min(20rem,calc(100vw-2rem))] p-1.5">
+          <div className="mb-1">
+            <LaunchSummaryHeader draft={draft} reachedIndex={reachedIndex} />
+          </div>
+          <DropdownMenuGroup>
+            {steps.map((step, index) => (
+              <DropdownMenuItem key={step.id} disabled={locked || index >= currentIndex} aria-current={index === currentIndex ? 'step' : undefined} onClick={() => onNavigate(index)}
+                className={cn('min-h-11 gap-3', index === currentIndex && 'text-foreground data-disabled:opacity-100')}>
+                <span className="grid size-4 shrink-0 place-items-center" aria-hidden="true">{index < currentIndex ? <Check className="size-3.5" /> : index === currentIndex ? <span className="size-1.5 rounded-full bg-primary" /> : null}</span>
+                <span className="flex-1">{step.label}</span>
+                {index < currentIndex && <span className="text-small underline underline-offset-4">Edit</span>}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </nav>
   );
 }

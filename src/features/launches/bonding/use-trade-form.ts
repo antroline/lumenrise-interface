@@ -279,17 +279,16 @@ export function useTradeForm({
             fn: buying ? 'quote_buy' : 'quote_sell',
             args: [amount.toString()],
           },
+          // Only read the spending asset before trustline setup. Reading the
+          // receiving SAC balance fails for a first-time trader with no trustline.
           {
-            address: tokens.asset.contractId(NETWORK),
+            address: (buying ? tokens.pair : tokens.asset).contractId(NETWORK),
             fn: 'balance',
             args: [user.address],
           },
-          {
-            address: tokens.pair.contractId(NETWORK),
-            fn: 'balance',
-            args: [user.address],
-          },
-          { address, fn: 'sellable_balance', args: [user.address] },
+          ...(!buying
+            ? [{ address, fn: 'sellable_balance', args: [user.address] }]
+            : []),
         ],
         { network: NETWORK },
       );
@@ -302,13 +301,13 @@ export function useTradeForm({
         throw new Error(
           'The price decreased below your minimum receipt. Refresh the quote.',
         );
-      if (buying && integer(fresh.values[2]) < current.user_amount)
+      if (buying && integer(fresh.values[1]) < current.user_amount)
         throw new Error(
           `You need ${formatAmount(current.user_amount)} ${tokens.pair.isNative() ? 'XLM' : tokens.pairSymbol} for this buy, plus XLM for fees and reserves.`,
         );
       if (
         !buying &&
-        (integer(fresh.values[1]) < amount || integer(fresh.values[3]) < amount)
+        (integer(fresh.values[1]) < amount || integer(fresh.values[2]) < amount)
       )
         throw new Error(
           'You can only sell tokens you still hold and bought directly from this curve.',

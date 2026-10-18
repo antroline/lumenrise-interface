@@ -24,7 +24,6 @@ export function TradePageTemplate({
           animate={{ opacity: 1 }}
           className="relative isolate mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-6 [--muted:var(--secondary)] [--secondary:color-mix(in_srgb,var(--surface)_85%,var(--surface-divider))] [&_th]:border-0 [&_td]:border-0 [&_tr]:border-0 [&_thead]:border-0 [&_button:not([data-slot=select-trigger])]:border-0 [&_[data-slot=card-footer]]:border-0"
         >
-          <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle,var(--header-dot)_1px,transparent_1px)] bg-size-[24px_24px] [mask-image:linear-gradient(to_bottom,transparent_0%,#000_10%,rgb(0_0_0/75%)_25%,rgb(0_0_0/25%)_60%,transparent_90%),linear-gradient(to_right,transparent_0%,#000_18%,#000_82%,transparent_100%)] [mask-composite:intersect]" />
           <div className="flex min-w-0 flex-col gap-4">{header}</div>
           <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_368px] xl:gap-7">
             <div className="order-2 flex min-w-0 flex-col gap-5 lg:order-1">

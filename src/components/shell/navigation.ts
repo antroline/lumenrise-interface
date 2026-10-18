@@ -1,14 +1,11 @@
 import {
-  ArrowLeftRight,
   BookOpen,
   ChartPie,
   House,
-  Gavel,
   Hexagon,
   LayoutDashboard,
   LayoutGrid,
   Plus,
-  Rocket,
   Settings,
   Target,
   Trophy,
@@ -32,27 +29,7 @@ export const projectBrowseItems: HeaderNavItem[] = [
     description: 'Browse projects across Stellar.',
     href: '/launches',
     icon: LayoutGrid,
-  },
-  {
-    label: 'Launches',
-    description: 'Explore token launches and raise details.',
-    href: '/launches?category=launch',
-    icon: Rocket,
-    match: ['/launch'],
-  },
-  {
-    label: 'Auctions',
-    description: 'View auctions and bidding terms.',
-    href: '/launches?category=auction',
-    icon: Gavel,
-    match: ['/auction'],
-  },
-  {
-    label: 'Trading',
-    description: 'Browse token markets and trade details.',
-    href: '/launches?category=trading',
-    icon: ArrowLeftRight,
-    match: ['/trade'],
+    match: ['/launch', '/auction'],
   },
 ];
 export const explorerItem: HeaderNavItem = {

@@ -31,10 +31,9 @@ export function LaunchScheduleFields({
   errors: FieldErrors;
 }) {
   return (
-    <FieldGroup className="gap-5 short:gap-4">
+    <FieldGroup className="gap-4">
       <div className="flex flex-col gap-1.5">
-        <h3 className="text-body font-semibold">Launch timing</h3>
-        <p className="text-body text-muted-foreground">
+        <p className="text-small text-muted-foreground">
           Starts immediately by default. Choose a duration or custom dates in your
           local time zone.
         </p>

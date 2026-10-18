@@ -34,7 +34,7 @@ export function usePreviewSwap(slug: string, ticker: string, priceUsd: number) {
         : null;
   const submit = () => {
     if (!isSignedIn) {
-      void login(`/trade/${slug}`);
+      void login(`/launch/${slug}`);
       return;
     }
     if (error) return;

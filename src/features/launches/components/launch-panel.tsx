@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { LaunchReveal } from './launch-reveal';
+import { Accordion } from '@/components/ui/accordion';
 
 /** Keyboard focus that stays visible on white, ink and lime surfaces alike. */
 export const launchFocus =
@@ -13,7 +14,11 @@ export const launchElevationRaised =
   'ring-1 ring-black/[0.06] shadow-[0_1px_2px_rgb(30_28_0/0.05),0_10px_24px_-12px_rgb(40_36_0/0.18)] dark:shadow-none dark:ring-white/[0.07]';
 
 /** A white launch-page card on the page ground. */
-export function LaunchPanel({ className, raised = false, ...props }: ComponentProps<'section'> & { raised?: boolean }) {
+export function LaunchPanel({
+  className,
+  raised = false,
+  ...props
+}: ComponentProps<'section'> & { raised?: boolean }) {
   return (
     <section
       {...props}
@@ -32,23 +37,62 @@ export function LaunchSection({
   title,
   meta,
   children,
+  collapsible = false,
+  defaultOpen = true,
 }: {
   id: string;
   title: string;
   meta?: ReactNode;
   children: ReactNode;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
 }) {
+  if (collapsible)
+    return (
+      <LaunchReveal>
+        <section
+          id={id}
+          aria-labelledby={`${id}-heading`}
+          tabIndex={-1}
+          className="min-w-0 scroll-mt-24 outline-none"
+        >
+          <h2 id={`${id}-heading`} className="sr-only">
+            {title}
+          </h2>
+          <Accordion title={title} defaultOpen={defaultOpen}>
+            {meta && (
+              <p className="text-xs text-muted-foreground tabular-nums">
+                {meta}
+              </p>
+            )}
+            {children}
+          </Accordion>
+        </section>
+      </LaunchReveal>
+    );
   return (
     <LaunchReveal>
-    <LaunchPanel id={id} aria-labelledby={`${id}-heading`} tabIndex={-1} className="scroll-mt-24 p-5 outline-none sm:p-6">
-      <header className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h2 id={`${id}-heading`} className="text-[18px] leading-tight font-semibold tracking-[-0.03em] sm:text-[20px]">
-          {title}
-        </h2>
-        {meta && <p className="text-[13px] text-muted-foreground tabular-nums">{meta}</p>}
-      </header>
-      {children}
-    </LaunchPanel>
+      <LaunchPanel
+        id={id}
+        aria-labelledby={`${id}-heading`}
+        tabIndex={-1}
+        className="scroll-mt-24 p-5 outline-none sm:p-6"
+      >
+        <header className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <h2
+            id={`${id}-heading`}
+            className="text-[18px] leading-tight font-semibold tracking-[-0.03em] sm:text-[20px]"
+          >
+            {title}
+          </h2>
+          {meta && (
+            <p className="text-[13px] text-muted-foreground tabular-nums">
+              {meta}
+            </p>
+          )}
+        </header>
+        {children}
+      </LaunchPanel>
     </LaunchReveal>
   );
 }

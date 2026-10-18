@@ -40,7 +40,6 @@ import {
 import { TradeActivity } from './trade-activity';
 import { IndexedPriceChart } from './indexed-price-chart';
 import { IndexedTrades } from './indexed-trades';
-import { IndexedTopTraders } from './indexed-top-traders';
 import { PoolTable } from './pool-table';
 
 type Props = {
@@ -233,10 +232,7 @@ export function BondingTradeLayout({
               </TradeTabPanels>
             </TradeTabs>
           ) : loading ? (
-            <div role="status" className="flex flex-col gap-3">
-              <span className="text-small text-muted-foreground">
-                Loading verified trading configuration…
-              </span>
+            <div role="status" aria-label="Loading trading configuration" aria-busy="true" className="flex flex-col gap-3">
               <Skeleton className="h-36 w-full rounded-2xl" />
               <Skeleton className="h-24 w-full rounded-2xl" />
             </div>
@@ -306,7 +302,6 @@ export function BondingTradeLayout({
             </Card>
           )}
           <TradeActivity
-            topTraders={<IndexedTopTraders address={address} network={network} pair={pair} />}
             holders={<IndexedHolders holders={holders} ticker={ticker} />}
             onHoldersActiveChange={setHoldersActive}
             trades={

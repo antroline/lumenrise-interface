@@ -67,8 +67,8 @@ export function Trajectory({
               {index < steps.length - 1 && <span aria-hidden="true" className={cn('mx-1 h-px flex-1 bg-border', index < active && 'bg-foreground')} />}
             </div>
             <div className={cn('mt-2 pr-2', large && 'sm:mt-3 sm:pr-4')}>
-              <span className={cn('block text-small font-semibold', large && 'sm:text-[15px]', index > active && 'text-muted-foreground')}>{step.label}</span>
-              {step.detail && <span className={cn('mt-0.5 block font-mono text-2xs text-muted-foreground', large && 'sm:mt-1 sm:text-[13px]')}>{step.detail}</span>}
+              <span className={cn('block text-small font-semibold', large && 'sm:text-base', index > active && 'text-muted-foreground')}>{step.label}</span>
+              {step.detail && <span className={cn('mt-0.5 block font-mono text-2xs text-muted-foreground', large && 'sm:mt-1 sm:text-ui')}>{step.detail}</span>}
             </div>
           </li>
         ))}
@@ -108,9 +108,9 @@ export function EvidenceLedger({
               : 'sm:grid-cols-[40px_minmax(0,1fr)_minmax(132px,auto)]'),
           )}
         >
-          <span className={cn('font-mono text-2xs text-faint tabular-nums', large && 'text-[13px] text-muted-foreground')}>{String(index + 1).padStart(2, '0')}</span>
-          <div className="min-w-0"><div className={cn('flex items-center gap-2 text-ui font-semibold', large && 'gap-2.5 text-[17px]')}><SignalNode active={row.active} tone={row.tone} className={cn('size-2', large && 'size-2.5')} />{row.label}</div>{row.detail && <div className={cn('mt-1 pl-4 text-small text-muted-foreground', large && 'pl-5 text-[15px] leading-relaxed')}>{row.detail}</div>}</div>
-          {row.value && <span className={cn('text-right text-ui font-semibold tabular-nums', large && 'text-[17px]')}>{row.value}</span>}
+          <span className={cn('font-mono text-2xs text-faint tabular-nums', large && 'text-ui text-muted-foreground')}>{String(index + 1).padStart(2, '0')}</span>
+          <div className="min-w-0"><div className={cn('flex items-center gap-2 text-ui font-semibold', large && 'gap-2.5 text-title')}><SignalNode active={row.active} tone={row.tone} className={cn('size-2', large && 'size-2.5')} />{row.label}</div>{row.detail && <div className={cn('mt-1 pl-4 text-small text-muted-foreground', large && 'pl-5 text-base leading-relaxed')}>{row.detail}</div>}</div>
+          {row.value && <span className={cn('text-right text-ui font-semibold tabular-nums', large && 'text-title')}>{row.value}</span>}
           {row.source && <span className={cn('col-start-2 font-mono text-2xs text-muted-foreground sm:col-auto sm:text-right', large && 'col-start-2 pl-5 sm:col-auto sm:pl-0')}>{row.source}</span>}
         </li>
       ))}

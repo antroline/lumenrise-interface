@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { TradeFilter } from './trade-filter';
+import { TradeTooltipText } from './trade-tooltip';
 import { IndexedTradeRow } from './indexed-trade-row';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -133,9 +134,19 @@ export function IndexedTrades({
               ].map((label) => (
                 <TableHead
                   key={label}
-                  className="h-10 bg-muted py-3 text-small normal-case tracking-normal first:rounded-l-2xl last:rounded-r-2xl"
+                  className="h-10 bg-foreground py-3 text-small font-medium normal-case tracking-normal text-background first:rounded-l-2xl last:rounded-r-2xl"
                 >
-                  {label}
+                  <TradeTooltipText
+                    content={
+                      label.startsWith('Value')
+                        ? 'Estimated payment value: tokens traded × average execution price, before fees.'
+                        : label.startsWith('Price')
+                          ? 'Average execution price for the recorded trade, before fees. This may differ from the current marginal price.'
+                          : undefined
+                    }
+                  >
+                    {label}
+                  </TradeTooltipText>
                 </TableHead>
               ))}
             </TableRow>

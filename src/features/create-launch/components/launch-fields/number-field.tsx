@@ -2,7 +2,7 @@
 
 import { FieldDescription, FieldLabel, Field } from '@/components/ui/field';
 import { LaunchFieldError } from '../launch-motion';
-import { Input } from '@/components/ui/input';
+import { FieldSurface, LaunchInput } from './field-controls';
 import { formatSupply } from '../../lib/amount';
 import { HelpTooltip } from './help-tooltip';
 import { PresetChoices } from './preset-choices';
@@ -65,18 +65,29 @@ export function NumberField({
 
   return (
     <Field data-invalid={!!error || invalid}>
-      <div className="rounded-xl border border-border bg-surface dark:bg-muted px-4 py-3.5 transition-[border-color,box-shadow] duration-200 focus-within:border-foreground focus-within:ring-3 focus-within:ring-lime/40 short:py-2.5">
-        <div className="flex min-h-7 min-w-0 items-center gap-1">
-          <FieldLabel
-            htmlFor={id}
-            className="min-w-0 text-medium text-muted-foreground"
-          >
-            {label}
-          </FieldLabel>
-          {help && <HelpTooltip label={label}>{help}</HelpTooltip>}
+      <FieldSurface>
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-1">
+          <div className="flex min-h-7 studio-compact:min-h-5 min-w-0 items-center gap-1">
+            <FieldLabel
+              htmlFor={id}
+              className="min-w-0 text-small text-muted-foreground"
+            >
+              {label}
+            </FieldLabel>
+            {help && <HelpTooltip label={label}>{help}</HelpTooltip>}
+          </div>
+          {presets && (
+            <PresetChoices
+              label={label}
+              value={value}
+              options={presets}
+              onChange={onChange}
+              variant="inline"
+            />
+          )}
         </div>
         <div className="mt-1 flex min-w-0 items-end gap-2">
-          <Input
+          <LaunchInput
             id={id}
             type="text"
             inputMode="decimal"
@@ -92,7 +103,7 @@ export function NumberField({
                 .filter(Boolean)
                 .join(' ') || undefined
             }
-            className="h-10 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-[23px] font-semibold tracking-[-0.025em] tabular-nums focus-visible:border-0 focus-visible:ring-0 aria-invalid:border-0 aria-invalid:ring-0 sm:text-[26px] short:h-9 short:sm:text-[23px]"
+            className="flex-1 tabular-nums"
           />
           {unit && (
             <span className="inline-flex shrink-0 items-center gap-2 pb-1 text-lg font-semibold text-foreground sm:text-xl">
@@ -103,15 +114,7 @@ export function NumberField({
             </span>
           )}
         </div>
-      </div>
-      {presets && (
-        <PresetChoices
-          label={label}
-          value={value}
-          options={presets}
-          onChange={onChange}
-        />
-      )}
+      </FieldSurface>
       <LaunchFieldError id={`${id}-error`} className="text-small text-bad">
         {error}
       </LaunchFieldError>
