@@ -26,6 +26,7 @@ import {
   setApiUserId,
 } from '@/lib/api/client';
 import { getAuthProviderUserId } from '@/lib/auth-provider';
+import { consumeAuthReturnTo, saveAuthReturnTo } from '@/lib/auth-return';
 import { hydrateBluxConnection } from '@/lib/connections';
 import { ToastProvider, useNotify } from '@/components/ui/toast';
 import { HORIZON_URL, NETWORK, SOROBAN_URL } from '@/lib/stellar/network';
@@ -456,22 +457,20 @@ function LaunchpadProvider({
   }, []);
 
   const login = useCallback(
-    async (destination = '/portfolio') => {
-      if (blux.isAuthenticated) {
-        router.push(destination);
-        return;
-      }
+    async (destination?: string) => {
+      if (blux.isAuthenticated && accountRef.current.status === 'registered') return;
 
-      window.sessionStorage.setItem('launchpad:returnTo', destination);
+      saveAuthReturnTo(destination);
       try {
-        const loginRequest = blux.login();
-        setLoginPhase('connecting');
-        const user = await loginRequest;
-        hydrateBluxConnection(user);
+        if (!blux.isAuthenticated) {
+          const loginRequest = blux.login();
+          setLoginPhase('connecting');
+          const user = await loginRequest;
+          hydrateBluxConnection(user);
+        }
 
         // The sign-in effect above is now running the registration status
-        // check. Await its outcome and route straight to the right place:
-        // registered users go directly to their destination without the
+        // check. Await its outcome: registered users stay on their page without the
         // registration page flashing in between, and new users land on the
         // registration form with their state already resolved.
         setLoginPhase('checking');
@@ -486,10 +485,9 @@ function LaunchpadProvider({
               });
 
         if (outcome === 'registered') {
-          const target =
-            window.sessionStorage.getItem('launchpad:returnTo') || destination;
-          window.sessionStorage.removeItem('launchpad:returnTo');
-          router.push(target);
+          // The registration page owns its redirect; consuming its target here
+          // would race that effect. Other pages stay mounted after signing in.
+          if (window.location.pathname !== '/register') consumeAuthReturnTo();
         } else if (outcome === 'unregistered') {
           if (pathname !== '/register') {
             registerRoutePending.current = true;

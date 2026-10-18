@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
 import { useLaunchpad } from '@/lib/launchpad'
+import { saveAuthReturnTo } from '@/lib/auth-return'
 
 /**
  * Renders in place of account-only content whenever access is not ready:
@@ -24,7 +25,7 @@ export function AuthGate({ destination, description }: { destination: string; de
 
   useEffect(() => {
     if (!unregistered) return
-    window.sessionStorage.setItem('launchpad:returnTo', destination)
+    saveAuthReturnTo(destination)
     router.replace('/register')
   }, [unregistered, destination, router])
 
