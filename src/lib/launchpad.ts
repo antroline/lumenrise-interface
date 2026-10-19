@@ -6,7 +6,6 @@ import type { NotificationOptions } from '@/lib/notifications'
 
 export type AccountState =
   | { status: 'signed-out' }
-  | { status: 'preview' }
   | { status: 'checking' }
   | { status: 'unregistered' }
   | { status: 'registered'; profile: AccountProfile }
@@ -25,7 +24,7 @@ export type LaunchpadContextValue = {
   notify: (message: string, options?: NotificationOptions) => void
   /** Registration state of the signed-in provider user. */
   account: AccountState
-  /** True when account-only pages may render (registered user or dev preview). */
+  /** True when account-only pages may render (registered user). */
   accountReady: boolean
   /** Re-runs the registration status check after a failure. */
   retryStatusCheck: () => void
