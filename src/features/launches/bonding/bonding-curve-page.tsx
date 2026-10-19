@@ -5,6 +5,7 @@ import { useAccount, useBlux, useReadContracts } from '@bluxcc/react';
 import { StrKey } from '@stellar/stellar-sdk';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useNotify } from '@/components/ui/toast';
 import { useLaunchpad } from '@/lib/launchpad';
 import { API_NETWORK, NETWORK } from '@/lib/stellar/network';
 import {
@@ -46,6 +47,8 @@ export function BondingCurvePage({
   network?: ApiNetwork;
 }) {
   const { user, isReady } = useBlux();
+  const notify = useNotify();
+  const lastTradingNotice = useRef<string | null>(null);
   const { retryStatusCheck } = useLaunchpad();
   const indexed = useLaunchDetail(address, network);
   const { records: queued, recoveryError } = useTradeQueue(network, address);
@@ -323,6 +326,10 @@ export function BondingCurvePage({
             buyer_count: reads.data?.values[4],
             claimable_team: reads.data?.values[5],
             graduation_preview: reads.data?.values[6],
+            contractError: coreError,
+            tokenError:
+              decodedTokens.error ||
+              (tokensRead.error && errorMessage(tokensRead.error)),
           },
           (_, value: unknown) =>
             typeof value === 'bigint' ? value.toString() : value,
@@ -331,23 +338,25 @@ export function BondingCurvePage({
       </pre>
     </details>
   );
-  const feedback = (
-    <>
-      {coreError && (
-        <p role="alert" className="break-words text-sm text-destructive">
-          Could not read this bonding curve: {coreError}. Check the address and
-          retry.
-        </p>
-      )}
-      {network === API_NETWORK && (tokensRead.error || decodedTokens.error) && (
-        <p role="alert" className="break-words text-sm text-destructive">
-          Token data unavailable:{' '}
-          {decodedTokens.error || errorMessage(tokensRead.error)}. Trading is
-          unavailable until the token identities can be verified.
-        </p>
-      )}
-    </>
-  );
+  const tradingError =
+    network === API_NETWORK &&
+    (coreError || tokensRead.error || decodedTokens.error);
+  const tradingNotice = tradingError
+    ? decoded.error || decodedTokens.error
+      ? 'Token details could not be verified. Trading is temporarily unavailable.'
+      : 'Could not connect to the network to load trading data.'
+    : null;
+  useEffect(() => {
+    if (!visible) return;
+    if (!tradingNotice) {
+      if (tokens) lastTradingNotice.current = null;
+      return;
+    }
+    const key = network + ':' + address + ':' + tradingNotice;
+    if (lastTradingNotice.current === key) return;
+    lastTradingNotice.current = key;
+    notify(tradingNotice, { tone: 'error' });
+  }, [address, network, tradingNotice, tokens, visible, notify]);
   const pageLoading =
     indexed.isPending || (network === API_NETWORK && !snapshot && !coreError);
   if (
@@ -376,12 +385,7 @@ export function BondingCurvePage({
           (!!snapshot && !tokens && !tokensRead.error && !decodedTokens.error))
       }
       loading={pageLoading}
-      feedback={
-        <>
-          {indexedFeedback}
-          {feedback}
-        </>
-      }
+      feedback={indexedFeedback}
     >
       <BondingTechnicalDetails
         address={address}

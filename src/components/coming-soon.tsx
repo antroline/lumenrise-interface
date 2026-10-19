@@ -3,9 +3,12 @@ import { ArrowRight, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CoordinateField, EvidenceLedger, InsetField, SignalTopology, Trajectory } from '@/components/visual-system'
 
-type Specimen = 'campaigns' | 'developers' | 'cli'
+type Specimen = 'campaigns' | 'developers' | 'cli' | 'reputation'
 
 function TechnicalSpecimen({ kind }: { kind: Specimen }) {
+  if (kind === 'reputation') {
+    return <InsetField className="relative z-10"><SignalTopology sources={['Activity', 'Contribution', 'Connected accounts']} outcome="Reputation profile" /></InsetField>
+  }
   if (kind === 'campaigns') {
     return <InsetField className="relative z-10"><span className="caps mb-4 block">Campaign signal path</span><SignalTopology sources={['Participation', 'Referral', 'Contribution']} outcome="Project credential" /></InsetField>
   }

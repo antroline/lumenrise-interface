@@ -42,7 +42,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
-      <body>
+      <body className="max-lg:min-w-0">
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <Providers apiBaseUrl={process.env.LUMENRISE_API_URL ?? ''}>
           <TooltipProvider>

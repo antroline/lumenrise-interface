@@ -1,5 +1,4 @@
 import type { ComponentProps, ReactNode } from 'react'
-import { ProjectMark, type ProjectMarkName } from '@/components/project-mark'
 import { cn } from '@/lib/utils'
 
 /** A measured field for page focal areas, never for text-heavy or interactive regions. */
@@ -127,17 +126,6 @@ export function SignalTopology({ sources, outcome, className }: { sources: strin
       </div>
       <span aria-hidden="true" className="relative h-[calc(100%-20px)] border-l border-divider before:absolute before:top-1/2 before:right-full before:w-4 before:border-t before:border-divider after:absolute after:top-1/2 after:left-0 after:w-7 after:border-t after:border-divider" />
       <div className="flex min-w-0 items-center gap-2 border-y border-divider py-4"><SignalNode active /><span className="text-ui font-semibold">{outcome}</span></div>
-    </div>
-  )
-}
-
-/** The existing project artwork becomes a restrained page-level specimen. */
-export function ProjectSpecimen({ name, children, className }: { name: ProjectMarkName; children: ReactNode; className?: string }) {
-  return (
-    <div className={cn('relative isolate overflow-hidden border-y border-divider py-6 sm:py-8', className)}>
-      <CoordinateField className="left-[42%] opacity-70" />
-      <ProjectMark name={name} size={176} className="pointer-events-none absolute -top-10 -right-16 -z-10 opacity-[0.045] sm:right-10 sm:opacity-[0.09]" />
-      <div className="relative z-10">{children}</div>
     </div>
   )
 }

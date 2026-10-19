@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from 'react'
 import { Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 function subscribeTheme(onChange: () => void) {
   const observer = new MutationObserver(onChange)
@@ -14,7 +15,7 @@ function isDarkTheme() {
   return document.documentElement.classList.contains('dark')
 }
 
-export function ThemeToggle() {
+export function ThemeToggle({ showLabel = false }: { showLabel?: boolean }) {
   const dark = useSyncExternalStore(subscribeTheme, isDarkTheme, () => false)
 
   const toggle = () => {
@@ -31,12 +32,16 @@ export function ThemeToggle() {
   return (
     <Button
       variant="ghost"
-      size="icon"
-      className="rounded-full text-muted-foreground hover:text-foreground"
+      size={showLabel ? 'default' : 'icon'}
+      className={cn(
+        'rounded-full text-muted-foreground hover:text-foreground',
+        showLabel && 'h-12 w-full justify-start gap-4 rounded-xl bg-secondary px-4 text-base text-foreground hover:bg-muted [&>svg]:size-5',
+      )}
       onClick={toggle}
       aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
       {dark ? <Sun /> : <Moon />}
+      {showLabel && <span>{dark ? 'Light mode' : 'Dark mode'}</span>}
     </Button>
   )
 }

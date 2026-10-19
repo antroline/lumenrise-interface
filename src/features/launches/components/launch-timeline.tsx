@@ -11,10 +11,10 @@ export type TimelineStep = {
 };
 
 const track: Record<TimelineStep['state'], string> = {
-  done: 'border-foreground/20 bg-foreground text-background',
-  active: 'border-ink/15 bg-lime text-ink',
-  halted: 'border-warn/30 bg-warn/10 text-warn',
-  upcoming: 'border-border bg-background text-muted-foreground',
+  done: 'border-neutral-900 bg-neutral-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-950',
+  active: 'border-brand-lime bg-brand-lime text-neutral-900',
+  halted: 'border-neutral-300 bg-neutral-100 text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
+  upcoming: 'border-neutral-200 bg-white text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400',
 };
 
 const stateLabel: Record<TimelineStep['state'], string> = {
@@ -28,7 +28,7 @@ export function LaunchTimeline({ steps }: { steps: TimelineStep[] }) {
   return (
     <ol
       aria-label="Launch timeline"
-      className="relative my-5 grid grid-cols-3 py-3 before:absolute before:inset-x-0 before:top-[70px] before:h-px before:bg-border"
+      className="relative grid grid-cols-3 before:absolute before:inset-x-[16.6667%] before:top-14 before:h-px before:bg-neutral-200 dark:before:bg-neutral-700"
     >
       {steps.map((step) => (
         <li
@@ -38,8 +38,8 @@ export function LaunchTimeline({ steps }: { steps: TimelineStep[] }) {
         >
           <p
             className={cn(
-              'flex h-8 items-center text-[11px] leading-tight font-medium sm:text-[13px]',
-              step.state === 'upcoming' && 'text-muted-foreground',
+              'flex h-8 items-center justify-center text-[11px] leading-tight font-medium text-neutral-900 sm:text-[13px] dark:text-neutral-50',
+              step.state === 'upcoming' && 'text-neutral-500 dark:text-neutral-400',
             )}
           >
             <TradeTooltipText content={step.detail}>
@@ -50,7 +50,7 @@ export function LaunchTimeline({ steps }: { steps: TimelineStep[] }) {
           <span
             aria-hidden="true"
             className={cn(
-              'relative mt-2 flex h-9 w-12 items-center justify-center rounded-full border sm:w-14',
+              'relative mt-2 flex size-8 shrink-0 items-center justify-center rounded-full border',
               track[step.state],
             )}
           >
@@ -59,19 +59,19 @@ export function LaunchTimeline({ steps }: { steps: TimelineStep[] }) {
             ) : step.state === 'halted' ? (
               <X className="size-4" />
             ) : step.state === 'active' ? (
-              <span className="size-2 rounded-full bg-current" />
+              <span className="size-1.5 rounded-full bg-current" />
             ) : null}
           </span>
           <p
             className={cn(
-              'mt-3 text-[11px] leading-snug font-medium tabular-nums sm:text-[13px]',
-              step.state === 'upcoming' && 'text-muted-foreground',
+              'mt-2 break-words text-[11px] leading-snug font-medium text-neutral-900 tabular-nums sm:text-xs dark:text-neutral-50',
+              step.state === 'upcoming' && 'text-neutral-500 dark:text-neutral-400',
             )}
           >
             {step.value}
           </p>
           {step.caption && (
-            <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground tabular-nums sm:text-xs">
+            <p className="mt-0.5 text-[10px] leading-snug text-neutral-500 tabular-nums sm:text-[11px] dark:text-neutral-400">
               {step.caption}
             </p>
           )}

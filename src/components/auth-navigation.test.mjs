@@ -8,7 +8,7 @@ import ts from 'typescript';
 
 const require = createRequire(import.meta.url);
 const jsx = (type, props) => ({ type, props });
-function load(file, mocks, window, expose = '') {
+function load(file, mocks, window, expose = '', environment = 'test') {
   const source = readFileSync(resolve(file), 'utf8') + expose;
   const code = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
@@ -16,7 +16,7 @@ function load(file, mocks, window, expose = '') {
   const module = { exports: {} };
   runInNewContext(code, {
     module, exports: module.exports, window, URL,
-    process: { env: { NODE_ENV: 'test' } },
+    process: { env: { NODE_ENV: environment } },
     require: name => name in mocks ? mocks[name] : require(name),
   });
   return module.exports;
@@ -55,7 +55,7 @@ test('return destinations reject external URLs and authentication loops', () => 
   }
 });
 
-function loginHarness(outcome, { path, authenticated = false, saved } = {}) {
+function loginHarness(outcome, { path, authenticated = false, saved, environment = 'test' } = {}) {
   const h = browser(path, saved);
   const pushes = [], replacements = [], phases = [], refs = [];
   let stateIndex = 0, connectCount = 0;
@@ -83,14 +83,21 @@ function loginHarness(outcome, { path, authenticated = false, saved } = {}) {
     'next/navigation': { useRouter: () => ({ push: value => pushes.push(value), replace: value => replacements.push(value) }), usePathname: () => h.window.location.pathname },
     '@bluxcc/react': { useBlux: () => blux, networks: { testnet: {} } },
     '@/lib/api/auth': {}, '@/lib/api/client': {}, '@/lib/auth-provider': {},
-    '@/lib/auth-return': h.auth, '@/lib/connections': { hydrateBluxConnection() {} },
+    '@/lib/auth-return': h.auth,
     '@/components/ui/toast': { useNotify: () => message => { throw new Error(message); } },
     '@/lib/stellar/network': {}, '@/lib/launchpad': { LaunchpadContext: { Provider: 'Provider' } },
   };
-  const { LaunchpadProvider } = load('src/components/client-app.tsx', mocks, h.window, '\nexport { LaunchpadProvider };');
+  const { LaunchpadProvider } = load('src/components/client-app.tsx', mocks, h.window, '\nexport { LaunchpadProvider };', environment);
   const tree = LaunchpadProvider({ children: null, apiBaseUrl: '' });
-  return { ...h, login: tree.props.value.login, pushes, replacements, connectCount: () => connectCount, phases };
+  return { ...h, value: tree.props.value, login: tree.props.value.login, pushes, replacements, connectCount: () => connectCount, phases };
 }
+
+test('query parameters cannot grant account access or invent a wallet in development', () => {
+  const h = loginHarness('signed-out', { path: '/portfolio?preview=1', environment: 'development' });
+  assert.equal(h.value.isSignedIn, false);
+  assert.equal(h.value.accountReady, false);
+  assert.equal(h.value.address, undefined);
+});
 
 test('registered login stays on the current page and clears the consumed return target', async () => {
   const h = loginHarness('registered');

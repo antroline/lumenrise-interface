@@ -43,6 +43,7 @@ import { LaunchReveal } from './launch-reveal';
 import { LaunchTimeline, type TimelineStep } from './launch-timeline';
 import { TradeTooltipText } from '../trading/trade-tooltip';
 import { LaunchTokenomics, type VestingPlan } from './launch-tokenomics';
+import { LaunchDescription } from './launch-description';
 
 const UNIT = BigInt(10_000_000);
 
@@ -87,7 +88,7 @@ function TimelineSkeleton() {
       role="status"
       aria-label="Loading launch timeline"
       aria-busy="true"
-      className="relative my-5 grid grid-cols-3 py-3 before:absolute before:inset-x-0 before:top-[70px] before:h-px before:bg-border"
+      className="relative grid grid-cols-3 before:absolute before:inset-x-[16.6667%] before:top-14 before:h-px before:bg-neutral-200 dark:before:bg-neutral-700"
     >
       <span className="sr-only">Loading launch timeline…</span>
       {[0, 1, 2].map((step) => (
@@ -97,10 +98,10 @@ function TimelineSkeleton() {
           className="relative flex min-w-0 flex-col items-center px-1"
         >
           <div className="flex h-8 items-center">
-            <Skeleton className="h-4 w-20 motion-reduce:animate-none" />
+            <Skeleton className="h-4 w-16 max-w-full motion-reduce:animate-none" />
           </div>
-          <Skeleton className="mt-2 h-9 w-12 rounded-full motion-reduce:animate-none sm:w-14" />
-          <Skeleton className="mt-3 h-4 w-16 motion-reduce:animate-none" />
+          <Skeleton className="mt-2 size-8 rounded-full motion-reduce:animate-none" />
+          <Skeleton className="mt-2 h-4 w-16 max-w-full motion-reduce:animate-none" />
           <Skeleton className="mt-1 h-3 w-12 motion-reduce:animate-none" />
         </div>
       ))}
@@ -390,7 +391,7 @@ export function IndexedLaunchOverview({
     <TradeMotion>
       <div
         data-launch-page
-        className="mx-auto w-full max-w-[1320px] pb-24 lg:pb-16 selection:bg-lime selection:text-ink [&_section]:shadow-none [&_[data-slot=card]]:shadow-none"
+        className="launch-details mx-auto w-full max-w-[1320px] pb-24 lg:pb-16 selection:bg-lime selection:text-ink dark:bg-neutral-950 dark:text-neutral-50 dark:[--muted:var(--color-neutral-800)]! dark:[--surface:var(--color-neutral-800)]! dark:[--input:var(--color-neutral-800)]! [&_section]:shadow-none [&_[data-slot=card]]:shadow-none"
       >
         <div className="mb-4 md:hidden">
           <BackLink href={`/launches?network=${network}`}>Projects</BackLink>
@@ -466,32 +467,28 @@ export function IndexedLaunchOverview({
               }
               loading={loading && !b}
             />
-            <div className="flex min-w-0 flex-col gap-4 lg:gap-5">
+            <div className="launch-sections flex min-w-0 flex-col rounded-2xl bg-card px-4 text-card-foreground sm:px-5">
               <LaunchReveal>
                 <section
                   id="about"
                   aria-labelledby="about-heading"
                   tabIndex={-1}
-                  className="min-w-0 scroll-mt-24 py-6 outline-none sm:py-8"
+                  className="min-w-0 scroll-mt-24 py-4 outline-none sm:py-5"
                 >
-                  <header className="mb-5 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-                    <h2
-                      id="about-heading"
-                      className="text-[24px] leading-tight font-medium tracking-[-0.035em] sm:text-[28px]"
-                    >
-                      About the project
-                    </h2>
-                  </header>
+                  <h2
+                    id="about-heading"
+                    className="mb-4 text-xl font-semibold tracking-tight text-neutral-900 sm:text-2xl dark:text-neutral-50"
+                  >
+                    About the project
+                  </h2>
                   {description ? (
-                    <p className="max-w-[64ch] whitespace-pre-line break-words text-[15px] leading-[1.85] text-foreground/80 sm:text-base">
-                      {description}
-                    </p>
+                    <LaunchDescription key={address} description={description} />
                   ) : loading ? (
                     <div
                       role="status"
                       aria-label="Loading project description"
                       aria-busy="true"
-                      className="flex max-w-[64ch] flex-col gap-2.5"
+                      className="flex max-w-3xl flex-col gap-2.5"
                     >
                       <span className="sr-only">
                         Loading project description…
@@ -510,7 +507,7 @@ export function IndexedLaunchOverview({
                       />
                     </div>
                   ) : (
-                    <p className="text-[14px] text-muted-foreground">
+                    <p className="text-sm text-neutral-500">
                       The creator has not provided a project description.
                     </p>
                   )}
@@ -520,7 +517,7 @@ export function IndexedLaunchOverview({
               <LaunchSection
                 id="market-stats"
                 title="Market stats"
-                accordionVariant="inset"
+                accordionVariant="plain"
                 collapsible
                 defaultOpen
               >
@@ -587,7 +584,7 @@ export function IndexedLaunchOverview({
               </LaunchSection>
 
               {owner && (
-                <LaunchSection id="creator" title="Team" collapsible accordionVariant="soft">
+                <LaunchSection id="creator" title="Team" collapsible accordionVariant="plain">
                   {launch && <LaunchTeam owner={launch.owner} contractId={address} network={network} />}
                   <LaunchCreator
                     owner={owner}
@@ -600,7 +597,7 @@ export function IndexedLaunchOverview({
               {(b || loading) && (
                 <LaunchSection
                   id="tokenomics"
-                  accordionVariant="inset"
+                  accordionVariant="plain"
                   collapsible
                   title="Tokenomics"
                   meta={
@@ -652,7 +649,7 @@ export function IndexedLaunchOverview({
               {(b || loading) && (
                 <LaunchSection
                   id="rules"
-                  accordionVariant="inset"
+                  accordionVariant="plain"
                   collapsible
                   defaultOpen={false}
                   title="How this launch works"
@@ -693,34 +690,33 @@ export function IndexedLaunchOverview({
 
               <LaunchSection
                 id="contracts"
-                accordionVariant="inset"
+                accordionVariant="plain"
                 collapsible
                 defaultOpen={false}
                 title="Contracts"
               >
                 {children}
               </LaunchSection>
-              <TradeActivity
-                accordionVariant="inset"
-                onHoldersActiveChange={setHoldersActive}
-                trades={
-                  <IndexedTrades
-                    address={address}
-                    network={network}
-                    ticker={ticker}
-                    pair={pair}
-                    tradeCount24h={market.data?.volume24h.tradeCount}
-                  />
-                }
-                holders={<IndexedHolders holders={holders} ticker={ticker} />}
-                pools={
-                  <PoolTable
-                    ticker={ticker}
-                    unavailableReason="External pool data is not connected. This contract version does not create a pool or transfer graduation proceeds."
-                  />
-                }
-              />
             </div>
+            <TradeActivity
+              onHoldersActiveChange={setHoldersActive}
+              trades={
+                <IndexedTrades
+                  address={address}
+                  network={network}
+                  ticker={ticker}
+                  pair={pair}
+                  tradeCount24h={market.data?.volume24h.tradeCount}
+                />
+              }
+              holders={<IndexedHolders holders={holders} ticker={ticker} />}
+              pools={
+                <PoolTable
+                  ticker={ticker}
+                  unavailableReason="External pool data is not connected. This contract version does not create a pool or transfer graduation proceeds."
+                />
+              }
+            />
           </div>
         </div>
       </div>

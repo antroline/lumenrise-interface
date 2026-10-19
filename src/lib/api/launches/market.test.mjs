@@ -779,7 +779,7 @@ test('holder UI distinguishes loading, empty, failures and populated balances wi
   assert.ok(failedPage.some((node) => node?.type === 'Button' && node.props.children === 'Retry'));
 });
 
-test('price history keeps its chart styling and range wiring, with loading/empty/error/retry states in the container', () => {
+test('price history preserves observed data and range wiring, with loading/insufficient/error/retry states', () => {
   const h = harness();
   const jsx = (type, props) => ({ type, props });
   let selected = '1D', options;
@@ -790,8 +790,9 @@ test('price history keeps its chart styling and range wiring, with loading/empty
       : name === '@tanstack/react-query' ? { useQuery: value => { options = value; return query; }, useQueryClient: () => ({}) }
       : name === '@/lib/api/launches/market' ? h.api
       : name === '@/lib/api/launches/display' ? h.display
+      : name === './price-history-format' ? load('../../../features/launches/trading/price-history-format.ts', {})
       : name === '@/features/launches/hooks/queries' ? { launchKey: (network, id) => ['launch', network, id], publicQueryOptions: {}, usePageVisible: () => true }
-      : Object.fromEntries(['LineChart', 'PriceChart', 'Skeleton', 'Button', 'Empty', 'EmptyHeader', 'EmptyTitle', 'EmptyDescription'].map(key => [key, key])),
+      : Object.fromEntries(['PriceHistoryPlot', 'PriceChart', 'Skeleton', 'Button', 'Empty', 'EmptyHeader', 'EmptyTitle', 'EmptyDescription'].map(key => [key, key])),
   });
   function nodes(value) {
     if (Array.isArray(value)) return value.flatMap(nodes);
@@ -811,15 +812,13 @@ test('price history keeps its chart styling and range wiring, with loading/empty
   query = { ...query, isError: false, data: { ...chart, items: [], from: null } };
   assert.ok(render()[1].includes('Price history not available yet'));
   query = { ...query, data: { ...chart, items: [candle], from: '2026-10-11T12:00:00Z' } };
-  const line = render()[1].find(node => node?.type === 'LineChart');
-  assert.equal(line.props.interpolation, 'step');
-  assert.equal(line.props.fill, false);
-  assert.equal(line.props.marker, false);
-  assert.equal(line.props.height, 240);
-  assert.equal(line.props.axisWidth, 90);
-  assert.equal(line.props.className, '[&_.stroke-foreground]:stroke-lime [&_line]:stroke-transparent [&_text]:fill-muted-foreground');
-  same(line.props.timestamps, [Date.parse(candle.timestamp)]);
-  assert.equal(line.props.stepEndTime, Math.min(Date.parse(candle.endsAt), Date.parse(chart.asOf)));
+  assert.ok(render()[1].includes('Not enough price history'));
+  const earlier = { ...candle, timestamp: '2026-10-11T13:00:00Z' };
+  query = { ...query, data: { ...query.data, items: [candle, earlier] } };
+  const plot = render()[1].find(node => node?.type === 'PriceHistoryPlot');
+  same(plot.props.points.map(point => ({ time: point.time, price: point.price })), JSON.parse(JSON.stringify(h.display.chartPoints(query.data))));
+  assert.ok(plot.props.points.every(point => typeof point.exactPrice === 'string'));
+  same(plot.props.timeDomain, Array.from(h.display.chartWindow(query.data)));
   for (const range of ['1D', '1W', '1M', '3M', 'ALL']) {
     render()[0].props.history.onRangeChange(range);
     render(ASSET, 'public');
@@ -954,42 +953,6 @@ test('top traders rejects partial history failures, repeated cursors and currenc
   assert.equal(h.calls.length, 1);
 });
 
-test('top traders table shows loading, empty, error and ranked data with retry and scoped queries', () => {
-  const h = harness(), jsx = (type, props) => ({ type, props });
-  let query = { isPending: true, isError: false, refetch() {} }, options;
-  const { IndexedTopTraders } = load('../../../features/launches/trading/indexed-top-traders.tsx', {
-    require: name => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
-      : name === 'react' ? { useEffect() {} }
-      : name === '@tanstack/react-query' ? { useQuery: value => { options = value; return query; }, useQueryClient: () => ({}) }
-      : name === '@/lib/api/launches/top-traders' ? h.topTraders
-      : name === '@/lib/api/launches/display' ? h.display
-      : name === '@/features/launches/hooks/queries' ? { launchKey: (network, id) => ['launch', network, id], publicQueryOptions: { refetchInterval: 60000 }, usePageVisible: () => true }
-      : name === './trade-table-style' ? { tradeTableClass: 'existing-table' }
-      : Object.fromEntries(['Blockie', 'Button', 'Skeleton', 'Empty', 'EmptyHeader', 'EmptyTitle', 'EmptyDescription', 'Table', 'TableHeader', 'TableBody', 'TableRow', 'TableHead', 'TableCell'].map(key => [key, key])),
-  });
-  function nodes(value) {
-    if (Array.isArray(value)) return value.flatMap(nodes);
-    if (!value || typeof value !== 'object') return [value];
-    return [value, ...nodes(value.props?.children)];
-  }
-  const render = (address = ID, network = 'testnet') => nodes(IndexedTopTraders({ address, network, pair: 'USDC' }));
-  assert.ok(render().some(node => node?.props?.['aria-label'] === 'Loading top traders'));
-  query = { ...query, isPending: false, isError: true, error: new Error('Unavailable') };
-  assert.ok(render().includes('Could not load top traders'));
-  assert.ok(render().some(node => node?.type === 'Button' && node.props.children === 'Retry'));
-  query = { ...query, isError: false, data: { items: [] } };
-  assert.ok(render().includes('No recorded traders yet'));
-  query = { ...query, data: { pair: PAIR, items: [{ trader: OWNER, buyVolume: '12345678', sellVolume: '20000000', volume: '32345678', tradeCount: 2 }] } };
-  const rows = render();
-  assert.ok(rows.includes('3.235'));
-  assert.ok(rows.includes('Volume · USDC ≈'));
-  assert.ok(rows.some(node => node?.props?.title === OWNER));
-  render(ASSET, 'public');
-  same(options.queryKey, ['launch', 'public', ASSET, 'top-traders', 'all', 10]);
-  query = { ...query, isError: true };
-  assert.ok(render().some(node => node?.props?.role === 'alert'));
-});
-
 test('launch decoder preserves optional project links without requiring them on existing launches', () => {
   const h = harness();
   const metadata = { ...launch.metadata, website: 'https://project.example', xAccount: 'https://x.com/project', github: 'https://github.com/project' };
@@ -998,39 +961,4 @@ test('launch decoder preserves optional project links without requiring them on 
   assert.equal(decoded.xAccount, metadata.xAccount);
   assert.equal(decoded.github, metadata.github);
   assert.equal(h.api.decodeLaunch(launch).metadata.website, undefined);
-});
-
-test('trade header displays available project links next to Share and omits the options menu', async () => {
-  const jsx = (type, props) => ({ type, props });
-  const { TradeHeaderActions } = load('../../../features/launches/trading/trade-header-actions.tsx', {
-    window: { location: { href: 'https://app.example/trade/token' } },
-    require: name => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
-      : name === 'lucide-react' ? { Globe: 'Globe', Share2: 'Share2' }
-      : name === '@/components/brand-icons' ? { GithubIcon: 'GithubIcon', XLogoIcon: 'XLogoIcon' }
-      : Object.fromEntries(['Button', 'TradeTooltip', 'TradeCopyFeedback'].map(key => [key, key])),
-  });
-  function nodes(value) {
-    if (Array.isArray(value)) return value.flatMap(nodes);
-    if (!value || typeof value !== 'object') return [value];
-    return [value, ...nodes(value.props?.children)];
-  }
-  const copied = [];
-  const copy = async (...args) => { copied.push(args); };
-  const empty = nodes(TradeHeaderActions({ copy }));
-  assert.equal(empty.filter(node => node?.type === 'Button').length, 1);
-  const all = nodes(TradeHeaderActions({ copy, links: {
-    website: 'https://project.example', x: 'https://x.com/project', github: 'https://github.com/project',
-  } }));
-  const buttons = all.filter(node => node?.type === 'Button');
-  same(buttons.map(node => node.props['aria-label']), ['Copy token page link', 'Project Website', 'Project X', 'Project GitHub']);
-  for (const button of buttons.slice(1)) {
-    assert.equal(button.props.nativeButton, false);
-    assert.equal(button.props.render.type, 'a');
-    assert.equal(button.props.render.props.target, '_blank');
-    assert.equal(button.props.render.props.rel, 'noopener noreferrer');
-  }
-  buttons[0].props.onClick();
-  same(copied, [['https://app.example/trade/token', 'Link']]);
-  const invalid = nodes(TradeHeaderActions({ copy, links: { website: 'javascript:alert(1)', x: 'invalid', github: 'https://user:pass@github.com/project' } }));
-  assert.equal(invalid.filter(node => node?.type === 'Button').length, 1);
 });

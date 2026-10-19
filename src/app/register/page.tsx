@@ -24,16 +24,15 @@ export default function RegisterPage() {
   const redirectStarted = useRef(false)
 
   // A user who is already registered never sees the form: they continue to
-  // their saved destination (or the default) straight away. The dev preview
-  // has no provider session to register with, so it passes through as well.
+  // their saved destination (or the default) straight away.
   useEffect(() => {
-    if (account.status !== 'registered' && account.status !== 'preview') return
+    if (account.status !== 'registered') return
     if (redirectStarted.current) return
     redirectStarted.current = true
     router.replace(consumeAuthReturnTo())
   }, [account.status, router])
 
-  const redirecting = account.status === 'registered' || account.status === 'preview'
+  const redirecting = account.status === 'registered'
 
   return (
     <div className="min-h-screen bg-page">

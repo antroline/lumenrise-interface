@@ -13,11 +13,11 @@ import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/ca
 import { Switch } from '@/components/ui/switch'
 import { resolveApiFileUrl } from '@/lib/api/client'
 import { PROFILE_IMAGE_TYPES, validateProfileImage } from '@/lib/image'
-import { loadConnections, randomScore, saveConnections, shortAddress, type ConnectionKey, type Connections } from '@/lib/connections'
+import { shortAddress } from '@/lib/connections'
 import { useLaunchpad } from '@/lib/launchpad'
 import { RuledPanel, Trajectory } from '@/components/visual-system'
 
-const providers: { key: ConnectionKey; label: string; Icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
+const providers: { key: 'x' | 'github' | 'gitlab'; label: string; Icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
   { key: 'x', label: 'X', Icon: XLogoIcon }, { key: 'github', label: 'GitHub', Icon: GithubIcon }, { key: 'gitlab', label: 'GitLab', Icon: GitFork },
 ]
 
@@ -30,8 +30,6 @@ export default function SettingsPage() {
 function SettingsContent({ address, logout }: { address?: string; logout: () => void }) {
   const router = useRouter()
   const { account, refreshProfile } = useLaunchpad()
-  const [connections, setConnections] = useState<Connections>(() => loadConnections(address))
-  const [connecting, setConnecting] = useState<ConnectionKey | null>(null)
   const [publicProfile, setPublicProfile] = useState(true)
   const [showHandles, setShowHandles] = useState(false)
   const [launchEmails, setLaunchEmails] = useState(true)
@@ -43,22 +41,6 @@ function SettingsContent({ address, logout }: { address?: string; logout: () => 
     if (account.status === 'registered') void refreshProfile()
   }, [account.status, refreshProfile])
 
-  function updateConnection(provider: ConnectionKey) {
-    if (connections[provider].connected) {
-      const next = { ...connections, [provider]: { connected: false } }
-      setConnections(next)
-      saveConnections(address, next)
-      return
-    }
-    setConnecting(provider)
-    window.setTimeout(() => {
-      const next = { ...connections, [provider]: { connected: true, handle: provider === 'x' ? '@stellar_builder' : 'stellar-builder', score: randomScore(), source: 'prototype' as const } }
-      setConnections(next)
-      saveConnections(address, next)
-      setConnecting(null)
-    }, 850)
-  }
-
   return <div className="flex flex-col gap-7">
     <PageHeader eyebrow="Account" title="Account and connections" description="Manage the wallets and accounts behind your reputation, and decide what is public." />
     <RuledPanel><Trajectory label="Identity evidence path" active={1} steps={[{label:'Wallet'},{label:'Connected identities'},{label:'Reputation signals'},{label:'Launch eligibility'}]} /></RuledPanel>
@@ -66,11 +48,21 @@ function SettingsContent({ address, logout }: { address?: string; logout: () => 
       <div className="flex min-w-0 flex-col gap-5">
         {profile ? <ProfileCard name={profile.name} avatarUrl={profile.avatarUrl} /> : null}
         <SettingsCard id="wallets" title="Wallets" description="Wallets you prove ownership of by signing a message. No funds move."><div className="flex flex-wrap items-center gap-3 border-t py-4"><span className="grid size-10 place-items-center rounded-lg bg-muted"><Wallet className="size-5" /></span><div className="grow"><b className="font-mono text-ui">{shortAddress(address)}</b><span className="block text-small text-muted-foreground">Connected through Blux</span></div><Badge variant="lime">Primary</Badge><Badge variant="net">TESTNET</Badge><Button variant="outline" size="sm" onClick={() => router.push('/portfolio')}>Portfolio</Button></div><p className="text-small text-muted-foreground">Additional wallet linking is not available through the current Blux integration.</p></SettingsCard>
-        <SettingsCard id="linked" title="Linked accounts" description="Optional accounts add independent signals to your reputation profile."><div className="flex flex-col">{providers.map(({key,label,Icon})=><div key={key} className="flex flex-wrap items-center gap-3 border-t py-3"><span className="grid size-9 place-items-center rounded-lg bg-muted"><Icon className="size-4" /></span><div className="min-w-28 grow"><b className="text-ui">{label}</b><span className="block text-small text-muted-foreground">{connections[key].connected ? `${connections[key].handle} · Signal ${connections[key].score}` : 'Not connected'}</span></div>{connections[key].connected && <Badge variant="ok">Connected</Badge>}<Button variant={connections[key].connected?'outline':'default'} size="sm" disabled={connecting!==null} onClick={()=>updateConnection(key)}>{connecting===key?'Connecting…':connections[key].connected?'Disconnect':'Connect'}</Button></div>)}</div><p className="text-small text-muted-foreground">Optional connection buttons generate local prototype signals until OAuth linking is available.</p></SettingsCard>
+        <SettingsCard id="linked" title="Linked accounts" description="External account linking is not available yet.">
+          <div className="flex flex-col">
+            {providers.map(({ key, label, Icon }) => (
+              <div key={key} className="flex flex-wrap items-center gap-3 border-t py-3">
+                <span className="grid size-9 place-items-center rounded-lg bg-muted"><Icon className="size-4" /></span>
+                <div className="min-w-28 grow"><b className="text-ui">{label}</b><span className="block text-small text-muted-foreground">Not available</span></div>
+                <Button variant="outline" size="sm" disabled>Coming soon</Button>
+              </div>
+            ))}
+          </div>
+        </SettingsCard>
         <SettingsCard id="privacy" title="Privacy" description="Choose what appears on your public reputation profile."><ToggleRow label="Public reputation profile" description="Let people find the signals you choose to publish." value={publicProfile} onChange={setPublicProfile} /><ToggleRow label="Show linked account handles" description="Show public usernames next to connected signals." value={showHandles} onChange={setShowHandles} /><p className="pt-2 text-small text-muted-foreground">These display preferences are local to this session until profile settings are connected.</p></SettingsCard>
         <SettingsCard id="notifications" title="Notifications" description="Decide which launch events should reach you."><ToggleRow label="Launch and claim reminders" description="Get reminders before commitments close or tokens unlock." value={launchEmails} onChange={setLaunchEmails} /><p className="pt-2 text-small text-muted-foreground">Notification delivery is not configured yet.</p></SettingsCard>
         <SettingsCard id="permissions" title="API permissions" description="Apps that can read your reputation through the LumenRise API."><p className="border-t pt-4 text-small text-muted-foreground">No API permission records are available in this frontend. Access logs and revocation require the permissions service.</p></SettingsCard>
-        <SettingsCard id="security" title="Security" description="Manage your browser session."><div className="flex flex-wrap items-center justify-between gap-4 border-t py-3"><div><b className="text-ui">Sign out</b><p className="text-small text-muted-foreground">Your saved prototype identity connections remain attached to this wallet.</p></div><Button variant="outline" onClick={logout}><LogOut data-icon="inline-start" /> Log out</Button></div></SettingsCard>
+        <SettingsCard id="security" title="Security" description="Manage your browser session."><div className="flex flex-wrap items-center justify-between gap-4 border-t py-3"><div><b className="text-ui">Sign out</b><p className="text-small text-muted-foreground">Disconnect your current Blux session.</p></div><Button variant="outline" onClick={logout}><LogOut data-icon="inline-start" /> Log out</Button></div></SettingsCard>
       </div>
     </div>
   </div>

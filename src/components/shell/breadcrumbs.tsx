@@ -2,21 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { getAuction, getLaunch } from '@/lib/data';
 
 type Crumb = { label: string; href?: string };
-
-function projectName(section: string, slug: string) {
-  const record = section === 'auction' ? getAuction(slug) : getLaunch(slug);
-  return record?.name ?? 'Project';
-}
 
 function crumbsFor(pathname: string): Crumb[] {
   const [first, second, third] = pathname.split('/').filter(Boolean);
   switch (first) {
     case 'launch':
     case 'auction': {
-      const name = projectName(first, second ?? '');
+      const name = 'Project';
       const tail =
         first === 'auction'
           ? 'Auction'

@@ -27,7 +27,6 @@ import {
 } from '@/lib/api/client';
 import { getAuthProviderUserId } from '@/lib/auth-provider';
 import { consumeAuthReturnTo, saveAuthReturnTo } from '@/lib/auth-return';
-import { hydrateBluxConnection } from '@/lib/connections';
 import { ToastProvider, useNotify } from '@/components/ui/toast';
 import { HORIZON_URL, NETWORK, SOROBAN_URL } from '@/lib/stellar/network';
 import {
@@ -36,8 +35,6 @@ import {
   type AccountState,
   type LaunchpadContextValue,
 } from '@/lib/launchpad';
-
-const DEMO_ADDRESS = 'GDEMO6K4KQPR5H7NQOL6UPRTMPL4TE6CYXW2LP7SSQ3J2BQY7X2Q';
 
 const bluxConfig: Parameters<typeof BluxProvider>[0]['config'] = {
   appId: process.env.NEXT_PUBLIC_BLUX_APP_ID || 'launchpad-preview',
@@ -194,21 +191,9 @@ function LaunchpadProvider({
   // Guards the gap between routing a new user to /register and the route
   // change taking effect, so the disconnect rule below never fires early.
   const registerRoutePending = useRef(false);
-  // This module only loads in the browser (ssr: false boundary), so reading
-  // the query string during the initial state pass is safe.
-  const [isPreview] = useState(
-    () =>
-      process.env.NODE_ENV === 'development' &&
-      new URLSearchParams(window.location.search).get('preview') === '1',
-  );
-
   useEffect(() => {
     configureApi(apiBaseUrl);
   }, [apiBaseUrl]);
-
-  useEffect(() => {
-    if (blux.user) hydrateBluxConnection(blux.user);
-  }, [blux.user]);
 
   useEffect(() => {
     accountRef.current = account;
@@ -235,7 +220,7 @@ function LaunchpadProvider({
     };
     if (!blux.isAuthenticated || !userIdentity) {
       setApiUserId(null);
-      setAccount(isPreview ? { status: 'preview' } : { status: 'signed-out' });
+      setAccount({ status: 'signed-out' });
       settleWaiter('cancelled');
       return;
     }
@@ -289,7 +274,7 @@ function LaunchpadProvider({
     };
     // userIdentity is the stable key for blux.user; statusNonce re-runs the
     // check on retry.
-  }, [blux.isAuthenticated, userIdentity, isPreview, statusNonce]);
+  }, [blux.isAuthenticated, userIdentity, statusNonce]);
 
   // The registration-navigation guard only needs to survive until the route
   // actually changes.
@@ -302,7 +287,6 @@ function LaunchpadProvider({
   // outside the registration flow — including leaving /register without
   // finishing it — disconnect instead of keeping a dangling session.
   useEffect(() => {
-    if (isPreview) return;
     if (account.status !== 'unregistered') return;
     if (pathname.startsWith('/register')) return;
     if (registerRoutePending.current) return;
@@ -313,7 +297,7 @@ function LaunchpadProvider({
       'Account setup was not completed, so your wallet was disconnected.',
       { tone: 'warning' },
     );
-  }, [account.status, pathname, isPreview, blux, notify]);
+  }, [account.status, pathname, blux, notify]);
 
   const retryStatusCheck = useCallback(() => {
     setStatusNonce((nonce) => nonce + 1);
@@ -465,8 +449,7 @@ function LaunchpadProvider({
         if (!blux.isAuthenticated) {
           const loginRequest = blux.login();
           setLoginPhase('connecting');
-          const user = await loginRequest;
-          hydrateBluxConnection(user);
+          await loginRequest;
         }
 
         // The sign-in effect above is now running the registration status
@@ -523,14 +506,13 @@ function LaunchpadProvider({
     notify('You are now logged out.', { tone: 'success' });
   }, [blux, router, notify]);
 
-  const accountReady =
-    account.status === 'registered' || account.status === 'preview';
+  const accountReady = account.status === 'registered';
   const loginPending = loginPhase !== null;
 
   const value = useMemo<LaunchpadContextValue>(
     () => ({
-      isSignedIn: blux.isAuthenticated || isPreview,
-      address: blux.user?.address || (isPreview ? DEMO_ADDRESS : undefined),
+      isSignedIn: blux.isAuthenticated,
+      address: blux.user?.address,
       loginPending,
       loginPhase,
       login,
@@ -547,7 +529,6 @@ function LaunchpadProvider({
     [
       blux.isAuthenticated,
       blux.user,
-      isPreview,
       loginPending,
       loginPhase,
       login,

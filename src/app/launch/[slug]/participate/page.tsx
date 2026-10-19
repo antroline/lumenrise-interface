@@ -1,12 +1,15 @@
-import { notFound } from 'next/navigation'
-import { getLaunch } from '@/lib/data'
-import { getLaunchContent } from '../../../../features/launches/data/launch-content'
-import { ParticipationView } from './participation-view'
+import { notFound, redirect } from 'next/navigation';
+import { StrKey } from '@stellar/stellar-sdk';
 
-export default async function ParticipatePage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params
-  const launch = getLaunch(slug)
-  if (!launch) notFound()
-
-  return <ParticipationView launch={launch} content={getLaunchContent(slug)} />
+export default async function ParticipatePage({ params, searchParams }: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { slug } = await params;
+  if (!StrKey.isValidContract(slug)) notFound();
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(await searchParams)) {
+    for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value]) query.append(key, item);
+  }
+  redirect(`/launch/${slug}${query.size ? `?${query}` : ''}`);
 }

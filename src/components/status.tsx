@@ -2,8 +2,11 @@ import type { ComponentProps, ReactNode } from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { Activity, Check, Clock, Gavel, Info, RefreshCw, TriangleAlert, X, type LucideIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import type { EligibilityState, LaunchPhase } from '@/lib/data'
+import type { ProjectPhase } from '@/lib/project-table'
 import { cn } from '@/lib/utils'
+
+type LaunchPhase = Exclude<ProjectPhase, 'refunded' | 'unavailable' | 'failed'>
+type EligibilityState = 'ok' | 'no' | 'part' | 'na'
 
 const dotVariants = cva('inline-block size-2 shrink-0 rounded-full', {
   variants: {
