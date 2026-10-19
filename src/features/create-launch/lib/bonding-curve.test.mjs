@@ -57,11 +57,11 @@ function draft() {
     name: 'Test token', symbol: 'TIDE', description: 'Entered description', logo: 'data:image/png;base64,abc',
     supply: '900719925.4740993', quote: 'USDC',
     allocation: { saleShare: '40.01', poolShare: '29.99', teamShare: '30', cliffMonths: '2', vestingMonths: '6' },
-    bonding: { target: '1234.5678901', creatorFee: true, startsAt: '', endsAt: '', durationDays: '30' },
+    bonding: { target: '1234.5678901', creatorFee: '0.1', startsAt: '', endsAt: '', durationDays: '30' },
   };
 }
 
-test('maps exact amounts, pair, allocations, team vesting, fee toggle, and chosen duration', () => {
+test('maps exact amounts, pair, allocations, team vesting, percentage fee, and default one-year expiry', () => {
   const params = buildBondingCurveParams(draft(), owner, issuer, IMAGE_URL, 1_800_000_000);
   assert.equal(params.owner, owner);
   assert.equal(params.asset, new Asset('TIDE', issuer).contractId(Networks.TESTNET));
@@ -82,19 +82,19 @@ test('maps exact amounts, pair, allocations, team vesting, fee toggle, and chose
   assert.equal(params.curve.creator_fee_bps, 10);
   assert.ok(params.curve.creator_payout_bps + 100 <= 10000);
   assert.equal(params.starts_at, '1800000060');
-  assert.equal(params.ends_at, '1802592060');
+  assert.equal(BigInt(params.ends_at) - BigInt(params.starts_at), 31536000n);
 });
 
 test('maps XLM, custom dates, and a disabled creator fee', () => {
   const form = draft();
   form.quote = 'XLM';
-  form.bonding.creatorFee = false;
+  form.bonding.creatorFee = '0';
   form.bonding.startsAt = '2030-01-02T07:00:00+03:00';
   form.bonding.endsAt = '2030-02-02T07:00:00+03:00';
   const params = buildBondingCurveParams(form, owner, issuer, IMAGE_URL, 1_800_000_000);
   assert.equal(params.pair, 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC');
   assert.equal(params.starts_at, String(Date.parse('2030-01-02T04:00:00Z') / 1000));
-  assert.equal(params.ends_at, String(Date.parse('2030-02-02T04:00:00Z') / 1000));
+  assert.equal(BigInt(params.ends_at) - BigInt(params.starts_at), 31536000n);
   assert.equal(params.curve.creator_fee_bps, 0);
 });
 
@@ -107,10 +107,11 @@ test('rejects unsupported methods, local image references, and invalid contract 
     (f) => { f.allocation.teamShare = '29.99'; },
     (f) => { f.supply = '0.00000001'; },
     (f) => { f.bonding.target = '1.00000001'; },
-    (f) => { f.allocation.vestingMonths = '0'; },
+    (f) => { f.allocation.vestingMonths = '-1'; },
     (f) => { f.allocation.cliffMonths = '100000000000000000000'; },
     (f) => { f.bonding.startsAt = '2000-01-01T00:00:00Z'; },
-    (f) => { f.bonding.endsAt = '2000-01-01T00:00:00Z'; },
+    (f) => { f.bonding.creatorFee = '100.01'; },
+    (f) => { f.description = 'a'.repeat(3001); },
   ];
   for (const change of invalid) {
     const form = draft();
@@ -732,4 +733,16 @@ test('curve calibration preserves exact odd amounts and factory reserve limits',
   assert.throws(() => calculateCurveReserves(0n,target));
   assert.throws(() => calculateCurveReserves(inventory,0n));
   assert.throws(() => calculateCurveReserves(4611686018427387904n,target), /contract amount limit/);
+});
+
+
+test('accepts zero team vesting and maps percentage fees exactly with the temporary one-year expiry', () => {
+  const form = draft();
+  form.allocation.vestingMonths = '0';
+  form.description = 'a'.repeat(3000);
+  form.bonding.creatorFee = '1.25';
+  const params = buildBondingCurveParams(form, owner, issuer, IMAGE_URL, 1_800_000_000);
+  assert.equal(params.vesting.duration_seconds, '0');
+  assert.equal(params.curve.creator_fee_bps, 125);
+  assert.equal(BigInt(params.ends_at) - BigInt(params.starts_at), 31536000n);
 });

@@ -7,12 +7,12 @@ import { cn } from '@/lib/utils';
 import { tradeTransition } from '@/features/launches/trading/trade-transition';
 import {
   Dialog,
-  DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogClose,
 } from '@/components/ui/dialog';
+import { AppDialogContent } from '@/components/app-dialog';
 import { TransactionHash } from './transaction-hash';
 export type TradeConfirmation = { hash: string; side?: 'buy' | 'sell' };
 export function TradeResultDialog({
@@ -71,14 +71,10 @@ export function TradeResultDialog({
         if (!open) onClosed?.();
       }}
     >
-      <DialogContent
-        showCloseButton={!busy}
-        className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-2xl p-0 data-open:duration-300 data-closed:duration-150 motion-reduce:animate-none"
-      >
+      <AppDialogContent showCloseButton={!busy}>
         <motion.div
-          layout={reduced ? false : 'size'}
           transition={transition}
-          className="flex min-h-[min(24rem,calc(100svh-2rem))] min-w-0 flex-col items-center justify-center gap-6 p-6 text-center sm:p-8"
+          className="flex min-h-[min(21.5rem,calc(100svh-4.5rem))] min-w-0 flex-col items-center justify-center gap-6 p-1 text-center sm:p-3"
         >
           <div className="relative grid size-20 shrink-0 place-items-center" aria-hidden="true">
             <AnimatePresence initial={false}>
@@ -98,7 +94,7 @@ export function TradeResultDialog({
               </motion.div>
             </AnimatePresence>
           </div>
-          <DialogHeader className="w-full items-center gap-3 text-center">
+          <DialogHeader className="w-full items-center gap-3 pr-0! text-center">
             <DialogTitle aria-live="polite" aria-atomic="true" className="text-title font-semibold leading-snug">
               <motion.span key={title} initial={reduced ? false : { opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={transition} className="block">
                 {title}
@@ -151,7 +147,7 @@ export function TradeResultDialog({
             </motion.div>
           )}
         </motion.div>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

@@ -134,23 +134,14 @@ export function buildBondingCurveParams(
     throw new Error(
       'The bonding-curve allocation must contain at least one stroop.',
     );
-  if (!draft.description.trim())
-    throw new Error('Enter a project description.');
+  if (!draft.description.trim() || draft.description.length > 3000)
+    throw new Error('Enter a project description of up to 3000 characters.');
   const durationSeconds = monthsToSeconds(draft.allocation.vestingMonths);
-  if (teamBps > 0 && durationSeconds === '0')
-    throw new Error('Enter a positive team vesting duration.');
   const startsAt = draft.bonding.startsAt
     ? unixSeconds(draft.bonding.startsAt)
     : nowSeconds + 60;
-  const endsAt = draft.bonding.endsAt
-    ? unixSeconds(draft.bonding.endsAt)
-    : startsAt + Number(draft.bonding.durationDays) * 86_400;
-  if (
-    startsAt <= nowSeconds ||
-    !Number.isSafeInteger(endsAt) ||
-    endsAt <= startsAt
-  )
-    throw new Error('Choose a future start and an end after the start.');
+  if (startsAt <= nowSeconds)
+    throw new Error('Choose a future start.');
 
   const reserves = calculateCurveReserves(
     curveInventory,
@@ -175,10 +166,11 @@ export function buildBondingCurveParams(
     },
     curve: {
       ...reserves,
-      creator_fee_bps: draft.bonding.creatorFee ? 10 : 0,
+      creator_fee_bps: basisPoints(draft.bonding.creatorFee),
       creator_payout_bps: 1000, // needs a field — creator payout; together with the 100 bps platform fee, at most 10000.
     },
     starts_at: String(startsAt),
-    ends_at: String(endsAt),
+    // Temporary expiry required by the deployed factory until it supports no end date.
+    ends_at: String(startsAt + 365 * 24 * 60 * 60),
   };
 }

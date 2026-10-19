@@ -1,6 +1,14 @@
 'use client';
 
-import { FieldGroup } from '@/components/ui/field';
+import { useRef } from 'react';
+import { CalendarDays, Zap } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+  FieldDescription,
+  FieldGroup,
+  FieldLegend,
+  FieldSet,
+} from '@/components/ui/field';
 import {
   launchDurationLabel,
   launchDurationOptions,
@@ -30,14 +38,71 @@ export function LaunchScheduleFields({
   }) => void;
   errors: FieldErrors;
 }) {
+  const scheduledStart = useRef(startsAt);
+
+  if (method === 'bonding')
+    return (
+      <FieldSet className="gap-2">
+        <FieldLegend className="mb-0 text-small font-medium">
+          Start date
+        </FieldLegend>
+        <ToggleGroup
+          aria-label="Start mode"
+          aria-describedby="bonding-start-help"
+          value={[startsAt ? 'schedule' : 'immediately']}
+          onValueChange={(values) => {
+            if (values[0] === 'immediately') {
+              scheduledStart.current = startsAt;
+              onChange({ startsAt: '' });
+            } else if (values[0] === 'schedule') {
+              // A concrete future value keeps the existing date validation authoritative.
+              const previous = scheduledStart.current;
+              onChange({
+                startsAt:
+                  previous && Date.parse(previous) > Date.now()
+                    ? previous
+                    : new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+              });
+            }
+          }}
+          className="grid w-full grid-cols-2 gap-1 rounded-lg bg-secondary/60 p-1"
+        >
+          <ToggleGroupItem
+            value="immediately"
+            className="h-11 gap-2 rounded-md text-body"
+          >
+            <Zap aria-hidden="true" /> Immediately
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="schedule"
+            className="h-11 gap-2 rounded-md text-body"
+          >
+            <CalendarDays aria-hidden="true" /> Schedule
+          </ToggleGroupItem>
+        </ToggleGroup>
+        <FieldDescription id="bonding-start-help" className="text-small">
+          {startsAt
+            ? 'Starts at the selected date and time, shown in your local time zone.'
+            : 'Starts as soon as your launch is confirmed.'}
+        </FieldDescription>
+        {startsAt && (
+          <DateTimePicker
+            id="bonding-start"
+            label="Scheduled start"
+            value={startsAt}
+            onChange={(value) => {
+              scheduledStart.current = value;
+              onChange({ startsAt: value });
+            }}
+            error={errors['bonding-start']}
+            compact
+          />
+        )}
+      </FieldSet>
+    );
   return (
     <FieldGroup className="gap-4">
-      <div className="flex flex-col gap-1.5">
-        <p className="text-small text-muted-foreground">
-          Starts immediately by default. Choose a duration or custom dates in your
-          local time zone.
-        </p>
-      </div>
+      <div className="flex flex-col gap-1.5"></div>
       <div className="grid gap-4 @md/launch:grid-cols-2">
         <DateTimePicker
           id={`${method}-start`}

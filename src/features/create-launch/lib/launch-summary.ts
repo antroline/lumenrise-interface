@@ -1,10 +1,10 @@
 import {
   formatAmount,
-  launchDurationLabel,
   methodLabels,
   numberValue,
   validNonNegativeInteger,
   validPositive,
+  validPercent,
   validSupply,
   type LaunchDraft,
 } from './launch-draft';
@@ -37,12 +37,12 @@ export function launchSummaryRows(draft: LaunchDraft, step: WizardStep): LaunchS
     case 'allocation':
       return [
         ...(!allocationError(draft.allocation) ? [
-          { label: 'Bonding curve', value: `${draft.allocation.saleShare}%` },
-          { label: 'Liquidity pool', value: `${draft.allocation.poolShare}%` },
-          { label: 'Team', value: `${draft.allocation.teamShare}%` },
+          { label: 'Bonding curve', value: `${numberValue(draft.allocation.saleShare)}%` },
+          { label: 'Liquidity pool', value: `${numberValue(draft.allocation.poolShare)}%` },
+          { label: 'Team', value: `${numberValue(draft.allocation.teamShare)}%` },
         ] : []),
-        ...(numberValue(draft.allocation.teamShare) > 0 && validNonNegativeInteger(draft.allocation.vestingMonths) && numberValue(draft.allocation.vestingMonths) > 0
-          ? [{ label: 'Team vesting', value: `${draft.allocation.vestingMonths} mo` }]
+        ...(numberValue(draft.allocation.teamShare) > 0 && validNonNegativeInteger(draft.allocation.vestingMonths)
+          ? [{ label: 'Team vesting', value: numberValue(draft.allocation.vestingMonths) === 0 ? 'No vesting' : `${formatAmount(draft.allocation.vestingMonths)} mo` }]
           : []),
       ];
     case 'sale':
@@ -52,8 +52,7 @@ export function launchSummaryRows(draft: LaunchDraft, step: WizardStep): LaunchS
     case 'settings':
       return [
         { label: 'Starts', value: dateLabel(draft.bonding.startsAt, 'Immediately') },
-        { label: 'Ends', value: dateLabel(draft.bonding.endsAt, launchDurationLabel(draft.bonding.durationDays)) },
-        { label: 'Creator fee', value: draft.bonding.creatorFee ? 'On' : 'Off' },
+        ...(validPercent(draft.bonding.creatorFee) ? [{ label: 'Creator fee', value: `${numberValue(draft.bonding.creatorFee)}%` }] : []),
       ];
     case 'eligibility':
       return [

@@ -6,6 +6,7 @@ import { ApiError } from '../../../lib/api/client';
 import {
   getLaunchDetail,
   getLaunchList,
+  launchListKey,
   getMarket,
 } from '../../../lib/api/launches/market';
 import type { ApiNetwork } from '../../../lib/api/launches/types';
@@ -59,7 +60,7 @@ export function useLaunchDetail(id: string, network: ApiNetwork) {
 export function useCreatorLaunches(owner: string | undefined, network: ApiNetwork) {
   const visible = usePageVisible();
   const client = useQueryClient();
-  const queryKey = ['launch-list', network, owner ?? '', 1];
+  const queryKey = launchListKey(network, 1, 20, owner);
   const query = useQuery({
     ...publicQueryOptions,
     queryKey,
@@ -69,7 +70,7 @@ export function useCreatorLaunches(owner: string | undefined, network: ApiNetwor
   useEffect(() => {
     if (!visible)
       void client.cancelQueries({
-        queryKey: ['launch-list', network, owner ?? '', 1],
+        queryKey: launchListKey(network, 1, 20, owner),
       });
   }, [client, network, owner, visible]);
   return query;

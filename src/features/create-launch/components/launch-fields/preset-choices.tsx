@@ -20,7 +20,11 @@ export function PresetChoices({
 }) {
   return (
     <div
-      className={cn('flex flex-wrap', variant === 'inline' ? 'gap-1' : 'gap-2', className)}
+      className={cn(
+        'flex flex-wrap',
+        variant === 'inline' ? 'gap-1' : 'gap-2',
+        className,
+      )}
       role="group"
       aria-label={`${label} quick choices`}
     >
@@ -33,7 +37,7 @@ export function PresetChoices({
           onClick={() => onChange(option.value)}
           className={cn(
             'min-h-11 studio-compact:min-h-8 border text-small font-semibold tabular-nums transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-foreground focus-visible:outline-none motion-reduce:transition-none',
-            variant === 'inline' ? 'rounded-md px-2.5' : 'rounded-full px-3.5',
+            variant === 'inline' ? 'rounded-xl px-2.5' : 'rounded-full px-3.5',
             value === option.value
               ? 'border-foreground bg-foreground text-background'
               : variant === 'inline'

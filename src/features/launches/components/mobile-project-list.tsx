@@ -21,9 +21,11 @@ function MiniGraduationProgress({ row }: { row: ProjectTableRow }) {
 export function MobileProjectList({
   rows,
   showProgress = false,
+  figureLabel = 'Pool balance',
 }: {
   rows: (ProjectTableRow & { href: string })[];
   showProgress?: boolean;
+  figureLabel?: string;
 }) {
   return (
     <ul aria-label="Projects" className="w-full min-w-0 divide-y divide-border">
@@ -54,7 +56,7 @@ export function MobileProjectList({
               </div>
               <div className="min-w-0 text-right tabular-nums">
                 <p className="text-sm font-semibold [overflow-wrap:anywhere]" title={row.figureTitle}>
-                  <span className="sr-only">Pool balance: </span>{row.figure}
+                  <span className="sr-only">{figureLabel}: </span>{row.figure}
                 </p>
                 {row.graduation && (
                   <p className="mt-1 text-xs text-muted-foreground [overflow-wrap:anywhere]">

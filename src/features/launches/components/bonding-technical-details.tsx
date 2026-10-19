@@ -184,7 +184,10 @@ export function BondingTechnicalDetails({
                       ['Contract status', b.status],
                       ['Indexed contract version', launch?.bonding?.version],
                       ['Starts at', detailDate(b.startsAt)],
-                      ['Ends at', detailDate(b.endsAt)],
+                      ['Ends at', b.endsAt === null ? 'No expiry' : detailDate(b.endsAt)],
+                      ['Created', launch?.createdAt ? new Date(launch.createdAt).toUTCString() : 'Unknown'],
+                      ['Creation ledger', launch?.creationLedger],
+                      ['Creation transaction', launch?.creationTransactionHash],
                       ['Total supply', tokenAmount(b.totalSupply)],
                       [
                         'Curve allocation',

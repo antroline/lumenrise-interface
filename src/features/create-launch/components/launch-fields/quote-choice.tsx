@@ -35,7 +35,7 @@ export function QuoteChoice({
             value={quote}
             aria-label={quote}
             className={cn(
-              'relative h-auto min-h-15 studio-compact:min-h-12 min-w-0 flex-col items-stretch rounded-xl border-border bg-card px-3 py-3 studio-compact:py-2 text-left data-pressed:border-foreground data-pressed:bg-muted data-pressed:text-foreground ',
+              'relative h-auto min-h-15 studio-compact:min-h-12 min-w-0 flex-col items-stretch rounded-xl border-border bg-card px-4 py-3 studio-compact:py-2 text-left data-pressed:border-foreground data-pressed:bg-muted data-pressed:text-foreground ',
               highlightSelection && 'transition-[border-color,background-color,box-shadow] duration-200 data-pressed:ring-3 data-pressed:ring-lime/40 focus-visible:ring-lime/40',
             )}
           >
@@ -53,7 +53,7 @@ export function QuoteChoice({
                 <Check className="size-3.5" />
               </span>
             </span>
-            <span className="mt-2 text-small font-normal whitespace-normal text-muted-foreground">
+            <span className="mt-1.5 text-small font-normal whitespace-normal text-muted-foreground">
               {quote === 'XLM' ? 'Stellar native asset' : 'USD stablecoin'}
             </span>
           </ToggleGroupItem>

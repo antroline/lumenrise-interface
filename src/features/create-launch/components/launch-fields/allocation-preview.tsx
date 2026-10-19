@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import {
   allocationLabels,
@@ -15,9 +9,18 @@ import {
 } from '../../lib/launch-draft';
 import { SupplyShare } from './supply-share';
 import { AnimatePresence, motion } from 'motion/react';
-import { launchTransition, useLaunchReducedMotion } from '../../lib/launch-motion';
+import {
+  launchTransition,
+  useLaunchReducedMotion,
+} from '../../lib/launch-motion';
 
-export function AllocationPreview({ draft }: { draft: LaunchDraft }) {
+export function AllocationPreview({
+  draft,
+  showVesting = false,
+}: {
+  draft: LaunchDraft;
+  showVesting?: boolean;
+}) {
   const reduced = useLaunchReducedMotion();
   const shares = [
     {
@@ -36,22 +39,10 @@ export function AllocationPreview({ draft }: { draft: LaunchDraft }) {
       color: 'bg-orange',
     },
   ];
-  const total = shares.reduce(
-    (sum, item) =>
-      sum +
-      (Number.isFinite(numberValue(item.percent))
-        ? Math.round(numberValue(item.percent) * 100)
-        : 0),
-    0,
-  );
+  const months = (value: string) =>
+    `${value} ${value === '1' ? 'month' : 'months'}`;
   return (
-    <Card variant="surface" size="sm">
-      <CardHeader>
-        <CardTitle>Supply allocation</CardTitle>
-        <CardDescription>
-          {total / 100}% allocated · must equal 100%
-        </CardDescription>
-      </CardHeader>
+    <div className="mt-4">
       <CardContent>
         <div
           className="flex h-3 overflow-hidden rounded-full bg-border"
@@ -89,12 +80,19 @@ export function AllocationPreview({ draft }: { draft: LaunchDraft }) {
               key={item.label}
               label={item.label}
               percent={item.percent}
+              colorClassName={item.color}
               supply={draft.supply}
               symbol={draft.symbol}
             />
           ))}
         </div>
+        {showVesting && numberValue(draft.allocation.teamShare) > 0 && (
+          <p className="mt-4 text-small text-muted-foreground">
+            Team vesting: {months(draft.allocation.cliffMonths)} cliff ·{' '}
+            {months(draft.allocation.vestingMonths)} vesting
+          </p>
+        )}
       </CardContent>
-    </Card>
+    </div>
   );
 }

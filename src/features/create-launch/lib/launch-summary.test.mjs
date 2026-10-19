@@ -48,7 +48,7 @@ test('project stage requires both links and validates their HTTPS format', () =>
 
 test('empty identity and unselected method do not generate placeholder summary facts', () => {
   assert.deepEqual(rowsFor(initialLaunchDraft, 'project'), []);
-  assert.deepEqual(rowsFor(initialLaunchDraft, 'method'), []);
+  assert.deepEqual(rowsFor({ ...initialLaunchDraft, methodSelected: false }, 'method'), []);
   assert.deepEqual(rowsFor({ ...initialLaunchDraft, name: '  Project  ' }, 'project'), [
     { label: 'Name', value: 'Project' },
   ]);
@@ -60,7 +60,7 @@ test('summary keeps exact supply and target decimals beyond JavaScript safe inte
   draft.supply = '900719925.4740993';
   draft.bonding.target = '1234.5678901';
   assert.equal(rowsFor(draft, 'token')[0].value, '900,719,925.4740993 EXACT');
-  assert.equal(rowsFor(draft, 'sale')[0].value, '1,234.5678901 XLM');
+  assert.equal(rowsFor(draft, 'sale')[0].value, '1,234.5678901 USDC');
 });
 
 test('invalid intermediate inputs do not appear as valid summary amounts or allocations', () => {
@@ -77,14 +77,14 @@ test('timing uses the selected duration when custom dates are empty', () => {
   draft.bonding.durationDays = '30';
   assert.deepEqual(rowsFor(draft, 'settings'), [
     { label: 'Starts', value: 'Immediately' },
-    { label: 'Ends', value: 'After 1 month' },
-    { label: 'Creator fee', value: 'Off' },
+    { label: 'Creator fee', value: '0%' },
   ]);
 });
 
 test('combined token stage validates method, supply and allocation without the launch target', () => {
   const draft = structuredClone(initialLaunchDraft);
   draft.supply = '0';
+  draft.methodSelected = false;
   const stage = launchStages[launchStageIndex('supply')];
   const errors = validateLaunchStage(draft, stage);
   assert.ok(errors['launch-supply']);
@@ -115,4 +115,53 @@ test('review editing targets resolve to supply, allocation and launch plan; repu
   assert.equal(launchStageIndex('sale'), launchStageIndex('settings'));
   assert.equal(launchStageIndex('eligibility'), -1);
   assert.equal(launchStages[launchStageIndex('review')].id, 'review');
+});
+
+
+test('launch defaults and input boundaries match the create form', () => {
+  assert.equal(initialLaunchDraft.method, 'bonding');
+  assert.equal(initialLaunchDraft.methodSelected, true);
+  assert.equal(initialLaunchDraft.quote, 'USDC');
+  assert.equal(initialLaunchDraft.bonding.creatorFee, '0');
+  const { validateLaunchStep } = loadSource('launch-validation.ts');
+  const draft = structuredClone(initialLaunchDraft);
+  draft.description = 'a'.repeat(3000);
+  draft.symbol = 'ABCDEFGHIJKL';
+  assert.equal(validateLaunchStep(draft, 'project')['launch-description'], undefined);
+  assert.equal(validateLaunchStep(draft, 'project')['launch-symbol'], undefined);
+  draft.description += 'a';
+  draft.symbol += 'M';
+  assert.ok(validateLaunchStep(draft, 'project')['launch-description']);
+  assert.ok(validateLaunchStep(draft, 'project')['launch-symbol']);
+  draft.allocation = { ...draft.allocation, saleShare: '70', poolShare: '20', teamShare: '10', vestingMonths: '0' };
+  assert.equal(validateLaunchStep(draft, 'allocation')['team-vesting'], undefined);
+  for (const fee of ['0', '0.01', '1.25', '100']) {
+    draft.bonding.creatorFee = fee;
+    assert.equal(validateLaunchStep(draft, 'settings')['creator-fee'], undefined);
+  }
+  for (const fee of ['', '-1', '100.01', '1.001', 'abc']) {
+    draft.bonding.creatorFee = fee;
+    assert.ok(validateLaunchStep(draft, 'settings')['creator-fee']);
+  }
+});
+
+test('allocation summary labels every share and describes disabled vesting', () => {
+  const draft = structuredClone(initialLaunchDraft);
+  draft.allocation = { saleShare: '61', poolShare: '32', teamShare: '7', cliffMonths: '0', vestingMonths: '0' };
+  assert.deepEqual(rowsFor(draft, 'allocation'), [
+    { label: 'Bonding curve', value: '61%' },
+    { label: 'Liquidity pool', value: '32%' },
+    { label: 'Team', value: '7%' },
+    { label: 'Team vesting', value: 'No vesting' },
+  ]);
+  draft.allocation.vestingMonths = '6';
+  assert.equal(rowsFor(draft, 'allocation').at(-1).value, '6 mo');
+});
+
+test('summary displays percentage fee values without presenting invalid edits as configured fees', () => {
+  const draft = structuredClone(initialLaunchDraft);
+  draft.bonding.creatorFee = '01.25';
+  assert.equal(rowsFor(draft, 'settings').at(-1).value, '1.25%');
+  draft.bonding.creatorFee = 'invalid';
+  assert.equal(rowsFor(draft, 'settings').some((row) => row.label === 'Creator fee'), false);
 });

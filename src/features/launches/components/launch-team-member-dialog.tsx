@@ -3,13 +3,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Check, LoaderCircle, Search } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ProfileAvatar } from '@/components/profile-avatar';
 import { Button } from '@/components/ui/button';
-import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AppDialogContent, AppDialogHeader, AppDialogFooter } from '@/components/app-dialog';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { resolveApiFileUrl } from '@/lib/api/client';
 import {
   searchTeamCandidates, teamErrorMessage,
   type ExternalMemberInput, type TeamCandidate, type TeamMember,
@@ -21,12 +20,9 @@ export type TeamChange =
   | { kind: 'external'; input: ExternalMemberInput; memberId?: string }
   | { kind: 'remove'; member: TeamMember };
 
-export function MemberAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
+export function MemberAvatar({ name, avatarUrl, identityId, memberId }: { name: string; avatarUrl: string | null; identityId?: string | null; memberId?: string }) {
   return (
-    <Avatar className="size-11 shrink-0 rounded-xl">
-      <AvatarImage src={resolveApiFileUrl(avatarUrl) ?? undefined} alt="" />
-      <AvatarFallback className="rounded-xl">{name.trim().slice(0, 2).toUpperCase()}</AvatarFallback>
-    </Avatar>
+    <ProfileAvatar seed={identityId || memberId || name} avatarUrl={avatarUrl} />
   );
 }
 
@@ -79,11 +75,11 @@ export function LaunchTeamMemberDialog({ contractId, network, sessionId, member,
   }
 
   return (
-    <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg" showCloseButton={!busy}>
-      <DialogHeader>
-        <DialogTitle>{member ? 'Edit team member' : 'Add Team Member'}</DialogTitle>
-        <DialogDescription>Members appear immediately. Roles describe their work and do not grant management access.</DialogDescription>
-      </DialogHeader>
+    <AppDialogContent showCloseButton={!busy}>
+      <AppDialogHeader
+        title={member ? 'Edit team member' : 'Add Team Member'}
+        description="Members appear immediately. Roles describe their work and do not grant management access."
+      />
       <form onSubmit={submit} aria-describedby={error ? 'team-form-error' : undefined} className="flex min-w-0 flex-col gap-5">
         <fieldset disabled={busy} className="min-w-0">
           <FieldGroup>
@@ -153,14 +149,14 @@ export function LaunchTeamMemberDialog({ contractId, network, sessionId, member,
           </FieldGroup>
         </fieldset>
         {error && <p id="team-form-error" role="alert" className="text-sm text-destructive">{error}</p>}
-        <DialogFooter>
+        <AppDialogFooter>
           <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
           <Button type="submit" disabled={busy || (kind === 'registered' && !selected)}>
             {busy && <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
             {busy ? 'Saving…' : member ? 'Save changes' : 'Add member'}
           </Button>
-        </DialogFooter>
+        </AppDialogFooter>
       </form>
-    </DialogContent>
+    </AppDialogContent>
   );
 }

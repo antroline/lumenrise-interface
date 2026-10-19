@@ -29,7 +29,7 @@ export type LaunchDraft = {
   };
   bonding: LaunchSchedule & {
     target: string;
-    creatorFee: boolean;
+    creatorFee: string;
   };
   fixed: LaunchSchedule & {
     price: string;
@@ -57,14 +57,14 @@ export type LaunchDraft = {
 
 export const initialLaunchDraft: LaunchDraft = {
   method: 'bonding',
-  methodSelected: false,
+  methodSelected: true,
   name: '',
   symbol: '',
   description: '',
   logo: '',
   website: '',
   xAccount: '',
-  quote: 'XLM',
+  quote: 'USDC',
   supply: '100000000',
   allocation: {
     saleShare: '80',
@@ -75,7 +75,7 @@ export const initialLaunchDraft: LaunchDraft = {
   },
   bonding: {
     target: '',
-    creatorFee: false,
+    creatorFee: '0',
     startsAt: '',
     endsAt: '',
     durationDays: '14',
@@ -112,7 +112,7 @@ export const initialLaunchDraft: LaunchDraft = {
 
 export const methodLabels: Record<LaunchMethod, string> = {
   bonding: 'Bonding curve',
-  fixed: 'Fixed price',
+  fixed: 'Pre Sale',
   auction: 'Auction',
 };
 

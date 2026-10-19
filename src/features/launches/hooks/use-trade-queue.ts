@@ -43,6 +43,9 @@ export function useTradeQueue(network: ApiNetwork, contractId: string) {
             void client.invalidateQueries({
               queryKey: launchKey(network, contractId),
             });
+            void client.invalidateQueries({
+              queryKey: ['launch-list', { network }],
+            });
           },
         });
       } catch {

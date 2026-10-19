@@ -3,12 +3,10 @@
 import type { ReactNode } from 'react';
 import type { WizardStep } from '../../lib/launch-validation';
 import {
-  allocationLabels,
   formatAmount,
   formatSupplyShare,
   launchDurationLabel,
   methodLabels,
-  numberValue,
   type LaunchDraft,
 } from '../../lib/launch-draft';
 import { AllocationPreview } from './allocation-preview';
@@ -115,12 +113,16 @@ export function ReviewStep({
               ? formatScheduleTime(schedule.startsAt)
               : 'Immediately',
           ),
-          row(
-            'End date',
-            schedule.endsAt
-              ? formatScheduleTime(schedule.endsAt)
-              : `${launchDurationLabel(schedule.durationDays)} (from start)`,
-          ),
+          ...(draft.method !== 'bonding'
+            ? [
+                row(
+                  'End date',
+                  schedule.endsAt
+                    ? formatScheduleTime(schedule.endsAt)
+                    : `${launchDurationLabel(schedule.durationDays)} (from start)`,
+                ),
+              ]
+            : []),
           ['Total supply', `${formatAmount(draft.supply)} ${draft.symbol}`],
           ['Raise currency', quote],
           ...(draft.method === 'bonding'
@@ -160,37 +162,22 @@ export function ReviewStep({
       />
       <ReviewSection
         title="Supply & allocation"
-        actions={[{ label: 'Edit allocation', onClick: () => onEdit('allocation') }]}
-        rows={[
-          ['Total supply', `${formatAmount(draft.supply)} ${draft.symbol}`],
-          [allocationLabels[draft.method], `${draft.allocation.saleShare}%`],
-          ['Liquidity pool', `${draft.allocation.poolShare}%`],
-          ['Team allocation', `${draft.allocation.teamShare}%`],
-          ...(numberValue(draft.allocation.teamShare) > 0
-            ? [
-                row(
-                  'Team vesting',
-                  `${months(draft.allocation.cliffMonths)} cliff · ${months(draft.allocation.vestingMonths)} vesting`,
-                ),
-              ]
-            : []),
+        actions={[
+          { label: 'Edit allocation', onClick: () => onEdit('allocation') },
         ]}
         extra={
           <div className="mt-2">
-            <AllocationPreview draft={draft} />
+            <AllocationPreview draft={draft} showVesting />
           </div>
         }
       />
       {draft.method === 'bonding' && (
         <ReviewSection
           title="Creator fees"
-          actions={[{ label: 'Edit settings', onClick: () => onEdit('settings') }]}
-          rows={[
-            [
-              'Creator fee share',
-              draft.bonding.creatorFee ? 'Proposed 0.1%' : 'Off',
-            ],
+          actions={[
+            { label: 'Edit settings', onClick: () => onEdit('settings') },
           ]}
+          rows={[['Creator fee share', `${draft.bonding.creatorFee}%`]]}
         />
       )}
       {draft.method !== 'bonding' && (
@@ -264,7 +251,9 @@ export function ReviewStep({
       {draft.method !== 'bonding' && (
         <ReviewSection
           title="Participant vesting"
-          actions={[{ label: 'Edit vesting', onClick: () => onEdit('vesting') }]}
+          actions={[
+            { label: 'Edit vesting', onClick: () => onEdit('vesting') },
+          ]}
           rows={
             draft.participantVesting.mode === 'immediate'
               ? [['Release', 'All tokens at launch']]
@@ -279,11 +268,6 @@ export function ReviewStep({
           }
         />
       )}
-      <p className="text-small text-muted-foreground">
-        {draft.method === 'bonding'
-          ? 'Launching on Stellar Testnet. Your wallet will ask you to approve the required transactions.'
-          : 'Preview only. Launching requires the matching contract and server connection.'}
-      </p>
     </div>
   );
 }

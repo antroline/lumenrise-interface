@@ -292,6 +292,7 @@ for (const side of ['buy', 'sell']) test(`${side} result dialog displays the con
   const dialogNames=['Dialog','DialogContent','DialogHeader','DialogTitle','DialogDescription','DialogFooter','DialogClose'];
   const { TradeResultDialog } = load('trade-result-dialog.tsx', {
     'react/jsx-runtime': {jsx,jsxs:jsx},
+    '@/components/app-dialog': Object.fromEntries(['AppDialogContent', 'AppDialogHeader', 'AppDialogFooter'].map(name => [name, name])),
     '@/components/ui/dialog': Object.fromEntries(dialogNames.map(name=>[name,name])),
     '@/components/ui/button': {Button:'Button'},
     '@/components/ui/spinner': {Spinner:'Spinner'},
@@ -400,6 +401,7 @@ test('dialog supports loading, Blux focus, unresolved confirmation, failure and 
   const names = ['Dialog', 'DialogContent', 'DialogHeader', 'DialogTitle', 'DialogDescription', 'DialogFooter', 'DialogClose'];
   const { TradeResultDialog } = load('trade-result-dialog.tsx', {
     'react/jsx-runtime': { jsx, jsxs: jsx },
+    '@/components/app-dialog': Object.fromEntries(['AppDialogContent', 'AppDialogHeader', 'AppDialogFooter'].map(name => [name, name])),
     '@/components/ui/dialog': Object.fromEntries(names.map(name => [name, name])),
     '@/components/ui/button': { Button: 'Button' },
     '@/components/ui/spinner': { Spinner: 'Spinner' },
@@ -413,7 +415,9 @@ test('dialog supports loading, Blux focus, unresolved confirmation, failure and 
   const loading = TradeResultDialog({ ...props, working: true, message: 'Checking your wallet' });
   assert.ok(elements(loading).some(node => node.props?.role === 'status' && node.props.children === 'Checking your wallet'));
   assert.ok(!elements(loading).some(node => node.type === 'DialogFooter'), 'Modal uses one surface without a separate footer');
-  assert.ok(elements(loading).some(node => node.props?.className?.includes('items-center justify-center')), 'Content stays centered');
+  assert.ok(elements(loading).some(node => node.type === 'AppDialogContent'), 'Uses the shared launch modal frame');
+  assert.ok(elements(loading).some(node => node.props?.className?.includes('items-center justify-center')), 'Trade content keeps its centered presentation');
+  assert.ok(elements(loading).some(node => node.props?.className?.includes('min-h-[min(21.5rem')), 'Trade retains its square frame instead of collapsing around one status line');
   assert.equal(loading.props.modal, true);
   assert.equal(loading.props.disablePointerDismissal, true);
   loading.props.onOpenChange(false);
