@@ -314,6 +314,8 @@ export function useBondingLaunch() {
         return;
       }
       report('check', 'Checking your wallet and launch settings.');
+      if (!FACTORY_CONTRACT_ID)
+        throw new Error('Set NEXT_PUBLIC_FACTORY_CONTRACT_ID before launching a curve.');
       const owner = user.address;
       requireCreator(owner);
       requireRegisteredAccount(account.account);

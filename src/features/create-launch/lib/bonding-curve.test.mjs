@@ -38,7 +38,8 @@ function loadSource(filename, mocks = { '@bluxcc/react': {} }, globals = {}, cac
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
   runInNewContext(output, {
-    module, exports: module.exports, Date, Error, process: { env: {} },
+    module, exports: module.exports, Date, Error,
+    process: { env: { NEXT_PUBLIC_FACTORY_CONTRACT_ID: curve } },
     require: (name) => name in mocks ? mocks[name] : name.startsWith('.')
       ? loadSource(resolve(dirname(path), `${name}.ts`), mocks, globals, cache)
       : require(name),

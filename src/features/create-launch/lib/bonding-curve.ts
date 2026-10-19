@@ -14,7 +14,7 @@ import { assetFor, NETWORK } from './transactions';
 import { calculateCurveReserves } from './calculate-curve-reserves';
 
 export const FACTORY_CONTRACT_ID =
-  'CDG76JM6I67SGIV5ZN4WK6DW54ZUWPL6BMXD234ULWIERXRRYJ5QVDZC';
+  process.env.NEXT_PUBLIC_FACTORY_CONTRACT_ID?.trim() ?? '';
 
 const PAIR_SACS = {
   USDC: 'CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA',
