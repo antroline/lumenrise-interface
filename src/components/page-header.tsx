@@ -2,8 +2,6 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ProjectSpecimen } from '@/components/visual-system'
-import type { ProjectMarkName } from '@/components/project-mark'
 
 export function Eyebrow({ children }: { children: ReactNode }) {
   return (
@@ -30,7 +28,7 @@ export function PageHeader({
   return (
     <div className={cn('flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between lg:gap-10', className)}>
       <div className="flex min-w-0 flex-col gap-3">
-        <Eyebrow>{eyebrow}</Eyebrow>
+        {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
         <h1 className="text-display leading-[1.02] font-bold tracking-[-0.04em] sm:text-h1">{title}</h1>
         {description && <p className="max-w-[60ch] text-base leading-[1.55] text-muted-foreground">{description}</p>}
       </div>
@@ -71,52 +69,6 @@ export function BackLink({ href, children }: { href: string; children: ReactNode
       {children}
     </Link>
   )
-}
-
-/** Title row used on project, trade, participate, auction and dashboard pages. */
-export function ProjectHeading({
-  mark,
-  eyebrow,
-  title,
-  meta,
-  description,
-  actions,
-  align = 'end',
-  specimen,
-}: {
-  mark: ReactNode
-  eyebrow?: ReactNode
-  title: ReactNode
-  meta?: ReactNode
-  description?: ReactNode
-  actions?: ReactNode
-  align?: 'start' | 'center' | 'end'
-  specimen?: ProjectMarkName
-}) {
-  const content = (
-    <div
-      className={cn(
-        'flex flex-col gap-5 lg:flex-row lg:justify-between',
-        align === 'end' && 'lg:items-end',
-        align === 'center' && 'lg:items-center',
-        align === 'start' && 'lg:items-start',
-      )}
-    >
-      <div className="flex min-w-0 items-center gap-4">
-        {mark}
-        <div className="flex min-w-0 flex-col gap-1.5">
-          {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-big leading-[1.05] font-bold tracking-[-0.04em] sm:text-display">{title}</h1>
-            {meta}
-          </div>
-          {description}
-        </div>
-      </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
-    </div>
-  )
-  return specimen ? <ProjectSpecimen name={specimen}>{content}</ProjectSpecimen> : content
 }
 
 export function TextLink({ href, children, className }: { href: string; children: ReactNode; className?: string }) {
