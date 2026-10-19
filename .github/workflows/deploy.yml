@@ -1,0 +1,58 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/master'
+    runs-on: [self-hosted, linux, lumenrise-interface]
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Build and deploy on VPS
+        env:
+          APP_ENV_FILE: /var/www/lumenrise-interface/.env
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ ! -r "$APP_ENV_FILE" ]; then
+            echo "Create $APP_ENV_FILE and make it readable by the runner user." >&2
+            exit 1
+          fi
+
+          set -a
+          source "$APP_ENV_FILE"
+          set +a
+
+          docker compose --project-name lumenrise-interface --env-file "$APP_ENV_FILE" -f compose.yaml config --quiet
+
+          docker build --tag lumenrise-interface \
+            --build-arg NEXT_PUBLIC_BLUX_APP_ID \
+            --build-arg NEXT_PUBLIC_STELLAR_HOME_DOMAIN \
+            --build-arg LUMENRISE_API_URL \
+            --build-arg NEXT_PUBLIC_STELLAR_HORIZON_URL \
+            --build-arg NEXT_PUBLIC_STELLAR_RPC_URL \
+            --build-arg NEXT_PUBLIC_FACTORY_CONTRACT_ID \
+            --build-arg NEXT_PUBLIC_USDC_CONTRACT_ID \
+            --build-arg NEXT_PUBLIC_XLM_CONTRACT_ID \
+            .
+
+          docker compose --project-name lumenrise-interface --env-file "$APP_ENV_FILE" -f compose.yaml \
+            up -d --no-build --remove-orphans --wait --wait-timeout 120
