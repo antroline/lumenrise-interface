@@ -61,7 +61,7 @@ function draft() {
   };
 }
 
-test('maps exact amounts, pair, allocations, team vesting, percentage fee, and default one-year expiry', () => {
+test('maps exact amounts, pair, allocations, team vesting, and percentage fee without an expiry', () => {
   const params = buildBondingCurveParams(draft(), owner, issuer, IMAGE_URL, 1_800_000_000);
   assert.equal(params.owner, owner);
   assert.equal(params.asset, new Asset('TIDE', issuer).contractId(Networks.TESTNET));
@@ -82,7 +82,8 @@ test('maps exact amounts, pair, allocations, team vesting, percentage fee, and d
   assert.equal(params.curve.creator_fee_bps, 10);
   assert.ok(params.curve.creator_payout_bps + 100 <= 10000);
   assert.equal(params.starts_at, '1800000060');
-  assert.equal(BigInt(params.ends_at) - BigInt(params.starts_at), 31536000n);
+  assert.equal(params.reputation_label, '0');
+  assert.equal(Object.hasOwn(params, 'ends_at'), false);
 });
 
 test('maps XLM, custom dates, and a disabled creator fee', () => {
@@ -94,12 +95,13 @@ test('maps XLM, custom dates, and a disabled creator fee', () => {
   const params = buildBondingCurveParams(form, owner, issuer, IMAGE_URL, 1_800_000_000);
   assert.equal(params.pair, 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC');
   assert.equal(params.starts_at, String(Date.parse('2030-01-02T04:00:00Z') / 1000));
-  assert.equal(BigInt(params.ends_at) - BigInt(params.starts_at), 31536000n);
+  assert.equal(Object.hasOwn(params, 'ends_at'), false);
   assert.equal(params.curve.creator_fee_bps, 0);
 });
 
 test('rejects unsupported methods, local image references, and invalid contract inputs before signing', () => {
   const invalid = [
+    (f) => { f.method = 'basic'; },
     (f) => { f.method = 'fixed'; },
     (f) => { f.method = 'auction'; },
     (f) => { f.allocation.poolShare = '0'; f.allocation.saleShare = '70'; },
@@ -260,6 +262,7 @@ function savedRecords(h) {
 
 test('only bonding reaches the factory, with the uploaded image URL and explicit testnet', async () => {
   const h = harness();
+  await h.flow.launch({ ...draft(), method: 'basic' });
   await h.flow.launch({ ...draft(), method: 'fixed' });
   await h.flow.launch({ ...draft(), method: 'auction' });
   assert.equal(h.sends.length, 0);
@@ -291,6 +294,25 @@ test('only bonding reaches the factory, with the uploaded image URL and explicit
   await h.flow.launch({ ...draft(), name: 'Another token' });
   assert.equal(h.factoryCalls(), 2);
   assert.equal(h.uploads.length, 2);
+});
+
+test('legacy Basic and lock records cannot resume in the Bonding flow', async () => {
+  const { isLaunchRecord } = loadSource('launch-state.ts');
+  const h = harness();
+  const legacyKey = `launchpad:testnet:${owner}`;
+  const legacy = JSON.stringify({
+    ...draft(), method: 'basic', stage: 'depositPending', depositHash: 'old-lock',
+  });
+  h.storage.set(legacyKey, legacy);
+  await h.flow.launch(draft());
+  assert.equal(h.progress.at(-1).status, 'success');
+  assert.equal(h.factoryCalls(), 1);
+  assert.equal(h.calls[0].call.fn, 'create_bonding_curve');
+  assert.equal(h.storage.get(legacyKey), legacy);
+  const token = savedRecords(h)[0].token;
+  for (const stage of ['depositPending', 'locked', 'withdrawPending', 'complete']) {
+    assert.equal(isLaunchRecord({ ...token, stage }), false);
+  }
 });
 
 test('launch network failures without a response reach the operation dialog without rejecting', async () => {
@@ -736,7 +758,7 @@ test('curve calibration preserves exact odd amounts and factory reserve limits',
 });
 
 
-test('accepts zero team vesting and maps percentage fees exactly with the temporary one-year expiry', () => {
+test('accepts zero team vesting and maps percentage fees exactly without an expiry', () => {
   const form = draft();
   form.allocation.vestingMonths = '0';
   form.description = 'a'.repeat(3000);
@@ -744,5 +766,5 @@ test('accepts zero team vesting and maps percentage fees exactly with the tempor
   const params = buildBondingCurveParams(form, owner, issuer, IMAGE_URL, 1_800_000_000);
   assert.equal(params.vesting.duration_seconds, '0');
   assert.equal(params.curve.creator_fee_bps, 125);
-  assert.equal(BigInt(params.ends_at) - BigInt(params.starts_at), 31536000n);
+  assert.equal(Object.hasOwn(params, 'ends_at'), false);
 });

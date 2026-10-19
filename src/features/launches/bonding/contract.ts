@@ -53,7 +53,7 @@ export function decodeConfig(value: unknown) {
     buckets: { pool: integer(b.pool), curve: integer(b.curve), team: integer(b.team) },
     params: {
       owner: text(p.owner), asset: text(p.asset), pair: text(p.pair),
-      starts_at: integer(p.starts_at), ends_at: integer(p.ends_at),
+      starts_at: integer(p.starts_at), ends_at: p.ends_at == null ? null : integer(p.ends_at),
       metadata: { name: text(m.name), symbol: text(m.symbol), description: text(m.description), logo: text(m.logo) },
       allocations: { pool_bps: integer(a.pool_bps), curve_bps: integer(a.curve_bps), team_bps: integer(a.team_bps) },
       vesting: { cliff_seconds: integer(v.cliff_seconds), duration_seconds: integer(v.duration_seconds), schedule: enumName(v.schedule) },

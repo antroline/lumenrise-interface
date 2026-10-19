@@ -18,7 +18,7 @@ While running `next dev`, append `?preview=1` to any URL to preview the signed-i
 
 - Public Discover and project listings, launch details, auctions, reputation, missions, explorer, portfolio, and project dashboard.
 - Blux authentication with account registration, profile photos, and optional identity setup.
-- Basic token creation and Bonding launch creation on Stellar Testnet, with durable transaction recovery and indexed launch confirmation.
+- Bonding Curve launch creation on Stellar Testnet, with durable token setup and transaction recovery, Factory-managed token transfers, and indexed launch confirmation.
 - Live Bonding trades, indexed market activity, holders, and price history where the connected services provide them.
 - Campaigns, developer tools, and CLI remain coming-soon routes.
 

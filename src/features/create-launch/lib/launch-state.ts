@@ -10,8 +10,7 @@ export type Stage =
   | 'issuerReady'
   | 'setupConfirmed'
   | 'sacPending'
-  | 'sacConfirmed'
-  | 'complete';
+  | 'sacConfirmed';
 export type LaunchRecord = LaunchInput & {
   creator: string;
   issuer: string;
@@ -35,7 +34,6 @@ export function isLaunchRecord(value: unknown): value is LaunchRecord {
     'setupConfirmed',
     'sacPending',
     'sacConfirmed',
-    'complete',
   ];
   if (!stages.includes(value.stage)) return false;
   return [
