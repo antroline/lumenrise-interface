@@ -109,7 +109,7 @@ export function LaunchHero({
       <div className="relative h-[360px] min-w-0 overflow-hidden rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
         {priceChart}
       </div>
-      <div className="mt-4 rounded-xl bg-white p-4 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-50">
+      <div className="mt-4 rounded-xl bg-white p-4 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-50">
         {timeline}
         <div className={timeline ? 'pt-5' : undefined}>
           <div className="mb-2 flex items-center justify-between gap-3">

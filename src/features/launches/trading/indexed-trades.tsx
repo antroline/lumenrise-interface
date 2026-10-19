@@ -1,5 +1,7 @@
 'use client';
 import { tradeTableClass } from './trade-table-style';
+import { ArrowRightLeft } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 import { useIndexedTrades } from './use-indexed-trades';
 import {
@@ -18,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Empty,
   EmptyHeader,
+  EmptyMedia,
   EmptyTitle,
   EmptyDescription,
 } from '@/components/ui/empty';
@@ -121,7 +124,12 @@ export function IndexedTrades({
           </Button>
         </Empty>
       ) : (
-        <Table className={tradeTableClass}>
+        <Table
+          className={cn(
+            tradeTableClass,
+            '[&_tbody_tr>td:first-child]:rounded-none [&_tbody_tr>td:last-child]:rounded-none [&_tbody_tr:not(:last-child)>td]:border-b [&_tbody_tr:not(:last-child)>td]:border-divider',
+          )}
+        >
           <TableHeader>
             <TableRow>
               {[
@@ -134,7 +142,7 @@ export function IndexedTrades({
               ].map((label) => (
                 <TableHead
                   key={label}
-                  className="h-10 bg-foreground py-3 text-small font-medium normal-case tracking-normal text-background first:rounded-l-2xl last:rounded-r-2xl dark:bg-secondary dark:text-foreground"
+                  className="h-9 bg-muted py-2 text-xs font-medium normal-case tracking-normal text-muted-foreground first:rounded-l-lg last:rounded-r-lg"
                 >
                   <TradeTooltipText
                     content={
@@ -164,6 +172,9 @@ export function IndexedTrades({
                 <TableCell colSpan={6}>
                   <Empty>
                     <EmptyHeader>
+                      <EmptyMedia>
+                        <ArrowRightLeft aria-hidden="true" className="size-5" />
+                      </EmptyMedia>
                       <EmptyTitle>No recorded trades</EmptyTitle>
                       <EmptyDescription>
                         Trades matching these filters will appear here when

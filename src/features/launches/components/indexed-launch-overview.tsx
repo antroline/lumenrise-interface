@@ -391,7 +391,7 @@ export function IndexedLaunchOverview({
     <TradeMotion>
       <div
         data-launch-page
-        className="launch-details mx-auto w-full max-w-[1320px] pb-24 lg:pb-16 selection:bg-lime selection:text-ink [&_section]:shadow-none [&_[data-slot=card]]:shadow-none"
+        className="launch-details mx-auto w-full max-w-[1320px] pb-24 lg:pb-16 selection:bg-lime selection:text-ink dark:bg-neutral-950 dark:text-neutral-50 dark:[--muted:var(--color-neutral-800)]! dark:[--surface:var(--color-neutral-800)]! dark:[--input:var(--color-neutral-800)]! [&_section]:shadow-none [&_[data-slot=card]]:shadow-none"
       >
         <div className="mb-4 md:hidden">
           <BackLink href={`/launches?network=${network}`}>Projects</BackLink>
@@ -697,28 +697,26 @@ export function IndexedLaunchOverview({
               >
                 {children}
               </LaunchSection>
-              <TradeActivity
-                accordionVariant="plain"
-                className="gap-0 lg:gap-0"
-                onHoldersActiveChange={setHoldersActive}
-                trades={
-                  <IndexedTrades
-                    address={address}
-                    network={network}
-                    ticker={ticker}
-                    pair={pair}
-                    tradeCount24h={market.data?.volume24h.tradeCount}
-                  />
-                }
-                holders={<IndexedHolders holders={holders} ticker={ticker} />}
-                pools={
-                  <PoolTable
-                    ticker={ticker}
-                    unavailableReason="External pool data is not connected. This contract version does not create a pool or transfer graduation proceeds."
-                  />
-                }
-              />
             </div>
+            <TradeActivity
+              onHoldersActiveChange={setHoldersActive}
+              trades={
+                <IndexedTrades
+                  address={address}
+                  network={network}
+                  ticker={ticker}
+                  pair={pair}
+                  tradeCount24h={market.data?.volume24h.tradeCount}
+                />
+              }
+              holders={<IndexedHolders holders={holders} ticker={ticker} />}
+              pools={
+                <PoolTable
+                  ticker={ticker}
+                  unavailableReason="External pool data is not connected. This contract version does not create a pool or transfer graduation proceeds."
+                />
+              }
+            />
           </div>
         </div>
       </div>

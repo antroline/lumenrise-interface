@@ -1,10 +1,12 @@
 'use client';
 
 import { Blockie } from '@/components/blockie';
+import { UsersRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
   EmptyHeader,
+  EmptyMedia,
   EmptyTitle,
   EmptyDescription,
 } from '@/components/ui/empty';
@@ -54,6 +56,9 @@ export function IndexedHolders({
       ) : !items.length ? (
         <Empty>
           <EmptyHeader>
+            <EmptyMedia>
+              <UsersRound aria-hidden="true" className="size-5" />
+            </EmptyMedia>
             <EmptyTitle>No holder data available yet</EmptyTitle>
             <EmptyDescription>
               Balances appear after recorded trades are processed.
@@ -68,7 +73,7 @@ export function IndexedHolders({
           {items.map((holder) => (
             <li
               key={holder.address}
-              className="flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground"
+              className="flex min-w-0 flex-col gap-3 rounded-lg bg-muted p-3 text-card-foreground"
             >
               <div className="flex min-w-0 items-center gap-2">
                 <Blockie

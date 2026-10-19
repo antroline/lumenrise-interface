@@ -18,17 +18,3 @@ export function areaPath(points: Point[], baseline: number) {
   const last = points[points.length - 1]
   return `${linePath(points)} L${last[0].toFixed(1)} ${baseline} L${first[0].toFixed(1)} ${baseline} Z`
 }
-
-/** Deterministic random walk used for illustrative price and activity series. */
-export function randomSeries(length: number, start: number, drift: number, volatility: number, seed = 1) {
-  let state = seed
-  let value = start
-  const next = () => {
-    state = (state * 16807) % 2147483647
-    return state / 2147483647 - 0.5
-  }
-  return Array.from({ length }, () => {
-    value = Math.max(0.0001, value + drift + next() * volatility)
-    return value
-  })
-}

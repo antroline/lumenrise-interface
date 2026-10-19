@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -108,11 +109,15 @@ export function LaunchActionCard({
                 Buy / Sell
               </Button>
             </div>
-            <div className="fixed inset-x-0 bottom-0 z-30 border-t border-divider bg-card px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] lg:hidden">
-              <Button className="w-full" onClick={() => setOpen(true)}>
-                Buy / Sell {name}
-              </Button>
-            </div>
+            {/* Page entrance transforms must not contain this viewport-fixed control. */}
+            {typeof document !== 'undefined' && createPortal(
+              <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 border-t border-divider bg-card px-4 py-3 lg:hidden">
+                <Button className="w-full" onClick={() => setOpen(true)}>
+                  Buy / Sell {name}
+                </Button>
+              </div>,
+              document.body,
+            )}
             <SheetContent
               side="bottom"
               keepMounted
