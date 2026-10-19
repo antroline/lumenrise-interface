@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ChevronDown, Copy, LogOut, Settings, UserRound, Wallet } from 'lucide-react';
-import { Blockie } from '@/components/blockie';
+import { ProfileAvatar } from '@/components/profile-avatar';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -58,6 +58,8 @@ export function WalletButton({
     );
   }
 
+  const avatarUrl = account.status === 'registered' ? account.profile.avatarUrl : null;
+
   const copyAddress = async () => {
     try {
       await navigator.clipboard.writeText(address);
@@ -82,7 +84,7 @@ export function WalletButton({
               className,
             )}
           >
-            <Blockie seed={address} size={24} radius={6} />
+            <ProfileAvatar seed={address} avatarUrl={avatarUrl} size={24} radius={6} />
             {!compact && (
               <span>{shortAddress(address)}</span>
             )}
@@ -102,7 +104,7 @@ export function WalletButton({
         className="w-72 max-w-[calc(100vw-1.5rem)] rounded-2xl bg-card p-2 text-card-foreground ring-border"
       >
         <div className="flex min-w-0 items-center gap-3 px-3 py-3">
-          <Blockie seed={address} size={40} radius={10} />
+          <ProfileAvatar seed={address} avatarUrl={avatarUrl} size={40} radius={10} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold" title={account.status === 'registered' ? account.profile.name : undefined}>
               {account.status === 'registered' ? account.profile.name : 'Connected wallet'}

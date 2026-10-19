@@ -58,7 +58,7 @@ export function pairLabel(pair: string | undefined, network: ApiNetwork) {
     return 'XLM';
   return `${pair.slice(0, 4)}…${pair.slice(-4)}`;
 }
-export function unixDate(seconds: string | undefined) {
+export function unixDate(seconds: string | null | undefined) {
   if (!seconds) return '—';
   const raw = BigInt(seconds) * BigInt(1000);
   if (raw > BigInt(8_640_000_000_000_000)) return '—';

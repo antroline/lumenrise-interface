@@ -1,5 +1,6 @@
 import { ApiError, apiRequest } from '../client';
 import type { ApiNetwork } from './types';
+import { decodePublicTeamMember, type PublicTeamMember } from './team';
 
 export type ChartRange = '1D' | '1W' | '1M' | '3M' | 'ALL';
 export type Bonding = {
@@ -8,7 +9,7 @@ export type Bonding = {
   statusAsOf: string;
   stateStale: boolean;
   startsAt: string;
-  endsAt: string;
+  endsAt: string | null;
   totalSupply: string;
   allocations: { poolBps: number; curveBps: number; teamBps: number };
   buckets: { pool: string; curve: string; team: string };
@@ -37,6 +38,7 @@ export type LaunchResult = {
   factoryIndex: number;
   contractId: string;
   owner: string;
+  team?: PublicTeamMember[];
   asset: string;
   pair: string;
   metadata: { name: string; symbol: string; description: string; logo: string; website?: string; xAccount?: string; github?: string };
@@ -44,15 +46,40 @@ export type LaunchResult = {
   state: Record<string, unknown>;
   asOfLedger: number;
   observedAt: string;
+  /** Verified contract creation, never the indexing or trading opening time. */
+  createdAt: string | null;
+  creationLedger: number | null;
+  creationTransactionHash: string | null;
   stateAsOfLedger: number;
   stateObservedAt: string;
   bonding: Bonding | null;
 };
+export type LaunchSort =
+  | 'newest' | 'name' | 'symbol' | 'trending' | 'topVolume'
+  | 'almostGraduated' | 'participants' | 'figure' | 'date' | 'phase' | 'category';
+export type LaunchListFilters = {
+  search?: string;
+  category?: 'all' | 'bonding-curve' | 'auction' | 'pre-sale';
+  sort?: LaunchSort;
+  direction?: 'asc' | 'desc';
+  pair?: string;
+};
+export type LaunchListItem = LaunchResult & {
+  category: 'bonding-curve';
+  amountScale: number;
+  volume24h: MarketResult['volume24h'];
+};
 export type LaunchList = {
-  launches: LaunchResult[];
+  launches: LaunchListItem[];
   page: number;
   limit: number;
   total: number;
+  sort: LaunchSort;
+  direction: 'asc' | 'desc';
+  dateMeaning: 'contract_creation';
+  statsAsOf: string;
+  statsSince: string;
+  statsCoverage: 'verified_client_submitted_trades';
 };
 export type MarketResult = {
   network: ApiNetwork;
@@ -219,7 +246,7 @@ export function decodeLaunch(v: unknown): LaunchResult {
       statusAsOf: string(b.statusAsOf),
       stateStale: boolean(b.stateStale),
       startsAt: raw(b.startsAt),
-      endsAt: raw(b.endsAt),
+      endsAt: nullable(b.endsAt, raw),
       totalSupply: raw(b.totalSupply),
       allocations: {
         poolBps: bps(a.poolBps),
@@ -257,6 +284,7 @@ export function decodeLaunch(v: unknown): LaunchResult {
     factoryContractId: string(l.factoryContractId),
     factoryIndex: number(l.factoryIndex),
     owner: string(l.owner),
+    team: l.team == null ? [] : array(l.team, decodePublicTeamMember),
     asset: string(l.asset),
     pair: string(l.pair),
     metadata: {
@@ -272,6 +300,9 @@ export function decodeLaunch(v: unknown): LaunchResult {
     state: object(l.state),
     asOfLedger: number(l.asOfLedger),
     observedAt: date(l.observedAt),
+    createdAt: nullable(l.createdAt, date),
+    creationLedger: nullable(l.creationLedger, number),
+    creationTransactionHash: nullable(l.creationTransactionHash, string),
     stateAsOfLedger: number(l.stateAsOfLedger),
     stateObservedAt: date(l.stateObservedAt),
     bonding,
@@ -377,22 +408,84 @@ export async function getLaunchList(
   limit: number,
   owner?: string,
   signal?: AbortSignal,
+  filters: LaunchListFilters = {},
 ): Promise<LaunchList> {
   const q = new URLSearchParams({
     network: n,
     page: String(page),
     limit: String(limit),
+    category: filters.category ?? 'all',
+    sort: filters.sort ?? 'newest',
+    direction: filters.direction ?? 'desc',
   });
   if (owner) q.set('owner', owner);
+  if (filters.search) q.set('search', filters.search);
+  if (filters.pair) q.set('pair', filters.pair);
   const r = object(await apiRequest<unknown>(`/launches?${q}`, { signal }));
-  const launches = array(r.launches, decodeLaunch);
-  if (launches.some((l) => l.network !== n)) invalid();
+  const launches = array(r.launches, (value): LaunchListItem => {
+    const item = object(value),
+      vol = object(item.volume24h);
+    if (item.category !== 'bonding-curve') invalid();
+    return {
+      ...decodeLaunch(item),
+      category: item.category,
+      amountScale: scale(item.amountScale),
+      volume24h: {
+        grossPairAmount: raw(vol.grossPairAmount),
+        assetAmount: raw(vol.assetAmount),
+        tradeCount: number(vol.tradeCount),
+        buyCount: number(vol.buyCount),
+        sellCount: number(vol.sellCount),
+      },
+    };
+  });
+  if (launches.some((l) => l.network !== n || (filters.pair && l.pair !== filters.pair)))
+    invalid();
+  if (r.page !== page || r.limit !== limit) invalid();
+  const sorts: LaunchSort[] = [
+    'newest', 'name', 'symbol', 'trending', 'topVolume', 'almostGraduated',
+    'participants', 'figure', 'date', 'phase', 'category',
+  ];
+  const sort = sorts.find((value) => value === r.sort);
+  if (
+    !sort ||
+    (r.direction !== 'asc' && r.direction !== 'desc') ||
+    r.dateMeaning !== 'contract_creation' ||
+    r.statsCoverage !== 'verified_client_submitted_trades'
+  ) invalid();
   return {
     launches,
     page: number(r.page),
     limit: number(r.limit),
     total: number(r.total),
+    sort,
+    direction: r.direction,
+    dateMeaning: r.dateMeaning,
+    statsAsOf: date(r.statsAsOf),
+    statsSince: date(r.statsSince),
+    statsCoverage: r.statsCoverage,
   };
+}
+
+/** Defaults are explicit so every consumer shares only identical requests. */
+export function launchListKey(
+  network: ApiNetwork,
+  page = 1,
+  limit = 20,
+  owner?: string,
+  filters: LaunchListFilters = {},
+) {
+  return ['launch-list', {
+    network,
+    owner: owner ?? '',
+    search: filters.search ?? '',
+    category: filters.category ?? 'all',
+    sort: filters.sort ?? 'newest',
+    direction: filters.direction ?? 'desc',
+    pair: filters.pair ?? '',
+    page,
+    limit,
+  }] as const;
 }
 function identity<T extends { network: ApiNetwork; contractId: string }>(
   result: T,

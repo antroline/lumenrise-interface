@@ -13,6 +13,16 @@ export type TeamMember = MemberProfile & (
   | { kind: 'registered'; identityId: string }
   | { kind: 'external'; identityId: null }
 );
+export type PublicTeamMember = TeamMember | {
+  kind: 'owner';
+  memberId: null;
+  identityId: string | null;
+  address: string;
+  name: string | null;
+  avatarUrl: string | null;
+  xAccount: string | null;
+  role: string;
+};
 export type TeamRequest = { network: ApiNetwork; signal?: AbortSignal };
 export type ExternalMemberInput = { name: string; role: string; xAccount: string; image?: File };
 
@@ -42,13 +52,27 @@ function path(contractId: string, options: TeamRequest, suffix = '') {
 
 export async function getLaunchTeam(contractId: string, options: TeamRequest): Promise<TeamMember[]> {
   const result = await apiRequest<unknown>(path(contractId, options), { user: true, signal: options.signal });
-  return entries(result, 'members').map((entry) => {
-    const item = record(entry);
-    const common = { ...profile(item), memberId: text(item.memberId), role: text(item.role) };
-    if (item.kind === 'registered') return { ...common, kind: 'registered', identityId: text(item.identityId) };
-    if (item.kind === 'external' && item.identityId === null) return { ...common, kind: 'external', identityId: null };
-    return invalid();
-  });
+  return entries(result, 'members').map(decodeTeamMember);
+}
+
+function decodeTeamMember(entry: unknown): TeamMember {
+  const item = record(entry);
+  const common = { ...profile(item), memberId: text(item.memberId), role: text(item.role) };
+  if (item.kind === 'registered') return { ...common, kind: 'registered', identityId: text(item.identityId) };
+  if (item.kind === 'external' && item.identityId === null) return { ...common, kind: 'external', identityId: null };
+  return invalid();
+}
+
+export function decodePublicTeamMember(entry: unknown): PublicTeamMember {
+  const item = record(entry);
+  if (item.kind !== 'owner') return decodeTeamMember(item);
+  if (item.memberId !== null) return invalid();
+  return {
+    kind: 'owner', memberId: null, identityId: nullableText(item.identityId),
+    address: text(item.address), name: nullableText(item.name),
+    avatarUrl: nullableText(item.avatarUrl), xAccount: nullableText(item.xAccount),
+    role: text(item.role),
+  };
 }
 
 export async function searchTeamCandidates(contractId: string, search: string, options: TeamRequest): Promise<TeamCandidate[]> {

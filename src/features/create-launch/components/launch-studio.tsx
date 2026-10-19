@@ -43,6 +43,7 @@ function LaunchStudioContent() {
   const [showErrors, setShowErrors] = useState(false);
 
   function launchBondingCurve() {
+    if (bondingLaunch.operation?.status === 'success') return;
     setProgressOpen(true);
     if (!bondingLaunch.working) void bondingLaunch.launch(draft);
   }
@@ -53,6 +54,12 @@ function LaunchStudioContent() {
         const stored = window.sessionStorage.getItem(BONDING_AUTH_RETURN_KEY);
         if (!stored) return;
         const restored: unknown = JSON.parse(stored);
+        // Preserve auth-return drafts saved before creator fees became percentages.
+        if (restored && typeof restored === 'object' && 'bonding' in restored &&
+          restored.bonding && typeof restored.bonding === 'object' &&
+          'creatorFee' in restored.bonding && typeof restored.bonding.creatorFee === 'boolean') {
+          restored.bonding.creatorFee = restored.bonding.creatorFee ? '0.1' : '0';
+        }
         if (!isBondingDraft(restored))
           throw new Error('The saved bonding-curve form cannot be read.');
         // Reputation enforcement is not connected; do not restore unsupported access rules.
@@ -113,11 +120,10 @@ function LaunchStudioContent() {
       />
       <div
         className={cn(
-          "grid min-w-0 items-stretch gap-4 @min-[800px]/studio:grid-cols-[minmax(0,1fr)_236px] @min-[900px]/studio:grid-cols-[minmax(0,1fr)_256px] @min-[1000px]/studio:grid-cols-[minmax(0,1fr)_272px] @min-[1200px]/studio:grid-cols-[minmax(0,1fr)_304px]",
-          reviewLayout && "@min-[800px]/studio:justify-center @min-[800px]/studio:grid-cols-[minmax(0,max-content)_236px] @min-[900px]/studio:grid-cols-[minmax(0,max-content)_256px] @min-[1000px]/studio:grid-cols-[minmax(0,max-content)_272px] @min-[1200px]/studio:grid-cols-[minmax(0,max-content)_304px]",
+          "grid min-w-0 items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_236px] lg:@min-[900px]/studio:grid-cols-[minmax(0,1fr)_256px] lg:@min-[1000px]/studio:grid-cols-[minmax(0,1fr)_272px] lg:@min-[1200px]/studio:grid-cols-[minmax(0,1fr)_304px]",
+          reviewLayout && "lg:justify-center lg:grid-cols-[minmax(0,max-content)_236px] lg:@min-[900px]/studio:grid-cols-[minmax(0,max-content)_256px] lg:@min-[1000px]/studio:grid-cols-[minmax(0,max-content)_272px] lg:@min-[1200px]/studio:grid-cols-[minmax(0,max-content)_304px]",
         )}
       >
-        <LaunchStepper draft={draft} steps={visibleSteps} currentIndex={currentIndex} reachedIndex={reachedIndex} locked={bondingLaunch.working} onNavigate={goToStep} />
         <LaunchSummary
           draft={draft}
           steps={visibleSteps}
@@ -131,10 +137,11 @@ function LaunchStudioContent() {
             "@container/launch relative flex min-w-0 scroll-mt-24 flex-col rounded-2xl border border-border bg-card p-(--launch-pad) [--launch-pad:--spacing(4)] sm:[--launch-pad:--spacing(6)] lg:[--launch-pad:--spacing(5)] xl:[--launch-pad:--spacing(6)] studio-compact:[--launch-pad:--spacing(4)]",
             !reviewLayout && "lg:min-h-[min(56rem,calc(100svh-7rem))] @min-[800px]/studio:lg:min-h-[min(56rem,calc(100svh-3rem))]",
             // A size container has no intrinsic width, so Review states its own: the 700px content plus padding and border.
-            reviewLayout && "@min-[800px]/studio:w-[calc(700px+2*var(--launch-pad)+2px)] @min-[800px]/studio:max-w-full",
+            reviewLayout && "lg:w-[calc(700px+2*var(--launch-pad)+2px)] lg:max-w-full",
           )}
           aria-labelledby="wizard-title"
         >
+        <LaunchStepper steps={visibleSteps} currentIndex={currentIndex} locked={bondingLaunch.working} onNavigate={goToStep} />
           <p className="sr-only" role="status" aria-live="polite">
             Step {currentIndex + 1}
             {` of ${visibleSteps.length}`}
@@ -168,6 +175,7 @@ function LaunchStudioContent() {
                   ready={bondingLaunch.isReady}
                   working={bondingLaunch.working}
                   accountReady={accountReady}
+                  launchAddress={bondingLaunch.operation?.status === 'success' ? bondingLaunch.operation.curveAddress : undefined}
                   onBack={() => goToStep(step - 1)}
                   onNext={next}
                   onLaunch={launchBondingCurve}

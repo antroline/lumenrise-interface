@@ -39,10 +39,27 @@ const launch = {
   state: {},
   asOfLedger: 1,
   observedAt: DATE,
+  createdAt: null,
+  creationLedger: null,
+  creationTransactionHash: null,
   stateAsOfLedger: 2,
   stateObservedAt: DATE,
   bonding: null,
 };
+
+test('launch detail retains public owner and team photos, including profiles without images', async () => {
+  const owner = { kind: 'owner', memberId: null, identityId: 'identity-owner', address: OWNER, name: 'Creator', avatarUrl: '/profiles/creator.webp', xAccount: null, role: 'owner' };
+  const registered = { kind: 'registered', memberId: 'membership', identityId: 'identity-member', name: 'Member', avatarUrl: '/profiles/member.webp', xAccount: null, role: 'Developer' };
+  const external = { kind: 'external', memberId: 'external', identityId: null, name: 'External', avatarUrl: null, xAccount: null, role: 'Designer' };
+  const team = [owner, registered, external];
+  const h = harness(() => ({ result: { ...launch, team } }));
+  same((await h.api.getLaunchDetail(ID, 'testnet')).team, team);
+  same(h.api.decodeLaunch(launch).team, []);
+  same(h.api.decodeLaunch({ ...launch, team: [{ ...owner, identityId: null, name: null, avatarUrl: null }] }).team, [{ ...owner, identityId: null, name: null, avatarUrl: null }]);
+  for (const team of [{}, [{}], [{ ...registered, avatarUrl: 123 }]]) {
+    assert.throws(() => h.api.decodeLaunch({ ...launch, team }), { code: 'invalid-response' });
+  }
+});
 const trade = {
   trader: OWNER,
   tradedAt: DATE,
@@ -212,7 +229,7 @@ test('all public GETs carry explicit network and no account header; list uses pa
         : url.includes('/trades?')
           ? { items: [trade], nextCursor: 'opaque/+==', ...common }
           : url.includes('/launches?')
-            ? { launches: [launch], page: 2, limit: 20, total: 41 }
+            ? { launches: [{ ...launch, category: 'bonding-curve', amountScale: 7, volume24h: market.volume24h }], page: 2, limit: 20, total: 41, sort: 'newest', direction: 'desc', dateMeaning: 'contract_creation', statsAsOf: DATE, statsSince: '2026-10-11T12:00:00Z', statsCoverage: 'verified_client_submitted_trades' }
             : launch,
   }));
   await h.api.getLaunchList('testnet', 2, 20, OWNER);
@@ -961,4 +978,78 @@ test('launch decoder preserves optional project links without requiring them on 
   assert.equal(decoded.xAccount, metadata.xAccount);
   assert.equal(decoded.github, metadata.github);
   assert.equal(h.api.decodeLaunch(launch).metadata.website, undefined);
+});
+
+const listResponse = (launches = [{ ...launch, category: 'bonding-curve', volume24h: market.volume24h }], page = 1, limit = 20, extra = {}) => ({
+  launches, page, limit, total: 41, sort: 'newest', direction: 'desc', dateMeaning: 'contract_creation',
+  statsAsOf: DATE, statsSince: '2026-10-11T12:00:00Z', statsCoverage: 'verified_client_submitted_trades', ...extra,
+});
+test('launch-list sends all combined filters on every page and decodes inline amounts and metadata', async () => {
+  const filters = { search: 'Literal +%_', category: 'bonding-curve', sort: 'topVolume', direction: 'desc', pair: PAIR };
+  const h = harness((url) => ({ result: listResponse(undefined, Number(new URL(url).searchParams.get('page')), 20, { sort: 'topVolume' }) }));
+  for (const page of [1, 2, 3]) {
+    const result = await h.api.getLaunchList('testnet', page, 20, OWNER, undefined, filters);
+    const params = new URL(h.calls.at(-1).url).searchParams;
+    for (const [key, value] of Object.entries({ network: 'testnet', owner: OWNER, ...filters, page: String(page), limit: '20' })) assert.equal(params.get(key), value);
+    assert.equal(result.launches[0].volume24h.grossPairAmount, '12345678901234567');
+    assert.equal(result.statsCoverage, 'verified_client_submitted_trades');
+    assert.equal(result.dateMeaning, 'contract_creation');
+    assert.equal(result.launches[0].createdAt, null);
+  }
+  assert.equal(h.calls.length, 3, 'No market fan-out');
+  assert.equal(h.api.decodeLaunch(launch).volume24h, undefined, 'Detail has no list-only statistics');
+});
+test('every effective request parameter isolates the list cache, including page size', () => {
+  const h = harness(), key = (network = 'testnet', page = 1, limit = 20, owner = '', filters = {}) => JSON.stringify(h.api.launchListKey(network, page, limit, owner, filters));
+  const baseline = key();
+  for (const args of [['public'], ['testnet', 2], ['testnet', 1, 50], ['testnet', 1, 20, OWNER],
+    ...Object.entries({ search: 'a', category: 'bonding-curve', sort: 'trending', direction: 'asc', pair: PAIR }).map(([name, value]) => ['testnet', 1, 20, '', { [name]: value }])]) assert.notEqual(key(...args), baseline);
+  assert.equal(key('testnet', 1, 20, undefined, { category: 'all', sort: 'newest', direction: 'desc' }), baseline);
+});
+test('detail accepts verified or unknown creation dates and current curves with no expiry', () => {
+  const h = harness();
+  const bonding = { version: 1, status: 'Open', statusAsOf: DATE, stateStale: false, startsAt: '1790000000', endsAt: null,
+    totalSupply: '100000000', allocations: { poolBps: 2000, curveBps: 8000, teamBps: 0 }, buckets: { pool: '20000000', curve: '80000000', team: '0' },
+    vesting: { cliffSeconds: '0', durationSeconds: '0', schedule: 'Linear' },
+    curve: { graduationTarget: '100000000', virtualBaseReserve: '100', virtualQuoteReserve: '100', creatorFeeBps: 0, creatorPayoutBps: 0, platformFeeBps: 0 },
+    state: { sold: '1', quoteReserve: '1', creatorFees: '0', teamClaimed: '0', buyerCount: 1, graduated: false }, progressBps: 0 };
+  for (const createdAt of [null, '2026-01-01T00:00:00Z']) {
+    const decoded = h.api.decodeLaunch({ ...launch, createdAt, creationLedger: 123, creationTransactionHash: 'abc', bonding });
+    assert.equal(decoded.createdAt, createdAt); assert.equal(decoded.bonding.endsAt, null); assert.equal(decoded.bonding.status, 'Open');
+  }
+  assert.throws(() => h.api.decodeLaunch({ ...launch, createdAt: 'bad-date' }));
+  assert.equal(h.display.unixDate(null), '—');
+});
+test('rapid list-query changes abort the obsolete HTTP request and cannot replace current results', async () => {
+  let started, aborted = false;
+  const ready = new Promise((resolve) => { started = resolve; });
+  const h = harness((url, init) => {
+    const params = new URL(url).searchParams;
+    if (params.get('search') === 'old') return new Promise((_resolve, reject) => {
+      started(); init.signal.addEventListener('abort', () => { aborted = true; reject(new DOMException('Aborted', 'AbortError')); });
+    });
+    return { result: listResponse([], 2, 50, { total: 80 }) };
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+  const oldKey = h.api.launchListKey('testnet', 1, 20, OWNER, { search: 'old' });
+  const observer = new QueryObserver(client, { queryKey: oldKey, queryFn: ({ signal }) => h.api.getLaunchList('testnet', 1, 20, OWNER, signal, { search: 'old' }) });
+  const unsubscribe = observer.subscribe(() => {});
+  try {
+    await ready;
+    const completed = new Promise((resolve) => { const stop = observer.subscribe((result) => { if (result.isSuccess) { stop(); resolve(result.data); } }); });
+    observer.setOptions({ queryKey: h.api.launchListKey('testnet', 2, 50, OWNER, { search: 'new' }), queryFn: ({ signal }) => h.api.getLaunchList('testnet', 2, 50, OWNER, signal, { search: 'new' }) });
+    const active = await completed;
+    assert.equal(aborted, true); assert.equal(active.page, 2); assert.equal(active.limit, 50);
+    assert.equal(observer.getCurrentResult().data, active); assert.equal(client.getQueryData(oldKey), undefined);
+  } finally { unsubscribe(); client.clear(); }
+});
+test('list HTTP 400 and 503 propagate and invalid currency or metadata never become empty success', async () => {
+  for (const status of [400, 503]) {
+    const h = harness(() => ({ status }));
+    await assert.rejects(h.api.getLaunchList('testnet', 1, 20), (error) => error.status === status);
+  }
+  const h = harness(() => ({ result: listResponse() }));
+  await assert.rejects(h.api.getLaunchList('testnet', 1, 20, undefined, undefined, { sort: 'figure', pair: ID }), (error) => error.code === 'invalid-response');
+  h.setHandler(() => ({ result: listResponse(undefined, 1, 20, { statsCoverage: 'all_onchain' }) }));
+  await assert.rejects(h.api.getLaunchList('testnet', 1, 20), (error) => error.code === 'invalid-response');
 });

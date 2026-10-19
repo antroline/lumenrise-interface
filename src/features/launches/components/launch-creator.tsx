@@ -1,21 +1,21 @@
 'use client';
 
 import { TradeTooltipText } from '../trading/trade-tooltip';
-import { Blockie } from '@/components/blockie';
+import { ProfileAvatar } from '@/components/profile-avatar';
+import type { PublicTeamMember } from '@/lib/api/launches/team';
 import type { ApiNetwork } from '@/lib/api/launches/types';
 import { CopyAddress, ExplorerLink } from './launch-project-links';
 
-/**
- * The founding wallet on LumenRise. Creator names and photos are
- * not published by the API, so identity is the address and its Blockie.
- */
+/** The founding wallet and its public profile, when published by the API. */
 export function LaunchCreator({
   owner,
   network,
+  profile,
 }: {
   owner: string;
   network: ApiNetwork;
   currentId: string;
+  profile?: Extract<PublicTeamMember, { kind: 'owner' }>;
 }) {
   return (
     <div>
@@ -26,16 +26,16 @@ export function LaunchCreator({
         >
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <div className="shrink-0 overflow-hidden rounded-xl">
-              <Blockie seed={owner} size={44} radius={0} />
+              <ProfileAvatar seed={owner} avatarUrl={profile?.avatarUrl} radius={0} />
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="truncate text-sm leading-tight font-semibold">
                 <TradeTooltipText content={owner}>
-                  {owner.slice(0, 6)}…{owner.slice(-6)}
+                  {profile?.name || `${owner.slice(0, 6)}…${owner.slice(-6)}`}
                 </TradeTooltipText>
               </h3>
               <p className="mt-1 text-xs text-muted-foreground">
-                <TradeTooltipText content="The wallet that deployed this launch. A public name and photo are not available.">
+                <TradeTooltipText content="The wallet that deployed this launch.">
                   Founder
                 </TradeTooltipText>
               </p>

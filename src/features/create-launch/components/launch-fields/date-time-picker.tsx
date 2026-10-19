@@ -26,6 +26,7 @@ export function DateTimePicker({
   error,
   earliest,
   defaultLabel,
+  compact = false,
 }: {
   id: string;
   label: string;
@@ -34,6 +35,7 @@ export function DateTimePicker({
   error?: string;
   earliest?: string;
   defaultLabel?: string;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const actionsRef = useRef<PopoverPrimitive.Root.Actions>(null);
@@ -73,7 +75,7 @@ export function DateTimePicker({
 
   return (
     <Field data-invalid={!!error}>
-      <FieldLabel htmlFor={id} className="text-body">
+      <FieldLabel htmlFor={id} className={compact ? 'sr-only' : 'text-body'}>
         {label}
       </FieldLabel>
       <Popover open={open} actionsRef={actionsRef} onOpenChange={setOpen}>
@@ -85,7 +87,7 @@ export function DateTimePicker({
               variant="outline"
               aria-invalid={!!error}
               aria-describedby={error ? `${id}-error` : undefined}
-              className={cn(launchFieldSurfaceClassName, 'h-auto min-h-18 w-full justify-between text-left hover:bg-secondary aria-expanded:bg-secondary')}
+              className={cn(launchFieldSurfaceClassName, 'h-auto w-full justify-between text-left hover:bg-secondary aria-expanded:bg-secondary', compact ? 'min-h-12' : 'min-h-18')}
             />
           }
         >
@@ -97,7 +99,8 @@ export function DateTimePicker({
             <span className="min-w-0">
               <span
                 className={cn(
-                  'block whitespace-normal text-title font-semibold leading-snug tabular-nums',
+                  'block whitespace-normal font-semibold leading-snug tabular-nums',
+                  compact ? 'text-body' : 'text-title',
                   !selected && !defaultLabel && 'text-muted-foreground',
                 )}
               >
@@ -108,13 +111,13 @@ export function DateTimePicker({
                     }).format(selected)
                   : defaultLabel || 'Select a date'}
               </span>
-              <span className="mt-1 block text-ui font-normal text-muted-foreground">
+              {!compact && <span className="mt-1 block text-ui font-normal text-muted-foreground">
                 {selected
                   ? 'Custom date & time'
                   : defaultLabel
                     ? 'Default · click to change'
                     : 'Choose date & time'}
-              </span>
+              </span>}
             </span>
           </span>
           <ChevronDown

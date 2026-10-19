@@ -4,16 +4,10 @@ import Link from 'next/link';
 import { ArrowUpRight, Check, CircleAlert, LoaderCircle, Wallet } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog } from '@/components/ui/dialog';
+import { AppDialogContent, AppDialogHeader, AppDialogFooter } from '@/components/app-dialog';
 import { cn } from '@/lib/utils';
 import type { LaunchOperation, LaunchOperationStep } from '../lib/launch-operation';
-import styles from './launch-operation-dialog.module.css';
 
 // Issuance is signed by the temporary issuer; only these actions need the wallet.
 const signatureSteps = [
@@ -64,21 +58,19 @@ export function LaunchOperationDialog({
       modal={!approval}
       disablePointerDismissal
     >
-      <DialogContent
-        className={cn(styles.popup, 'flex max-h-[calc(100svh-2rem)] flex-col gap-5 overflow-y-auto rounded-2xl p-5 sm:max-w-sm')}
-      >
-        <DialogHeader className="flex-row items-center gap-3 pr-6">
-          <Avatar className="size-10 shrink-0">
-            <AvatarImage src={logo || undefined} alt="" />
-            <AvatarFallback>{(symbol || name).slice(0, 2).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
-            <DialogTitle className="text-lg leading-tight tracking-tight">{title}</DialogTitle>
-            <DialogDescription className="mt-1 truncate" title={name || symbol}>
-              {name.trim() || symbol || 'Your token'}{name.trim() && symbol ? ` · ${symbol}` : ''}
-            </DialogDescription>
-          </div>
-        </DialogHeader>
+      <AppDialogContent>
+        <AppDialogHeader
+          title={title}
+          description={<>{name.trim() || symbol || 'Your token'}{name.trim() && symbol ? ` · ${symbol}` : ''}</>}
+          descriptionTitle={name || symbol}
+          truncateDescription
+          leading={
+            <Avatar className="size-10 shrink-0">
+              <AvatarImage src={logo || undefined} alt="" />
+              <AvatarFallback>{(symbol || name).slice(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
+          }
+        />
 
         {!success && (
           <ol className="flex flex-col gap-1" aria-label="Wallet signatures">
@@ -143,7 +135,7 @@ export function LaunchOperationDialog({
         </div>
 
         {(failed || success) && (
-          <div className="flex items-center justify-end gap-2">
+          <AppDialogFooter>
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
             {failed && <Button onClick={onRetry}>Check / retry</Button>}
             {success && operation.curveAddress && (
@@ -151,9 +143,9 @@ export function LaunchOperationDialog({
                 View launch <ArrowUpRight data-icon="inline-end" />
               </Link>
             )}
-          </div>
+          </AppDialogFooter>
         )}
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

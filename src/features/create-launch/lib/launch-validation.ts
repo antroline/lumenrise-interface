@@ -89,6 +89,8 @@ export function validateLaunchStep(
         'Add a project image (PNG, JPG or WebP, under 1 MB).';
     if (!draft.description.trim())
       errors['launch-description'] = 'Briefly describe the project.';
+    else if (draft.description.length > 3000)
+      errors['launch-description'] = 'Use up to 3000 characters.';
     if (!draft.xAccount.trim())
       errors['launch-x'] = 'Enter your project’s X account link.';
     else if (!validOptionalUrl(draft.xAccount))
@@ -119,11 +121,8 @@ export function validateLaunchStep(
     if (numberValue(teamShare) > 0) {
       if (!validNonNegativeInteger(cliffMonths))
         errors['team-cliff'] = 'Enter a whole number of months, starting at 0.';
-      if (
-        !validNonNegativeInteger(vestingMonths) ||
-        numberValue(vestingMonths) <= 0
-      )
-        errors['team-vesting'] = 'Enter a positive whole number of months.';
+      if (!validNonNegativeInteger(vestingMonths))
+        errors['team-vesting'] = 'Enter a whole number of months, starting at 0.';
     }
   }
 
@@ -148,14 +147,10 @@ export function validateLaunchStep(
 
   if (step === 'settings') {
     if (draft.method === 'bonding') {
-      validateDates(
-        draft.bonding.startsAt,
-        draft.bonding.endsAt,
-        'bonding-start',
-        'bonding-end',
-        errors,
-        Number(draft.bonding.durationDays),
-      );
+      if (draft.bonding.startsAt && (!Number.isFinite(Date.parse(draft.bonding.startsAt)) || Date.parse(draft.bonding.startsAt) <= Date.now()))
+        errors['bonding-start'] = 'Choose a start time in the future.';
+      if (!validPercent(draft.bonding.creatorFee))
+        errors['creator-fee'] = 'Enter 0–100%, with up to 2 decimal places.';
     }
     if (draft.method === 'fixed') {
       validateDates(

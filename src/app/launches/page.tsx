@@ -10,6 +10,11 @@ type SearchParams = Promise<{
   network?: string | string[];
   owner?: string | string[];
   q?: string | string[];
+  search?: string | string[];
+  direction?: string | string[];
+  pair?: string | string[];
+  page?: string | string[];
+  limit?: string | string[];
 }>;
 
 export default async function ProjectsPage({
@@ -23,7 +28,11 @@ export default async function ProjectsPage({
       Array.isArray(value) ? value[0] : value,
     ]),
   );
-  const requestedPage = Number(params.livePage);
+  const requestedPage = Number(params.page ?? params.livePage);
+  const requestedLimit = Number(params.limit);
+  const limit = Number.isSafeInteger(requestedLimit) && requestedLimit >= 1 && requestedLimit <= 100
+    ? requestedLimit
+    : 20;
   const page = Number.isSafeInteger(requestedPage)
     ? Math.max(1, Math.min(100000, requestedPage))
     : 1;
@@ -45,8 +54,10 @@ export default async function ProjectsPage({
             page={page}
             category={params.category}
             sort={params.sort}
-            direction={params.dir}
-            search={params.q}
+            direction={params.direction ?? params.dir}
+            search={params.search ?? params.q}
+            pair={params.pair}
+            limit={limit}
           />
         </div>
       </div>

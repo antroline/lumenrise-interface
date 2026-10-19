@@ -50,7 +50,7 @@ function stateHooks() {
     },
   };
 }
-function ownerHarness(account = { status: 'registered', profile }, address = 'owner') {
+function ownerHarness(account = { status: 'registered', profile }, address = 'owner', members) {
   const hooks = stateHooks(), calls = [], invalidated = [], observers = [];
   let userId = '42', mutationOptions;
   const api = {
@@ -73,6 +73,7 @@ function ownerHarness(account = { status: 'registered', profile }, address = 'ow
     },
     'lucide-react': { Pencil: 'Pencil', Plus: 'Plus', Trash2: 'Trash2' },
     '@/components/ui/button': { Button: 'Button' },
+    '@/components/app-dialog': Object.fromEntries(['AppDialogContent', 'AppDialogHeader', 'AppDialogFooter'].map(name => [name, name])),
     '@/components/ui/dialog': { Dialog: 'Dialog' },
     '@/components/ui/skeleton': { Skeleton: 'Skeleton' },
     '@/lib/api/client': { getApiUserId: () => userId },
@@ -80,8 +81,8 @@ function ownerHarness(account = { status: 'registered', profile }, address = 'ow
     '@/lib/launchpad': { useLaunchpad: () => ({ address, account }) },
     './launch-team-member-dialog': { LaunchTeamMemberDialog: 'MemberDialog', MemberAvatar: 'MemberAvatar' },
   });
-  const root = exported.LaunchTeam(props);
-  function render() { hooks.reset(); return root?.type(root.props); }
+  const root = exported.LaunchTeam({ ...props, members });
+  function render() { hooks.reset(); return typeof root?.type === 'function' ? root.type(root.props) : root; }
   return { root, render, calls, invalidated, observers,
     mutation: () => mutationOptions, changeUser: (id) => { userId = id; } };
 }
@@ -104,6 +105,20 @@ test('owner sees an obvious add action; members are keyed by memberId and query 
   assert.ok(!nodes.some((node) => node.type === 'a' && node.props.href === null));
 });
 
+test('visitors see public team profiles without private requests or editing controls', () => {
+  const h = ownerHarness({ status: 'signed-out' }, undefined, [{ ...registered, avatarUrl: '/profile.webp' }, external]);
+  const nodes = elements(h.render());
+  assert.deepEqual(nodes.filter((node) => node.type === 'li').map((node) => node.key), ['membership-9', 'external-5']);
+  const identities = nodes.filter((node) => typeof node.type === 'function');
+  assert.equal(identities[0].props.member.name, 'Ava');
+  const details = identities.flatMap((node) => elements(node.type(node.props)));
+  assert.equal(details.find((node) => node.type === 'MemberAvatar').props.identityId, registered.identityId);
+  assert.equal(details.find((node) => node.type === 'MemberAvatar').props.avatarUrl, '/profile.webp');
+  assert.ok(!nodes.some((node) => node.type === 'Button' || node.type === 'MemberDialog'));
+  assert.equal(h.observers.length, 0);
+  assert.equal(h.calls.length, 0);
+});
+
 test('saving registered roles preserves identityId and refreshes the scoped list', async () => {
   const h = ownerHarness();
   let nodes = elements(h.render());
@@ -116,7 +131,8 @@ test('saving registered roles preserves identityId and refreshes the scoped list
   assert.equal(h.calls[0][2], registered.identityId);
   assert.equal(h.calls[0][3], 'Designer');
   assert.equal(h.calls[0][4].network, 'public');
-  assert.equal(h.invalidated.length, 1);
+  assert.equal(h.invalidated.length, 2);
+  assert.equal(JSON.stringify(h.invalidated[1].queryKey), JSON.stringify(['launch', 'public', 'confirmed-contract', 'detail']));
   assert.equal(elements(h.render()).some((node) => node.type === 'MemberDialog'), false);
 });
 
@@ -142,8 +158,9 @@ function formHarness(member = null) {
     'react/jsx-runtime': { jsx, jsxs: jsx },
     '@tanstack/react-query': { useQuery: () => ({ data: [registered], isFetching: false }) },
     'lucide-react': ui(['Check', 'LoaderCircle', 'Search']),
-    '@/components/ui/avatar': ui(['Avatar', 'AvatarFallback', 'AvatarImage']),
+    '@/components/profile-avatar': ui(['ProfileAvatar']),
     '@/components/ui/button': ui(['Button']),
+    '@/components/app-dialog': Object.fromEntries(['AppDialogContent', 'AppDialogHeader', 'AppDialogFooter'].map(name => [name, name])),
     '@/components/ui/dialog': ui(['DialogContent', 'DialogDescription', 'DialogFooter', 'DialogHeader', 'DialogTitle']),
     '@/components/ui/field': ui(['Field', 'FieldDescription', 'FieldGroup', 'FieldLabel']),
     '@/components/ui/input': ui(['Input']),
@@ -155,8 +172,18 @@ function formHarness(member = null) {
     hooks.reset();
     return exported.LaunchTeamMemberDialog({ contractId: 'confirmed-contract', network: 'public', sessionId: '42', member, busy: false, onSave: async (change) => saved.push(change), onCancel() {} });
   }
-  return { render, saved };
+  return { render, saved, MemberAvatar: exported.MemberAvatar };
 }
+
+test('member avatars use profile photos with stable generated identities instead of initials', () => {
+  const { MemberAvatar } = formHarness();
+  for (const member of [registered, external, { ...registered, avatarUrl: '/profile.webp' }]) {
+    const avatar = MemberAvatar(member);
+    assert.equal(avatar.type, 'ProfileAvatar');
+    assert.equal(avatar.props.avatarUrl, member.avatarUrl);
+    assert.equal(avatar.props.seed, member.identityId || member.memberId);
+  }
+});
 
 test('registered editing keeps profile fields read-only and allows a missing X connection', async () => {
   const h = formHarness(registered);

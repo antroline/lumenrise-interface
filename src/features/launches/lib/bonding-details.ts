@@ -22,7 +22,7 @@ export function bondingDetails(
     status: snapshot.status,
     stateStale: false,
     startsAt: p.starts_at.toString(),
-    endsAt: p.ends_at.toString(),
+    endsAt: launch?.bonding?.endsAt === null ? null : p.ends_at.toString(),
     totalSupply: c.total_supply.toString(),
     allocations: {
       curveBps: Number(p.allocations.curve_bps),
@@ -109,8 +109,8 @@ export function durationLabel(seconds: string) {
   return `${value} seconds`;
 }
 
-export function detailDate(seconds: string | undefined) {
-  if (seconds === undefined) return 'Unavailable';
+export function detailDate(seconds: string | null | undefined) {
+  if (seconds == null) return 'Unavailable';
   const millis = BigInt(seconds) * BigInt(1000);
   if (millis < BigInt(0) || millis > BigInt(8_640_000_000_000_000))
     return 'Unavailable';

@@ -13,6 +13,12 @@ type ResultsTransitionState = {
 
 const ResultsTransitionContext = createContext<ResultsTransitionState | null>(null)
 
+// Keep the consumer hook with its private context and provider.
+// oxlint-disable-next-line react/only-export-components
+export function useResultsPending() {
+  return use(ResultsTransitionContext)?.pending ?? false
+}
+
 /** Tracks navigations started by `ResultsLink` so `ResultsStack` can show a skeleton until the new URL renders. */
 export function ResultsTransition({ children }: { children: ReactNode }) {
   const resultKey = `${usePathname()}?${useSearchParams()}`

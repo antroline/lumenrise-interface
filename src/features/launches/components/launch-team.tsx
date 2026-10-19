@@ -27,12 +27,24 @@ type LaunchTeamProps = {
   owner: string;
   contractId: string;
   network: ApiNetwork;
+  members?: TeamMember[];
 };
 
 /** Mounted only for an indexed, confirmed launch. The server authorizes every request. */
 export function LaunchTeam(props: LaunchTeamProps) {
   const { address, account } = useLaunchpad();
-  if (address !== props.owner || account.status !== 'registered') return null;
+  if (address !== props.owner || account.status !== 'registered') {
+    if (!props.members?.length) return null;
+    return (
+      <ul className="mb-4 grid gap-2 sm:grid-cols-2" aria-label="Team members">
+        {props.members.map((member) => (
+          <li key={member.memberId} className="flex min-w-0 items-start gap-3 rounded-xl border border-border bg-card p-3 text-card-foreground">
+            <MemberIdentity member={member} />
+          </li>
+        ))}
+      </ul>
+    );
+  }
   return (
     <OwnerLaunchTeam
       key={`${props.network}:${props.contractId}:${account.profile.userId}:${address}`}
@@ -94,7 +106,10 @@ function OwnerLaunchTeam({
       else await removeTeamMember(contractId, change.member, options);
     },
     onSuccess: async () => {
-      await client.invalidateQueries({ queryKey });
+      await Promise.all([
+        client.invalidateQueries({ queryKey }),
+        client.invalidateQueries({ queryKey: ['launch', network, contractId, 'detail'] }),
+      ]);
     },
   });
 
@@ -161,30 +176,7 @@ function OwnerLaunchTeam({
               key={member.memberId}
               className="flex min-w-0 items-start gap-3 rounded-xl border border-border bg-card p-3 text-card-foreground"
             >
-              <MemberAvatar {...member} />
-              <div className="min-w-0 flex-1 py-0.5">
-                <h3
-                  className="truncate text-sm font-semibold"
-                  title={member.name}
-                >
-                  {member.name}
-                </h3>
-                <p className="mt-0.5 break-words text-xs leading-relaxed text-muted-foreground">
-                  {member.role}
-                </p>
-                {member.xAccount && safeXLink(member.xAccount) && (
-                  <a
-                    href={member.xAccount}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 inline-flex min-h-8 items-center gap-1 rounded-sm text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-                  >
-                    X profile
-                    <ArrowUpRight className="size-3" aria-hidden="true" />
-                    <span className="sr-only"> for {member.name}</span>
-                  </a>
-                )}
-              </div>
+              <MemberIdentity member={member} />
               <div className="-mr-1 flex shrink-0 items-center">
                 <Button
                   type="button"
@@ -249,6 +241,34 @@ function OwnerLaunchTeam({
         )}
       </Dialog>
     </div>
+  );
+}
+
+function MemberIdentity({ member }: { member: TeamMember }) {
+  return (
+    <>
+      <MemberAvatar {...member} />
+      <div className="min-w-0 flex-1 py-0.5">
+        <h3 className="truncate text-sm font-semibold" title={member.name}>
+          {member.name}
+        </h3>
+        <p className="mt-0.5 break-words text-xs leading-relaxed text-muted-foreground">
+          {member.role}
+        </p>
+        {member.xAccount && safeXLink(member.xAccount) && (
+          <a
+            href={member.xAccount}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 inline-flex min-h-8 items-center gap-1 rounded-sm text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            X profile
+            <ArrowUpRight className="size-3" aria-hidden="true" />
+            <span className="sr-only"> for {member.name}</span>
+          </a>
+        )}
+      </div>
+    </>
   );
 }
 

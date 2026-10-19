@@ -32,6 +32,7 @@ export function EconomicsStep({ draft, setDraft, errors = {} }: DraftProps) {
       {draft.method === 'bonding' && (
         <NumberField
           id="curve-target"
+          layout="launch-plan"
           label="Graduation target"
           unit={draft.quote}
           value={draft.bonding.target}

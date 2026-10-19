@@ -1,24 +1,34 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { StrKey } from '@stellar/stellar-sdk';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import {
   ProjectsTable,
   ProjectsTableSkeleton,
 } from '@/components/projects-table';
-import { ResultsLink } from '@/components/results-transition';
+import { ResultsLink, useResultsPending } from '@/components/results-transition';
 import { Button } from '@/components/ui/button';
-import { MobileProjectList, MobileProjectListSkeleton } from './mobile-project-list';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { LaunchFilters } from './launch-filters';
+import {
+  MobileProjectList,
+  MobileProjectListSkeleton,
+} from './mobile-project-list';
 import {
   Empty,
   EmptyHeader,
   EmptyTitle,
   EmptyDescription,
 } from '@/components/ui/empty';
-import { getLaunchList, type MarketResult } from '@/lib/api/launches/market';
+import { ApiError } from '@/lib/api/client';
 import {
   compactAmount,
   displayAmount,
@@ -30,7 +40,6 @@ import {
 } from '@/features/launches/hooks/queries';
 import type { ApiNetwork } from '@/lib/api/launches/types';
 import {
-  projectColumns,
   type ProjectColumn,
   type SortDirection,
   type ProjectPhase,
@@ -40,19 +49,18 @@ import { cn } from '@/lib/utils';
 import { safeExternalUrl } from '../lib/external-url';
 import {
   categories,
+  activeDirectoryFilterCount,
+  launchSortLabels as sortLabels,
   directoryCategory,
   directorySort,
   directorySorts,
   directoryPage,
-  selectDirectoryLaunches,
+  directoryHref,
+  monetarySort,
   type DirectorySort,
+  type DirectoryRequest,
 } from '../lib/directory';
-import {
-  DIRECTORY_MAX_MARKETS,
-  DIRECTORY_PAGE_SIZE,
-  getDirectory,
-  getDirectoryMarkets,
-} from '../lib/directory-data';
+import { directoryKey, getDirectory } from '../lib/directory-data';
 
 const phases = {
   Scheduled: 'upcoming',
@@ -60,24 +68,18 @@ const phases = {
   Graduated: 'launched',
   Failed: 'failed',
 } satisfies Record<string, ProjectPhase>;
-const sortLabels: Partial<Record<DirectorySort, string>> = {
-  trending: 'Trending',
-  newest: 'Newest',
-  volume: 'Top Volume',
-  graduation: 'Almost Graduated',
-};
 const controlClass =
-  'inline-flex h-7.5 min-h-7.5 min-w-0 items-center justify-center rounded-sm px-0 text-[11px] font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-foreground min-[375px]:text-[12.5px] lg:h-8 lg:min-h-0 lg:shrink-0 lg:rounded-md lg:px-3 lg:text-xs lg:pointer-coarse:min-h-11';
+  'inline-flex h-8 min-w-0 shrink-0 items-center justify-center rounded-md px-2 text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-foreground pointer-coarse:min-h-11';
 const activeClass =
   'bg-white text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50';
 const inactiveClass =
   'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50';
+const statsHelp =
+  'Rolling 24-hour statistics cover verified client-submitted trades recorded by the backend; they may not include all on-chain activity.';
 
-function directoryDate(seconds?: string) {
-  if (!seconds) return {};
-  const ms = BigInt(seconds) * BigInt(1000);
-  if (ms > BigInt(8_640_000_000_000_000)) return {};
-  const date = new Date(Number(ms));
+function directoryDate(iso: string | null) {
+  if (!iso) return { short: '—', full: 'Contract creation date unknown' };
+  const date = new Date(iso);
   return {
     short: date.toLocaleDateString('en-US', {
       timeZone: 'UTC',
@@ -101,6 +103,8 @@ export function PublicProjects({
   sort: sortParam,
   direction,
   search = '',
+  pair: pairParam = '',
+  limit = 20,
   showMobileProgress = false,
 }: {
   network: ApiNetwork;
@@ -110,103 +114,114 @@ export function PublicProjects({
   sort?: string;
   direction?: string;
   search?: string;
+  pair?: string;
+  limit?: number;
   showMobileProgress?: boolean;
 }) {
   const visible = usePageVisible();
   const router = useRouter();
   const client = useQueryClient();
   const category = directoryCategory(categoryParam);
-  const requestedSort = directorySort(sortParam);
+  const sort = directorySort(sortParam);
   const selectedDirection: SortDirection = direction === 'asc' ? 'asc' : 'desc';
-  const catalog = useQuery({
-    ...publicQueryOptions,
-    queryKey: ['directory', network, owner ?? ''],
-    queryFn: ({ signal }) => getDirectory(network, owner, signal),
-    enabled: visible,
-    retry: false,
-  });
-  const complete = catalog.data?.complete ?? false;
-  const serverPagination = directoryPage(catalog.data?.total ?? 0, page);
-  const pageQuery = useQuery({
-    ...publicQueryOptions,
-    queryKey: ['launch-list', network, owner ?? '', serverPagination.page],
-    queryFn: ({ signal }) =>
-      getLaunchList(
-        network,
-        serverPagination.page,
-        DIRECTORY_PAGE_SIZE,
-        owner,
-        signal,
-      ),
-    enabled:
-      visible && !!catalog.data && !complete && serverPagination.page > 1,
-  });
-  const query =
-    catalog.data && !complete && serverPagination.page > 1
-      ? pageQuery
-      : catalog;
-  const launches = query.data?.launches ?? [];
-  const recentSupported = complete && launches.length <= DIRECTORY_MAX_MARKETS;
-  const volumeSupported =
-    recentSupported && new Set(launches.map((l) => l.pair)).size <= 1;
-  const rankingUnavailable =
-    (requestedSort === 'trending' && !recentSupported) ||
-    (requestedSort === 'volume' && !volumeSupported);
-  const sort = rankingUnavailable ? 'newest' : requestedSort;
-  const recentRanking = sort === 'volume' || sort === 'trending';
-  const metrics = useQuery({
-    ...publicQueryOptions,
-    queryKey: [
-      'directory-markets',
-      network,
-      launches
-        .map((l) => l.contractId)
-        .sort()
-        .join(','),
-    ],
-    queryFn: ({ signal }) => getDirectoryMarkets(launches, network, signal),
-    enabled: visible && recentSupported && recentRanking && launches.length > 0,
-    retry: false,
-    staleTime: 60_000,
-    refetchInterval: 120_000,
-  });
-  useEffect(() => {
-    if (!visible) {
-      void client.cancelQueries({
-        queryKey: ['directory', network, owner ?? ''],
-      });
-      void client.cancelQueries({
-        queryKey: ['launch-list', network, owner ?? '', serverPagination.page],
-      });
-      void client.cancelQueries({ queryKey: ['directory-markets', network] });
-    }
-  }, [visible, client, network, owner, serverPagination.page]);
-  const markets = metrics.data ?? new Map<string, MarketResult>();
-  const volumePending =
-    recentRanking && launches.length > 0 && metrics.isPending;
-  const rankingError = recentRanking && metrics.isError && !metrics.data;
-  const filtered = selectDirectoryLaunches(launches, {
+  const pair = pairParam;
+  const request: DirectoryRequest = {
+    network,
+    page,
+    limit,
+    owner,
     category,
-    search,
     sort,
     direction: selectedDirection,
-    markets,
+    search,
+    pair,
+  };
+  const queryKey = directoryKey(request);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [applyingFilters, setApplyingFilters] = useState(false);
+  const navigationPending = useResultsPending();
+  const needsPair = monetarySort(sort) && !StrKey.isValidContract(pair);
+  const query = useQuery({
+    ...publicQueryOptions,
+    queryKey,
+    queryFn: ({ signal }) => getDirectory(request, signal),
+    enabled: visible && !needsPair,
+    refetchOnMount: 'always',
   });
-  const total = complete ? filtered.length : (catalog.data?.total ?? 0);
-  const pagination = directoryPage(total, page);
+  useEffect(() => {
+    if (!visible)
+      void client.cancelQueries({
+        queryKey: directoryKey({
+          network,
+          page,
+          limit,
+          owner,
+          category,
+          sort,
+          direction: selectedDirection,
+          search,
+          pair,
+        }),
+        exact: true,
+      });
+  }, [
+    visible,
+    client,
+    network,
+    page,
+    limit,
+    owner,
+    category,
+    sort,
+    selectedDirection,
+    search,
+    pair,
+  ]);
+  const total = query.data?.total ?? 0;
+  const pagination = directoryPage(total, page, limit);
   const currentPage = pagination.page;
   const pageCount = pagination.pageCount;
-  const limit = DIRECTORY_PAGE_SIZE;
-  const pageLaunches = complete
-    ? filtered.slice(pagination.offset, pagination.offset + limit)
-    : filtered;
-  const rows: (ProjectTableRow & { href: string })[] = pageLaunches.map((l) => {
+  const href = (changes: Partial<DirectoryRequest> = {}) =>
+    directoryHref(request, changes);
+  const activeCount = activeDirectoryFilterCount(request);
+  const clearFiltersHref = href({
+    category: 'all',
+    search: '',
+    owner: '',
+    limit: 20,
+    pair: monetarySort(sort) ? pair : '',
+  });
+  const canonicalHref = directoryHref(request, { page: currentPage });
+  useEffect(() => {
+    if (query.data && !query.isFetching && currentPage !== page)
+      router.replace(canonicalHref, { scroll: false });
+  }, [query.data, query.isFetching, currentPage, page, canonicalHref, router]);
+  async function applyFilters(next: DirectoryRequest) {
+    setApplyingFilters(true);
+    try {
+      await client.fetchQuery({
+        ...publicQueryOptions,
+        queryKey: directoryKey(next),
+        queryFn: ({ signal }) => getDirectory(next, signal),
+        retry: false,
+      });
+      router.push(directoryHref(next), { scroll: false });
+    } finally {
+      setApplyingFilters(false);
+    }
+  }
+  const rows: (ProjectTableRow & { href: string })[] = (
+    query.data?.launches ?? []
+  ).map((l) => {
     const b = l.bonding,
-      pair = pairLabel(l.pair, network);
-    const date = directoryDate(b?.startsAt);
-    const amount = b?.state.quoteReserve;
-    const website = safeExternalUrl(l.metadata.website);
-    const xUrl = safeExternalUrl(l.metadata.xAccount);
+      label = pairLabel(l.pair, network),
+      date = directoryDate(l.createdAt);
+    const amount =
+      sort === 'topVolume'
+        ? l.volume24h.grossPairAmount
+        : b?.state.quoteReserve;
+    const website = safeExternalUrl(l.metadata.website),
+      xUrl = safeExternalUrl(l.metadata.xAccount);
     const xAccount =
       xUrl &&
       ['x.com', 'www.x.com', 'twitter.com', 'www.twitter.com'].includes(
@@ -226,15 +241,15 @@ export function PublicProjects({
       website,
       xAccount,
       href: `/launch/${l.contractId}?network=${network}`,
-      category: b ? 'Bonding Curve' : '—',
+      category: 'Bonding Curve',
       phase: b ? phases[b.status] : 'unavailable',
       graduation: b
         ? {
             target:
               BigInt(b.curve.graduationTarget) > BigInt(0)
-                ? format(b.curve.graduationTarget) + ' ' + pair
+                ? format(b.curve.graduationTarget) + ' ' + label
                 : '—',
-            targetTitle: displayAmount(b.curve.graduationTarget) + ' ' + pair,
+            targetTitle: displayAmount(b.curve.graduationTarget) + ' ' + label,
             progressBps: b.progressBps,
             stale: b.stateStale,
             graduated: b.status === 'Graduated' || b.state.graduated,
@@ -244,61 +259,33 @@ export function PublicProjects({
                 : b.status,
           }
         : undefined,
-      figure: amount === undefined ? '—' : format(amount) + ' ' + pair,
+      figure: amount === undefined ? '—' : format(amount) + ' ' + label,
       figureTitle:
         amount === undefined
           ? 'Metric unavailable'
-          : displayAmount(amount) + ' ' + pair + ' · indexed curve reserve',
+          : displayAmount(amount) +
+            ' ' +
+            label +
+            ' · ' +
+            (sort === 'topVolume' ? statsHelp : 'indexed curve reserve'),
       figureContext: '',
       participants: b?.state.buyerCount ?? null,
-      date: date.short ?? '—',
+      date: date.short,
       dateTitle: date.full,
-      dateLabel: date.short ? 'opens · UTC' : undefined,
+      dateLabel: l.createdAt ? 'created · UTC' : undefined,
     };
   });
-  function href(
-    nextPage: number,
-    nextSort: DirectorySort = sort,
-    nextDirection = selectedDirection,
-    nextCategory = category,
-    nextSearch = search,
-  ) {
-    const q = new URLSearchParams({
-      network,
-      livePage: String(nextPage),
-      category: nextCategory,
-      sort: nextSort,
-      dir: nextDirection,
-    });
-    if (owner) q.set('owner', owner);
-    if (nextSearch) q.set('q', nextSearch);
-    return `/launches?${q}`;
-  }
-  const canonicalHref = href(currentPage, sort);
-  useEffect(() => {
-    if (
-      catalog.data &&
-      !query.isPending &&
-      (currentPage !== page || rankingUnavailable)
-    )
-      router.replace(canonicalHref, { scroll: false });
-  }, [
-    catalog.data,
-    query.isPending,
-    currentPage,
-    page,
-    rankingUnavailable,
-    canonicalHref,
-    router,
-  ]);
-  const selectedColumn: ProjectColumn | undefined =
-    sort === 'graduation'
-      ? 'phase'
-      : sort === 'trending' || sort === 'volume'
-        ? undefined
-        : sort === 'newest'
-          ? 'date'
-          : sort;
+  const sortColumns: Partial<Record<DirectorySort, ProjectColumn>> = {
+    newest: 'date',
+    almostGraduated: 'phase',
+    topVolume: 'figure',
+    name: 'name',
+    category: 'category',
+    phase: 'phase',
+    figure: 'figure',
+    participants: 'participants',
+  };
+  const selectedColumn = sortColumns[sort];
   const sorting = {
     column: selectedColumn,
     direction: selectedDirection,
@@ -312,115 +299,137 @@ export function PublicProjects({
           : column === 'name' || column === 'category'
             ? 'asc'
             : 'desc';
-      // The active header reverses the primary ranking without changing its metric.
-      const nextSort = column === selectedColumn ? sort : column;
-      return { href: href(1, nextSort, next), direction: next };
+      return {
+        href: href({
+          sort: column === selectedColumn ? sort : directorySort(column),
+          direction: next,
+        }),
+        direction: next,
+      };
     },
   };
-  const figureLabel = 'Pool balance';
+  const figureLabel = sort === 'topVolume' ? 'Volume · 24h' : 'Pool balance';
+  const filtered = !!(
+    search ||
+    owner ||
+    category !== 'all' ||
+    pair ||
+    sort === 'almostGraduated'
+  );
+  const busy = applyingFilters || navigationPending ||
+    (!needsPair && (query.isPending || query.isFetching));
+  const errorTitle =
+    query.error instanceof ApiError && query.error.status === 400
+      ? 'Invalid launch filters'
+      : query.error instanceof ApiError && query.error.status === 503
+        ? 'Launch service temporarily unavailable'
+        : 'Could not load launches';
+
   return (
     <section
       className="mb-8 flex min-w-0 flex-col gap-4"
       aria-label="Project directory"
-      aria-busy={query.isPending || volumePending}
+      aria-busy={busy}
     >
-      <div className="-mx-2 flex min-w-0 flex-wrap items-center justify-between gap-3 sm:-mx-3 lg:mx-0">
+      <div className="-mx-2 flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 sm:-mx-3 lg:mx-0">
+        <div className="flex min-w-0 items-center gap-2">
+          <nav
+            aria-label="Launch category"
+            className="min-w-0 rounded-lg bg-neutral-200/60 p-1 dark:bg-neutral-800"
+          >
+            <div className="flex gap-1">
+              {categories.map((item) => (
+                <ResultsLink
+                  key={item}
+                  href={href({ category: directoryCategory(item) })}
+                  scroll={false}
+                  aria-current={
+                    directoryCategory(item) === category ? 'page' : undefined
+                  }
+                  className={cn(
+                    controlClass,
+                    directoryCategory(item) === category
+                      ? activeClass
+                      : inactiveClass,
+                  )}
+                >
+                  {item}
+                </ResultsLink>
+              ))}
+            </div>
+          </nav>
+          <LaunchFilters
+            request={request}
+            open={filtersOpen}
+            onOpenChange={setFiltersOpen}
+            onApply={applyFilters}
+          />
+          {activeCount > 0 && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="pointer-coarse:size-11"
+                    render={<ResultsLink href={clearFiltersHref} scroll={false} />}
+                  />
+                }
+                aria-label="Clear filters"
+              >
+                <X aria-hidden="true" />
+              </TooltipTrigger>
+              <TooltipContent>Clear filters</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
         <nav
-          aria-label="Launch category"
-          className="hidden w-full min-w-0 max-w-full rounded-lg bg-neutral-200/60 p-1 lg:block lg:w-auto lg:overflow-x-auto dark:bg-neutral-800"
+          aria-label="Project sorting"
+          className="w-full min-w-0 max-w-full md:ml-auto md:w-auto"
         >
-          <div className="grid grid-cols-[minmax(0,0.7fr)_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)] gap-1 lg:flex lg:w-max">
-            {categories.map((item) => (
+          <div className="flex flex-wrap items-center gap-1 rounded-md bg-neutral-200/60 p-1 lg:bg-transparent lg:p-0 dark:bg-neutral-800 lg:dark:bg-transparent">
+            <span className="mr-1 shrink-0 text-xs whitespace-nowrap text-muted-foreground">
+              Sort by:
+            </span>
+            {directorySorts.map((item) => (
               <ResultsLink
                 key={item}
-                href={href(1, sort, selectedDirection, item)}
+                href={href({ sort: item, direction: 'desc' })}
                 scroll={false}
-                aria-current={item === category ? 'page' : undefined}
+                title={
+                  item === 'trending' || item === 'topVolume'
+                    ? statsHelp
+                    : item === 'newest'
+                      ? 'Verified contract-creation time'
+                      : 'Open, ungraduated curves ranked by reserve / target'
+                }
+                aria-current={sort === item ? 'page' : undefined}
                 className={cn(
                   controlClass,
-                  item === category ? activeClass : inactiveClass,
+                  sort === item ? activeClass : inactiveClass,
                 )}
               >
-                {item}
+                {sortLabels[item]}
               </ResultsLink>
             ))}
           </div>
         </nav>
-        <nav
-          aria-label="Project sorting"
-          className="w-full min-w-0 max-w-full lg:ml-auto lg:w-auto lg:overflow-x-auto"
-        >
-          <div className="grid grid-cols-3 items-center gap-1 rounded-md bg-neutral-200/60 p-1 lg:flex lg:w-max lg:rounded-none lg:bg-transparent lg:p-0 dark:bg-neutral-800 lg:dark:bg-transparent">
-            <span className="mr-2 hidden text-xs text-neutral-600 lg:inline dark:text-neutral-400">
-              Sort by
-            </span>
-            {directorySorts.map((item) => {
-              const disabled =
-                item === 'volume'
-                  ? !volumeSupported
-                  : item === 'trending' && !recentSupported;
-              const reason =
-                item === 'volume' && recentSupported
-                  ? 'Volume cannot be compared across payment assets.'
-                  : `Recent rankings require a complete directory of ${DIRECTORY_MAX_MARKETS} projects or fewer.`;
-              return disabled ? (
-                <button
-                  key={item}
-                  type="button"
-                  disabled
-                  title={reason}
-                  className={cn(
-                    controlClass,
-                    inactiveClass,
-                    item === 'volume' && 'hidden lg:inline-flex',
-                    'cursor-not-allowed opacity-50',
-                  )}
-                >
-                  {sortLabels[item]}
-                </button>
-              ) : (
-                <ResultsLink
-                  key={item}
-                  href={href(1, item, 'desc')}
-                  scroll={false}
-                  aria-current={sort === item ? 'page' : undefined}
-                  className={cn(
-                    controlClass,
-                    item === 'volume' && 'hidden lg:inline-flex',
-                    sort === item ? activeClass : inactiveClass,
-                  )}
-                >
-                  {sortLabels[item]}
-                </ResultsLink>
-              );
-            })}
-          </div>
-        </nav>
-        {/* <p
-          className="text-xs leading-5 text-neutral-600 dark:text-neutral-400"
-          id="directory-scope"
-        >
-          {catalog.data && !complete &&
-            'Large directory: search, categories and sorting apply to this page only. '}
-          {sort === 'trending' && 'Trending ranks recorded trades in the last 24 hours. '}
-          {sort === 'newest' && 'Newest ranks by scheduled opening time. '}
-          {sort === 'volume' && 'Ranked by recorded gross volume in the last 24 hours. '}
-          {sort === 'figure' && 'Balances ranked within each payment asset. '}
-          {sort === 'graduation' &&
-            'Open bonding curves with a known target only. '}
-          {catalog.data && !recentSupported && 'Recent rankings are unavailable for larger directories. '}
-          {recentSupported && !volumeSupported && 'Top Volume is unavailable across different payment assets.'}
-        </p> */}
       </div>
-      {catalog.data && !complete && (
-        <p className="text-xs text-muted-foreground lg:hidden">
-          Search, categories and sorting apply to this page only. Recent rankings are unavailable for larger directories.
-        </p>
-      )}
-      <div
-        className="@container -mx-4 min-w-0 border-y border-neutral-200 bg-white sm:-mx-5 lg:mx-0 lg:overflow-hidden lg:rounded-xl lg:border dark:border-neutral-800 dark:bg-neutral-900"
-      >
-        {query.isPending || (volumePending && !rankingError) ? (
+      <div className="@container -mx-4 min-w-0 border-y border-neutral-200 bg-white sm:-mx-5 lg:mx-0 lg:overflow-hidden lg:rounded-xl lg:border dark:border-neutral-800 dark:bg-neutral-900">
+        {needsPair ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>Select a payment asset</EmptyTitle>
+              <EmptyDescription>
+                Choose the payment asset in Filters to rank volume or pool
+                balances within one asset.
+              </EmptyDescription>
+            </EmptyHeader>
+            <Button variant="outline" onClick={() => setFiltersOpen(true)}>
+              Choose payment asset
+            </Button>
+          </Empty>
+        ) : busy ? (
           <>
             <div className="lg:hidden">
               <MobileProjectListSkeleton rows={5} />
@@ -430,43 +439,37 @@ export function PublicProjects({
                 rows={5}
                 directory
                 figureLabel={figureLabel}
-                dateLabel="Launch date"
+                dateLabel="Created"
               />
             </div>
           </>
         ) : query.isError && !query.data ? (
           <Empty>
             <EmptyHeader>
-              <EmptyTitle>Could not load launches</EmptyTitle>
+              <EmptyTitle>{errorTitle}</EmptyTitle>
               <EmptyDescription>{query.error.message}</EmptyDescription>
             </EmptyHeader>
             <Button variant="outline" onClick={() => void query.refetch()}>
               Retry
             </Button>
           </Empty>
-        ) : rankingError ? (
-          <Empty>
-            <EmptyHeader>
-              <EmptyTitle>Could not load recent rankings</EmptyTitle>
-              <EmptyDescription>{metrics.error.message}</EmptyDescription>
-            </EmptyHeader>
-            <Button variant="outline" onClick={() => void metrics.refetch()}>
-              Retry
-            </Button>
-          </Empty>
         ) : rows.length ? (
           <>
             <div className="lg:hidden">
-              <MobileProjectList rows={rows} showProgress={showMobileProgress} />
+              <MobileProjectList
+                rows={rows}
+                showProgress={showMobileProgress}
+                figureLabel={figureLabel}
+              />
             </div>
             <div className="hidden lg:block">
               <ProjectsTable
                 directory
                 rows={rows}
                 figureLabel={figureLabel}
-                dateLabel="Launch date"
+                dateLabel="Created"
                 sorting={sorting}
-                caption={`Indexed projects on page ${currentPage}. ${sortLabels[sort] ?? (sort === 'phase' ? 'Graduation' : projectColumns.find((c) => c.key === sort)?.label)}, ${selectedDirection === 'asc' ? 'ascending' : 'descending'}. ${complete ? 'Filtered and ranked across all projects.' : 'Rankings are limited to this page.'} Participants are indexed buyers; pool balances are curve reserves.`}
+                caption={`Projects on page ${currentPage}, filtered and ordered by the backend. ${sortLabels[sort]}, ${selectedDirection}. ${statsHelp}`}
               />
             </div>
           </>
@@ -474,17 +477,17 @@ export function PublicProjects({
           <Empty>
             <EmptyHeader>
               <EmptyTitle>
-                {launches.length ? 'No matching projects' : 'No launches yet'}
+                {filtered ? 'No matching projects' : 'No launches yet'}
               </EmptyTitle>
               <EmptyDescription>
-                {launches.length
-                  ? 'Try another name, symbol or category.'
+                {filtered
+                  ? 'Try another name, symbol or filter.'
                   : 'Launches will appear here once available.'}
               </EmptyDescription>
             </EmptyHeader>
-            {(search || category !== 'All' || sort === 'graduation') && (
+            {activeCount > 0 && (
               <Link
-                href={href(1, 'newest', 'desc', 'All', '')}
+                href={clearFiltersHref}
                 className="rounded text-sm underline underline-offset-4 focus-visible:outline-2"
               >
                 Clear filters
@@ -493,27 +496,12 @@ export function PublicProjects({
           </Empty>
         )}
       </div>
-      {recentRanking && metrics.isError && metrics.data && (
+      {query.isError && query.data && (
         <div
           role="alert"
           className="flex flex-wrap items-center gap-2 text-xs text-destructive"
         >
-          Could not refresh recent rankings. Showing the last fetched metrics.
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void metrics.refetch()}
-          >
-            Retry rankings
-          </Button>
-        </div>
-      )}
-      {query.isError && query.data && (
-        <div
-          role="alert"
-          className="flex items-center gap-2 text-xs text-destructive"
-        >
-          Could not refresh projects. Showing the last fetched page.
+          {errorTitle}. Showing the last fetched page.
           <Button
             size="sm"
             variant="outline"
@@ -523,51 +511,59 @@ export function PublicProjects({
           </Button>
         </div>
       )}
-      {query.data && (
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-600 dark:text-neutral-400">
+      {query.data && !needsPair && (
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
           <p className="hidden tabular-nums lg:block" aria-live="polite">
-            {total && (complete ? rows.length : launches.length)
-              ? `${(currentPage - 1) * limit + 1}–${Math.min(total, (currentPage - 1) * limit + (complete ? rows.length : launches.length))} of ${total.toLocaleString('en-US')} projects${complete ? '' : ` · ${rows.length} matches on this page`}`
+            {rows.length
+              ? `${(page - 1) * limit + 1}–${Math.min(total, (page - 1) * limit + rows.length)} of ${total.toLocaleString('en-US')} projects`
               : `0 shown · ${total} projects`}
           </p>
-          <nav
-            aria-label="Project pagination"
-            className="flex w-full min-w-0 items-center justify-between gap-2 lg:w-auto lg:justify-start"
-          >
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="size-11 lg:size-control-sm pointer-coarse:size-11"
-              disabled={currentPage <= 1}
-              nativeButton={currentPage <= 1}
-              render={
-                currentPage > 1 ? (
-                  <Link href={href(currentPage - 1)} scroll={false} />
-                ) : undefined
-              }
-              aria-label="Previous page"
+          {total > 0 && (
+            <nav
+              aria-label="Project pagination"
+              className="flex w-full min-w-0 items-center justify-between gap-2 lg:w-auto lg:justify-start"
             >
-              <ChevronLeft aria-hidden="true" />
-            </Button>
-            <span className="px-1 tabular-nums" aria-current="page">
-              Page {currentPage} of {pageCount}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="size-11 lg:size-control-sm pointer-coarse:size-11"
-              disabled={currentPage >= pageCount}
-              nativeButton={currentPage >= pageCount}
-              render={
-                currentPage < pageCount ? (
-                  <Link href={href(currentPage + 1)} scroll={false} />
-                ) : undefined
-              }
-              aria-label="Next page"
-            >
-              <ChevronRight aria-hidden="true" />
-            </Button>
-          </nav>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="size-11 lg:size-control-sm pointer-coarse:size-11"
+                disabled={currentPage <= 1}
+                nativeButton={currentPage <= 1}
+                render={
+                  currentPage > 1 ? (
+                    <ResultsLink
+                      href={href({ page: currentPage - 1 })}
+                      scroll={false}
+                    />
+                  ) : undefined
+                }
+                aria-label="Previous page"
+              >
+                <ChevronLeft aria-hidden="true" />
+              </Button>
+              <span className="px-1 tabular-nums" aria-current="page">
+                Page {total ? currentPage : 0} of {pageCount}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="size-11 lg:size-control-sm pointer-coarse:size-11"
+                disabled={currentPage >= pageCount}
+                nativeButton={currentPage >= pageCount}
+                render={
+                  currentPage < pageCount ? (
+                    <ResultsLink
+                      href={href({ page: currentPage + 1 })}
+                      scroll={false}
+                    />
+                  ) : undefined
+                }
+                aria-label="Next page"
+              >
+                <ChevronRight aria-hidden="true" />
+              </Button>
+            </nav>
+          )}
         </div>
       )}
     </section>

@@ -197,7 +197,7 @@ export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
                   unit="months"
                   value={draft.allocation.vestingMonths}
                   onChange={(vestingMonths) => update({ vestingMonths })}
-                  help="Number of months over which team tokens gradually unlock after the cliff."
+                  help="Number of months over which team tokens gradually unlock after the cliff. Set 0 for no gradual vesting."
                   error={errors['team-vesting']}
                 />
               </FieldGroup>

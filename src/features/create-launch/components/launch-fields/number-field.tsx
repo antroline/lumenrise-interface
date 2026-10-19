@@ -1,5 +1,6 @@
 'use client';
 
+import { cn } from '@/lib/utils';
 import { FieldDescription, FieldLabel, Field } from '@/components/ui/field';
 import { LaunchFieldError } from '../launch-motion';
 import { FieldSurface, LaunchInput } from './field-controls';
@@ -23,6 +24,7 @@ export function NumberField({
   groupThousands = false,
   descriptionId,
   invalid = false,
+  layout = 'default',
 }: {
   id: string;
   label: string;
@@ -37,6 +39,7 @@ export function NumberField({
   groupThousands?: boolean;
   descriptionId?: string;
   invalid?: boolean;
+  layout?: 'default' | 'launch-plan';
 }) {
   function changeValue(input: HTMLInputElement) {
     const nextValue = groupThousands
@@ -65,8 +68,8 @@ export function NumberField({
 
   return (
     <Field data-invalid={!!error || invalid}>
-      <FieldSurface>
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-1">
+      <FieldSurface className={layout === 'launch-plan' ? 'py-3 studio-compact:py-2' : undefined}>
+        <div className={cn("flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-1", layout === 'launch-plan' && 'gap-y-2')}>
           <div className="flex min-h-7 studio-compact:min-h-5 min-w-0 items-center gap-1">
             <FieldLabel
               htmlFor={id}
@@ -83,10 +86,11 @@ export function NumberField({
               options={presets}
               onChange={onChange}
               variant="inline"
+              className={layout === 'launch-plan' ? '-mr-1 gap-1 [&>button]:rounded-md' : undefined}
             />
           )}
         </div>
-        <div className="mt-1 flex min-w-0 items-end gap-2">
+        <div className={cn("mt-1 flex min-w-0 gap-2", layout === 'launch-plan' ? 'items-center' : 'items-end')}>
           <LaunchInput
             id={id}
             type="text"
@@ -103,10 +107,10 @@ export function NumberField({
                 .filter(Boolean)
                 .join(' ') || undefined
             }
-            className="flex-1 tabular-nums"
+            className={cn("flex-1 tabular-nums", layout === 'launch-plan' && 'h-10 text-2xl studio-compact:h-9')}
           />
           {unit && (
-            <span className="inline-flex shrink-0 items-center gap-2 pb-1 text-lg font-semibold text-foreground sm:text-xl">
+            <span className={cn("inline-flex shrink-0 items-center gap-2 text-lg font-semibold text-foreground sm:text-xl", layout !== 'launch-plan' && 'pb-1')}>
               {(unit === 'XLM' || unit === 'USDC') && (
                 <QuoteIcon quote={unit} className="size-6 sm:size-7" />
               )}

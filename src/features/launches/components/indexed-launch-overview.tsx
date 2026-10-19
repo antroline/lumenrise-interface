@@ -238,6 +238,7 @@ export function IndexedLaunchOverview({
   const metadata = snapshot?.config.params.metadata ?? launch?.metadata;
   const pairAddress = snapshot?.config.params.pair ?? launch?.pair;
   const owner = snapshot?.config.params.owner ?? launch?.owner;
+  const ownerProfile = launch?.team?.find((member) => member.kind === 'owner');
   const label = pairLabel(pairAddress, network);
   const pair =
     label === 'XLM'
@@ -298,15 +299,15 @@ export function IndexedLaunchOverview({
     },
     {
       icon: Clock3,
-      label: b?.status === 'Scheduled' ? 'Trading opens' : 'Configured end',
+      label: b?.status === 'Scheduled' ? 'Trading opens' : 'Trading expiry',
       help:
         b?.status === 'Scheduled'
           ? 'The configured start of curve trading.'
-          : 'The configured end date. This contract does not define an automatic action at that date.',
+          : b?.endsAt === null ? 'Current curves trade until graduation, with no time-based expiry.' : 'The configured end date for this legacy curve.',
       value: b
-        ? relativeTime(b.status === 'Scheduled' ? b.startsAt : b.endsAt, now)
+        ? b.status === 'Scheduled' ? relativeTime(b.startsAt, now) : b.endsAt === null ? 'No expiry' : relativeTime(b.endsAt, now)
         : 'Unavailable',
-      hint: b
+      hint: b && (b.status === 'Scheduled' || b.endsAt !== null)
         ? detailDate(b.status === 'Scheduled' ? b.startsAt : b.endsAt)
         : undefined,
     },
@@ -371,15 +372,23 @@ export function IndexedLaunchOverview({
                   : 'upcoming',
         },
         {
-          label: 'Configured end',
-          value: shortDate(BigInt(b.endsAt)),
-          caption: `${new Date(Number(b.endsAt) * 1000).toLocaleTimeString('en-GB', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' })} UTC`,
-          detail:
-            'Set in the configuration; the contract does not define what happens at this date.',
-          state: now / 1000 >= Number(b.endsAt) ? 'done' : 'upcoming',
+          label: b.endsAt === null ? 'Created' : 'Configured end',
+          value: b.endsAt === null
+            ? launch?.createdAt ? new Date(launch.createdAt).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown'
+            : shortDate(BigInt(b.endsAt)),
+          caption: b.endsAt === null ? 'Contract creation · UTC' : 'Legacy expiry · UTC',
+          detail: b.endsAt === null
+            ? 'Verified on-chain contract creation. Trading has no expiry and continues until graduation.'
+            : 'Explicit expiry in this legacy configuration.',
+          state: b.endsAt === null ? launch?.createdAt ? 'done' : 'upcoming' : now / 1000 >= Number(b.endsAt) ? 'done' : 'upcoming',
         },
       ]
     : [];
+
+  if (b?.endsAt === null) {
+    const creation = timeline.pop();
+    if (creation) timeline.unshift(creation);
+  }
 
   const links = {
     website: launch?.metadata.website,
@@ -585,11 +594,12 @@ export function IndexedLaunchOverview({
 
               {owner && (
                 <LaunchSection id="creator" title="Team" collapsible accordionVariant="plain">
-                  {launch && <LaunchTeam owner={launch.owner} contractId={address} network={network} />}
+                  {launch && <LaunchTeam owner={launch.owner} contractId={address} network={network} members={launch.team?.filter((member) => member.kind !== 'owner')} />}
                   <LaunchCreator
                     owner={owner}
                     network={network}
                     currentId={address}
+                    profile={ownerProfile?.address === owner ? ownerProfile : undefined}
                   />
                 </LaunchSection>
               )}

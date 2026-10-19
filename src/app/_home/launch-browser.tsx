@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ApiNetwork } from '@/lib/api/launches/types';
 import { ProjectsTable, ProjectsTableSkeleton } from '@/components/projects-table';
-import { compactAmount, pairLabel, unixDate } from '@/lib/api/launches/display';
+import { compactAmount, pairLabel } from '@/lib/api/launches/display';
 import type { ProjectPhase, ProjectTableRow } from '@/lib/project-table';
 import { useHomeLaunches, type HomeLaunch } from './use-home-launches';
 
@@ -57,8 +57,8 @@ function LaunchTablePreview({ launches, network, filter }: { launches: HomeLaunc
       figure: `${compactAmount(b.state.quoteReserve)} ${pair}`,
       figureContext: '',
       participants: b.state.buyerCount,
-      date: unixDate(b.status === 'Scheduled' ? b.startsAt : b.endsAt),
-      dateLabel: b.status === 'Scheduled' ? 'opens' : 'ends',
+      date: launch.createdAt ? new Date(launch.createdAt).toLocaleDateString('en-US', { timeZone: 'UTC' }) : '—',
+      dateLabel: launch.createdAt ? 'created · UTC' : undefined,
     };
   });
   return (

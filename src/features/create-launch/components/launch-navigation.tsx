@@ -1,15 +1,18 @@
-import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { ArrowLeft, ArrowRight, ArrowUpRight } from 'lucide-react';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import type { LaunchMethod } from '../lib/launch-draft';
 import type { LaunchStageId } from '../lib/launch-stages';
 
-export function LaunchNavigation({ step, canGoBack, method, ready, working, accountReady, onBack, onNext, onLaunch }: {
+export function LaunchNavigation({ step, canGoBack, method, ready, working, accountReady, launchAddress, onBack, onNext, onLaunch }: {
   step: LaunchStageId;
   canGoBack: boolean;
   method: LaunchMethod;
   ready: boolean;
   working: boolean;
   accountReady: boolean;
+  launchAddress?: string;
   onBack: () => void;
   onNext: () => void;
   onLaunch: () => void;
@@ -25,7 +28,11 @@ export function LaunchNavigation({ step, canGoBack, method, ready, working, acco
           <ArrowLeft data-icon="inline-start" /> Back
         </Button>
       )}
-      {step === 'review' ? (
+      {step === 'review' && launchAddress ? (
+        <Link href={`/launch/${launchAddress}`} className={cn(buttonVariants({ size: 'lg' }), 'h-auto min-h-control-lg min-w-0 flex-1 whitespace-normal py-2 text-center')}>
+          View launch <ArrowUpRight data-icon="inline-end" />
+        </Link>
+      ) : step === 'review' ? (
         <Button size="lg" className="h-auto min-h-control-lg min-w-0 flex-1 whitespace-normal py-2 text-center" disabled={method !== 'bonding' || !ready} onClick={onLaunch}>
           {launchLabel}
         </Button>

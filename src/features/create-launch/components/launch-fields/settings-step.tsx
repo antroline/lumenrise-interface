@@ -4,7 +4,6 @@ import { FieldGroup } from '@/components/ui/field';
 import type { LaunchDraft } from '../../lib/launch-draft';
 import { LaunchScheduleFields } from './launch-schedule-fields';
 import { NumberField } from './number-field';
-import { SwitchRow } from './switch-row';
 import type { DraftProps } from './types';
 
 export function SettingsStep({ draft, setDraft, errors = {} }: DraftProps) {
@@ -25,7 +24,7 @@ export function SettingsStep({ draft, setDraft, errors = {} }: DraftProps) {
     }));
   if (draft.method === 'bonding')
     return (
-      <FieldGroup className="studio-compact:gap-4">
+      <FieldGroup className="gap-4 studio-compact:gap-3">
         <LaunchScheduleFields
           method="bonding"
           startsAt={draft.bonding.startsAt}
@@ -34,10 +33,14 @@ export function SettingsStep({ draft, setDraft, errors = {} }: DraftProps) {
           onChange={updateBonding}
           errors={errors}
         />
-        <SwitchRow
+        <NumberField
+          id="creator-fee"
+          layout="launch-plan"
           label="Creator fee share"
-          description="Proposed 0.1% of trades handled by the launch contract. Exact coverage depends on the contract."
-          checked={draft.bonding.creatorFee}
+          unit="%"
+          value={draft.bonding.creatorFee}
+          help="Percentage of trades handled by the launch contract charged as a creator fee. Set 0% for no creator fee. Accepts 0–100%, with up to 2 decimal places."
+          error={errors['creator-fee']}
           onChange={(creatorFee) => updateBonding({ creatorFee })}
         />
       </FieldGroup>
