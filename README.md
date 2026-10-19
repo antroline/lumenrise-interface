@@ -60,14 +60,3 @@ Configure the runner from this repository's Settings > Actions > Runners > New s
 - Work folder: press Enter to use `_work`.
 
 If using an organization runner, allow this repository in its runner group. Keep the runner up to date and install Docker with Compose v2 and Buildx. The runner user must be able to run `docker` without `sudo`.
-
-Create `/var/www/lumenrise-interface/.env` on the VPS, readable only by the runner user, using `.env.example` as a starting point. Keep it outside the runner checkout so checkout cleanup cannot delete it. The workflow sources this file using Bash, so use `KEY=value` entries and quote values containing spaces or shell characters. `NEXT_PUBLIC_*` settings are baked into the image during each build. App environment values never need to be committed.
-
-From the runner installation directory, install and start its service:
-
-```bash
-sudo ./svc.sh install
-sudo ./svc.sh start
-```
-
-The app listens on `127.0.0.1:3001` for a reverse proxy.
