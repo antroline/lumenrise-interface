@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { useLaunchpad } from '@/lib/launchpad';
 import { isBondingDraft } from '../lib/bonding-curve';
@@ -25,15 +25,27 @@ const stepDescriptions: Partial<Record<LaunchStageId, string>> = {
 };
 
 export function LaunchStudio() {
+  const [session, setSession] = useState(0);
+  const resetSession = useCallback(() => {
+    setSession((current) => current + 1);
+  }, []);
+
   return (
     <LaunchMotionConfig>
-      <LaunchStudioContent />
+      <LaunchStudioContent key={session} onCompletedExit={resetSession} />
     </LaunchMotionConfig>
   );
 }
 
-function LaunchStudioContent() {
+function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void }) {
   const bondingLaunch = useBondingLaunch();
+  const completed = bondingLaunch.operation?.status === 'success';
+
+  // Activity preserves routes. Replace the completed session when it is hidden,
+  // leaving the success dialog intact until the user navigates away.
+  useLayoutEffect(() => {
+    if (completed) return onCompletedExit;
+  }, [completed, onCompletedExit]);
   const [progressOpen, setProgressOpen] = useState(false);
   const { notify, accountReady } = useLaunchpad();
   const [draft, setDraft] = useState(initialLaunchDraft);

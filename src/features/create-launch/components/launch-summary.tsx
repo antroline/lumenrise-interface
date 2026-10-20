@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { Check, ChevronDown, Pencil } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { cn } from '@/lib/utils';
 import {
@@ -18,9 +17,7 @@ import {
 } from '../lib/launch-summary';
 import {
   launchStages,
-  validateLaunchStage,
   type LaunchStage,
-  type LaunchStageId,
 } from '../lib/launch-stages';
 import { launchTransition, useLaunchReducedMotion } from '../lib/launch-motion';
 import { LaunchReveal } from './launch-motion';
@@ -129,7 +126,7 @@ function SummaryFigure({
 }) {
   return (
     <>
-      <dt className="text-small text-muted-foreground">{label}</dt>
+      <dt className="truncate text-meta text-muted-foreground" title={label}>{label}</dt>
       <dd className="mt-0.5 truncate text-mid font-semibold tabular-nums">
         {value}
         <span className="text-small font-medium tracking-normal text-muted-foreground">
@@ -175,7 +172,14 @@ function LaunchSummaryHeader({
   };
 
   if (!draft.logo && !name && !symbol && !chips.length && !supply && !target)
-    return null;
+    return (
+      <div className="relative -mx-2 -mt-2 min-h-24 shrink-0 rounded-xl bg-secondary p-3">
+        <p className="text-title font-semibold">Your project</p>
+        <p className="mt-1 text-small leading-relaxed text-muted-foreground">
+          Add your project name, symbol and logo to preview your launch.
+        </p>
+      </div>
+    );
 
   return (
     <motion.div
@@ -308,156 +312,22 @@ function LaunchSummaryHeader({
   );
 }
 
-type SummaryStageProps = Pick<
-  LaunchSummaryProps,
-  'draft' | 'currentIndex' | 'reachedIndex' | 'locked' | 'onNavigate'
-> & {
-  stage: LaunchStage;
-  index: number;
-  open: boolean;
-  onToggle: () => void;
-};
-
-function SummaryStage({
-  draft,
-  stage,
-  index,
-  currentIndex,
-  reachedIndex,
-  locked,
-  onNavigate,
-  open,
-  onToggle,
-}: SummaryStageProps) {
-  const active = index === currentIndex;
-  const reached = index <= reachedIndex;
-  const items = reached
-    ? stageChecklist(draft, stage).filter((item) => item.value)
-    : [];
-  const expanded = items.length > 0 && open;
-  const complete =
-    index < currentIndex &&
-    Object.keys(validateLaunchStage(draft, stage)).length === 0;
-  const status = active
-    ? 'Current'
-    : complete
-      ? 'Complete'
-      : index < currentIndex
-        ? 'Needs review'
-        : 'Upcoming';
-  const panelId = `launch-summary-${stage.id}`;
-
-  return (
-    <li
-      aria-current={active ? 'step' : undefined}
-      className="min-w-0 border-b border-divider py-1 last:border-0"
-    >
-      <div className="flex min-h-11 items-center gap-1">
-        <button
-          type="button"
-          disabled={!items.length}
-          aria-expanded={items.length ? expanded : undefined}
-          aria-controls={items.length ? panelId : undefined}
-          onClick={onToggle}
-          className="flex min-h-10 min-w-0 flex-1 items-center gap-2 text-left outline-none enabled:cursor-pointer  focus-visible:ring-2 focus-visible:ring-foreground"
-        >
-          <span
-            aria-hidden="true"
-            className={cn(
-              'grid size-5 shrink-0 place-items-center rounded-full text-meta font-medium tabular-nums',
-              active
-                ? 'bg-foreground text-background'
-                : complete
-                  ? 'text-ok'
-                  : 'text-muted-foreground',
-            )}
-          >
-            {complete ? <Check className="size-3.5" /> : index + 1}
-          </span>
-          <span
-            className={cn(
-              'min-w-0 flex-1 text-small font-medium',
-              active || complete ? 'text-foreground' : 'text-muted-foreground',
-            )}
-          >
-            {stage.label}
-            <span className="sr-only">: {status}</span>
-          </span>
-          {active && (
-            <span
-              aria-hidden="true"
-              className="text-meta text-muted-foreground"
-            >
-              Current
-            </span>
-          )}
-          {items.length > 0 && (
-            <ChevronDown
-              aria-hidden="true"
-              className={cn(
-                'size-3 shrink-0 text-muted-foreground',
-                expanded && 'rotate-180',
-              )}
-            />
-          )}
-        </button>
-        {index < currentIndex && (
-          <button
-            type="button"
-            disabled={locked}
-            onClick={() => onNavigate(index)}
-            aria-label={`Edit: ${stage.label}`}
-            title={`Edit ${stage.label.toLowerCase()}`}
-            className={editClassName}
-          >
-            <Pencil className="size-3.5" aria-hidden="true" />
-          </button>
-        )}
-      </div>
-      {expanded && (
-        <dl
-          id={panelId}
-          className="flex min-w-0 flex-col gap-2 pb-3 text-small"
-        >
-          {items.map((item) => (
-            <div
-              key={item.label}
-              className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-2"
-            >
-              <dt className="text-muted-foreground">{item.label}</dt>
-              <dd className="min-w-0 break-words text-right font-medium tabular-nums">
-                {item.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      )}
-    </li>
-  );
-}
-
 export function LaunchSummary({
   draft,
-  steps,
-  currentIndex,
   reachedIndex,
   locked,
   onNavigate,
 }: LaunchSummaryProps) {
-  // Manual toggles last only for the current step; Review opens all entered details.
-  const [toggles, setToggles] = useState<{
-    index: number;
-    open: Partial<Record<LaunchStageId, boolean>>;
-  }>({ index: currentIndex, open: {} });
-  const overrides = toggles.index === currentIndex ? toggles.open : {};
-  const isOpen = (stage: LaunchStage, index: number) =>
-    overrides[stage.id] ??
-    (index === currentIndex || steps[currentIndex]?.id === 'review');
+  const items = reachedIndex >= tokenIndex
+    ? stageChecklist(draft, launchStages[tokenIndex]).filter(
+        (item) => item.value && !['Method', 'Payment asset', 'Supply', 'Graduation target'].includes(item.label),
+      )
+    : [];
 
   return (
     <aside
       aria-label="Your launch summary"
-      className="order-last hidden max-h-full min-h-0 min-w-0 flex-col self-start rounded-2xl border border-border bg-card p-4 lg:flex"
+      className="order-last hidden max-h-full min-h-0 min-w-0 flex-col gap-3 self-start rounded-2xl border border-border bg-card p-4 lg:flex"
     >
       <LaunchSummaryHeader
         draft={draft}
@@ -465,55 +335,53 @@ export function LaunchSummary({
         onEdit={() => onNavigate(projectIndex)}
         locked={locked}
       />
-      <div className="shrink-0 pt-4">
-        <div className="flex items-baseline justify-between gap-2">
-          <h2 className="text-body font-semibold">Your launch</h2>
-          <span className="text-small tabular-nums text-muted-foreground">
-            Step {currentIndex + 1} of {steps.length}
-          </span>
-        </div>
-        <div className="mt-2 flex gap-1" aria-hidden="true">
-          {steps.map((stage, index) => (
-            <span
-              key={stage.id}
-              className={cn(
-                'h-1 flex-1 rounded-full',
-                index === currentIndex
-                  ? 'bg-primary'
-                  : index < currentIndex
-                    ? 'bg-foreground/50'
-                    : 'bg-secondary',
-              )}
-            />
-          ))}
-        </div>
-      </div>
-      <nav
-        aria-label="Launch steps and summary"
-        className="mt-2 min-h-0 min-w-0 overflow-y-auto overscroll-contain [scrollbar-width:thin]"
+      <section
+        aria-labelledby="launch-overview-title"
+        className="-mx-2 -mb-2 min-h-0 min-w-0 overflow-y-auto overscroll-contain rounded-xl bg-secondary p-3 [scrollbar-width:thin]"
       >
-        <ol className="flex min-w-0 flex-col">
-          {steps.map((stage, index) => stage.id !== 'review' && (
-            <SummaryStage
-              key={stage.id}
-              draft={draft}
-              stage={stage}
-              index={index}
-              currentIndex={currentIndex}
-              reachedIndex={reachedIndex}
-              locked={locked}
-              open={isOpen(stage, index)}
-              onToggle={() =>
-                setToggles({
-                  index: currentIndex,
-                  open: { ...overrides, [stage.id]: !isOpen(stage, index) },
-                })
-              }
-              onNavigate={onNavigate}
-            />
-          ))}
-        </ol>
-      </nav>
+        <div className="flex min-h-11 items-center justify-between gap-2">
+          <h2 id="launch-overview-title" className="min-w-0 truncate text-title font-semibold">
+            Launch overview
+          </h2>
+          {reachedIndex >= tokenIndex && (
+            <button
+              type="button"
+              disabled={locked}
+              onClick={() => onNavigate(tokenIndex)}
+              aria-label="Edit launch configuration"
+              title="Edit launch configuration"
+              className={editClassName}
+            >
+              <Pencil className="size-3.5" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        {items.length ? (
+          <dl className="mt-3 grid min-w-0 grid-cols-2 gap-x-3 gap-y-5 pb-1">
+            {items.map((item) => (
+              <div
+                key={item.label}
+                className={cn('min-w-0', (item.label === 'Start date' || (item.value?.length ?? 0) > 12) && 'col-span-2')}
+              >
+                <dt className="whitespace-nowrap text-meta text-muted-foreground">
+                  {item.label === 'Bonding curve' ? 'Curve' :
+                    item.label === 'Liquidity pool' ? 'Pool' :
+                    item.label === 'Team vesting' ? 'Vesting' :
+                    item.label === 'Team cliff' ? 'Cliff' :
+                    item.label === 'Start mode' ? 'Starts' : item.label}
+                </dt>
+                <dd className={cn('mt-0.5 whitespace-nowrap font-semibold leading-snug tabular-nums', item.label === 'Start date' ? 'text-sm' : 'text-mid')}>
+                  {item.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          <p className="mt-2 text-small leading-relaxed text-muted-foreground">
+            Your launch terms will appear here as you configure them.
+          </p>
+        )}
+      </section>
     </aside>
   );
 }
