@@ -1,17 +1,16 @@
 import {
   initialLaunchDraft,
-  validNonNegativeInteger,
-  validPercent,
+  bondingStartDate,
+  isLaunchScheduled,
   type LaunchDraft,
 } from './launch-draft';
 import {
   requireCreator,
-  toUnits,
-  validateAmount,
   validateInput,
 } from './launch-state';
 import { assetFor, NETWORK } from './transactions';
-import { calculateCurveReserves } from './calculate-curve-reserves';
+import { calculateDraftLaunch } from './calculate-launch';
+import { monthsToSeconds } from './team-vesting';
 
 export const FACTORY_CONTRACT_ID =
   process.env.NEXT_PUBLIC_FACTORY_CONTRACT_ID?.trim() ?? '';
@@ -20,8 +19,6 @@ const PAIR_SACS = {
   USDC: 'CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA',
   XLM: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC',
 };
-const MONTH_SECONDS = BigInt(30 * 24 * 60 * 60);
-const MAX_U64 = BigInt('18446744073709551615');
 
 export type LaunchParams = {
   owner: string;
@@ -71,27 +68,10 @@ export function isBondingDraft(value: unknown): value is LaunchDraft {
     'bonding' in value &&
     !!value.bonding &&
     typeof value.bonding === 'object' &&
+    (!('scheduleEnabled' in value.bonding) || typeof value.bonding.scheduleEnabled === 'boolean') &&
     'durationDays' in value.bonding &&
     ['7', '14', '30', '60'].includes(String(value.bonding.durationDays))
   );
-}
-
-function basisPoints(value: string) {
-  if (!validPercent(value))
-    throw new Error(
-      'Enter allocations from 0% to 100%, with up to 2 decimal places.',
-    );
-  const [whole, fraction = ''] = value.trim().split('.');
-  return Number(BigInt(whole) * BigInt(100) + BigInt(fraction.padEnd(2, '0')));
-}
-
-function monthsToSeconds(value: string) {
-  if (!validNonNegativeInteger(value))
-    throw new Error('Team vesting must use whole months, starting at 0.');
-  const seconds = BigInt(value.trim()) * MONTH_SECONDS;
-  if (seconds > MAX_U64)
-    throw new Error('Team vesting exceeds the contract duration limit.');
-  return seconds.toString();
 }
 
 function unixSeconds(value: string) {
@@ -110,6 +90,8 @@ export function buildBondingCurveParams(
 ): LaunchParams {
   if (draft.method !== 'bonding')
     throw new Error('Only bonding-curve launches are connected.');
+  if (draft.quote !== 'USDC')
+    throw new Error('Dollar-based launches currently support USDC only. XLM requires a price conversion.');
   requireCreator(owner);
   // The contract stores the server-hosted image URL; local previews (data or
   // blob URLs) must never reach `metadata.logo`.
@@ -120,33 +102,19 @@ export function buildBondingCurveParams(
     code: draft.symbol,
     amount: draft.supply,
   });
-  const totalSupplyStroops = toUnits(token.amount);
-  const poolBps = basisPoints(draft.allocation.poolShare);
-  const curveBps = basisPoints(draft.allocation.saleShare);
-  const teamBps = basisPoints(draft.allocation.teamShare);
-  if (poolBps + curveBps + teamBps !== 10_000 || poolBps <= 0 || curveBps <= 0)
-    throw new Error(
-      'Allocations must total 100%, with positive pool and bonding-curve shares.',
-    );
-  const curveInventory =
-    (totalSupplyStroops * BigInt(curveBps)) / BigInt(10_000);
-  if (curveInventory <= BigInt(0))
-    throw new Error(
-      'The bonding-curve allocation must contain at least one stroop.',
-    );
+  const calculation = calculateDraftLaunch(draft);
   if (!draft.description.trim() || draft.description.length > 3000)
     throw new Error('Enter a project description of up to 3000 characters.');
-  const durationSeconds = monthsToSeconds(draft.allocation.vestingMonths);
-  const startsAt = draft.bonding.startsAt
-    ? unixSeconds(draft.bonding.startsAt)
+  const hasTeam = calculation.allocations.team_bps > 0;
+  const durationSeconds = hasTeam ? monthsToSeconds(draft.allocation.vestingMonths) : '0';
+  const scheduledStart = bondingStartDate(draft.bonding);
+  if (isLaunchScheduled(draft.bonding) && !scheduledStart)
+    throw new Error('Choose a launch date and time.');
+  const startsAt = scheduledStart
+    ? unixSeconds(scheduledStart)
     : nowSeconds + 60;
   if (startsAt <= nowSeconds)
     throw new Error('Choose a future start.');
-
-  const reserves = calculateCurveReserves(
-    curveInventory,
-    toUnits(validateAmount(draft.bonding.target)),
-  );
 
   return {
     owner,
@@ -158,16 +126,16 @@ export function buildBondingCurveParams(
       logo,
       symbol: token.code,
     },
-    allocations: { pool_bps: poolBps, curve_bps: curveBps, team_bps: teamBps },
+    allocations: calculation.allocations,
     vesting: {
-      cliff_seconds: monthsToSeconds(draft.allocation.cliffMonths),
+      cliff_seconds: hasTeam ? monthsToSeconds(draft.allocation.cliffMonths) : '0',
       duration_seconds: durationSeconds,
       schedule: { tag: 'Weekly' }, // needs a field — unlock schedule; allowed: Daily, Weekly, Monthly.
     },
     curve: {
-      ...reserves,
-      creator_fee_bps: basisPoints(draft.bonding.creatorFee),
-      creator_payout_bps: 1000, // needs a field — creator payout; together with the 100 bps platform fee, at most 10000.
+      ...calculation.contract,
+      creator_fee_bps: calculation.creatorTaxBps,
+      creator_payout_bps: calculation.creatorPayoutBps,
     },
     starts_at: String(startsAt),
     reputation_label: '0',

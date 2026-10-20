@@ -49,7 +49,7 @@ export function TradeTooltipText({
       <span
         tabIndex={0}
         className={cn(
-          'cursor-help rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-lime/60',
+          'cursor-help rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
           className,
         )}
       >

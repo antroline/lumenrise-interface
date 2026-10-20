@@ -28,20 +28,11 @@ export function SettingsStep({ draft, setDraft, errors = {} }: DraftProps) {
         <LaunchScheduleFields
           method="bonding"
           startsAt={draft.bonding.startsAt}
+          scheduleEnabled={draft.bonding.scheduleEnabled}
           endsAt={draft.bonding.endsAt}
           durationDays={draft.bonding.durationDays}
           onChange={updateBonding}
           errors={errors}
-        />
-        <NumberField
-          id="creator-fee"
-          layout="launch-plan"
-          label="Creator fee share"
-          unit="%"
-          value={draft.bonding.creatorFee}
-          help="Percentage of trades handled by the launch contract charged as a creator fee. Set 0% for no creator fee. Accepts 0–100%, with up to 2 decimal places."
-          error={errors['creator-fee']}
-          onChange={(creatorFee) => updateBonding({ creatorFee })}
         />
       </FieldGroup>
     );

@@ -1,10 +1,9 @@
 'use client';
 
-import { cn } from '@/lib/utils';
 import { FieldDescription, FieldLabel, Field } from '@/components/ui/field';
 import { LaunchFieldError } from '../launch-motion';
 import { FieldSurface, LaunchInput } from './field-controls';
-import { formatSupply } from '../../lib/amount';
+import { formatSupply, isNumericInput } from '../../lib/amount';
 import { HelpTooltip } from './help-tooltip';
 import { PresetChoices } from './preset-choices';
 import { QuoteIcon } from './quote-icon';
@@ -24,7 +23,7 @@ export function NumberField({
   groupThousands = false,
   descriptionId,
   invalid = false,
-  layout = 'default',
+  inputMode = 'decimal',
 }: {
   id: string;
   label: string;
@@ -39,12 +38,13 @@ export function NumberField({
   groupThousands?: boolean;
   descriptionId?: string;
   invalid?: boolean;
-  layout?: 'default' | 'launch-plan';
+  inputMode?: 'decimal' | 'numeric';
 }) {
   function changeValue(input: HTMLInputElement) {
     const nextValue = groupThousands
       ? input.value.replaceAll(',', '')
       : input.value;
+    if (!isNumericInput(nextValue, inputMode)) return;
     const digitsBeforeCaret = groupThousands
       ? input.value
           .slice(0, input.selectionStart ?? input.value.length)
@@ -66,11 +66,15 @@ export function NumberField({
     });
   }
 
+  // Currency symbols read before the amount; measures such as %, months and tickers read after it.
+  const prefix = unit === '$' ? unit : undefined;
+  const suffix = prefix ? undefined : unit;
+
   return (
-    <Field data-invalid={!!error || invalid}>
-      <FieldSurface className={layout === 'launch-plan' ? 'py-3 studio-compact:py-2' : undefined}>
-        <div className={cn("flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-1", layout === 'launch-plan' && 'gap-y-2')}>
-          <div className="flex min-h-7 studio-compact:min-h-5 min-w-0 items-center gap-1">
+    <Field data-invalid={!!error || invalid} className="min-w-0">
+      <FieldSurface>
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <div className="flex min-h-6 min-w-0 items-center gap-0.5">
             <FieldLabel
               htmlFor={id}
               className="min-w-0 text-small text-muted-foreground"
@@ -86,15 +90,20 @@ export function NumberField({
               options={presets}
               onChange={onChange}
               variant="inline"
-              className={layout === 'launch-plan' ? '-mr-1 gap-1 [&>button]:rounded-md' : undefined}
+              className="-mr-1.5"
             />
           )}
         </div>
-        <div className={cn("mt-1 flex min-w-0 gap-2", layout === 'launch-plan' ? 'items-center' : 'items-end')}>
+        <div className="flex min-w-0 items-center gap-1.5">
+          {prefix && (
+            <span aria-hidden="true" className="shrink-0 text-[17px] font-semibold text-muted-foreground">
+              {prefix}
+            </span>
+          )}
           <LaunchInput
             id={id}
             type="text"
-            inputMode="decimal"
+            inputMode={inputMode}
             value={groupThousands ? formatSupply(value) : value}
             onChange={(event) => changeValue(event.currentTarget)}
             placeholder={placeholder || '0'}
@@ -107,14 +116,14 @@ export function NumberField({
                 .filter(Boolean)
                 .join(' ') || undefined
             }
-            className={cn("flex-1 tabular-nums", layout === 'launch-plan' && 'h-10 text-2xl studio-compact:h-9')}
+            className="flex-1 tabular-nums"
           />
-          {unit && (
-            <span className={cn("inline-flex shrink-0 items-center gap-2 text-lg font-semibold text-foreground sm:text-xl", layout !== 'launch-plan' && 'pb-1')}>
-              {(unit === 'XLM' || unit === 'USDC') && (
-                <QuoteIcon quote={unit} className="size-6 sm:size-7" />
+          {suffix && (
+            <span className="inline-flex max-w-[45%] shrink-0 items-center gap-1.5 truncate text-ui font-medium text-muted-foreground">
+              {(suffix === 'XLM' || suffix === 'USDC') && (
+                <QuoteIcon quote={suffix} className="size-5" />
               )}
-              {unit}
+              {suffix}
             </span>
           )}
         </div>
@@ -122,7 +131,7 @@ export function NumberField({
       <LaunchFieldError id={`${id}-error`} className="text-small text-bad">
         {error}
       </LaunchFieldError>
-      {hint && <FieldDescription id={`${id}-hint`}>{hint}</FieldDescription>}
+      {hint && !error && <FieldDescription id={`${id}-hint`}>{hint}</FieldDescription>}
     </Field>
   );
 }

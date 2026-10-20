@@ -46,7 +46,7 @@ export function AllocationPresets({
             aria-label={`Set ${label.toLowerCase()} to ${option.label}`}
             onClick={() => onChange(option.value)}
             className={cn(
-              'flex min-h-11 studio-compact:min-h-8 items-center gap-2.5 rounded-full border px-3.5 text-small font-semibold tabular-nums transition-[background-color,border-color,color,transform] duration-200 hover:-translate-y-0.5 focus-visible:ring-3 focus-visible:ring-lime/60 focus-visible:outline-none motion-reduce:transform-none',
+              'flex min-h-11 studio-compact:min-h-8 items-center gap-2.5 rounded-full border px-3.5 text-small font-semibold tabular-nums transition-[background-color,border-color,color,transform] duration-200 hover:-translate-y-0.5 focus-visible:ring-3 focus-visible:ring-ring/60 focus-visible:outline-none motion-reduce:transform-none',
               selected
                 ? 'border-foreground bg-foreground text-background'
                 : 'border-border bg-card text-foreground hover:border-foreground',

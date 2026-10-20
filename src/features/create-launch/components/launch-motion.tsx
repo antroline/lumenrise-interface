@@ -34,11 +34,10 @@ export const LaunchStepPanel = forwardRef<
     heading: string;
     description?: string;
     direction: 'forward' | 'back';
-    footer: ReactNode;
     children: ReactNode;
   }
 >(function LaunchStepPanel(
-  { heading, description, direction, footer, children },
+  { heading, description, direction, children },
   ref,
 ) {
   const reduced = useLaunchReducedMotion();
@@ -87,16 +86,16 @@ export const LaunchStepPanel = forwardRef<
       }}
       className="flex min-h-0 min-w-0 flex-1 flex-col"
     >
-      <div className="mb-5 shrink-0 studio-compact:mb-3">
+      <div className="mb-6 shrink-0 studio-compact:mb-4">
         <h2
           id={present ? 'wizard-title' : undefined}
           tabIndex={-1}
-          className="text-2xl font-semibold leading-[1.2] tracking-[-0.03em] outline-none sm:text-[28px] studio-compact:text-2xl"
+          className="text-[22px] font-semibold leading-[1.15] tracking-[-0.03em] outline-none sm:text-[26px]"
         >
           {heading}
         </h2>
         {description && (
-          <p className="mt-2 max-w-[65ch] text-ui text-muted-foreground">
+          <p className="mt-1.5 max-w-[65ch] text-ui text-muted-foreground">
             {description}
           </p>
         )}
@@ -105,11 +104,10 @@ export const LaunchStepPanel = forwardRef<
         data-launch-fields=""
         role="region"
         aria-label="Step fields"
-        className="-mx-1 min-w-0 flex-1 px-1 pb-1"
+        className="min-w-0 pb-5"
       >
         {children}
       </div>
-      {footer}
     </motion.div>
   );
 });

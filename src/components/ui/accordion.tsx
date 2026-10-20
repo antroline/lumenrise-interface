@@ -62,7 +62,7 @@ export function Accordion({
           onOpenChange?.(!open);
         }}
         className={cn(
-          'flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl text-left focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-lime/60',
+          'flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl text-left focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/60',
           compact ? 'min-h-11 py-2' : 'min-h-14 py-3',
           variant === 'surface' &&
             'border border-border bg-[repeating-linear-gradient(135deg,color-mix(in_srgb,var(--foreground)_4%,transparent)_0_1px,transparent_1px_7px)] px-5 hover:border-foreground/25 transition-colors motion-reduce:transition-none',

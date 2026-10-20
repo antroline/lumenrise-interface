@@ -26,7 +26,12 @@ export function DateTimePicker({
   error,
   earliest,
   defaultLabel,
+  triggerLabel,
   compact = false,
+  showActions = true,
+  trailingCalendar = false,
+  disabled = false,
+  embedded = false,
 }: {
   id: string;
   label: string;
@@ -35,12 +40,148 @@ export function DateTimePicker({
   error?: string;
   earliest?: string;
   defaultLabel?: string;
+  triggerLabel?: string;
   compact?: boolean;
+  showActions?: boolean;
+  trailingCalendar?: boolean;
+  disabled?: boolean;
+  embedded?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const actionsRef = useRef<PopoverPrimitive.Root.Actions>(null);
-  const selected = value ? new Date(value) : undefined;
-  const local = isoToLocalDateTime(value);
+  const selected =
+    value && Number.isFinite(Date.parse(value)) ? new Date(value) : undefined;
+  return (
+    <Field data-invalid={!!error}>
+      <FieldLabel htmlFor={id} className={compact ? 'sr-only' : 'text-body'}>
+        {label}
+      </FieldLabel>
+      <Popover
+        open={open && !disabled}
+        actionsRef={actionsRef}
+        onOpenChange={setOpen}
+      >
+        <PopoverTrigger
+          disabled={disabled}
+          render={
+            <Button
+              id={id}
+              type="button"
+              variant="outline"
+              disabled={disabled}
+              aria-invalid={!!error}
+              aria-describedby={error ? id + '-error' : undefined}
+              className={cn(
+                launchFieldSurfaceClassName,
+                'h-auto w-full justify-between text-left',
+                compact
+                  ? trailingCalendar
+                    ? 'min-h-14'
+                    : 'min-h-12'
+                  : 'min-h-18',
+                embedded &&
+                  'h-8! min-h-8 rounded-none border-0 bg-transparent p-0 shadow-none hover:bg-transparent focus-visible:ring-0 disabled:bg-transparent',
+              )}
+            />
+          }
+        >
+          {(!trailingCalendar || embedded) && (
+            <CalendarDays
+              aria-hidden="true"
+              className={embedded ? 'size-5 text-muted-foreground' : undefined}
+            />
+          )}
+          <span
+            className={cn(
+              'min-w-0 flex-1 whitespace-normal tabular-nums',
+              trailingCalendar &&
+                !selected &&
+                'text-base font-normal text-muted-foreground',
+              embedded && 'text-[17px] font-medium',
+            )}
+          >
+            {selected
+              ? new Intl.DateTimeFormat('en-US', {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                }).format(selected)
+              : triggerLabel || defaultLabel || 'Select a date'}
+          </span>
+          {trailingCalendar ? (
+            !embedded && (
+              <CalendarDays
+                aria-hidden="true"
+                className="size-5 text-muted-foreground"
+              />
+            )
+          ) : (
+            <ChevronDown aria-hidden="true" />
+          )}
+        </PopoverTrigger>
+        <PopoverContent className="w-80 max-h-[min(calc(100dvh-2rem),var(--available-height))] overflow-y-auto overscroll-contain p-4">
+          <PopoverTitle className="sr-only">{label}</PopoverTitle>
+          <DateTimeFields
+            id={id}
+            value={value}
+            onChange={onChange}
+            earliest={earliest}
+            error={error}
+            errorId={id + '-error'}
+          />
+          {showActions && (
+            <div className="mt-3 flex justify-end">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => actionsRef.current?.close()}
+                disabled={!selected}
+              >
+                Done
+              </Button>
+            </div>
+          )}
+          <LaunchReveal show={showActions && !!defaultLabel && !!selected}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                onChange('');
+                actionsRef.current?.close();
+              }}
+            >
+              Use default: {defaultLabel}
+            </Button>
+          </LaunchReveal>
+        </PopoverContent>
+      </Popover>
+      <LaunchFieldError id={id + '-error'} className="text-small text-bad">
+        {error}
+      </LaunchFieldError>
+    </Field>
+  );
+}
+
+/** Shared calendar and local-time conversion for the launch date pickers. */
+function DateTimeFields({
+  id,
+  value,
+  onChange,
+  earliest,
+  error,
+  errorId,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  earliest?: string;
+  error?: string;
+  errorId?: string;
+}) {
+  const parsed = value ? new Date(value) : undefined;
+  const selected =
+    parsed && Number.isFinite(parsed.getTime()) ? parsed : undefined;
+  const local = selected ? isoToLocalDateTime(value) : '';
   const time = local.split('T')[1] || '10:00';
   const earliestDay = earliest ? new Date(earliest) : new Date();
   earliestDay.setHours(0, 0, 0, 0);
@@ -73,109 +214,46 @@ export function DateTimePicker({
     );
   }
 
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return (
-    <Field data-invalid={!!error}>
-      <FieldLabel htmlFor={id} className={compact ? 'sr-only' : 'text-body'}>
-        {label}
-      </FieldLabel>
-      <Popover open={open} actionsRef={actionsRef} onOpenChange={setOpen}>
-        <PopoverTrigger
-          render={
-            <Button
-              id={id}
-              type="button"
-              variant="outline"
-              aria-invalid={!!error}
-              aria-describedby={error ? `${id}-error` : undefined}
-              className={cn(launchFieldSurfaceClassName, 'h-auto w-full justify-between text-left hover:bg-secondary aria-expanded:bg-secondary', compact ? 'min-h-12' : 'min-h-18')}
-            />
-          }
-        >
-          <span className="flex min-w-0 items-center gap-3">
-            <CalendarDays
-              className="size-5 shrink-0 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <span className="min-w-0">
-              <span
-                className={cn(
-                  'block whitespace-normal font-semibold leading-snug tabular-nums',
-                  compact ? 'text-body' : 'text-title',
-                  !selected && !defaultLabel && 'text-muted-foreground',
-                )}
-              >
-                {selected
-                  ? new Intl.DateTimeFormat('en-US', {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    }).format(selected)
-                  : defaultLabel || 'Select a date'}
-              </span>
-              {!compact && <span className="mt-1 block text-ui font-normal text-muted-foreground">
-                {selected
-                  ? 'Custom date & time'
-                  : defaultLabel
-                    ? 'Default · click to change'
-                    : 'Choose date & time'}
-              </span>}
-            </span>
-          </span>
-          <ChevronDown
-            className="size-4 shrink-0 text-muted-foreground"
-            aria-hidden="true"
-          />
-        </PopoverTrigger>
-        <PopoverContent className="translate-none! p-1 transition-opacity motion-reduce:transition-none">
-          <PopoverTitle className="sr-only">{label}</PopoverTitle>
-          <Calendar
-            mode="single"
-            selected={selected}
-            onSelect={chooseDay}
-            disabled={{ before: earliestDay }}
-            defaultMonth={selected || earliestDay}
-          />
-          <div className="flex items-end gap-3 border-t border-divider p-3">
-            <Field className="min-w-0 flex-1">
-              <FieldLabel htmlFor={`${id}-time`} className="text-body">
-                Local time
-              </FieldLabel>
-              <Input
-                id={`${id}-time`}
-                type="time"
-                value={time}
-                onChange={(event) => chooseTime(event.target.value)}
-                disabled={!selected}
-                className="mt-1"
-              />
-            </Field>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => actionsRef.current?.close()}
-              disabled={!selected}
-            >
-              Done
-            </Button>
-          </div>
-          <LaunchReveal show={!!defaultLabel && !!selected}>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="mb-2 ml-3"
-              onClick={() => {
-                onChange('');
-                actionsRef.current?.close();
-              }}
-            >
-              Use default: {defaultLabel}
-            </Button>
-          </LaunchReveal>
-        </PopoverContent>
-      </Popover>
-      <LaunchFieldError id={`${id}-error`} className="text-small text-bad">
-        {error}
-      </LaunchFieldError>
-    </Field>
+    <div className="min-w-0">
+      <Calendar
+        mode="single"
+        selected={selected}
+        onSelect={chooseDay}
+        disabled={{ before: earliestDay }}
+        defaultMonth={selected || earliestDay}
+        className="w-full px-0"
+        classNames={{
+          weekdays: 'grid grid-cols-7',
+          week: 'grid grid-cols-7',
+          weekday: 'grid h-11 place-items-center text-xs text-muted-foreground',
+          day: 'h-11 min-w-0 p-0 text-center text-sm [&[data-selected=true]>button]:bg-foreground [&[data-selected=true]>button]:text-background',
+          day_button:
+            'grid h-11 w-full place-items-center rounded-lg text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/60',
+          nav: 'absolute inset-x-0 top-0 flex h-11 items-center justify-between',
+          button_previous:
+            'grid size-11 place-items-center rounded-lg hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/60',
+          button_next:
+            'grid size-11 place-items-center rounded-lg hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/60',
+        }}
+      />
+      <Field
+        data-invalid={!!error}
+        className="gap-2 border-t border-divider pt-3"
+      >
+        <FieldLabel htmlFor={id + '-time'}>Local time · {timezone}</FieldLabel>
+        <Input
+          id={id + '-time'}
+          type="time"
+          value={time}
+          onInput={(event) => chooseTime(event.currentTarget.value)}
+          disabled={!selected}
+          aria-invalid={!!error}
+          aria-describedby={error ? errorId : undefined}
+          className="min-h-11 text-base"
+        />
+      </Field>
+    </div>
   );
 }

@@ -14,7 +14,7 @@ export function TradeFilterMenu({ options }: { options: TradeFilterOption[] }) {
           <SelectItem
             key={option.value}
             value={option.value}
-            className="min-h-8 cursor-pointer rounded-lg pl-2.5 text-xs font-medium transition-colors focus:bg-secondary focus:text-foreground data-highlighted:bg-secondary aria-selected:bg-lime! aria-selected:text-ink! aria-selected:**:text-ink! motion-reduce:transition-none"
+            className="min-h-8 cursor-pointer rounded-lg pl-2.5 text-xs font-medium transition-colors focus:bg-secondary focus:text-foreground data-highlighted:bg-secondary aria-selected:font-semibold motion-reduce:transition-none"
           >
             {option.label}
           </SelectItem>

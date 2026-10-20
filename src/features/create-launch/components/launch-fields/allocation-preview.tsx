@@ -8,6 +8,7 @@ import {
   type LaunchDraft,
 } from '../../lib/launch-draft';
 import { SupplyShare } from './supply-share';
+import { calculatedAllocation, formatLaunchUnits, launchPreview } from '../../lib/calculate-launch';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   launchTransition,
@@ -22,19 +23,24 @@ export function AllocationPreview({
   showVesting?: boolean;
 }) {
   const reduced = useLaunchReducedMotion();
+  const allocation = calculatedAllocation(draft);
+  const calculation = draft.method === 'bonding' ? launchPreview(draft).calculation : null;
   const shares = [
     {
       label: allocationLabels[draft.method],
-      percent: draft.allocation.saleShare,
+      amount: calculation ? formatLaunchUnits(calculation.tokenUnits.curve) : undefined,
+      percent: allocation.saleShare,
       color: 'bg-foreground',
     },
     {
       label: 'Pool',
-      percent: draft.allocation.poolShare,
+      amount: calculation ? formatLaunchUnits(calculation.tokenUnits.pool) : undefined,
+      percent: allocation.poolShare,
       color: 'bg-lime',
     },
     {
       label: 'Team',
+      amount: calculation ? formatLaunchUnits(calculation.tokenUnits.team) : undefined,
       percent: draft.allocation.teamShare,
       color: 'bg-orange',
     },
@@ -80,6 +86,7 @@ export function AllocationPreview({
               key={item.label}
               label={item.label}
               percent={item.percent}
+              amount={item.amount}
               colorClassName={item.color}
               supply={draft.supply}
               symbol={draft.symbol}

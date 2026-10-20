@@ -12,7 +12,7 @@ const dotVariants = cva('inline-block size-2 shrink-0 rounded-full', {
   variants: {
     tone: {
       ok: 'bg-ok',
-      lime: 'bg-lime shadow-[0_0_0_3px_rgba(214,255,0,0.22)]',
+      lime: 'bg-lime ring-[3px] ring-lime/20',
       warn: 'bg-warn',
       bad: 'bg-bad',
       info: 'bg-info',

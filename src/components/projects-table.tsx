@@ -235,7 +235,7 @@ export function ProjectsTable({
                     scroll={false}
                     aria-label={`Sort by ${label}, ${link.direction === 'asc' ? 'ascending' : 'descending'}`}
                     className={cn(
-                      'inline-flex items-center gap-1 rounded-sm transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-lime',
+                      'inline-flex items-center gap-1 rounded-sm transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring',
                       active && sorting?.explicit && 'text-foreground',
                       directory && 'max-w-full whitespace-nowrap focus-visible:outline-foreground pointer-coarse:min-h-11 [&>svg]:shrink-0',
                     )}
@@ -290,7 +290,7 @@ export function ProjectsTable({
                       className={cn(
                         nameClass,
                         directory && 'flex-1',
-                        "rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-lime",
+                        "rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring",
                         directory && 'focus-visible:after:ring-foreground',
                       )}
                     >

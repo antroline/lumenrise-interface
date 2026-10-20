@@ -36,8 +36,8 @@ export function PresetChoices({
           aria-pressed={value === option.value}
           onClick={() => onChange(option.value)}
           className={cn(
-            'min-h-11 studio-compact:min-h-8 border text-small font-semibold tabular-nums transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-foreground focus-visible:outline-none motion-reduce:transition-none',
-            variant === 'inline' ? 'rounded-xl px-2.5' : 'rounded-full px-3.5',
+            'min-h-11 border text-small font-semibold tabular-nums transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-foreground focus-visible:outline-none motion-reduce:transition-none',
+            variant === 'inline' ? 'min-w-11 rounded-md px-2 [@media(pointer:fine)]:min-h-7 [@media(pointer:fine)]:min-w-9' : 'rounded-full px-3.5 [@media(pointer:fine)]:min-h-9',
             value === option.value
               ? 'border-foreground bg-foreground text-background'
               : variant === 'inline'

@@ -49,7 +49,7 @@ export function TextField({
       <LaunchFieldError id={`${id}-error`} className="text-small text-bad">
         {error}
       </LaunchFieldError>
-      {hint && <FieldDescription id={`${id}-hint`}>{hint}</FieldDescription>}
+      {hint && !error && <FieldDescription id={`${id}-hint`}>{hint}</FieldDescription>}
     </Field>
   );
 }

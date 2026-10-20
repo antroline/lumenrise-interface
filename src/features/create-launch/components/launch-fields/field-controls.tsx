@@ -4,7 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 export const launchFieldSurfaceClassName =
-  'rounded-lg border border-transparent bg-secondary/60 px-4 py-2 studio-compact:py-1.5 transition-[box-shadow,background-color] focus-within:ring-2 focus-within:ring-foreground/15 motion-reduce:transition-none';
+  'rounded-lg border border-transparent bg-secondary/60 px-3.5 py-2 transition-[background-color,border-color] hover:bg-secondary focus-within:border-foreground/20 focus-visible:ring-0 has-[[aria-invalid=true]]:border-bad/50 motion-reduce:transition-none';
 
 export function FieldSurface({ className, ...props }: ComponentProps<'div'>) {
   return (
@@ -19,7 +19,8 @@ export function LaunchInput({
   return (
     <Input
       className={cn(
-        'h-9 studio-compact:h-8 min-w-0 rounded-none border-0 bg-transparent px-0 text-xl font-semibold shadow-none focus-visible:ring-0 aria-invalid:border-0 aria-invalid:ring-0',
+        // `h-control` from the shared input is not merged away, so the compact height needs priority.
+        'h-8! min-w-0 rounded-none border-0 bg-transparent px-0 text-[17px] font-semibold shadow-none focus-visible:ring-0 aria-invalid:border-0 aria-invalid:ring-0',
         className,
       )}
       {...props}

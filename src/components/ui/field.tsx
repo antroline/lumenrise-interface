@@ -106,7 +106,7 @@ function FieldLabel({
     <Label
       data-slot="field-label"
       className={cn(
-        'group/field-label peer/field-label flex w-fit gap-2 text-ui leading-snug font-medium text-secondary-foreground group-data-[disabled=true]/field:opacity-50 has-[>[data-slot=field]]:cursor-pointer has-[>[data-slot=field]]:rounded-xl has-[>[data-slot=field]]:border has-[>[data-slot=field]]:not-has-[:disabled,[data-disabled]]:hover:border-faint has-[>[data-slot=field]]:has-data-checked:border-emphasis has-[>[data-slot=field]]:has-data-checked:bg-accent has-[>[data-slot=field]]:has-data-checked:shadow-[inset_0_0_0_1px_var(--emphasis)] has-[>[data-slot=field]]:has-[:focus-visible]:ring-3 has-[>[data-slot=field]]:has-[:focus-visible]:ring-lime/60 *:data-[slot=field]:p-4',
+        'group/field-label peer/field-label flex w-fit gap-2 text-ui leading-snug font-medium text-secondary-foreground group-data-[disabled=true]/field:opacity-50 has-[>[data-slot=field]]:cursor-pointer has-[>[data-slot=field]]:rounded-xl has-[>[data-slot=field]]:border has-[>[data-slot=field]]:not-has-[:disabled,[data-disabled]]:hover:border-faint has-[>[data-slot=field]]:has-data-checked:border-emphasis has-[>[data-slot=field]]:has-data-checked:bg-accent has-[>[data-slot=field]]:has-data-checked:shadow-[inset_0_0_0_1px_var(--emphasis)] has-[>[data-slot=field]]:has-[:focus-visible]:ring-3 has-[>[data-slot=field]]:has-[:focus-visible]:ring-ring/60 *:data-[slot=field]:p-4',
         'has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col',
         className,
       )}

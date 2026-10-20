@@ -7,12 +7,14 @@ export function SupplyShare({
   supply,
   symbol,
   colorClassName,
+  amount,
 }: {
   label: string;
   percent: string;
   supply: string;
   symbol: string;
   colorClassName: string;
+  amount?: string;
 }) {
   return (
     <div className="min-w-0">
@@ -24,7 +26,7 @@ export function SupplyShare({
         <span>{label} · {percent || '—'}%</span>
       </p>
       <p className="mt-1 break-all text-ui font-semibold tabular-nums">
-        {formatSupplyShare(supply, percent)} {symbol || 'tokens'}
+        {amount ?? formatSupplyShare(supply, percent)} {symbol || 'tokens'}
       </p>
     </div>
   );

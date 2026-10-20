@@ -28,6 +28,21 @@ const { launchSummaryRows } = loadSource('launch-summary.ts');
 const { launchStages, launchStageIndex, validateLaunchStage } = loadSource('launch-stages.ts');
 const rowsFor = (draft, step) => JSON.parse(JSON.stringify(launchSummaryRows(draft, step)));
 
+test('start summary follows the schedule toggle without discarding the selected date', () => {
+  const draft = structuredClone(initialLaunchDraft);
+  assert.equal(rowsFor(draft, 'settings')[0].value, 'Immediately');
+  draft.bonding.scheduleEnabled = true;
+  assert.equal(rowsFor(draft, 'settings')[0].value, 'Not selected');
+  draft.bonding.startsAt = '2030-01-02T07:00:00+03:00';
+  const scheduled = rowsFor(draft, 'settings')[0].value;
+  assert.notEqual(scheduled, 'Not selected');
+  draft.bonding.scheduleEnabled = false;
+  assert.equal(rowsFor(draft, 'settings')[0].value, 'Immediately');
+  assert.equal(draft.bonding.startsAt, '2030-01-02T07:00:00+03:00');
+  draft.bonding.scheduleEnabled = true;
+  assert.equal(rowsFor(draft, 'settings')[0].value, scheduled);
+});
+
 test('project stage requires both links and validates their HTTPS format', () => {
   const stage = launchStages[launchStageIndex('project')];
   const draft = { ...structuredClone(initialLaunchDraft),
@@ -54,114 +69,109 @@ test('empty identity and unselected method do not generate placeholder summary f
   ]);
 });
 
-test('summary keeps exact supply and target decimals beyond JavaScript safe integer precision', () => {
+const { calculateLaunch, calculateDraftLaunch, launchPreview } = loadSource('calculate-launch.ts');
+const { validateLaunchStep } = loadSource('launch-validation.ts');
+
+test('three stages collect tokenomics and the launch plan into one step before review', () => {
+  assert.equal(launchStages.length, 3);
+  assert.equal(launchStages.map((stage) => stage.id).join(), 'project,token,review');
+  for (const section of ['method', 'sale', 'supply', 'allocation', 'settings', 'token'])
+    assert.equal(launchStageIndex(section), 1, section);
+  assert.equal(launchStageIndex('eligibility'), -1);
   const draft = structuredClone(initialLaunchDraft);
-  draft.symbol = 'EXACT';
-  draft.supply = '900719925.4740993';
-  draft.bonding.target = '1234.5678901';
-  assert.equal(rowsFor(draft, 'token')[0].value, '900,719,925.4740993 EXACT');
-  assert.equal(rowsFor(draft, 'sale')[0].value, '1,234.5678901 USDC');
+  draft.bonding.creatorPayout = '0.1';
+  draft.bonding.creatorFee = '10.01';
+  draft.allocation.teamShare = '100';
+  draft.quote = 'XLM';
+  const errors = validateLaunchStage(draft, launchStages[1]);
+  assert.ok(errors['creator-payout']);
+  assert.ok(errors['creator-fee']);
+  assert.ok(errors['allocation-team']);
+  assert.ok(errors['launch-quote']);
+  // Focus goes to the first error, so error order must follow the on-screen order.
+  assert.equal(Object.keys(errors)[0], 'launch-quote');
 });
 
-test('invalid intermediate inputs do not appear as valid summary amounts or allocations', () => {
+test('minimum reserve, payout cap, tax estimates and rounded price growth follow the formula', () => {
+  for (const payout of [0, 0.5, 0.99, 50, 499.99, 500, 1000, 1234.5678901]) {
+    const c = calculateLaunch(100_000_000, payout, 250, 1000);
+    assert.ok(c.graduationTarget >= 5000);
+    assert.ok(c.creatorPayoutBps <= 1000);
+    assert.ok(Math.abs(c.graduationTarget * c.creatorPayoutBps / 10000 - payout) < 1e-9);
+    assert.equal(Object.values(c.allocations).reduce((a,b) => a+b), 10000);
+    assert.equal(c.buyOnlyCreatorTaxEstimate, c.graduationTarget * 0.025);
+    assert.equal(c.buyOnlyBuyerSpendEstimate, c.graduationTarget * 1.025);
+    assert.ok(Math.abs(c.actualPriceMultiplier - 10) < 0.01);
+    assert.ok(Math.abs(c.graduationPrice / c.poolPrice - 1) < 1e-12);
+  }
+  assert.equal(calculateLaunch(1e8, 0, 0, 0).creatorPayoutBps, 0);
+  assert.equal(calculateLaunch(1e8, 1000, 0, 0).graduationTarget, 10000);
+  assert.throws(() => calculateLaunch(1e8, 0.49, 0, 0));
+  for (const args of [[0, 0, 0, 0], [NaN, 0, 0, 0], [1e8, -1, 0, 0], [1e8, Infinity, 0, 0], [1e8, 0, 1001, 0], [1e8, 0, 1.5, 0], [1e8, 0, 0, 10000], [1e8, 0, 0, 9999]])
+    assert.throws(() => calculateLaunch(...args));
+});
+
+test('tax is separate from payout, allocation and curve calibration', () => {
+  const noTax = calculateLaunch(1e8, 250, 0, 1500);
+  const tax = calculateLaunch(1e8, 250, 1000, 1500);
+  for (const key of ['graduationTarget', 'creatorPayoutBps', 'poolQuote', 'virtualBaseReserve', 'virtualQuoteReserve', 'startPrice'])
+    assert.equal(noTax[key], tax[key]);
+  assert.deepEqual(JSON.parse(JSON.stringify(noTax.allocations)), JSON.parse(JSON.stringify(tax.allocations)));
+});
+
+test('deployment retains exact supply units and reaches graduation with whole-unit reserves', () => {
   const draft = structuredClone(initialLaunchDraft);
-  draft.supply = 'not a number';
-  draft.bonding.target = '-1';
-  draft.allocation.saleShare = '500';
-  assert.deepEqual(rowsFor(draft, 'token'), []);
+  draft.supply = '900719925.4740993';
+  draft.bonding.creatorPayout = '1234.5678901';
+  draft.allocation.teamShare = '30';
+  const c = calculateDraftLaunch(draft);
+  const inventory = 9007199254740993n * BigInt(c.allocations.curve_bps) / 10000n;
+  const base = BigInt(c.contract.virtual_base_reserve), quote = BigInt(c.contract.virtual_quote_reserve);
+  const target = BigInt(c.contract.graduation_target);
+  assert.equal(target, 123456789010n);
+  assert.ok(base > inventory);
+  const cost = (quote * inventory + base - inventory - 1n) / (base - inventory);
+  assert.ok(cost >= target && cost - target <= 3n);
+  assert.equal(rowsFor(draft, 'token')[0].value, '900,719,925.4740993');
+  draft.supply = '0.0000001';
+  assert.equal(launchPreview(draft).calculation, null);
+  draft.supply = '0.0000003';
+  assert.equal(launchPreview(draft).calculation, null);
+  draft.supply = '922337203685.4775807';
+  draft.allocation.teamShare = '0';
+  assert.match(launchPreview(draft).error, /contract amount limit/);
+});
+
+test('summary derives shares and target, ignores legacy manual allocations and hides invalid previews', () => {
+  const draft = structuredClone(initialLaunchDraft);
+  draft.allocation.saleShare = 'invalid';
+  draft.allocation.poolShare = 'invalid';
+  const c = calculateDraftLaunch(draft);
+  const rows = rowsFor(draft, 'token');
+  assert.equal(rows.find(row => row.label === 'Bonding curve').value, `${c.allocations.curve_bps / 100}%`);
+  assert.equal(rows.find(row => row.label === 'Creator Raise').value, '$0');
+  assert.equal(rows.find(row => row.label === 'Creator Tax').value, '0%');
+  assert.equal(rows.find(row => row.label === 'Graduation target').value, '$5,000');
+  assert.equal(rowsFor(draft, 'sale')[0].value, '$5,000 USDC');
+  draft.bonding.creatorPayout = '';
+  assert.deepEqual(rowsFor(draft, 'allocation'), []);
   assert.deepEqual(rowsFor(draft, 'sale'), []);
 });
 
-test('timing uses the selected duration when custom dates are empty', () => {
+test('team vesting stays conditional and tax accepts only whole basis points up to 10%', () => {
   const draft = structuredClone(initialLaunchDraft);
-  draft.bonding.durationDays = '30';
-  assert.deepEqual(rowsFor(draft, 'settings'), [
-    { label: 'Starts', value: 'Immediately' },
-    { label: 'Creator fee', value: '0%' },
-  ]);
-});
-
-test('combined token stage validates method, supply and allocation without the launch target', () => {
-  const draft = structuredClone(initialLaunchDraft);
-  draft.supply = '0';
-  draft.methodSelected = false;
-  const stage = launchStages[launchStageIndex('supply')];
-  const errors = validateLaunchStage(draft, stage);
-  assert.ok(errors['launch-supply']);
-  assert.ok(errors['launch-methods']);
-  assert.equal(errors['curve-target'], undefined);
-  draft.supply = '1000000';
-  draft.methodSelected = true;
-  draft.allocation.saleShare = 'invalid';
-  assert.ok(validateLaunchStage(draft, stage)['allocation-sale']);
-  assert.equal(launchStageIndex('supply'), launchStageIndex('allocation'));
-});
-
-test('launch plan validates target and dates without applying unavailable reputation rules', () => {
-  const draft = structuredClone(initialLaunchDraft);
-  draft.bonding.startsAt = 'invalid';
-  draft.bonding.target = '-1';
-  draft.eligibility.mode = 'reputation';
-  const errors = validateLaunchStage(draft, launchStages[launchStageIndex('settings')]);
-  assert.ok(errors['bonding-start']);
-  assert.ok(errors['curve-target']);
-  assert.equal(errors['eligibility-requirements'], undefined);
-  assert.ok(launchStages.every((stage) => Object.keys(validateLaunchStage(draft, stage)).every((key) => !key.startsWith('eligibility'))));
-});
-
-test('review editing targets resolve to supply, allocation and launch plan; reputation is not a stage', () => {
-  assert.equal(launchStages[launchStageIndex('token')].id, 'token');
-  assert.equal(launchStages[launchStageIndex('allocation')].id, 'token');
-  assert.equal(launchStageIndex('sale'), launchStageIndex('settings'));
-  assert.equal(launchStageIndex('eligibility'), -1);
-  assert.equal(launchStages[launchStageIndex('review')].id, 'review');
-});
-
-
-test('launch defaults and input boundaries match the create form', () => {
-  assert.equal(initialLaunchDraft.method, 'bonding');
-  assert.equal(initialLaunchDraft.methodSelected, true);
-  assert.equal(initialLaunchDraft.quote, 'USDC');
-  assert.equal(initialLaunchDraft.bonding.creatorFee, '0');
-  const { validateLaunchStep } = loadSource('launch-validation.ts');
-  const draft = structuredClone(initialLaunchDraft);
-  draft.description = 'a'.repeat(3000);
-  draft.symbol = 'ABCDEFGHIJKL';
-  assert.equal(validateLaunchStep(draft, 'project')['launch-description'], undefined);
-  assert.equal(validateLaunchStep(draft, 'project')['launch-symbol'], undefined);
-  draft.description += 'a';
-  draft.symbol += 'M';
-  assert.ok(validateLaunchStep(draft, 'project')['launch-description']);
-  assert.ok(validateLaunchStep(draft, 'project')['launch-symbol']);
-  draft.allocation = { ...draft.allocation, saleShare: '70', poolShare: '20', teamShare: '10', vestingMonths: '0' };
+  draft.allocation.vestingMonths = 'invalid';
   assert.equal(validateLaunchStep(draft, 'allocation')['team-vesting'], undefined);
-  for (const fee of ['0', '0.01', '1.25', '100']) {
-    draft.bonding.creatorFee = fee;
-    assert.equal(validateLaunchStep(draft, 'settings')['creator-fee'], undefined);
+  draft.allocation.teamShare = '10';
+  assert.ok(validateLaunchStep(draft, 'allocation')['team-vesting']);
+  draft.allocation.vestingMonths = '0';
+  assert.equal(rowsFor(draft, 'allocation').at(-1).value, 'No vesting');
+  for (const value of ['0', '0.01', '1.25', '10']) {
+    draft.bonding.creatorFee = value;
+    assert.equal(validateLaunchStep(draft, 'allocation')['creator-fee'], undefined);
   }
-  for (const fee of ['', '-1', '100.01', '1.001', 'abc']) {
-    draft.bonding.creatorFee = fee;
-    assert.ok(validateLaunchStep(draft, 'settings')['creator-fee']);
+  for (const value of ['', '-1', '10.01', '1.001', 'abc']) {
+    draft.bonding.creatorFee = value;
+    assert.ok(validateLaunchStep(draft, 'allocation')['creator-fee']);
   }
-});
-
-test('allocation summary labels every share and describes disabled vesting', () => {
-  const draft = structuredClone(initialLaunchDraft);
-  draft.allocation = { saleShare: '61', poolShare: '32', teamShare: '7', cliffMonths: '0', vestingMonths: '0' };
-  assert.deepEqual(rowsFor(draft, 'allocation'), [
-    { label: 'Bonding curve', value: '61%' },
-    { label: 'Liquidity pool', value: '32%' },
-    { label: 'Team', value: '7%' },
-    { label: 'Team vesting', value: 'No vesting' },
-  ]);
-  draft.allocation.vestingMonths = '6';
-  assert.equal(rowsFor(draft, 'allocation').at(-1).value, '6 mo');
-});
-
-test('summary displays percentage fee values without presenting invalid edits as configured fees', () => {
-  const draft = structuredClone(initialLaunchDraft);
-  draft.bonding.creatorFee = '01.25';
-  assert.equal(rowsFor(draft, 'settings').at(-1).value, '1.25%');
-  draft.bonding.creatorFee = 'invalid';
-  assert.equal(rowsFor(draft, 'settings').some((row) => row.label === 'Creator fee'), false);
 });
