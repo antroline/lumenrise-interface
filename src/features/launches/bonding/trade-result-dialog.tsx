@@ -107,22 +107,19 @@ export function TradeResultDialog({
                     : 'Review the message below before trying again.'}
             </DialogDescription>
           </DialogHeader>
-          <AnimatePresence initial={false} mode="wait">
-            {!confirmation && (busy ? message : error) && (
-              <motion.p
-                key={busy ? message : error}
-                initial={reduced ? false : { opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={transition}
-                role={busy ? 'status' : 'alert'}
-                aria-atomic="true"
-                className="w-full break-words text-sm leading-relaxed"
-              >
-                {busy ? message : error}
-              </motion.p>
-            )}
-          </AnimatePresence>
+          {!confirmation && (busy ? message : error) && (
+            <motion.p
+              key={busy ? message : error}
+              initial={reduced ? false : { opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={transition}
+              role={busy ? 'status' : 'alert'}
+              aria-atomic="true"
+              className="w-full break-words text-sm leading-relaxed"
+            >
+              {busy ? message : error}
+            </motion.p>
+          )}
           {confirmation && error && (
             <p role="alert" className="text-sm text-muted-foreground">
               Your trade is confirmed, but balances could not refresh. Refresh the page to update them.
