@@ -22,7 +22,7 @@ export function bondingDetails(
     status: snapshot.status,
     stateStale: false,
     startsAt: p.starts_at.toString(),
-    endsAt: launch?.bonding?.endsAt === null ? null : p.ends_at.toString(),
+    endsAt: p.ends_at?.toString() ?? null,
     totalSupply: c.total_supply.toString(),
     allocations: {
       curveBps: Number(p.allocations.curve_bps),

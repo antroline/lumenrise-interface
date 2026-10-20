@@ -11,17 +11,16 @@ import {
   getLaunchList,
   launchListKey,
   type Bonding,
-  type LaunchListItem,
 } from '@/lib/api/launches/market';
 import type { ApiNetwork } from '@/lib/api/launches/types';
+import { discoverLaunches, type HomeLaunch } from './home-discovery';
 
-export type HomeLaunch = LaunchListItem & { bonding: Bonding };
+export type { HomeLaunch } from './home-discovery';
+export { progressLabel } from './home-discovery';
 
 /** Same page size as /launches, so both routes share one cached first page. */
 const PAGE_SIZE = 20;
 
-const byProgress = (a: HomeLaunch, b: HomeLaunch) =>
-  b.bonding.progressBps - a.bonding.progressBps;
 const byTime =
   (key: 'startsAt' | 'endsAt', direction: 1 | -1) =>
   (a: HomeLaunch, b: HomeLaunch) => {
@@ -48,20 +47,18 @@ export function useHomeLaunches(network: ApiNetwork) {
       void client.cancelQueries({ queryKey: launchListKey(network, 1, PAGE_SIZE) });
   }, [client, network, visible]);
 
-  const launches = [
-    ...new Map(
-      (query.data?.launches ?? []).map((launch) => [launch.contractId, launch]),
-    ).values(),
-  ].filter((launch): launch is HomeLaunch => launch.bonding !== null);
+  const { launches, open, recent, featured } = discoverLaunches(query.data?.launches ?? []);
   const status = (value: Bonding['status']) =>
     launches.filter((launch) => launch.bonding.status === value);
 
-  const open = status('Open');
   return {
     query,
+    launches,
+    recent,
+    featured,
     total: query.data?.total ?? 0,
-    loaded: launches.length,
-    open: [...open].sort(byProgress),
+    loaded: query.data?.launches.length ?? 0,
+    open,
     endingSoon: open
       .filter((launch) => launch.bonding.endsAt !== null)
       .sort(byTime('endsAt', 1)),
@@ -87,11 +84,6 @@ export const launchHref = (launch: HomeLaunch, network: ApiNetwork) =>
 
 export const networkName = (network: ApiNetwork) =>
   network === 'public' ? 'Stellar Mainnet' : 'Stellar Testnet';
-
-/** Progress toward graduation as a display percentage; the bar itself clamps to 0–100. */
-export function progressLabel(progressBps: number) {
-  return `${(progressBps / 100).toLocaleString('en-US', { maximumFractionDigits: progressBps < 1000 ? 1 : 0 })}%`;
-}
 
 export function curveInput(bonding: Bonding): CurveModelInput {
   return {

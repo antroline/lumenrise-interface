@@ -13,6 +13,19 @@
   animation: none;
 }
 
+.viewport {
+  /* Reserve scrollbar space so wrapping cannot feed back into height measurement. */
+  scrollbar-gutter: stable;
+  overflow-anchor: none;
+  overscroll-behavior-y: contain;
+  scroll-padding-block: 1.25rem;
+}
+
+.viewport[data-resizing] {
+  /* Content can temporarily exceed the frame while it grows to its new size. */
+  overflow-y: hidden;
+}
+
 .popup[data-starting-style] {
   opacity: 0;
   transform: translateY(8px) scale(0.98);
@@ -53,10 +66,6 @@
 
   .popup[data-ending-style] {
     transition-duration: 200ms;
-  }
-
-  .popup > * {
-    flex-shrink: 0;
   }
 
   .popup [data-slot='dialog-header'] {

@@ -42,7 +42,7 @@ export type LaunchParams = {
     creator_payout_bps: number;
   };
   starts_at: string;
-  ends_at: string;
+  reputation_label: string;
 };
 
 function matchesDraftShape(value: unknown, sample: unknown): boolean {
@@ -170,7 +170,6 @@ export function buildBondingCurveParams(
       creator_payout_bps: 1000, // needs a field — creator payout; together with the 100 bps platform fee, at most 10000.
     },
     starts_at: String(startsAt),
-    // Temporary expiry required by the deployed factory until it supports no end date.
-    ends_at: String(startsAt + 365 * 24 * 60 * 60),
+    reputation_label: '0',
   };
 }

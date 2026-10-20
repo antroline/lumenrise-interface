@@ -14,8 +14,9 @@ export function AppDialogContent({ className, overlayProps, children, ...props }
 
   // The portal mounts on open; a callback ref observes each mount, including reopenings.
   const observeBody = useCallback((body: HTMLDivElement | null) => {
-    const popup = body?.parentElement;
-    if (!body || !popup || reduced !== false) return;
+    const viewport = body?.parentElement;
+    const popup = viewport?.parentElement;
+    if (!body || !viewport || !popup || reduced !== false) return;
 
     let animation: ReturnType<typeof animate> | undefined;
     let previousHeight = popup.offsetHeight;
@@ -25,7 +26,7 @@ export function AppDialogContent({ className, overlayProps, children, ...props }
     const resize = () => {
       // Measure the unconstrained body, not the animated frame, to avoid feedback loops.
       const style = getComputedStyle(popup);
-      const naturalHeight = body.offsetHeight
+      const naturalHeight = Math.ceil(parseFloat(getComputedStyle(body).height))
         + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
         + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
       const maxHeight = parseFloat(style.maxHeight);
@@ -36,6 +37,7 @@ export function AppDialogContent({ className, overlayProps, children, ...props }
       const from = parseFloat(style.height);
       animation?.stop();
       popup.style.height = `${from}px`;
+      viewport.dataset.resizing = '';
       previousHeight = nextHeight;
       const current = animate(popup, { height: [from, nextHeight] }, {
         duration: 0.32,
@@ -46,6 +48,7 @@ export function AppDialogContent({ className, overlayProps, children, ...props }
         if (animation !== current) return;
         animation = undefined;
         popup.style.height = `${nextHeight}px`;
+        delete viewport.dataset.resizing;
       });
     };
 
@@ -57,6 +60,7 @@ export function AppDialogContent({ className, overlayProps, children, ...props }
       window.removeEventListener('resize', resize);
       animation?.stop();
       animation = undefined;
+      delete viewport.dataset.resizing;
       popup.style.removeProperty('height');
     };
   }, [reduced]);
@@ -65,11 +69,13 @@ export function AppDialogContent({ className, overlayProps, children, ...props }
     <DialogContent
       // Nested wallet approvals release focus to Blux, but must still shield the form below.
       overlayProps={{ ...overlayProps, forceRender: true, className: cn(styles.overlay, 'touch-none', overlayProps?.className) }}
-      className={cn(styles.popup, 'flex max-h-[calc(100svh-2rem)] flex-col gap-5 overflow-y-auto rounded-2xl p-5 sm:max-w-sm', className)}
+      className={cn(styles.popup, 'flex max-h-[calc(100svh-2rem)] flex-col overflow-hidden rounded-2xl p-5 sm:max-w-sm', className)}
       {...props}
     >
-      <div ref={observeBody} className="flex min-w-0 shrink-0 flex-col gap-5">
-        {children}
+      <div className={cn(styles.viewport, 'min-h-0 min-w-0 overflow-x-hidden overflow-y-auto')}>
+        <div ref={observeBody} className="flex min-w-0 flex-col gap-5">
+          {children}
+        </div>
       </div>
     </DialogContent>
   );

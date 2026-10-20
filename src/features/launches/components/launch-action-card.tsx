@@ -55,13 +55,13 @@ export function LaunchActionCard({
             <TabsList aria-label="Trade direction" className="h-8 w-fit">
               <TabsTrigger
                 value="buy"
-                className="px-3! text-xs! data-active:bg-neutral-900! data-active:text-white! dark:data-active:bg-neutral-700!"
+                className="min-w-14 px-3! text-xs! font-semibold uppercase data-active:bg-ok! data-active:text-white! dark:data-active:text-ink!"
               >
                 Buy
               </TabsTrigger>
               <TabsTrigger
                 value="sell"
-                className="px-3! text-xs! data-active:bg-neutral-900! data-active:text-white! dark:data-active:bg-neutral-700!"
+                className="min-w-14 px-3! text-xs! font-semibold uppercase data-active:bg-bad! data-active:text-white! dark:data-active:text-ink!"
               >
                 Sell
               </TabsTrigger>

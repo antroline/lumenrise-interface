@@ -30,6 +30,44 @@ function load(filename) {
 }
 const details = load('bonding-details.ts');
 
+test('live configuration supports current launches without expiry and preserves legacy deadlines', () => {
+  const config = {
+    factory: 'factory', platform: 'platform', platform_fee_bps: '100',
+    reputation: 'registry', total_supply: '1000000000',
+    buckets: { pool: '300000000', curve: '400000000', team: '300000000' },
+    params: {
+      owner: 'owner', asset: 'asset', pair: 'pair', starts_at: '1800000000', reputation_label: '0',
+      metadata: { name: 'Token', symbol: 'TOKEN', description: '', logo: '' },
+      allocations: { pool_bps: '3000', curve_bps: '4000', team_bps: '3000' },
+      vesting: { cliff_seconds: '0', duration_seconds: '0', schedule: { tag: 'Weekly' } },
+      curve: {
+        virtual_base_reserve: '800000000', virtual_quote_reserve: '100000000',
+        graduation_target: '100000000', creator_fee_bps: '10', creator_payout_bps: '1000',
+      },
+    },
+  };
+  const state = {
+    sold: '0', quote_reserve: '0', creator_fees: '0', team_claimed: '0',
+    buyer_count: '0', graduated: false, busy: false,
+  };
+  for (const endsAt of [undefined, null, '1800100000']) {
+    const params = { ...config.params };
+    if (endsAt !== undefined) params.ends_at = endsAt;
+    const decoded = details.indexedContract({ config: { ...config, params }, state });
+    assert.equal(decoded.error, undefined);
+    assert.equal(decoded.config.params.ends_at, endsAt == null ? null : BigInt(endsAt));
+    const snapshot = { ...decoded, status: 'Open' };
+    assert.equal(details.bondingDetails(undefined, snapshot).endsAt, endsAt ?? null);
+    // A live legacy deadline must not be erased by an outdated API projection.
+    assert.equal(details.bondingDetails({ bonding: { endsAt: null } }, snapshot).endsAt, endsAt ?? null);
+  }
+  const invalid = details.indexedContract({
+    config: { ...config, params: { ...config.params, ends_at: 'invalid' } }, state,
+  });
+  assert.equal(invalid.config, undefined);
+  assert.ok(invalid.error);
+});
+
 test('graduation uses net reserves with exact integer arithmetic, including above-target and unavailable targets', () => {
   assert.equal(details.graduationPercent('1000000417', '10000000000'), 10);
   assert.equal(
