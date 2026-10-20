@@ -3,8 +3,8 @@ import { validateLaunchStep, type FieldErrors, type WizardStep } from './launch-
 
 export const launchStages = [
   { id: 'project', label: 'Project details', heading: 'Tell us about your token', sections: ['project'] },
-  { id: 'token', label: 'Token setup', heading: 'Choose your token setup', sections: ['method', 'supply', 'allocation'] },
-  { id: 'settings', label: 'Launch plan', heading: 'Plan your launch', sections: ['sale', 'settings'] },
+  // Section order matches the on-screen order so the first invalid field receives focus.
+  { id: 'token', label: 'Tokenomics & plan', heading: 'Shape your token economics', sections: ['method', 'sale', 'supply', 'allocation', 'settings'] },
   { id: 'review', label: 'Review', heading: 'Review your launch', sections: ['review'] },
 ] as const satisfies readonly { id: string; label: string; heading: string; sections: readonly WizardStep[] }[];
 

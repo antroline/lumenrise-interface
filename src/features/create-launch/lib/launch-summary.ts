@@ -3,12 +3,11 @@ import {
   methodLabels,
   numberValue,
   validNonNegativeInteger,
-  validPositive,
-  validPercent,
   validSupply,
   type LaunchDraft,
 } from './launch-draft';
 import { allocationError, type WizardStep } from './launch-validation';
+import { calculatedAllocation, formatLaunchNumber, launchPreview } from './calculate-launch';
 
 export type LaunchSummaryRow = { label: string; value: string };
 
@@ -20,6 +19,8 @@ function dateLabel(value: string, fallback: string) {
 }
 
 export function launchSummaryRows(draft: LaunchDraft, step: WizardStep): LaunchSummaryRow[] {
+  const allocation = calculatedAllocation(draft);
+  const { calculation } = launchPreview(draft);
   switch (step) {
     case 'project':
       return [
@@ -32,13 +33,18 @@ export function launchSummaryRows(draft: LaunchDraft, step: WizardStep): LaunchS
       return [...launchSummaryRows(draft, 'supply'), ...launchSummaryRows(draft, 'allocation')];
     case 'supply':
       return [
-        ...(validSupply(draft.supply) ? [{ label: 'Supply', value: `${formatAmount(draft.supply)} ${draft.symbol}` }] : []),
+        ...(validSupply(draft.supply) ? [{ label: 'Supply', value: `${formatAmount(draft.supply)} ${draft.symbol}`.trim() }] : []),
       ];
     case 'allocation':
       return [
-        ...(!allocationError(draft.allocation) ? [
-          { label: 'Bonding curve', value: `${numberValue(draft.allocation.saleShare)}%` },
-          { label: 'Liquidity pool', value: `${numberValue(draft.allocation.poolShare)}%` },
+        ...(!allocationError(allocation) ? [
+          ...(calculation ? [
+            { label: 'Creator Raise', value: `$${formatAmount(draft.bonding.creatorPayout)}` },
+            { label: 'Creator Tax', value: `${numberValue(draft.bonding.creatorFee)}%` },
+            { label: 'Graduation target', value: `$${formatLaunchNumber(calculation.graduationTarget)}` },
+          ] : []),
+          { label: 'Bonding curve', value: `${numberValue(allocation.saleShare)}%` },
+          { label: 'Liquidity pool', value: `${numberValue(allocation.poolShare)}%` },
           { label: 'Team', value: `${numberValue(draft.allocation.teamShare)}%` },
         ] : []),
         ...(numberValue(draft.allocation.teamShare) > 0 && validNonNegativeInteger(draft.allocation.vestingMonths)
@@ -46,13 +52,12 @@ export function launchSummaryRows(draft: LaunchDraft, step: WizardStep): LaunchS
           : []),
       ];
     case 'sale':
-      return validPositive(draft.bonding.target)
-        ? [{ label: 'Raise target', value: `${formatAmount(draft.bonding.target)} ${draft.quote}` }]
+      return calculation
+        ? [{ label: 'Raise target', value: `$${formatLaunchNumber(calculation.graduationTarget)} USDC` }]
         : [];
     case 'settings':
       return [
         { label: 'Starts', value: dateLabel(draft.bonding.startsAt, 'Immediately') },
-        ...(validPercent(draft.bonding.creatorFee) ? [{ label: 'Creator fee', value: `${numberValue(draft.bonding.creatorFee)}%` }] : []),
       ];
     case 'eligibility':
       return [

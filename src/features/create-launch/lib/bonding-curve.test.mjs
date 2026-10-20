@@ -49,6 +49,7 @@ function loadSource(filename, mocks = { '@bluxcc/react': {} }, globals = {}, cac
 }
 
 const { initialLaunchDraft } = loadSource('launch-draft.ts');
+const { calculateDraftLaunch } = loadSource('calculate-launch.ts');
 const { buildBondingCurveParams, FACTORY_CONTRACT_ID, isBondingDraft } = loadSource('bonding-curve.ts');
 function draft() {
   return {
@@ -57,7 +58,7 @@ function draft() {
     name: 'Test token', symbol: 'TIDE', description: 'Entered description', logo: 'data:image/png;base64,abc',
     supply: '900719925.4740993', quote: 'USDC',
     allocation: { saleShare: '40.01', poolShare: '29.99', teamShare: '30', cliffMonths: '2', vestingMonths: '6' },
-    bonding: { target: '1234.5678901', creatorFee: '0.1', startsAt: '', endsAt: '', durationDays: '30' },
+    bonding: { creatorPayout: '1234.5678901', creatorFee: '0.1', startsAt: '', endsAt: '', durationDays: '30' },
   };
 }
 
@@ -69,16 +70,17 @@ test('maps exact amounts, pair, allocations, team vesting, and percentage fee wi
   assert.equal(params.metadata.symbol, 'TIDE');
   assert.equal(params.metadata.description, 'Entered description');
   assert.equal(params.metadata.logo, IMAGE_URL);
-  assert.equal(params.allocations.curve_bps, 4001);
-  assert.equal(params.allocations.pool_bps, 2999);
+  const calculation = calculateDraftLaunch(draft());
+  assert.equal(params.allocations.curve_bps, calculation.allocations.curve_bps);
+  assert.equal(params.allocations.pool_bps, calculation.allocations.pool_bps);
   assert.equal(params.allocations.team_bps, 3000);
   assert.equal(params.vesting.cliff_seconds, '5184000');
   assert.equal(params.vesting.duration_seconds, '15552000');
   assert.equal(params.vesting.schedule.tag, 'Weekly');
-  assert.equal(params.curve.graduation_target, '12345678901');
-  const inventory = (9007199254740993n * 4001n) / 10000n;
-  assert.equal(params.curve.virtual_base_reserve, String(inventory * 2n));
-  assert.equal(params.curve.virtual_quote_reserve, '12345678901');
+  assert.equal(params.curve.graduation_target, calculation.contract.graduation_target);
+  assert.equal(params.curve.virtual_base_reserve, calculation.contract.virtual_base_reserve);
+  assert.equal(params.curve.virtual_quote_reserve, calculation.contract.virtual_quote_reserve);
+  assert.equal(params.curve.creator_payout_bps, calculation.creatorPayoutBps);
   assert.equal(params.curve.creator_fee_bps, 10);
   assert.ok(params.curve.creator_payout_bps + 100 <= 10000);
   assert.equal(params.starts_at, '1800000060');
@@ -86,14 +88,16 @@ test('maps exact amounts, pair, allocations, team vesting, and percentage fee wi
   assert.equal(Object.hasOwn(params, 'ends_at'), false);
 });
 
-test('maps XLM, custom dates, and a disabled creator fee', () => {
+test('maps custom dates and a disabled creator fee; rejects XLM until conversion exists', () => {
   const form = draft();
   form.quote = 'XLM';
+  assert.throws(() => buildBondingCurveParams(form, owner, issuer, IMAGE_URL, 1_800_000_000), /USDC only/);
+  form.quote = 'USDC';
   form.bonding.creatorFee = '0';
   form.bonding.startsAt = '2030-01-02T07:00:00+03:00';
   form.bonding.endsAt = '2030-02-02T07:00:00+03:00';
   const params = buildBondingCurveParams(form, owner, issuer, IMAGE_URL, 1_800_000_000);
-  assert.equal(params.pair, 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC');
+  assert.equal(params.pair, 'CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA');
   assert.equal(params.starts_at, String(Date.parse('2030-01-02T04:00:00Z') / 1000));
   assert.equal(Object.hasOwn(params, 'ends_at'), false);
   assert.equal(params.curve.creator_fee_bps, 0);
@@ -104,11 +108,11 @@ test('rejects unsupported methods, local image references, and invalid contract 
     (f) => { f.method = 'basic'; },
     (f) => { f.method = 'fixed'; },
     (f) => { f.method = 'auction'; },
-    (f) => { f.allocation.poolShare = '0'; f.allocation.saleShare = '70'; },
-    (f) => { f.allocation.saleShare = '0'; f.allocation.poolShare = '70'; },
-    (f) => { f.allocation.teamShare = '29.99'; },
+    (f) => { f.allocation.teamShare = '99.99'; },
+    (f) => { f.allocation.teamShare = '100'; },
+    (f) => { f.allocation.teamShare = 'abc'; },
     (f) => { f.supply = '0.00000001'; },
-    (f) => { f.bonding.target = '1.00000001'; },
+    (f) => { f.bonding.creatorPayout = '0.49'; },
     (f) => { f.allocation.vestingMonths = '-1'; },
     (f) => { f.allocation.cliffMonths = '100000000000000000000'; },
     (f) => { f.bonding.startsAt = '2000-01-01T00:00:00Z'; },
@@ -731,32 +735,6 @@ test('index polling aborts on unexpected errors and treats network trouble as te
   assert.equal(await offline.indexing.waitForIndexedLaunch(curve, 'testnet'), 'ready');
   assert.equal(offline.checks.length, 3);
 });
-
-const { calculateCurveReserves } = loadSource('calculate-curve-reserves.ts');
-test('100K target and 50M inventory raise the target with increasing prices', () => {
-  const unit = 10_000_000n, inventory = 50_000_000n * unit, target = 100_000n * unit;
-  const r = calculateCurveReserves(inventory, target);
-  const base = BigInt(r.virtual_base_reserve), quote = BigInt(r.virtual_quote_reserve);
-  const cost = sold => (quote * sold + base - sold - 1n) / (base - sold);
-  const price = sold => (quote * base * unit + (base - sold) ** 2n - 1n) / (base - sold) ** 2n;
-  assert.equal(cost(0n), 0n);
-  assert.equal(cost(inventory), target);
-  assert.equal(price(0n), 10_000n); // 0.001 pair per token
-  assert.equal(price(inventory), 40_000n); // 0.004 pair per token
-  assert.ok(price(inventory / 100n) > price(0n));
-  let raised = 0n;
-  for(let i=1n;i<=100n;i++) raised += cost(inventory*i/100n) - cost(inventory*(i-1n)/100n);
-  assert.equal(raised, target); // Split trades telescope, excluding creator fees.
-});
-test('curve calibration preserves exact odd amounts and factory reserve limits', () => {
-  const inventory = 9007199254740993n, target = 12345678901n;
-  const r = calculateCurveReserves(inventory,target);
-  assert.equal(BigInt(r.virtual_quote_reserve)*inventory/(BigInt(r.virtual_base_reserve)-inventory),target);
-  assert.throws(() => calculateCurveReserves(0n,target));
-  assert.throws(() => calculateCurveReserves(inventory,0n));
-  assert.throws(() => calculateCurveReserves(4611686018427387904n,target), /contract amount limit/);
-});
-
 
 test('accepts zero team vesting and maps percentage fees exactly without an expiry', () => {
   const form = draft();

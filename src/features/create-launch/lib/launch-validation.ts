@@ -7,6 +7,7 @@ import {
   validSupply,
   type LaunchDraft,
 } from './launch-draft';
+import { launchPreview } from './calculate-launch';
 
 export type WizardStep =
   | 'project'
@@ -113,9 +114,20 @@ export function validateLaunchStep(
   }
 
   if (step === 'token' || step === 'allocation') {
-    const invalidAllocation = allocationError(draft.allocation);
+    if (draft.method === 'bonding') {
+      const payout = numberValue(draft.bonding.creatorPayout);
+      if (!/^\d+(?:\.\d{1,7})?$/.test(draft.bonding.creatorPayout.trim()) || !Number.isFinite(payout) || (payout > 0 && payout < 0.5))
+        errors['creator-payout'] = 'Enter $0 or at least $0.50, with up to 7 decimal places.';
+      if (!validPercent(draft.bonding.creatorFee) || numberValue(draft.bonding.creatorFee) > 10)
+        errors['creator-fee'] = 'Enter 0–10%, with up to 2 decimal places.';
+      if (!validPercent(draft.allocation.teamShare) || numberValue(draft.allocation.teamShare) >= 100)
+        errors['allocation-team'] = 'Enter 0–99.99%, with up to 2 decimal places.';
+      const { error } = launchPreview(draft);
+      if (error && !Object.keys(errors).length && validSupply(draft.supply)) errors['creator-payout'] = error;
+    }
+    const invalidAllocation = draft.method === 'bonding' ? null : allocationError(draft.allocation);
     if (invalidAllocation) errors['allocation-sale'] = invalidAllocation;
-    else if (!validPercent(draft.allocation.saleShare, false))
+    else if (draft.method !== 'bonding' && !validPercent(draft.allocation.saleShare, false))
       errors['allocation-sale'] = 'Allocate more than 0% to the launch.';
     const { teamShare, cliffMonths, vestingMonths } = draft.allocation;
     if (numberValue(teamShare) > 0) {
@@ -127,9 +139,8 @@ export function validateLaunchStep(
   }
 
   if (step === 'sale') {
-    if (draft.method === 'bonding' && !validPositive(draft.bonding.target))
-      errors['curve-target'] =
-        `Enter a positive graduation target in ${draft.quote}.`;
+    if (draft.method === 'bonding' && draft.quote !== 'USDC')
+      errors['launch-quote'] = 'Choose USDC. XLM requires a dollar conversion and is not available yet.';
     if (draft.method === 'fixed') {
       if (!validPositive(draft.fixed.price))
         errors['fixed-price'] =
@@ -149,8 +160,6 @@ export function validateLaunchStep(
     if (draft.method === 'bonding') {
       if (draft.bonding.startsAt && (!Number.isFinite(Date.parse(draft.bonding.startsAt)) || Date.parse(draft.bonding.startsAt) <= Date.now()))
         errors['bonding-start'] = 'Choose a start time in the future.';
-      if (!validPercent(draft.bonding.creatorFee))
-        errors['creator-fee'] = 'Enter 0–100%, with up to 2 decimal places.';
     }
     if (draft.method === 'fixed') {
       validateDates(

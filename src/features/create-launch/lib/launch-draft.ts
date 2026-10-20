@@ -28,7 +28,7 @@ export type LaunchDraft = {
     vestingMonths: string;
   };
   bonding: LaunchSchedule & {
-    target: string;
+    creatorPayout: string;
     creatorFee: string;
   };
   fixed: LaunchSchedule & {
@@ -74,7 +74,7 @@ export const initialLaunchDraft: LaunchDraft = {
     vestingMonths: '0',
   },
   bonding: {
-    target: '',
+    creatorPayout: '0',
     creatorFee: '0',
     startsAt: '',
     endsAt: '',
