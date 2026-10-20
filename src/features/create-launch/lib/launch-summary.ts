@@ -1,5 +1,7 @@
 import {
   formatAmount,
+  bondingStartDate,
+  isLaunchScheduled,
   methodLabels,
   numberValue,
   validNonNegativeInteger,
@@ -57,7 +59,7 @@ export function launchSummaryRows(draft: LaunchDraft, step: WizardStep): LaunchS
         : [];
     case 'settings':
       return [
-        { label: 'Starts', value: dateLabel(draft.bonding.startsAt, 'Immediately') },
+        { label: 'Starts', value: dateLabel(bondingStartDate(draft.bonding), isLaunchScheduled(draft.bonding) ? 'Not selected' : 'Immediately') },
       ];
     case 'eligibility':
       return [

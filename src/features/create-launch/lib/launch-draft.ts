@@ -28,6 +28,8 @@ export type LaunchDraft = {
     vestingMonths: string;
   };
   bonding: LaunchSchedule & {
+    // Absent in older saved drafts, whose non-empty start date implied scheduling.
+    scheduleEnabled?: boolean;
     creatorPayout: string;
     creatorFee: string;
   };
@@ -205,6 +207,14 @@ export function isoToLocalDateTime(value: string) {
   if (!Number.isFinite(date.getTime())) return '';
   const pad = (part: number) => String(part).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+export function isLaunchScheduled(schedule: LaunchDraft['bonding']) {
+  return schedule.scheduleEnabled ?? !!schedule.startsAt;
+}
+
+export function bondingStartDate(schedule: LaunchDraft['bonding']) {
+  return isLaunchScheduled(schedule) ? schedule.startsAt : '';
 }
 
 export function validOptionalUrl(value: string) {

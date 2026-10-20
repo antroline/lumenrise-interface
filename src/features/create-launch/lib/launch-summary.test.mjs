@@ -28,6 +28,21 @@ const { launchSummaryRows } = loadSource('launch-summary.ts');
 const { launchStages, launchStageIndex, validateLaunchStage } = loadSource('launch-stages.ts');
 const rowsFor = (draft, step) => JSON.parse(JSON.stringify(launchSummaryRows(draft, step)));
 
+test('start summary follows the schedule toggle without discarding the selected date', () => {
+  const draft = structuredClone(initialLaunchDraft);
+  assert.equal(rowsFor(draft, 'settings')[0].value, 'Immediately');
+  draft.bonding.scheduleEnabled = true;
+  assert.equal(rowsFor(draft, 'settings')[0].value, 'Not selected');
+  draft.bonding.startsAt = '2030-01-02T07:00:00+03:00';
+  const scheduled = rowsFor(draft, 'settings')[0].value;
+  assert.notEqual(scheduled, 'Not selected');
+  draft.bonding.scheduleEnabled = false;
+  assert.equal(rowsFor(draft, 'settings')[0].value, 'Immediately');
+  assert.equal(draft.bonding.startsAt, '2030-01-02T07:00:00+03:00');
+  draft.bonding.scheduleEnabled = true;
+  assert.equal(rowsFor(draft, 'settings')[0].value, scheduled);
+});
+
 test('project stage requires both links and validates their HTTPS format', () => {
   const stage = launchStages[launchStageIndex('project')];
   const draft = { ...structuredClone(initialLaunchDraft),
