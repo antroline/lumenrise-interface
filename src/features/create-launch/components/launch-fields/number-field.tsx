@@ -3,7 +3,7 @@
 import { FieldDescription, FieldLabel, Field } from '@/components/ui/field';
 import { LaunchFieldError } from '../launch-motion';
 import { FieldSurface, LaunchInput } from './field-controls';
-import { formatSupply } from '../../lib/amount';
+import { formatSupply, isNumericInput } from '../../lib/amount';
 import { HelpTooltip } from './help-tooltip';
 import { PresetChoices } from './preset-choices';
 import { QuoteIcon } from './quote-icon';
@@ -44,6 +44,7 @@ export function NumberField({
     const nextValue = groupThousands
       ? input.value.replaceAll(',', '')
       : input.value;
+    if (!isNumericInput(nextValue, inputMode)) return;
     const digitsBeforeCaret = groupThousands
       ? input.value
           .slice(0, input.selectionStart ?? input.value.length)
