@@ -40,7 +40,7 @@ export function AllocationSlider({
           <Slider.Thumb
             aria-label={`${label} percentage`}
             aria-describedby={descriptionId}
-            className="size-4 cursor-grab rounded-full border-2 border-foreground bg-background transition-transform duration-150 hover:scale-125 focus-visible:scale-125 focus-visible:ring-3 focus-visible:ring-lime/60 focus-visible:outline-none active:cursor-grabbing data-[dragging]:scale-125 motion-reduce:transition-none"
+            className="size-4 cursor-grab rounded-full border-2 border-foreground bg-background transition-transform duration-150 hover:scale-125 focus-visible:scale-125 focus-visible:ring-3 focus-visible:ring-ring/60 focus-visible:outline-none active:cursor-grabbing data-[dragging]:scale-125 motion-reduce:transition-none"
           />
         </Slider.Track>
       </Slider.Control>

@@ -37,7 +37,7 @@ export function ProjectImageField({ value, onChange, error }: {
       <label
         htmlFor="launch-logo"
         className={cn(
-          'group relative grid size-18 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-xl border border-dashed transition-[background-color,border-color,box-shadow] focus-within:ring-3 focus-within:ring-lime/40 @min-[720px]/launch:aspect-square @min-[720px]/launch:size-auto @min-[720px]/launch:w-full @min-[720px]/launch:rounded-2xl',
+          'group relative grid size-18 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-xl border border-dashed transition-[background-color,border-color,box-shadow] focus-within:ring-3 focus-within:ring-ring/40 @min-[720px]/launch:aspect-square @min-[720px]/launch:size-auto @min-[720px]/launch:w-full @min-[720px]/launch:rounded-2xl',
           value ? 'border-transparent bg-secondary/60' : 'border-border bg-secondary/60 hover:border-foreground/30 hover:bg-secondary',
           (error || fileError) && 'border-bad/60',
         )}

@@ -4,7 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 export const launchFieldSurfaceClassName =
-  'rounded-lg border border-transparent bg-secondary/60 px-3.5 py-2 transition-[box-shadow,background-color,border-color] hover:bg-secondary focus-within:border-foreground/20 focus-within:bg-card focus-within:ring-3 focus-within:ring-lime/40 has-[[aria-invalid=true]]:border-bad/50 motion-reduce:transition-none';
+  'rounded-lg border border-transparent bg-secondary/60 px-3.5 py-2 transition-[background-color,border-color] hover:bg-secondary focus-within:border-foreground/20 focus-visible:ring-0 has-[[aria-invalid=true]]:border-bad/50 motion-reduce:transition-none';
 
 export function FieldSurface({ className, ...props }: ComponentProps<'div'>) {
   return (

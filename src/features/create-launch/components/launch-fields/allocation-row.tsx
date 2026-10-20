@@ -3,6 +3,7 @@
 import { FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { isNumericInput } from '../../lib/amount';
 import { AllocationSlider } from './allocation-slider';
 import { HelpTooltip } from './help-tooltip';
 
@@ -66,7 +67,10 @@ export function AllocationRow({
           type="text"
           inputMode="decimal"
           value={value}
-          onChange={(event) => onChange(event.currentTarget.value)}
+          onChange={(event) => {
+            const nextValue = event.currentTarget.value;
+            if (isNumericInput(nextValue)) onChange(nextValue);
+          }}
           placeholder="0"
           aria-invalid={invalid || undefined}
           aria-describedby={descriptionId}
