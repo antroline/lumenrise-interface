@@ -8,6 +8,12 @@
 @custom-variant short (@media (max-height: 800px));
 @custom-variant studio-compact (@media (min-width: 1024px) and (max-height: 900px));
 
+/* Blux ships monochrome wallet SVGs (including Ledger) with a white fill.
+   Keep those marks visible on light surfaces without recoloring brand artwork. */
+:root:not(.dark) #bluxcc-button svg > path[fill='#ffffff']:only-child {
+  fill: var(--foreground);
+}
+
 @theme {
   --font-sans:
     var(--font-bricolage), Inter, ui-sans-serif, system-ui, sans-serif;
@@ -164,6 +170,8 @@
   --surface-divider: #dcdcdd;
   --popover: #ffffff;
   --popover-foreground: #0b0b0b;
+  --blux-backdrop: rgba(11, 11, 11, 0.28);
+  --blux-shadow: 0 24px 70px rgba(11, 11, 11, 0.18);
   --primary: #d6ff00;
   --primary-foreground: #0b0b0b;
   --secondary: #efefef;
@@ -238,6 +246,8 @@
   --surface-divider: #2f2f30;
   --popover: #181817;
   --popover-foreground: #f4f4ef;
+  --blux-backdrop: rgba(0, 0, 0, 0.6);
+  --blux-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
   --primary: #d6ff00;
   --primary-foreground: #0b0b0b;
   --secondary: #121212;
@@ -430,6 +440,17 @@
 
 @utility animate-skeleton-out {
   animation: results-fade-out 0.32s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+
+/* Home project row: the track holds two identical copies, so -50% lands exactly on the start. */
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@utility animate-marquee {
+  animation: marquee 72s linear infinite;
 }
 
 /* Uppercase caption used for field labels, table heads and nav groups. */

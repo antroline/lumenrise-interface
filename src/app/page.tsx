@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { API_NETWORK } from '@/lib/stellar/network';
 import { FeaturedLaunch } from './_home/featured-launch';
 import { LaunchBrowser } from './_home/launch-browser';
+import { QuickActions } from './_home/quick-actions';
 
 export const metadata: Metadata = { title: 'Home' };
 
@@ -17,6 +18,7 @@ export default async function HomePage({
     <div className="mx-auto flex w-full min-w-0 max-w-[1320px] flex-col gap-8">
       <FeaturedLaunch network={network} />
       <LaunchBrowser network={network} />
+      <QuickActions />
     </div>
   );
 }
