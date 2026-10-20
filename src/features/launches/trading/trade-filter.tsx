@@ -26,7 +26,7 @@ export function TradeFilter({
         size="sm"
         className={cn(
           'border-border bg-card px-3 text-foreground shadow-none hover:bg-secondary/70 data-[size=sm]:rounded-lg data-[size=sm]:text-xs data-popup-open:border-foreground/30 data-popup-open:bg-secondary/70',
-          value !== 'all' && 'border-foreground/20 bg-lime/20',
+          value !== 'all' && 'border-foreground/20 bg-secondary',
         )}
       >
         <SelectValue />

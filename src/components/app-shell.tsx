@@ -25,7 +25,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isLaunchDetails = /^\/launch\/[^/]+$/.test(pathname);
 
   if (bareRoutes.has(pathname) || (process.env.NODE_ENV === 'development' && pathname === '/design-lab')) return children;
-  if (pathname === '/create') return <FocusedShell title="Create launch">{children}</FocusedShell>;
+  if (pathname === '/create') return <FocusedShell title="Create a launch">{children}</FocusedShell>;
 
   return (
     <div className={cn('relative isolate min-h-screen bg-page pb-[calc(4rem+env(safe-area-inset-bottom))] lg:flex lg:pb-0', pathname === '/launches' && 'bg-neutral-100 dark:bg-page', isLaunchDetails && 'dark:bg-black')}>

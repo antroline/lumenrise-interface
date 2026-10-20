@@ -300,7 +300,7 @@ function SidebarPanel({
                           className={cn(
                             rowClass,
                             active &&
-                              'bg-neutral-100 font-semibold text-neutral-950 before:absolute before:inset-y-2.5 before:left-0 before:w-[3px] before:rounded-full before:bg-[#CBFF18] hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-50 dark:hover:bg-neutral-800',
+                              'bg-sidebar-accent font-semibold text-sidebar-foreground before:absolute before:inset-y-2.5 before:left-0 before:w-[3px] before:rounded-full before:bg-lime hover:bg-sidebar-accent',
                           )}
                         />
                       }

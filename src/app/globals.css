@@ -20,12 +20,17 @@
   --font-mono: var(--font-sans);
   --font-heading: var(--font-sans);
 
-  /* Brand constants: identical in light and dark. */
+  /* Brand constants: identical in light and dark. The official brand lime is
+     the single lime source; hover is a slightly darker shift, never lighter. */
   --color-ink: #0b0b0b;
-  --color-lime: #d6ff00;
-  --color-lime-hover: #c8ef00;
+  --color-lime: #cbff18;
+  --color-lime-hover: color-mix(
+    in srgb,
+    var(--color-lime) 90%,
+    var(--color-ink)
+  );
   --color-orange: #ff7315;
-  --color-brand-lime: #cbff18;
+  --color-brand-lime: var(--color-lime);
   --color-price-area: var(--color-brand-lime);
 
   /* Type scale from the LumenRise product mockups. */
@@ -160,7 +165,7 @@
 /* `.theme-reset` restores the light tokens for surfaces nested inside a DarkPanel. */
 :root,
 :root:not(.dark) .theme-reset {
-  --page: #f6f6f6;
+  --page: #fafafa;
   --background: #ffffff;
   --foreground: #0b0b0b;
   --card: #fff;
@@ -172,14 +177,15 @@
   --popover-foreground: #0b0b0b;
   --blux-backdrop: rgba(11, 11, 11, 0.28);
   --blux-shadow: 0 24px 70px rgba(11, 11, 11, 0.18);
-  --primary: #d6ff00;
+  --primary: var(--color-lime);
   --primary-foreground: #0b0b0b;
   --secondary: #efefef;
   --secondary-foreground: #2e2e2e;
   --muted: #f6f6f6;
   --muted-foreground: #5c5c5c;
   --faint: #6a6a6a;
-  --accent: #f4ffc2;
+  /* Neutral hover/highlight surface; lime never fills standard interactive states. */
+  --accent: #efefef;
   --accent-foreground: #0b0b0b;
   --destructive: #b42318;
   --border: #e5e5e5;
@@ -194,15 +200,15 @@
   --soft-muted-foreground: #71756f;
   --soft-border: #e8eae6;
   --soft-outline: #e5e7e4;
-  --soft-primary: #cbff18;
+  --soft-primary: var(--color-lime);
   --soft-primary-foreground: #171a12;
-  --soft-primary-hover: #b9ed08;
+  --soft-primary-hover: var(--color-lime-hover);
   --soft-hover: #f7f8f5;
   --soft-icon: #626761;
 
   --emphasis: #0b0b0b;
   --emphasis-foreground: #ffffff;
-  --emphasis-mark: #d6ff00;
+  --emphasis-mark: var(--color-lime);
 
   --ok: #17744a;
   --ok-soft: #e7f4ec;
@@ -218,7 +224,7 @@
   --panel-line: transparent;
 
   --chart-1: #0b0b0b;
-  --chart-2: #d6ff00;
+  --chart-2: var(--color-lime);
   --chart-3: #8e8e89;
   --chart-4: #e5e5e5;
   --chart-5: #ff7315;
@@ -248,20 +254,21 @@
   --popover-foreground: #f4f4ef;
   --blux-backdrop: rgba(0, 0, 0, 0.6);
   --blux-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
-  --primary: #d6ff00;
+  --primary: var(--color-lime);
   --primary-foreground: #0b0b0b;
   --secondary: #121212;
   --secondary-foreground: #d9d9d3;
   --muted: #22221f;
   --muted-foreground: #a3a39e;
   --faint: #999993;
-  --accent: rgba(214, 255, 0, 0.1);
+  /* Neutral hover surface; dark mode keeps lime for focus and indicators only. */
+  --accent: #232321;
   --accent-foreground: #f4f4ef;
   --destructive: #f58f86;
   --border: #383834;
   --divider: #2d2d29;
   --input: #2f2f2c;
-  --ring: #d6ff00;
+  --ring: var(--color-lime);
 
   --soft-background: var(--card);
   --soft-foreground: var(--foreground);
@@ -276,7 +283,7 @@
   --soft-hover: var(--secondary);
   --soft-icon: var(--muted-foreground);
 
-  --emphasis: #d6ff00;
+  --emphasis: var(--color-lime);
   --emphasis-foreground: #0b0b0b;
   --emphasis-mark: #0b0b0b;
 
@@ -294,7 +301,7 @@
   --panel-line: #2a2a28;
 
   --chart-1: #f4f4ef;
-  --chart-2: #d6ff00;
+  --chart-2: var(--color-lime);
   --chart-3: #7a7a75;
   --chart-4: #2a2a28;
   --chart-5: #ff7315;
@@ -302,12 +309,12 @@
 
   --sidebar: var(--color-neutral-950);
   --sidebar-foreground: var(--color-neutral-100);
-  --sidebar-primary: #d6ff00;
+  --sidebar-primary: var(--color-lime);
   --sidebar-primary-foreground: #0b0b0b;
   --sidebar-accent: #232321;
   --sidebar-accent-foreground: #f4f4ef;
   --sidebar-border: var(--color-neutral-800);
-  --sidebar-ring: #d6ff00;
+  --sidebar-ring: var(--color-lime);
 }
 
 @layer base {
@@ -534,14 +541,7 @@
   --input: var(--color-neutral-200);
   --accent: var(--color-neutral-100);
   --accent-foreground: var(--color-neutral-900);
-  --primary: var(--color-brand-lime);
   --primary-foreground: var(--color-neutral-900);
-  --color-lime: var(--color-brand-lime);
-  --color-lime-hover: color-mix(
-    in srgb,
-    var(--color-brand-lime) 90%,
-    var(--color-neutral-900)
-  );
 }
 
 .dark .launch-details,

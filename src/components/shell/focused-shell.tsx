@@ -13,21 +13,21 @@ import { WalletButton } from './wallet-button';
 export function FocusedShell({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="relative isolate min-h-screen bg-page">
-      <header className="mx-auto flex h-16 w-full max-w-[88rem] items-center gap-3 px-4 pt-[env(safe-area-inset-top)] sm:px-5 lg:px-6">
+      <header className="mx-auto flex h-16 w-full max-w-[88rem] items-center gap-3 px-4 pt-[env(safe-area-inset-top)] sm:gap-5 sm:px-5 lg:px-6">
         <Link
           href="/"
           aria-label="LumenRise home"
-          className="flex h-10 shrink-0 items-center rounded-lg px-1 outline-none focus-visible:ring-2 focus-visible:ring-foreground"
+          className="flex h-11 shrink-0 items-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-foreground"
         >
           <span className="flex sm:hidden">
-            <LogoSymbol size={28} />
+            <LogoSymbol size={32} />
           </span>
           <span className="hidden sm:flex">
-            <LogoHorizontal height={24} variant="lime" className="max-w-none" />
+            <LogoHorizontal height={28} className="max-w-none" />
           </span>
         </Link>
-        <span aria-hidden="true" className="h-5 w-px shrink-0 bg-border" />
-        <p className="min-w-0 truncate text-body font-medium">{title}</p>
+        <span aria-hidden="true" className="h-6 w-px shrink-0 bg-foreground/15" />
+        <p className="min-w-0 truncate text-sm font-medium tracking-tight text-muted-foreground sm:text-base">{title}</p>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <ThemeToggle />
           <WalletButton className="hidden sm:inline-flex" />

@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "group/badge inline-flex w-fit shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full border border-border bg-background font-medium whitespace-nowrap text-secondary-foreground transition-colors focus-visible:ring-3 focus-visible:ring-lime/60 [&>svg]:pointer-events-none [&>svg]:size-3",
+  "group/badge inline-flex w-fit shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full border border-border bg-background font-medium whitespace-nowrap text-secondary-foreground transition-colors focus-visible:ring-3 focus-visible:ring-ring/60 [&>svg]:pointer-events-none [&>svg]:size-3",
   {
     // `size` is declared before `variant` so the tag variants can override pill sizing.
     variants: {

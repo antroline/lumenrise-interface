@@ -167,7 +167,7 @@ function RegistrationForm() {
                 <Field className="w-20 sm:w-28">
                   <label
                     htmlFor="register-avatar"
-                    className="group relative grid size-20 cursor-pointer place-items-center overflow-hidden rounded-xl bg-surface transition-colors hover:bg-secondary focus-within:ring-3 focus-within:ring-lime/55 sm:size-28 dark:bg-muted"
+                    className="group relative grid size-20 cursor-pointer place-items-center overflow-hidden rounded-xl bg-surface transition-colors hover:bg-secondary focus-within:ring-3 focus-within:ring-ring/55 sm:size-28 dark:bg-muted"
                   >
                     {previewUrl ? (
                       <img src={previewUrl} alt="Profile photo preview" className="size-full object-cover" />
