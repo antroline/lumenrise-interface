@@ -27,7 +27,7 @@ export function LaunchOutcomePreview({ draft }: { draft: LaunchDraft }) {
   return (
     <section
       aria-labelledby="launch-preview-title"
-      className="@container/preview min-w-0 rounded-xl bg-secondary/60 p-4 sm:p-5"
+      className="@container/preview min-w-0 rounded-xl bg-secondary/60 p-4"
     >
       <h3 id="launch-preview-title" className="text-small font-medium text-muted-foreground">
         Calculated launch preview
@@ -36,13 +36,13 @@ export function LaunchOutcomePreview({ draft }: { draft: LaunchDraft }) {
       {/* Side by side when the preview spans the card, stacked in the side column. */}
       <div className="grid gap-x-8 @min-[34rem]/preview:grid-cols-2">
         <div className="min-w-0">
-          <p className="mt-4 text-small text-muted-foreground">Graduation target</p>
-          <p className="mt-1 break-words text-big font-semibold tabular-nums">
+          <p className="mt-3 text-small text-muted-foreground">Graduation target</p>
+          <p className="mt-1 break-words text-[26px] leading-tight font-semibold tabular-nums">
             {c ? `$${formatLaunchNumber(c.graduationTarget)}` : '—'}
           </p>
           {error && <p role="status" className="mt-2 text-small text-bad">{error}</p>}
 
-          <dl className="mt-4 flex flex-col gap-2.5 border-t border-divider pt-4 text-ui">
+          <dl className="mt-3 flex flex-col gap-2 border-t border-divider pt-3 text-ui">
             {prices.map(([label, value]) => (
               <div key={label} className="flex min-w-0 items-baseline justify-between gap-3">
                 <dt className="text-muted-foreground">{label}</dt>
@@ -53,6 +53,7 @@ export function LaunchOutcomePreview({ draft }: { draft: LaunchDraft }) {
         </div>
 
         <div className="mt-4 min-w-0 border-t border-divider pt-4 @min-[34rem]/preview:self-end">
+          <h4 className="mb-3 text-small font-medium text-muted-foreground">Token distribution</h4>
           <div
             role="img"
             aria-label={c ? shares.map((share) => `${share.label} ${(share.bps ?? 0) / 100}%`).join(', ') : 'Allocation unavailable'}
@@ -84,7 +85,7 @@ export function LaunchOutcomePreview({ draft }: { draft: LaunchDraft }) {
         </div>
       </div>
 
-      <p className="mt-4 border-t border-divider pt-4 text-small text-muted-foreground">
+      <p className="mt-3 border-t border-divider pt-3 text-small text-muted-foreground">
         Calculated automatically. Prices are estimates in USDC; growth targets 10× and varies slightly with allocation rounding.
       </p>
     </section>

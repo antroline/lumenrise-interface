@@ -16,8 +16,8 @@ export function ProjectDetailsStep({ draft, setDraft, errors = {} }: DraftProps)
   return (
     <div className="grid min-w-0 gap-5 @min-[720px]/launch:grid-cols-[11rem_minmax(0,1fr)] @min-[720px]/launch:gap-8 @min-[960px]/launch:grid-cols-[13rem_minmax(0,1fr)] @min-[960px]/launch:gap-10">
       <ProjectImageField value={draft.logo} onChange={(logo) => update('logo', logo)} error={errors['launch-logo']} />
-      <FieldGroup className="min-w-0 gap-3">
-        <FieldGroup className="grid gap-3 @md/launch:grid-cols-[minmax(0,1fr)_minmax(9rem,13rem)]">
+      <FieldGroup className="@container/project min-w-0 gap-3">
+        <FieldGroup className="grid gap-3 @min-[28rem]/project:grid-cols-[minmax(0,1fr)_minmax(9rem,0.6fr)]">
           <TextField
             id="project-name"
             type="text"
@@ -61,7 +61,7 @@ export function ProjectDetailsStep({ draft, setDraft, errors = {} }: DraftProps)
           </FieldSurface>
           <LaunchFieldError id="launch-description-error" className="text-small text-bad">{errors['launch-description']}</LaunchFieldError>
         </Field>
-        <FieldGroup className="grid gap-3 @md/launch:grid-cols-2">
+        <FieldGroup className="grid gap-3 @min-[28rem]/project:grid-cols-2">
           <TextField id="launch-x" label="X account *" value={draft.xAccount} onChange={(value) => update('xAccount', value)} placeholder="https://x.com/yourproject" required maxLength={2048} error={errors['launch-x']} />
           <TextField id="launch-website" label="Website *" value={draft.website} onChange={(value) => update('website', value)} placeholder="https://yourproject.com" required maxLength={2048} error={errors['launch-website']} />
         </FieldGroup>

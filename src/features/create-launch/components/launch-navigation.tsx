@@ -5,13 +5,14 @@ import { cn } from '@/lib/utils';
 import type { LaunchMethod } from '../lib/launch-draft';
 import type { LaunchStageId } from '../lib/launch-stages';
 
-export function LaunchNavigation({ step, canGoBack, method, ready, working, accountReady, launchAddress, onBack, onNext, onLaunch }: {
+export function LaunchNavigation({ step, canGoBack, method, ready, working, accountReady, hasMoreContent = false, launchAddress, onBack, onNext, onLaunch }: {
   step: LaunchStageId;
   canGoBack: boolean;
   method: LaunchMethod;
   ready: boolean;
   working: boolean;
   accountReady: boolean;
+  hasMoreContent?: boolean;
   launchAddress?: string;
   onBack: () => void;
   onNext: () => void;
@@ -21,9 +22,9 @@ export function LaunchNavigation({ step, canGoBack, method, ready, working, acco
     ? 'Launch unavailable'
     : working ? 'Launching…' : accountReady ? 'Launch on Testnet' : 'Connect wallet to continue';
 
-  // Stays at the bottom of the viewport while a long step scrolls, so the next action is always in reach.
   return (
-    <div className="sticky bottom-0 z-20 -mx-(--launch-pad) -mb-(--launch-pad) mt-8 flex shrink-0 items-center gap-3 rounded-b-[15px] border-t border-divider bg-card px-(--launch-pad) pt-3 pb-[calc(--spacing(3)+env(safe-area-inset-bottom))] sm:pt-4 sm:pb-[calc(--spacing(4)+env(safe-area-inset-bottom))] studio-compact:mt-5">
+    <div data-launch-footer="" className="relative flex items-center gap-3 rounded-b-[15px] bg-card px-(--launch-pad) pt-3 pb-[calc(--spacing(3)+env(safe-area-inset-bottom))] sm:pt-4 sm:pb-[calc(--spacing(4)+env(safe-area-inset-bottom))]">
+      <div aria-hidden="true" data-launch-fade="" className={cn('pointer-events-none absolute inset-x-0 bottom-full h-8 bg-linear-to-t from-card to-transparent transition-opacity duration-200 motion-reduce:transition-none', hasMoreContent ? 'opacity-100' : 'opacity-0')} />
       {canGoBack && (
         <Button variant="outline" size="lg" onClick={onBack}>
           <ArrowLeft data-icon="inline-start" /> Back

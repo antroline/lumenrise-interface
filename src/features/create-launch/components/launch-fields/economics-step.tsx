@@ -23,7 +23,6 @@ export function EconomicsStep({ draft, setDraft, errors = {} }: DraftProps) {
       <QuoteChoice
         value={draft.quote}
         usdcOnly={draft.method === 'bonding'}
-        highlightSelection={draft.method === 'bonding'}
         onChange={(quote) => setDraft((current) => ({ ...current, quote }))}
       />
       <LaunchFieldError className="text-small text-bad">{errors['launch-quote']}</LaunchFieldError>

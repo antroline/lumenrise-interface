@@ -1,68 +1,46 @@
 'use client';
 
-import { Check } from 'lucide-react';
 import { Field, FieldLabel } from '@/components/ui/field';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { QuoteToken } from '../../lib/launch-draft';
+import { cn } from '@/lib/utils';
+import { launchFieldSurfaceClassName } from './field-controls';
 import { QuoteIcon } from './quote-icon';
 
-export function QuoteChoice({
-  value,
-  onChange,
-  highlightSelection = false,
-  usdcOnly = false,
-}: {
+export function QuoteChoice({ value, onChange, usdcOnly = false }: {
   value: QuoteToken;
   onChange: (value: QuoteToken) => void;
-  highlightSelection?: boolean;
   usdcOnly?: boolean;
 }) {
   return (
-    <Field>
-      <FieldLabel>What will buyers pay with?</FieldLabel>
-      <ToggleGroup
-        id="launch-quote"
-        value={[value]}
-        onValueChange={(values) => {
-          const choice = values[0];
-          if (choice === 'USDC' || (choice === 'XLM' && !usdcOnly)) onChange(choice);
-        }}
-        aria-label="Payment asset"
-        variant="chip"
-        className="grid w-full grid-cols-2 gap-3"
-      >
-        {(['XLM', 'USDC'] as const).map((quote) => (
-          <ToggleGroupItem
-            key={quote}
-            value={quote}
-            disabled={usdcOnly && quote === 'XLM'}
-            aria-label={quote}
-            className={cn(
-              'relative h-auto min-h-15 studio-compact:min-h-12 min-w-0 flex-col items-stretch rounded-xl border-border bg-card px-4 py-3 studio-compact:py-2 text-left data-pressed:border-foreground data-pressed:bg-muted data-pressed:text-foreground ',
-              highlightSelection && 'transition-[border-color,background-color,box-shadow] duration-200 data-pressed:ring-3 data-pressed:ring-lime/40 focus-visible:ring-lime/40',
-            )}
-          >
-            <span className="flex w-full items-center gap-2.5">
-              <QuoteIcon quote={quote} />
-              <span className="text-[17px] font-semibold">{quote}</span>
-              <span
-                className={cn(
-                  'ml-auto grid size-5 place-items-center rounded-full transition-opacity',
-                  highlightSelection ? 'bg-ink text-lime' : 'bg-foreground text-background',
-                  value === quote ? 'opacity-100' : 'opacity-0',
-                )}
-                aria-hidden="true"
-              >
-                <Check className="size-3.5" />
-              </span>
+    <Field className="min-w-0 gap-2">
+      <FieldLabel htmlFor="launch-quote" className="min-h-7 items-center">Payment Asset</FieldLabel>
+      <Select value={value} onValueChange={(choice) => {
+        if (choice === 'USDC' || (choice === 'XLM' && !usdcOnly)) onChange(choice);
+      }}>
+        <SelectTrigger id="launch-quote" className={cn(launchFieldSurfaceClassName, 'h-auto! min-h-14 w-full hover:border-transparent focus-visible:border-foreground/20 focus-visible:ring-lime/40')} aria-label="Payment Asset">
+          <SelectValue>
+            <span className="flex min-w-0 items-center gap-2.5">
+              <QuoteIcon quote={value} />
+              <span className="font-semibold">{value}</span>
             </span>
-            <span className="mt-1.5 text-small font-normal whitespace-normal text-muted-foreground">
-              {quote === 'XLM' ? usdcOnly ? 'Unavailable until USD conversion is connected' : 'Stellar native asset' : 'USD stablecoin'}
-            </span>
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent alignItemWithTrigger={false} align="start">
+          <SelectGroup>
+            {(['USDC', 'XLM'] as const).map((quote) => (
+              <SelectItem key={quote} value={quote} disabled={usdcOnly && quote === 'XLM'} className="min-h-14" label={quote}>
+                <QuoteIcon quote={quote} />
+                <span className="flex min-w-0 flex-col whitespace-normal">
+                  <span className="font-medium">{quote}</span>
+                  <span className="text-small text-muted-foreground">{quote === 'USDC' ? 'USD stablecoin' : 'Stellar native asset'}</span>
+                  {quote === 'XLM' && usdcOnly && <span className="text-small text-muted-foreground">Unavailable until USD conversion is connected</span>}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
     </Field>
   );
 }

@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { cn } from '@/lib/utils';
 import {
   formatAmount,
+  isLaunchScheduled,
   methodLabels,
   numberValue,
   validSupply,
@@ -91,9 +92,9 @@ function stageChecklist(
           : []),
         {
           label: 'Start mode',
-          value: draft.bonding.startsAt ? 'Scheduled' : 'Immediately',
+          value: isLaunchScheduled(draft.bonding) ? 'Scheduled' : 'Immediately',
         },
-        ...(draft.bonding.startsAt
+        ...(isLaunchScheduled(draft.bonding)
           ? [{ label: 'Start date', value: rowValue(launchSummaryRows(draft, 'settings'), 'Starts') }]
           : []),
       ];
@@ -180,7 +181,7 @@ function LaunchSummaryHeader({
     <motion.div
       layout={!reduced}
       transition={transition}
-      className="relative -mx-2 -mt-2 min-h-24 rounded-xl bg-secondary p-3"
+      className="relative -mx-2 -mt-2 min-h-24 shrink-0 rounded-xl bg-secondary p-3"
     >
       <LaunchReveal show={!!(draft.logo || name || symbol)}>
         <div
@@ -456,7 +457,7 @@ export function LaunchSummary({
   return (
     <aside
       aria-label="Your launch summary"
-      className="sticky top-4 order-last hidden max-h-[calc(100svh-2rem)] min-h-0 min-w-0 flex-col self-start rounded-2xl border border-border bg-card p-4 lg:flex"
+      className="order-last hidden max-h-full min-h-0 min-w-0 flex-col self-start rounded-2xl border border-border bg-card p-4 lg:flex"
     >
       <LaunchSummaryHeader
         draft={draft}

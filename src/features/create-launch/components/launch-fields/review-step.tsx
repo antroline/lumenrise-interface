@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import type { WizardStep } from '../../lib/launch-validation';
 import {
   formatAmount,
+  bondingStartDate,
   formatSupplyShare,
   launchDurationLabel,
   methodLabels,
@@ -47,6 +48,7 @@ export function ReviewStep({
           timeZoneName: 'short',
         }).format(new Date(value))
       : '—';
+  const startsAt = draft.method === 'bonding' ? bondingStartDate(draft.bonding) : schedule.startsAt;
   const quote = (
     <span className="inline-flex items-center gap-1.5">
       <QuoteIcon quote={draft.quote} className="size-5" />
@@ -122,8 +124,8 @@ export function ReviewStep({
         rows={[
           row(
             'Start date',
-            schedule.startsAt
-              ? formatScheduleTime(schedule.startsAt)
+            startsAt
+              ? formatScheduleTime(startsAt)
               : 'Immediately',
           ),
           ...(draft.method !== 'bonding'

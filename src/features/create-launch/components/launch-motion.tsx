@@ -34,11 +34,10 @@ export const LaunchStepPanel = forwardRef<
     heading: string;
     description?: string;
     direction: 'forward' | 'back';
-    footer: ReactNode;
     children: ReactNode;
   }
 >(function LaunchStepPanel(
-  { heading, description, direction, footer, children },
+  { heading, description, direction, children },
   ref,
 ) {
   const reduced = useLaunchReducedMotion();
@@ -105,11 +104,10 @@ export const LaunchStepPanel = forwardRef<
         data-launch-fields=""
         role="region"
         aria-label="Step fields"
-        className="-mx-1 min-w-0 flex-1 px-1 pb-1"
+        className="min-w-0 pb-5"
       >
         {children}
       </div>
-      {footer}
     </motion.div>
   );
 });

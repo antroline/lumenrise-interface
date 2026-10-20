@@ -23,6 +23,7 @@ export function NumberField({
   groupThousands = false,
   descriptionId,
   invalid = false,
+  inputMode = 'decimal',
 }: {
   id: string;
   label: string;
@@ -37,6 +38,7 @@ export function NumberField({
   groupThousands?: boolean;
   descriptionId?: string;
   invalid?: boolean;
+  inputMode?: 'decimal' | 'numeric';
 }) {
   function changeValue(input: HTMLInputElement) {
     const nextValue = groupThousands
@@ -100,7 +102,7 @@ export function NumberField({
           <LaunchInput
             id={id}
             type="text"
-            inputMode="decimal"
+            inputMode={inputMode}
             value={groupThousands ? formatSupply(value) : value}
             onChange={(event) => changeValue(event.currentTarget)}
             placeholder={placeholder || '0'}

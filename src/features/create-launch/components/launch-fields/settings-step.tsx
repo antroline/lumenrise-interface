@@ -28,6 +28,7 @@ export function SettingsStep({ draft, setDraft, errors = {} }: DraftProps) {
         <LaunchScheduleFields
           method="bonding"
           startsAt={draft.bonding.startsAt}
+          scheduleEnabled={draft.bonding.scheduleEnabled}
           endsAt={draft.bonding.endsAt}
           durationDays={draft.bonding.durationDays}
           onChange={updateBonding}

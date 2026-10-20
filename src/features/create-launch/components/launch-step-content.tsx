@@ -24,41 +24,41 @@ export function LaunchStepContent({
     case 'project':
       return <ProjectDetailsStep {...fields} />;
     case 'token':
-      // Fields on the left and their calculated outcome on the right; on narrow cards the preview
-      // follows the economics it reflects, before the plan. Each column redeclares the `launch`
-      // container so field grids respond to the column width.
       return (
-        <div className="grid min-w-0 gap-x-10 gap-y-8 @min-[800px]/launch:grid-cols-[minmax(0,1fr)_19rem] @min-[960px]/launch:grid-cols-[minmax(0,1fr)_21rem]">
-          <div className="@container/launch flex min-w-0 flex-col gap-6 studio-compact:gap-5">
-            <MethodChoice
-              selected={fields.draft.methodSelected ? fields.draft.method : null}
-              onChoose={() =>
-                fields.setDraft((draft) => ({
-                  ...draft,
-                  method: 'bonding',
-                  methodSelected: true,
-                }))
-              }
-              error={fields.errors?.['launch-methods']}
-            />
-            <TokenSupplyField {...fields} />
-            <TokenSetupStep {...fields} />
-          </div>
-          {fields.draft.method === 'bonding' && (
-            <div className="min-w-0 @min-[800px]/launch:sticky @min-[800px]/launch:top-4 @min-[800px]/launch:col-start-2 @min-[800px]/launch:row-span-2 @min-[800px]/launch:row-start-1 @min-[800px]/launch:self-start">
-              <LaunchOutcomePreview draft={fields.draft} />
+        <div className="flex min-w-0 flex-col gap-5">
+          <MethodChoice
+            selected={fields.draft.methodSelected ? fields.draft.method : null}
+            onChoose={() =>
+              fields.setDraft((draft) => ({
+                ...draft,
+                method: 'bonding',
+                methodSelected: true,
+              }))
+            }
+            error={fields.errors?.['launch-methods']}
+          />
+          <div className="grid min-w-0 items-start gap-5 @min-[56rem]/launch:grid-cols-[minmax(0,1fr)_minmax(16rem,0.65fr)]">
+            <div className="@container/launch flex min-w-0 flex-col gap-4">
+              <div className="flex min-w-0 flex-col gap-3">
+                <TokenSupplyField {...fields} />
+                <TokenSetupStep {...fields} />
+              </div>
+              <section aria-labelledby="launch-plan-title" className="flex min-w-0 flex-col gap-3 border-t border-divider pt-4">
+                <h3 id="launch-plan-title" className="text-[19px] font-semibold tracking-[-0.02em]">
+                  Plan your launch
+                </h3>
+                <div className="grid min-w-0 items-start gap-4">
+                  <EconomicsStep {...fields} />
+                  <SettingsStep {...fields} />
+                </div>
+              </section>
             </div>
-          )}
-          <section
-            aria-labelledby="launch-plan-title"
-            className="@container/launch flex min-w-0 flex-col gap-5 border-t border-divider pt-8 studio-compact:pt-6"
-          >
-            <h3 id="launch-plan-title" className="text-[19px] font-semibold tracking-[-0.02em]">
-              Plan your launch
-            </h3>
-            <EconomicsStep {...fields} />
-            <SettingsStep {...fields} />
-          </section>
+            {fields.draft.method === 'bonding' && (
+              <div className="min-w-0">
+                <LaunchOutcomePreview draft={fields.draft} />
+              </div>
+            )}
+          </div>
         </div>
       );
     case 'review':
