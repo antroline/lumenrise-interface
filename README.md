@@ -40,10 +40,12 @@ The Blux provider stays behind the browser-only boundary in `src/components/prov
 ## Checks
 
 ```bash
+
 npm run typecheck
 npm run lint
 npm test
 npm run build
+
 ```
 
 Tests use Node's built-in runner and replace wallet/network boundaries; they do not sign transactions or perform live uploads. `npm test` discovers tests recursively, including feature and architecture tests. Docker installs use `npm ci` and build the standalone Next.js output.
