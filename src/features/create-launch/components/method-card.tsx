@@ -21,7 +21,7 @@ export function MethodCard({
       aria-pressed={selected}
       onClick={onChoose}
       className={cn(
-        'flex min-h-20 studio-compact:min-h-16 studio-compact:gap-2 studio-compact:p-2.5 min-w-0 items-center gap-3 rounded-xl border p-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-foreground motion-reduce:transition-none',
+        'flex min-h-16 studio-compact:min-h-14 studio-compact:gap-2 studio-compact:p-2 min-w-0 items-center gap-3 rounded-xl border p-2.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-foreground motion-reduce:transition-none',
         disabled
           ? 'cursor-not-allowed border-border text-muted-foreground/60'
           : 'cursor-pointer text-foreground hover:border-foreground',
@@ -32,13 +32,13 @@ export function MethodCard({
     >
       <span
         className={cn(
-          'grid size-12 studio-compact:size-9 shrink-0 place-items-center rounded-lg border bg-card',
+          'grid size-10 studio-compact:size-9 shrink-0 place-items-center rounded-lg border bg-card',
           selected ? 'border-foreground' : 'border-border',
         )}
       >
         <LaunchMethodIcon
           method={method}
-          className="size-10 studio-compact:size-7"
+          className="size-8 studio-compact:size-7"
         />
       </span>
       <span className="flex min-w-0 flex-col gap-1">

@@ -21,8 +21,10 @@ import { AllocationRow } from './allocation-row';
 import { NumberField } from './number-field';
 import type { DraftProps } from './types';
 import { LaunchFieldError, LaunchReveal } from '../launch-motion';
+import { BondingTokenomics } from './bonding-tokenomics';
 
 export function TokenSetupStep({ draft, setDraft, errors = {} }: DraftProps) {
+  if (draft.method === 'bonding') return <BondingTokenomics draft={draft} setDraft={setDraft} errors={errors} />;
   const update = (patch: Partial<LaunchDraft['allocation']>) =>
     setDraft((current) => ({
       ...current,

@@ -8,7 +8,6 @@ import {
   formatAmount,
   methodLabels,
   numberValue,
-  validPositive,
   validSupply,
   type LaunchDraft,
 } from '../lib/launch-draft';
@@ -25,6 +24,7 @@ import {
 import { launchTransition, useLaunchReducedMotion } from '../lib/launch-motion';
 import { LaunchReveal } from './launch-motion';
 import { QuoteIcon } from './launch-fields/quote-icon';
+import { launchPreview } from '../lib/calculate-launch';
 
 export type LaunchSummaryProps = {
   draft: LaunchDraft;
@@ -42,9 +42,6 @@ const compactNumber = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 2,
 });
 
-const settingsIndex = launchStages.findIndex(
-  (stage) => stage.id === 'settings',
-);
 const tokenIndex = launchStages.findIndex((stage) => stage.id === 'token');
 const projectIndex = launchStages.findIndex((stage) => stage.id === 'project');
 const editClassName =
@@ -66,6 +63,7 @@ function stageChecklist(
           label: 'Method',
           value: draft.methodSelected ? methodLabels[draft.method] : undefined,
         },
+        { label: 'Payment asset', value: draft.quote },
         {
           label: 'Supply',
           value: validSupply(draft.supply)
@@ -73,6 +71,9 @@ function stageChecklist(
             : undefined,
         },
         { label: 'Bonding curve', value: rowValue(rows, 'Bonding curve') },
+        { label: 'Creator Raise', value: rowValue(rows, 'Creator Raise') },
+        { label: 'Creator Tax', value: rowValue(rows, 'Creator Tax') },
+        { label: 'Graduation target', value: rowValue(rows, 'Graduation target') },
         { label: 'Liquidity pool', value: rowValue(rows, 'Liquidity pool') },
         { label: 'Team', value: rowValue(rows, 'Team') },
         ...(numberValue(draft.allocation.teamShare) > 0
@@ -88,24 +89,13 @@ function stageChecklist(
               { label: 'Team vesting', value: rowValue(rows, 'Team vesting') },
             ]
           : []),
-      ];
-    }
-    case 'settings': {
-      const rows = [
-        ...launchSummaryRows(draft, 'sale'),
-        ...launchSummaryRows(draft, 'settings'),
-      ];
-      return [
-        { label: 'Payment asset', value: draft.quote },
-        { label: 'Graduation target', value: rowValue(rows, 'Raise target') },
         {
           label: 'Start mode',
           value: draft.bonding.startsAt ? 'Scheduled' : 'Immediately',
         },
         ...(draft.bonding.startsAt
-          ? [{ label: 'Start date', value: rowValue(rows, 'Starts') }]
+          ? [{ label: 'Start date', value: rowValue(launchSummaryRows(draft, 'settings'), 'Starts') }]
           : []),
-        { label: 'Creator fee share', value: rowValue(rows, 'Creator fee') },
       ];
     }
     case 'project':
@@ -116,12 +106,11 @@ function stageChecklist(
 
 function summaryChips(draft: LaunchDraft, reachedIndex: number) {
   const tokenReached = reachedIndex >= tokenIndex;
-  const planReached = reachedIndex >= settingsIndex;
   return [
     ...(tokenReached && draft.methodSelected
       ? [{ key: 'method', label: methodLabels[draft.method] }]
       : []),
-    ...(planReached ? [{ key: 'quote', label: draft.quote, quote: true }] : []),
+    ...(tokenReached ? [{ key: 'quote', label: draft.quote, quote: true }] : []),
     ...(tokenReached && numberValue(draft.allocation.teamShare) > 0
       ? [{ key: 'team', label: `Team ${draft.allocation.teamShare}%` }]
       : []),
@@ -172,9 +161,10 @@ function LaunchSummaryHeader({
     reachedIndex >= tokenIndex && validSupply(draft.supply)
       ? compactNumber.format(Number(draft.supply))
       : null;
+  const { calculation } = launchPreview(draft);
   const target =
-    reachedIndex >= settingsIndex && validPositive(draft.bonding.target)
-      ? compactNumber.format(Number(draft.bonding.target))
+    reachedIndex >= tokenIndex && calculation
+      ? compactNumber.format(calculation.graduationTarget)
       : null;
   const reveal = {
     initial: { opacity: 0, y: reduced ? 0 : 6 },

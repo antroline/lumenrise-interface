@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 import { ReviewHeading } from './review-heading';
 
 export function ReviewSection({
@@ -6,25 +7,27 @@ export function ReviewSection({
   rows = [],
   actions,
   extra,
+  className,
 }: {
   title: string;
   rows?: [string, ReactNode][];
   actions: { label: string; onClick: () => void }[];
   extra?: ReactNode;
+  className?: string;
 }) {
   const id = `review-${title.toLowerCase().replaceAll(/[^a-z]+/g, '-')}`;
   return (
-    <section aria-labelledby={id}>
+    <section aria-labelledby={id} className={cn('min-w-0', className)}>
       <ReviewHeading id={id} title={title} actions={actions} />
       {rows.length > 0 && (
-        <dl className="grid gap-3 pt-4 short:gap-2 short:pt-3">
+        <dl className="flex flex-col pt-1">
           {rows.map(([label, value]) => (
             <div
               key={label}
-              className="grid min-w-0 gap-1 text-ui sm:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] sm:gap-6"
+              className="flex min-w-0 flex-wrap items-center justify-between gap-x-6 gap-y-0.5 border-b border-divider/70 py-2.5 text-ui last:border-b-0 short:py-2"
             >
               <dt className="text-muted-foreground">{label}</dt>
-              <dd className="min-w-0 break-words font-medium sm:text-right">
+              <dd className="ml-auto min-w-0 break-words text-right font-medium">
                 {value}
               </dd>
             </div>

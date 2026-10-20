@@ -43,7 +43,7 @@ export function LaunchScheduleFields({
   if (method === 'bonding')
     return (
       <FieldSet className="gap-2">
-        <FieldLegend className="mb-0 text-small font-medium">
+        <FieldLegend className="mb-0 text-sm font-medium">
           Start date
         </FieldLegend>
         <ToggleGroup

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ImagePlus } from 'lucide-react';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
+import { cn } from '@/lib/utils';
 import { LaunchFieldError } from '../launch-motion';
 
 export function ProjectImageField({ value, onChange, error }: {
@@ -28,9 +29,20 @@ export function ProjectImageField({ value, onChange, error }: {
   }
 
   return (
-    <Field orientation="horizontal" className="items-center gap-4" data-invalid={!!error || !!fileError}>
-      <label htmlFor="launch-logo" className="group relative grid size-16 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-xl bg-secondary/70 transition-colors hover:bg-secondary focus-within:ring-2 focus-within:ring-foreground/20">
-        {value ? <img src={value} alt="Project image preview" className="size-full object-cover" /> : <ImagePlus className="size-6 text-muted-foreground" aria-hidden="true" />}
+    <Field
+      orientation="horizontal"
+      className="min-w-0 items-center gap-4 self-start @min-[720px]/launch:flex-col @min-[720px]/launch:items-stretch @min-[720px]/launch:gap-3"
+      data-invalid={!!error || !!fileError}
+    >
+      <label
+        htmlFor="launch-logo"
+        className={cn(
+          'group relative grid size-18 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-xl border border-dashed transition-[background-color,border-color,box-shadow] focus-within:ring-3 focus-within:ring-lime/40 @min-[720px]/launch:aspect-square @min-[720px]/launch:size-auto @min-[720px]/launch:w-full @min-[720px]/launch:rounded-2xl',
+          value ? 'border-transparent bg-secondary/60' : 'border-border bg-secondary/60 hover:border-foreground/30 hover:bg-secondary',
+          (error || fileError) && 'border-bad/60',
+        )}
+      >
+        {value ? <img src={value} alt="Project image preview" className="size-full object-cover" /> : <ImagePlus className="size-6 text-muted-foreground transition-colors group-hover:text-foreground @min-[720px]/launch:size-8" aria-hidden="true" />}
         <span className="sr-only">{value ? 'Change project image' : 'Upload project image'}</span>
         <input
           id="launch-logo"

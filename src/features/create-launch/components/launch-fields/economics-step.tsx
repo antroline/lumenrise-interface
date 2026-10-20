@@ -5,13 +5,9 @@ import type { LaunchDraft } from '../../lib/launch-draft';
 import { NumberField } from './number-field';
 import { QuoteChoice } from './quote-choice';
 import type { DraftProps } from './types';
+import { LaunchFieldError } from '../launch-motion';
 
 export function EconomicsStep({ draft, setDraft, errors = {} }: DraftProps) {
-  const updateBonding = (patch: Partial<LaunchDraft['bonding']>) =>
-    setDraft((current) => ({
-      ...current,
-      bonding: { ...current.bonding, ...patch },
-    }));
   const updateFixed = (patch: Partial<LaunchDraft['fixed']>) =>
     setDraft((current) => ({
       ...current,
@@ -26,36 +22,11 @@ export function EconomicsStep({ draft, setDraft, errors = {} }: DraftProps) {
     <FieldGroup className="gap-4 studio-compact:gap-3">
       <QuoteChoice
         value={draft.quote}
+        usdcOnly={draft.method === 'bonding'}
         highlightSelection={draft.method === 'bonding'}
         onChange={(quote) => setDraft((current) => ({ ...current, quote }))}
       />
-      {draft.method === 'bonding' && (
-        <NumberField
-          id="curve-target"
-          layout="launch-plan"
-          label="Graduation target"
-          unit={draft.quote}
-          value={draft.bonding.target}
-          onChange={(target) => updateBonding({ target })}
-          help="Net raise target, excluding fees. Price is calculated from this target and the bonding-curve token allocation. It starts at half the average sale price and increases to four times its starting price as the allocation sells."
-          placeholder="Enter a target"
-          groupThousands
-          error={errors['curve-target']}
-          presets={
-            draft.quote === 'XLM'
-              ? [
-                  { label: '100 XLM', value: '100' },
-                  { label: '500 XLM', value: '500' },
-                  { label: '1,000 XLM', value: '1000' },
-                ]
-              : [
-                  { label: '1,000 USDC', value: '1000' },
-                  { label: '5,000 USDC', value: '5000' },
-                  { label: '10,000 USDC', value: '10000' },
-                ]
-          }
-        />
-      )}
+      <LaunchFieldError className="text-small text-bad">{errors['launch-quote']}</LaunchFieldError>
       {draft.method === 'fixed' && (
         <NumberField
           id="fixed-price"

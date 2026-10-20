@@ -11,19 +11,22 @@ export function QuoteChoice({
   value,
   onChange,
   highlightSelection = false,
+  usdcOnly = false,
 }: {
   value: QuoteToken;
   onChange: (value: QuoteToken) => void;
   highlightSelection?: boolean;
+  usdcOnly?: boolean;
 }) {
   return (
     <Field>
       <FieldLabel>What will buyers pay with?</FieldLabel>
       <ToggleGroup
+        id="launch-quote"
         value={[value]}
         onValueChange={(values) => {
           const choice = values[0];
-          if (choice === 'XLM' || choice === 'USDC') onChange(choice);
+          if (choice === 'USDC' || (choice === 'XLM' && !usdcOnly)) onChange(choice);
         }}
         aria-label="Payment asset"
         variant="chip"
@@ -33,6 +36,7 @@ export function QuoteChoice({
           <ToggleGroupItem
             key={quote}
             value={quote}
+            disabled={usdcOnly && quote === 'XLM'}
             aria-label={quote}
             className={cn(
               'relative h-auto min-h-15 studio-compact:min-h-12 min-w-0 flex-col items-stretch rounded-xl border-border bg-card px-4 py-3 studio-compact:py-2 text-left data-pressed:border-foreground data-pressed:bg-muted data-pressed:text-foreground ',
@@ -54,7 +58,7 @@ export function QuoteChoice({
               </span>
             </span>
             <span className="mt-1.5 text-small font-normal whitespace-normal text-muted-foreground">
-              {quote === 'XLM' ? 'Stellar native asset' : 'USD stablecoin'}
+              {quote === 'XLM' ? usdcOnly ? 'Unavailable until USD conversion is connected' : 'Stellar native asset' : 'USD stablecoin'}
             </span>
           </ToggleGroupItem>
         ))}

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
 import { AnimatePresence } from 'motion/react';
 import { useLaunchpad } from '@/lib/launchpad';
 import { isBondingDraft } from '../lib/bonding-curve';
@@ -9,9 +8,8 @@ import {
   BONDING_AUTH_RETURN_KEY,
   useBondingLaunch,
 } from '../hooks/use-bonding-launch';
-import { cn } from '@/lib/utils';
 import { initialLaunchDraft } from '../lib/launch-draft';
-import { launchStages, launchStageIndex, validateLaunchStage } from '../lib/launch-stages';
+import { launchStages, launchStageIndex, validateLaunchStage, type LaunchStageId } from '../lib/launch-stages';
 import { LaunchSummary } from './launch-summary';
 import { LaunchStepper } from './launch-stepper';
 import { LaunchStepContent } from './launch-step-content';
@@ -21,6 +19,10 @@ import {
   LaunchMotionConfig,
   LaunchStepPanel,
 } from './launch-motion';
+
+const stepDescriptions: Partial<Record<LaunchStageId, string>> = {
+  project: 'Create a bonding-curve launch on Stellar Testnet.',
+};
 
 export function LaunchStudio() {
   return (
@@ -36,7 +38,6 @@ function LaunchStudioContent() {
   const { notify, accountReady } = useLaunchpad();
   const [draft, setDraft] = useState(initialLaunchDraft);
   const [step, setStep] = useState(0);
-  const [reviewLayout, setReviewLayout] = useState(false);
   const [reachedIndex, setReachedIndex] = useState(0);
   const [direction, setDirection] = useState<'forward' | 'back'>('forward');
   const studioRef = useRef<HTMLDivElement>(null);
@@ -60,11 +61,18 @@ function LaunchStudioContent() {
           'creatorFee' in restored.bonding && typeof restored.bonding.creatorFee === 'boolean') {
           restored.bonding.creatorFee = restored.bonding.creatorFee ? '0.1' : '0';
         }
+        const needsTokenomicsReview = !!(restored && typeof restored === 'object' && 'bonding' in restored &&
+          restored.bonding && typeof restored.bonding === 'object' && !('creatorPayout' in restored.bonding));
+        if (needsTokenomicsReview && restored && typeof restored === 'object' && 'bonding' in restored &&
+          restored.bonding && typeof restored.bonding === 'object') {
+          Object.assign(restored.bonding, { creatorPayout: '' });
+        }
         if (!isBondingDraft(restored))
           throw new Error('The saved bonding-curve form cannot be read.');
         // Reputation enforcement is not connected; do not restore unsupported access rules.
         setDraft({ ...restored, eligibility: initialLaunchDraft.eligibility });
-        setStep(launchStages.length - 1);
+        setStep(needsTokenomicsReview ? launchStageIndex('token') : restored.quote === 'XLM' ? launchStageIndex('settings') : launchStages.length - 1);
+        if (needsTokenomicsReview) notify('Launch calculations have changed. Enter your Creator Raise and review tokenomics before continuing.');
         setReachedIndex(launchStages.length - 1);
         window.sessionStorage.removeItem(BONDING_AUTH_RETURN_KEY);
       } catch (cause) {
@@ -107,7 +115,7 @@ function LaunchStudioContent() {
     <div
       ref={studioRef}
       data-launch-studio=""
-      className="@container/studio relative mx-auto w-full min-w-0 max-w-7xl scroll-mt-24"
+      className="@container/studio relative mx-auto w-full min-w-0 max-w-[88rem] scroll-mt-24"
     >
       <LaunchOperationDialog
         operation={bondingLaunch.operation}
@@ -118,12 +126,7 @@ function LaunchStudioContent() {
         onOpenChange={setProgressOpen}
         onRetry={launchBondingCurve}
       />
-      <div
-        className={cn(
-          "grid min-w-0 items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_236px] lg:@min-[900px]/studio:grid-cols-[minmax(0,1fr)_256px] lg:@min-[1000px]/studio:grid-cols-[minmax(0,1fr)_272px] lg:@min-[1200px]/studio:grid-cols-[minmax(0,1fr)_304px]",
-          reviewLayout && "lg:justify-center lg:grid-cols-[minmax(0,max-content)_236px] lg:@min-[900px]/studio:grid-cols-[minmax(0,max-content)_256px] lg:@min-[1000px]/studio:grid-cols-[minmax(0,max-content)_272px] lg:@min-[1200px]/studio:grid-cols-[minmax(0,max-content)_304px]",
-        )}
-      >
+      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_236px] lg:@min-[900px]/studio:grid-cols-[minmax(0,1fr)_256px] lg:@min-[1000px]/studio:grid-cols-[minmax(0,1fr)_272px] lg:@min-[1200px]/studio:grid-cols-[minmax(0,1fr)_304px]">
         <LaunchSummary
           draft={draft}
           steps={visibleSteps}
@@ -133,15 +136,10 @@ function LaunchStudioContent() {
           onNavigate={goToStep}
         />
         <section
-          className={cn(
-            "@container/launch relative flex min-w-0 scroll-mt-24 flex-col rounded-2xl border border-border bg-card p-(--launch-pad) [--launch-pad:--spacing(4)] sm:[--launch-pad:--spacing(6)] lg:[--launch-pad:--spacing(5)] xl:[--launch-pad:--spacing(6)] studio-compact:[--launch-pad:--spacing(4)]",
-            !reviewLayout && "lg:min-h-[min(56rem,calc(100svh-7rem))] @min-[800px]/studio:lg:min-h-[min(56rem,calc(100svh-3rem))]",
-            // A size container has no intrinsic width, so Review states its own: the 700px content plus padding and border.
-            reviewLayout && "lg:w-[calc(700px+2*var(--launch-pad)+2px)] lg:max-w-full",
-          )}
+          className="@container/launch relative flex min-w-0 scroll-mt-4 flex-col rounded-2xl border border-border bg-card p-(--launch-pad) [--launch-pad:--spacing(4)] sm:[--launch-pad:--spacing(6)] xl:[--launch-pad:--spacing(8)] studio-compact:[--launch-pad:--spacing(5)]"
           aria-labelledby="wizard-title"
         >
-        <LaunchStepper steps={visibleSteps} currentIndex={currentIndex} locked={bondingLaunch.working} onNavigate={goToStep} />
+          <LaunchStepper steps={visibleSteps} currentIndex={currentIndex} locked={bondingLaunch.working} onNavigate={goToStep} />
           <p className="sr-only" role="status" aria-live="polite">
             Step {currentIndex + 1}
             {` of ${visibleSteps.length}`}
@@ -152,9 +150,6 @@ function LaunchStudioContent() {
             mode="wait"
             custom={direction}
             onExitComplete={() => {
-              // Keep the outgoing fields at their original width until hidden.
-              // Commit before Motion mounts the incoming panel and before scrolling.
-              flushSync(() => setReviewLayout(currentStep === 'review'));
               // Reposition only after the outgoing step is invisible, before entry.
               const studio = studioRef.current;
               if (studio && studio.getBoundingClientRect().top < 0) {
@@ -166,7 +161,7 @@ function LaunchStudioContent() {
               key={`${currentStep}-${draft.method}`}
               direction={direction}
               heading={currentStage.heading}
-              description={currentStep === 'project' ? 'Create a bonding-curve launch on Stellar Testnet.' : undefined}
+              description={stepDescriptions[currentStep]}
               footer={
                 <LaunchNavigation
                   step={currentStep}
