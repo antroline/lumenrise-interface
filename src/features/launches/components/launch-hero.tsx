@@ -106,10 +106,10 @@ export function LaunchHero({
       aria-busy={loading || undefined}
       className="min-w-0 scroll-mt-24 outline-none"
     >
-      <div className="relative h-[360px] min-w-0 overflow-hidden rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="relative h-[360px] min-w-0 overflow-hidden border-neutral-200 bg-white p-4 sm:rounded-xl sm:border dark:border-neutral-800 dark:bg-neutral-900">
         {priceChart}
       </div>
-      <div className="mt-4 rounded-xl bg-white p-4 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-50">
+      <div className="mt-4 bg-white p-4 text-neutral-900 sm:rounded-xl dark:bg-neutral-900 dark:text-neutral-50">
         {timeline}
         <div className={timeline ? 'pt-5' : undefined}>
           <div className="mb-2 flex items-center justify-between gap-3">

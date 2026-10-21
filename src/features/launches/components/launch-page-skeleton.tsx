@@ -1,7 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { launchElevationFlat } from './launch-panel';
 
-const panel = `rounded-2xl bg-card ${launchElevationFlat}`;
+const panel = `bg-card ${launchElevationFlat} max-sm:shadow-none max-sm:ring-0 sm:rounded-2xl`;
 
 export function LaunchPageSkeleton() {
   return (

@@ -402,10 +402,10 @@ export function IndexedLaunchOverview({
         data-launch-page
         className="launch-details mx-auto w-full max-w-[1320px] pb-24 lg:pb-16 selection:bg-lime selection:text-ink dark:bg-neutral-950 dark:text-neutral-50 dark:[--muted:var(--color-neutral-800)]! dark:[--surface:var(--color-neutral-800)]! dark:[--input:var(--color-neutral-800)]! [&_section]:shadow-none [&_[data-slot=card]]:shadow-none"
       >
-        <div className="mb-4 md:hidden">
+        <div className="mb-4 px-4 sm:px-0 md:hidden">
           <BackLink href={`/launches?network=${network}`}>Projects</BackLink>
         </div>
-        <div className="mb-4 flex flex-col gap-2 text-small empty:hidden">
+        <div className="mb-4 flex flex-col gap-2 px-4 text-small empty:hidden sm:px-0">
           {feedback}
         </div>
 
@@ -476,7 +476,7 @@ export function IndexedLaunchOverview({
               }
               loading={loading && !b}
             />
-            <div className="launch-sections flex min-w-0 flex-col rounded-2xl bg-card px-4 text-card-foreground sm:px-5">
+            <div className="launch-sections flex min-w-0 flex-col bg-card px-4 text-card-foreground sm:rounded-2xl sm:px-5">
               <LaunchReveal>
                 <section
                   id="about"
