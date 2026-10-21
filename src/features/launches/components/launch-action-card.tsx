@@ -98,7 +98,7 @@ export function LaunchActionCard({
 
   return (
     <>
-      <LaunchPanel className="trade-panel-neutral relative z-10 overflow-hidden rounded-2xl border border-border bg-white shadow-none ring-0 dark:bg-card dark:ring-0 lg:max-h-[calc(100svh-48px)] lg:overflow-y-auto [scrollbar-width:thin]">
+      <LaunchPanel className="trade-panel-neutral relative z-10 overflow-hidden rounded-none border-0 border-border bg-white shadow-none ring-0 sm:rounded-2xl sm:border dark:bg-card dark:ring-0 lg:max-h-[calc(100svh-48px)] lg:overflow-y-auto [scrollbar-width:thin]">
         {identity}
         {wide ? (
           form

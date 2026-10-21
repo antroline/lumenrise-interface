@@ -38,6 +38,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             isFullWidth(pathname)
               ? 'sm:px-5 lg:px-6'
               : 'max-w-[1200px] sm:px-6 lg:px-10',
+            isLaunchDetails && 'max-sm:px-0',
           )}
         >
           <Breadcrumbs />

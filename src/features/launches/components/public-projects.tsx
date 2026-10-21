@@ -69,7 +69,7 @@ const phases = {
   Failed: 'failed',
 } satisfies Record<string, ProjectPhase>;
 const controlClass =
-  'inline-flex h-8 min-w-0 shrink-0 items-center justify-center rounded-md px-2 text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-foreground pointer-coarse:min-h-11';
+  'inline-flex h-8 min-w-0 shrink-0 items-center justify-center rounded-md px-2 text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-foreground';
 const activeClass =
   'bg-white text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50';
 const inactiveClass =
@@ -407,7 +407,7 @@ export function PublicProjects({
                 aria-current={sort === item ? 'page' : undefined}
                 className={cn(
                   controlClass,
-                  'h-auto min-h-11 px-1 py-1 text-center text-[11px] whitespace-nowrap min-[390px]:text-xs lg:h-8 lg:min-h-0 lg:px-2 lg:py-0',
+                  'px-1 text-center text-[11px] whitespace-nowrap min-[390px]:text-xs lg:px-2',
                   sort === item ? activeClass : inactiveClass,
                 )}
               >
