@@ -62,8 +62,8 @@ export function ProjectDetailsStep({ draft, setDraft, errors = {} }: DraftProps)
           <LaunchFieldError id="launch-description-error" className="text-small text-bad">{errors['launch-description']}</LaunchFieldError>
         </Field>
         <FieldGroup className="grid gap-3 @min-[28rem]/project:grid-cols-2">
-          <TextField id="launch-x" label="X account *" value={draft.xAccount} onChange={(value) => update('xAccount', value)} placeholder="https://x.com/yourproject" required maxLength={2048} error={errors['launch-x']} />
-          <TextField id="launch-website" label="Website *" value={draft.website} onChange={(value) => update('website', value)} placeholder="https://yourproject.com" required maxLength={2048} error={errors['launch-website']} />
+          <TextField id="launch-x" label="X account (optional)" value={draft.xAccount} onChange={(value) => update('xAccount', value)} placeholder="https://x.com/yourproject" maxLength={2048} error={errors['launch-x']} />
+          <TextField id="launch-website" label="Website (optional)" value={draft.website} onChange={(value) => update('website', value)} placeholder="https://yourproject.com" maxLength={2048} error={errors['launch-website']} />
         </FieldGroup>
       </FieldGroup>
     </div>

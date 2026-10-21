@@ -14,7 +14,7 @@ import { LaunchSummary } from './launch-summary';
 import { LaunchStepper } from './launch-stepper';
 import { LaunchStepContent } from './launch-step-content';
 import { LaunchNavigation } from './launch-navigation';
-import { LaunchOperationDialog } from './launch-operation-dialog';
+import { LaunchCompletion } from './launch-completion';
 import {
   LaunchMotionConfig,
   LaunchStepPanel,
@@ -42,11 +42,11 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
   const completed = bondingLaunch.operation?.status === 'success';
 
   // Activity preserves routes. Replace the completed session when it is hidden,
-  // leaving the success dialog intact until the user navigates away.
+  // leaving the completion screen intact until the user navigates away.
   useLayoutEffect(() => {
     if (completed) return onCompletedExit;
   }, [completed, onCompletedExit]);
-  const [progressOpen, setProgressOpen] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const { notify, accountReady } = useLaunchpad();
   const [draft, setDraft] = useState(initialLaunchDraft);
   const [step, setStep] = useState(0);
@@ -58,6 +58,10 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
   const footerRef = useRef<HTMLDivElement>(null);
   const [hasMoreContent, setHasMoreContent] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+
+  useEffect(() => {
+    if (completing) studioRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+  }, [completing]);
 
   useEffect(() => {
     const content = contentRef.current;
@@ -88,11 +92,12 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
       resize.disconnect();
       desktop.removeEventListener('change', observeEnd);
     };
-  }, []);
+  }, [completing]);
 
   function launchBondingCurve() {
     if (bondingLaunch.operation?.status === 'success') return;
-    setProgressOpen(true);
+    // Signed-out users finish the existing login/return flow before completion.
+    if (accountReady) setCompleting(true);
     if (!bondingLaunch.working) void bondingLaunch.launch(draft);
   }
 
@@ -163,17 +168,17 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
     <div
       ref={studioRef}
       data-launch-studio=""
-      className="@container/studio relative mx-auto w-full min-w-0 max-w-[88rem] scroll-mt-4 lg:h-[min(60rem,calc(100dvh-5.5rem))]"
+      className="@container/studio relative mx-auto w-full min-w-0 max-w-[88rem] scroll-mt-20 lg:scroll-mt-4 lg:h-[min(60rem,calc(100dvh-5.5rem))]"
     >
-      <LaunchOperationDialog
+      {completing ? <LaunchCompletion
         operation={bondingLaunch.operation}
+        working={bondingLaunch.working}
         name={draft.name}
         symbol={draft.symbol}
         logo={draft.logo}
-        open={progressOpen}
-        onOpenChange={setProgressOpen}
         onRetry={launchBondingCurve}
-      />
+        onBack={() => setCompleting(false)}
+      /> :
       <div className="grid min-h-0 min-w-0 items-start gap-4 lg:h-full lg:grid-cols-[minmax(0,1fr)_236px] lg:@min-[1000px]/studio:grid-cols-[minmax(0,1fr)_256px] lg:@min-[1200px]/studio:grid-cols-[minmax(0,1fr)_280px]">
         <LaunchSummary
           draft={draft}
@@ -184,7 +189,7 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
           onNavigate={goToStep}
         />
         <section
-          className="@container/launch relative flex min-h-0 min-w-0 scroll-mt-4 flex-col rounded-2xl border border-border bg-card p-(--launch-pad) [--launch-pad:--spacing(4)] sm:[--launch-pad:--spacing(6)] lg:h-full studio-compact:[--launch-pad:--spacing(5)]"
+          className="@container/launch relative flex min-h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] min-w-0 scroll-mt-4 flex-col bg-card p-(--launch-pad) [--launch-pad:--spacing(4)] sm:[--launch-pad:--spacing(6)] lg:h-full lg:min-h-0 lg:rounded-2xl lg:border lg:border-border studio-compact:[--launch-pad:--spacing(5)]"
           aria-labelledby="wizard-title"
         >
           <LaunchStepper steps={visibleSteps} currentIndex={currentIndex} locked={bondingLaunch.working} onNavigate={goToStep} />
@@ -193,7 +198,7 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
             {` of ${visibleSteps.length}`}
             : {currentStage.label}
           </p>
-          <div ref={contentRef} data-launch-scroll="" className="-mx-1 min-h-0 min-w-0 px-1 lg:flex-1 lg:overflow-y-auto lg:overscroll-y-contain lg:scroll-py-4 lg:[scrollbar-gutter:stable] [scrollbar-width:thin]">
+          <div ref={contentRef} data-launch-scroll="" className="-mx-1 min-h-0 min-w-0 flex-1 px-1 lg:overflow-y-auto lg:overscroll-y-contain lg:scroll-py-4 lg:[scrollbar-gutter:stable] [scrollbar-width:thin]">
             <AnimatePresence
               initial={false}
               mode="wait"
@@ -240,7 +245,7 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
             />
           </div>
         </section>
-      </div>
+      </div>}
     </div>
   );
 }

@@ -43,7 +43,7 @@ test('start summary follows the schedule toggle without discarding the selected 
   assert.equal(rowsFor(draft, 'settings')[0].value, scheduled);
 });
 
-test('project stage requires both links and validates their HTTPS format', () => {
+test('project stage accepts optional links and validates provided HTTPS URLs', () => {
   const stage = launchStages[launchStageIndex('project')];
   const draft = { ...structuredClone(initialLaunchDraft),
     website: ' https://example.com ', xAccount: ' https://x.com/project ' };
@@ -51,7 +51,11 @@ test('project stage requires both links and validates their HTTPS format', () =>
   assert.equal(errors['launch-website'], undefined);
   assert.equal(errors['launch-x'], undefined);
   for (const [field, errorKey] of [['website', 'launch-website'], ['xAccount', 'launch-x']]) {
-    for (const value of ['', '   ', 'http://example.com', 'invalid', '/relative',
+    for (const value of ['', '   ']) {
+      errors = validateLaunchStage({ ...draft, [field]: value }, stage);
+      assert.equal(errors[errorKey], undefined);
+    }
+    for (const value of ['http://example.com', 'invalid', '/relative',
       'https://user:password@example.com', `https://example.com/${'a'.repeat(2029)}`]) {
       errors = validateLaunchStage({ ...draft, [field]: value }, stage);
       assert.ok(errors[errorKey], `${field}: ${value}`);
@@ -72,12 +76,13 @@ test('empty identity and unselected method do not generate placeholder summary f
 const { calculateLaunch, calculateDraftLaunch, launchPreview } = loadSource('calculate-launch.ts');
 const { validateLaunchStep } = loadSource('launch-validation.ts');
 
-test('three stages collect tokenomics and the launch plan into one step before review', () => {
-  assert.equal(launchStages.length, 3);
-  assert.equal(launchStages.map((stage) => stage.id).join(), 'project,token,review');
+test('participation follows tokenomics and the launch plan before review', () => {
+  assert.equal(launchStages.length, 4);
+  assert.equal(launchStages.map((stage) => stage.id).join(), 'project,token,eligibility,review');
+  assert.equal(launchStageIndex('eligibility'), 2);
   for (const section of ['method', 'sale', 'supply', 'allocation', 'settings', 'token'])
     assert.equal(launchStageIndex(section), 1, section);
-  assert.equal(launchStageIndex('eligibility'), -1);
+  assert.equal(launchStageIndex('review'), 3);
   const draft = structuredClone(initialLaunchDraft);
   draft.bonding.creatorPayout = '0.1';
   draft.bonding.creatorFee = '10.01';

@@ -95,19 +95,15 @@ export function validateLaunchStep(
       errors['launch-symbol'] = 'Use 1–12 letters or numbers.';
     if (!draft.logo)
       errors['launch-logo'] =
-        'Add a project image (PNG, JPG or WebP, under 1 MB).';
+        'Add a project image (PNG, JPG or WebP, up to 2 MB).';
     if (!draft.description.trim())
       errors['launch-description'] = 'Briefly describe the project.';
     else if (draft.description.length > 3000)
       errors['launch-description'] = 'Use up to 3000 characters.';
-    if (!draft.xAccount.trim())
-      errors['launch-x'] = 'Enter your project’s X account link.';
-    else if (!validOptionalUrl(draft.xAccount))
+    if (!validOptionalUrl(draft.xAccount))
       errors['launch-x'] =
         'Enter an HTTPS URL of up to 2048 characters without embedded credentials.';
-    if (!draft.website.trim())
-      errors['launch-website'] = 'Enter your project’s website link.';
-    else if (!validOptionalUrl(draft.website))
+    if (!validOptionalUrl(draft.website))
       errors['launch-website'] =
         'Enter an HTTPS URL of up to 2048 characters without embedded credentials.';
   }
