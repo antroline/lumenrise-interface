@@ -34,7 +34,7 @@ const fadeClass = 'transition-opacity duration-200 motion-reduce:transition-none
 
 const iconButtonClass = 'shrink-0 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-neutral-400 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 dark:focus-visible:ring-neutral-500';
 
-export function SideNavigation() {
+export function SideNavigation({ mobileOnly = false }: { mobileOnly?: boolean }) {
   const [expanded, setExpanded] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -50,7 +50,7 @@ export function SideNavigation() {
 
   return (
     <>
-      <div
+      {!mobileOnly && <div
         id={sideNavId}
         className={cn(
           'sticky top-0 z-30 hidden h-svh shrink-0 overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:block',
@@ -95,7 +95,7 @@ export function SideNavigation() {
             </>
           }
         />
-      </div>
+      </div>}
 
       <div className="sticky top-0 z-30 border-b border-sidebar-border bg-sidebar px-4 pt-[env(safe-area-inset-top)] lg:hidden">
         <div className="grid h-14 grid-cols-[1fr_auto_1fr] items-center">
