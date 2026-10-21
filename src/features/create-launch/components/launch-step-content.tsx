@@ -3,6 +3,7 @@ import type { LaunchStage } from '../lib/launch-stages';
 import type { DraftProps } from './launch-fields/types';
 import {
   EconomicsStep,
+  EligibilityStep,
   ProjectDetailsStep,
   ReviewStep,
   SettingsStep,
@@ -61,6 +62,8 @@ export function LaunchStepContent({
           </div>
         </div>
       );
+    case 'eligibility':
+      return <EligibilityStep {...fields} />;
     case 'review':
       return <ReviewStep draft={fields.draft} onEdit={onEdit} />;
   }

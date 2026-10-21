@@ -236,7 +236,9 @@ export function ReviewStep({
         )}
         <ReviewSection
           title="Eligibility"
-          actions={[]}
+          actions={[
+            { label: 'Edit participation', onClick: () => onEdit('eligibility') },
+          ]}
           rows={[
             [
               'Participation',

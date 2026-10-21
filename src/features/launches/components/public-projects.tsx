@@ -369,6 +369,7 @@ export function PublicProjects({
               <TooltipTrigger
                 render={
                   <Button
+                    nativeButton={false}
                     variant="ghost"
                     size="icon-sm"
                     className="pointer-coarse:size-11"
@@ -385,10 +386,10 @@ export function PublicProjects({
         </div>
         <nav
           aria-label="Project sorting"
-          className="w-full min-w-0 max-w-full md:ml-auto md:w-auto"
+          className="w-full min-w-0 max-w-full lg:ml-auto lg:w-auto"
         >
-          <div className="flex flex-wrap items-center gap-1 rounded-md bg-neutral-200/60 p-1 lg:bg-transparent lg:p-0 dark:bg-neutral-800 lg:dark:bg-transparent">
-            <span className="mr-1 shrink-0 text-xs whitespace-nowrap text-muted-foreground">
+          <div className="grid grid-cols-[auto_auto_auto_auto] items-stretch gap-1 rounded-md bg-neutral-200/60 p-1 lg:flex lg:flex-wrap lg:items-center lg:bg-transparent lg:p-0 dark:bg-neutral-800 lg:dark:bg-transparent">
+            <span className="mr-1 hidden shrink-0 text-xs whitespace-nowrap text-muted-foreground lg:inline">
               Sort by:
             </span>
             {directorySorts.map((item) => (
@@ -406,6 +407,7 @@ export function PublicProjects({
                 aria-current={sort === item ? 'page' : undefined}
                 className={cn(
                   controlClass,
+                  'h-auto min-h-11 px-1 py-1 text-center text-[11px] whitespace-nowrap min-[390px]:text-xs lg:h-8 lg:min-h-0 lg:px-2 lg:py-0',
                   sort === item ? activeClass : inactiveClass,
                 )}
               >

@@ -1,10 +1,9 @@
 'use client';
 
 import {
-  BadgeCheck,
+  LockKeyhole,
   ListChecks,
   ShieldCheck,
-  Unlock,
   UsersRound,
 } from 'lucide-react';
 import {
@@ -14,6 +13,7 @@ import {
   FieldGroup,
 } from '@/components/ui/field';
 import { LaunchTextarea } from './field-controls';
+import { Separator } from '@/components/ui/separator';
 import { ChoiceCards } from './choice-cards';
 import type { DraftProps } from './types';
 import { LaunchFieldError, LaunchReveal } from '../launch-motion';
@@ -22,7 +22,7 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
   const choices = [
     {
       value: 'open',
-      title: 'Open to everyone',
+      title: 'Open to Everyone',
       detail: 'Any wallet can join.',
       icon: UsersRound,
     },
@@ -31,24 +31,31 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
       title: 'Allowlist',
       detail: 'Only approved wallets can join.',
       icon: ListChecks,
+      disabled: true,
     },
     {
       value: 'reputation',
-      title: 'Reputation rules',
+      title: 'Reputation Rules',
       detail: 'Access based on selected activity.',
-      icon: BadgeCheck,
+      icon: ShieldCheck,
+      disabled: true,
+      emphasis: true,
     },
     {
       value: 'custom',
-      title: 'Other verification',
+      title: 'Other Verification',
       detail: 'Define your own access checks.',
       icon: ShieldCheck,
+      disabled: true,
     },
   ] as const;
   return (
-    <FieldGroup className="short:gap-4">
+    <FieldGroup className="gap-5 short:gap-5">
       <ChoiceCards
-        title="Participation access"
+        compact
+        title="Participation Access"
+        description="Control who can join your launch and participate."
+        icon={UsersRound}
         value={draft.eligibility.mode}
         options={choices}
         onChange={(mode) =>
@@ -95,22 +102,27 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
           </FieldDescription>
         </Field>
       </LaunchReveal>
+      <Separator />
       <ChoiceCards
-        title="Identification hook"
+        compact
+        title="Identification Hook"
+        description="Set identity requirements for participants."
+        icon={LockKeyhole}
         value={draft.eligibility.identificationMode}
         options={
           [
             {
               value: 'none',
-              title: 'No identity check',
+              title: 'No Identity Check',
               detail: 'Wallet access rules are enough.',
-              icon: Unlock,
+              icon: LockKeyhole,
             },
             {
               value: 'required',
-              title: 'Require identification',
+              title: 'Require Identification',
               detail: 'Set an identity rule for participants.',
               icon: ShieldCheck,
+              disabled: true,
             },
           ] as const
         }

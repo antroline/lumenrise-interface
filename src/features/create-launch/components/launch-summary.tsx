@@ -97,6 +97,7 @@ function stageChecklist(
       ];
     }
     case 'project':
+    case 'eligibility':
     case 'review':
       return [];
   }

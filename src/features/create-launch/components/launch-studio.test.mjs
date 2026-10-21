@@ -9,10 +9,11 @@ const source = ts.transpileModule(
   { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } },
 ).outputText;
 
-function studioHarness(status) {
+function studioHarness(status, accountReady = true) {
   const states = [];
   let cursor = 0;
   let cleanup;
+  let launches = 0;
   const jsx = (type, props, key) => ({ type, props, key });
   const module = { exports: {} };
   const mocks = {
@@ -31,9 +32,9 @@ function studioHarness(status) {
     },
     'react/jsx-runtime': { jsx, jsxs: jsx },
     'motion/react': { AnimatePresence: 'AnimatePresence' },
-    '@/lib/launchpad': { useLaunchpad: () => ({ notify() {}, accountReady: true }) },
+    '@/lib/launchpad': { useLaunchpad: () => ({ notify() {}, accountReady }) },
     '../hooks/use-bonding-launch': {
-      useBondingLaunch: () => ({ operation: status ? { status } : null, working: false }),
+      useBondingLaunch: () => ({ operation: status ? { status } : null, working: status === 'running', launch() { launches++; } }),
     },
     '../lib/launch-draft': { initialLaunchDraft: { method: 'bonding' } },
     '../lib/bonding-curve': {},
@@ -42,7 +43,7 @@ function studioHarness(status) {
     './launch-stepper': { LaunchStepper: 'LaunchStepper' },
     './launch-step-content': { LaunchStepContent: 'LaunchStepContent' },
     './launch-navigation': { LaunchNavigation: 'LaunchNavigation' },
-    './launch-operation-dialog': { LaunchOperationDialog: 'LaunchOperationDialog' },
+    './launch-completion': { LaunchCompletion: 'LaunchCompletion' },
     './launch-motion': { LaunchMotionConfig: 'LaunchMotionConfig', LaunchStepPanel: 'LaunchStepPanel' },
   };
   runInNewContext(source, {
@@ -58,7 +59,7 @@ function studioHarness(status) {
   }
   const first = render();
   first.type(first.props);
-  return { first, render, cleanup: () => cleanup };
+  return { first, render, cleanup: () => cleanup, launches: () => launches, content() { cursor = 1; return first.type(first.props); } };
 }
 
 test('completed launch stays visible until exit, then returning creates a fresh studio session', () => {
@@ -75,4 +76,36 @@ test('unfinished and failed launch sessions are not reset on exit', () => {
     assert.equal(harness.cleanup(), undefined);
     assert.equal(harness.render().key, harness.first.key);
   }
+});
+
+function find(tree, type) {
+  if (!tree || typeof tree !== 'object') return;
+  if (tree.type === type) return tree;
+  for (const child of [tree.props?.children].flat()) {
+    const match = find(child, type);
+    if (match) return match;
+  }
+}
+
+test('Launch replaces the form with inline completion and retry preserves the same draft', () => {
+  const harness = studioHarness('error');
+  const before = harness.content();
+  find(before, 'LaunchNavigation').props.onLaunch();
+  const screen = find(harness.content(), 'LaunchCompletion');
+  assert.ok(screen);
+  assert.equal(find(harness.content(), 'LaunchNavigation'), undefined);
+  assert.equal(harness.launches(), 1);
+  screen.props.onRetry();
+  assert.equal(harness.launches(), 2);
+  screen.props.onBack();
+  assert.ok(find(harness.content(), 'LaunchNavigation'));
+  assert.equal(find(harness.content(), 'LaunchStepContent').props.draft, find(before, 'LaunchStepContent').props.draft);
+});
+
+test('signed-out Launch keeps the form visible while the existing login flow starts', () => {
+  const harness = studioHarness(undefined, false);
+  find(harness.content(), 'LaunchNavigation').props.onLaunch();
+  assert.equal(harness.launches(), 1);
+  assert.equal(find(harness.content(), 'LaunchCompletion'), undefined);
+  assert.ok(find(harness.content(), 'LaunchNavigation'));
 });

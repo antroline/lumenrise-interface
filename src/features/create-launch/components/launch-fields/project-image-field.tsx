@@ -15,8 +15,8 @@ export function ProjectImageField({ value, onChange, error }: {
 
   function upload(file: File | undefined) {
     if (!file) return;
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 1024 * 1024) {
-      setFileError('Choose a PNG, JPG or WebP image under 1 MB.');
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+      setFileError('Choose a PNG, JPG or WebP image up to 2 MB.');
       return;
     }
     setFileError('');
@@ -57,7 +57,7 @@ export function ProjectImageField({ value, onChange, error }: {
       </label>
       <div className="flex min-w-0 flex-col gap-1.5">
         <FieldLabel htmlFor="launch-logo">Project image *</FieldLabel>
-        <FieldDescription id="launch-logo-hint">PNG, JPG or WebP, up to 1 MB.</FieldDescription>
+        <FieldDescription id="launch-logo-hint">PNG, JPG or WebP, up to 2 MB.</FieldDescription>
         <LaunchFieldError id="launch-logo-error" role="alert" className="text-small text-bad">{fileError || error}</LaunchFieldError>
       </div>
     </Field>

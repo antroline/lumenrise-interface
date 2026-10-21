@@ -8,12 +8,14 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { WalletButton } from './wallet-button';
+import { SideNavigation } from './side-navigation';
 
-/** A task-focused frame: brand, wallet and a way out, without the site navigation. */
+/** A task-focused desktop frame with the shared site header on mobile. */
 export function FocusedShell({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="relative isolate min-h-screen bg-page">
-      <header className="mx-auto flex h-16 w-full max-w-[88rem] items-center gap-3 px-4 pt-[env(safe-area-inset-top)] sm:gap-5 sm:px-5 lg:px-6">
+    <div className="relative isolate min-h-screen bg-card lg:bg-page">
+      <SideNavigation mobileOnly />
+      <header className="mx-auto hidden h-16 w-full max-w-[88rem] items-center gap-3 px-4 pt-[env(safe-area-inset-top)] sm:gap-5 sm:px-5 lg:flex lg:px-6">
         <Link
           href="/"
           aria-label="LumenRise home"
@@ -42,7 +44,7 @@ export function FocusedShell({ title, children }: { title: string; children: Rea
           </Link>
         </div>
       </header>
-      <main className="animate-settle relative z-10 mx-auto w-full max-w-[88rem] px-3 pb-6 sm:px-5 lg:px-6">
+      <main className="animate-settle relative z-10 mx-auto w-full max-w-[88rem] lg:px-6 lg:pb-6">
         {children}
       </main>
     </div>

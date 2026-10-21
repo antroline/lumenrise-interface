@@ -23,7 +23,7 @@ export function LaunchNavigation({ step, canGoBack, method, ready, working, acco
     : working ? 'Launching…' : accountReady ? 'Launch on Testnet' : 'Connect wallet to continue';
 
   return (
-    <div data-launch-footer="" className="relative flex items-center gap-3 rounded-b-[15px] bg-card px-(--launch-pad) pt-3 pb-[calc(--spacing(3)+env(safe-area-inset-bottom))] sm:pt-4 sm:pb-[calc(--spacing(4)+env(safe-area-inset-bottom))]">
+    <div data-launch-footer="" className="relative flex items-center gap-3 bg-card px-(--launch-pad) pt-3 pb-[calc(--spacing(3)+env(safe-area-inset-bottom))] sm:pt-4 sm:pb-[calc(--spacing(4)+env(safe-area-inset-bottom))] lg:rounded-b-[15px]">
       <div aria-hidden="true" data-launch-fade="" className={cn('pointer-events-none absolute inset-x-0 bottom-full h-8 bg-linear-to-t from-card to-transparent transition-opacity duration-200 motion-reduce:transition-none', hasMoreContent ? 'opacity-100' : 'opacity-0')} />
       {canGoBack && (
         <Button variant="outline" size="lg" onClick={onBack}>

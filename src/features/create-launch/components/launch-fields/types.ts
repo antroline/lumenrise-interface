@@ -16,4 +16,6 @@ export type Choice<T extends string> = {
   title: string;
   detail: string;
   icon: LucideIcon;
+  disabled?: boolean;
+  emphasis?: boolean;
 };
