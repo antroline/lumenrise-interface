@@ -1,3 +1,4 @@
+import { configurationModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -16,7 +17,7 @@ runInNewContext(
       },
     },
   ).outputText,
-  { exports: directory, URLSearchParams },
+  { exports: directory, URLSearchParams, require: () => configurationModule },
 );
 const XLM = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
 const USDC = 'CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA';
@@ -57,6 +58,8 @@ function harness(request = defaults, apply = async () => {}) {
       JSON,
       Error,
       require: (name) => {
+        if (name === '@/lib/api/config') return configurationModule;
+        if (name === '@/lib/stellar/network') return networkModule;
         if (name === 'react')
           return {
             useState(initial) {

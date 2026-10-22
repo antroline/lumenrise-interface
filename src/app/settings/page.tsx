@@ -11,10 +11,14 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
-import { PROFILE_IMAGE_TYPES, validateProfileImage } from '@/lib/image'
+import { validateProfileImage } from '@/lib/image'
+import { getConfiguration } from '@/lib/api/config'
+import { imageHint } from '@/lib/client-rules'
+import { API_NETWORK } from '@/lib/stellar/network'
 import { shortAddress } from '@/lib/connections'
 import { useLaunchpad } from '@/lib/launchpad'
 import { RuledPanel, Trajectory } from '@/components/visual-system'
+import { TeamInvitations } from '@/features/launches/components/team-invitations'
 
 const providers: { key: 'x' | 'github' | 'gitlab'; label: string; Icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
   { key: 'x', label: 'X', Icon: XLogoIcon }, { key: 'github', label: 'GitHub', Icon: GithubIcon }, { key: 'gitlab', label: 'GitLab', Icon: GitFork },
@@ -43,10 +47,11 @@ function SettingsContent({ address, logout }: { address?: string; logout: () => 
   return <div className="flex flex-col gap-7">
     <PageHeader eyebrow="Account" title="Account and connections" description="Manage the wallets and accounts behind your reputation, and decide what is public." />
     <RuledPanel><Trajectory label="Identity evidence path" active={1} steps={[{label:'Wallet'},{label:'Connected identities'},{label:'Reputation signals'},{label:'Launch eligibility'}]} /></RuledPanel>
-    <div className="grid items-start gap-6 lg:grid-cols-[190px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)]"><aside className="flex flex-col gap-1 text-ui font-medium lg:sticky lg:top-6">{[...(profile?[['Profile','profile']]:[]),['Wallets','wallets'],['Linked accounts','linked'],['Privacy','privacy'],['Notifications','notifications'],['API permissions','permissions'],['Security','security']].map(([label,id],index)=><a key={id} href={`#${id}`} className={`rounded-lg px-3 py-2 ${index===0?'bg-secondary':'text-muted-foreground hover:bg-muted'}`}>{label}</a>)}<div className="mt-4 rounded-xl bg-muted p-4"><Wallet className="size-5" /><b className="mt-2 block">{shortAddress(address)}</b><span className="text-small text-muted-foreground">Stellar Testnet · Blux</span></div></aside>
+    <div className="grid items-start gap-6 lg:grid-cols-[190px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)]"><aside className="flex flex-col gap-1 text-ui font-medium lg:sticky lg:top-6">{[...(profile?[['Profile','profile']]:[]),['Wallets','wallets'],['Linked accounts','linked'],['Privacy','privacy'],['Notifications','notifications'],['API permissions','permissions'],['Security','security']].map(([label,id],index)=><a key={id} href={`#${id}`} className={`rounded-lg px-3 py-2 ${index===0?'bg-secondary':'text-muted-foreground hover:bg-muted'}`}>{label}</a>)}<div className="mt-4 rounded-xl bg-muted p-4"><Wallet className="size-5" /><b className="mt-2 block">{shortAddress(address)}</b><span className="text-small text-muted-foreground">Stellar {API_NETWORK === 'public' ? 'Mainnet' : 'Testnet'} · Blux</span></div></aside>
       <div className="flex min-w-0 flex-col gap-5">
         {profile ? <ProfileCard name={profile.name} avatarUrl={profile.avatarUrl} seed={address || profile.identityId} /> : null}
-        <SettingsCard id="wallets" title="Wallets" description="Wallets you prove ownership of by signing a message. No funds move."><div className="flex flex-wrap items-center gap-3 border-t py-4"><span className="grid size-10 place-items-center rounded-lg bg-muted"><Wallet className="size-5" /></span><div className="grow"><b className="font-mono text-ui">{shortAddress(address)}</b><span className="block text-small text-muted-foreground">Connected through Blux</span></div><Badge variant="lime">Primary</Badge><Badge variant="net">TESTNET</Badge><Button variant="outline" size="sm" onClick={() => router.push('/portfolio')}>Portfolio</Button></div><p className="text-small text-muted-foreground">Additional wallet linking is not available through the current Blux integration.</p></SettingsCard>
+        {profile ? <SettingsCard id="team-invitations" title="Team invitations" description="Accept an invitation to appear on a launch’s team, or decline it."><TeamInvitations /></SettingsCard> : null}
+        <SettingsCard id="wallets" title="Wallets" description="Wallets you prove ownership of by signing a message. No funds move."><div className="flex flex-wrap items-center gap-3 border-t py-4"><span className="grid size-10 place-items-center rounded-lg bg-muted"><Wallet className="size-5" /></span><div className="grow"><b className="font-mono text-ui">{shortAddress(address)}</b><span className="block text-small text-muted-foreground">Connected through Blux</span></div><Badge variant="lime">Primary</Badge><Badge variant="net">{API_NETWORK === 'public' ? 'MAINNET' : 'TESTNET'}</Badge><Button variant="outline" size="sm" onClick={() => router.push('/portfolio')}>Portfolio</Button></div><p className="text-small text-muted-foreground">Additional wallet linking is not available through the current Blux integration.</p></SettingsCard>
         <SettingsCard id="linked" title="Linked accounts" description="External account linking is not available yet.">
           <div className="flex flex-col">
             {providers.map(({ key, label, Icon }) => (
@@ -105,12 +110,12 @@ function ProfileCard({ name, avatarUrl, seed }: { name: string; avatarUrl: strin
         <ProfileAvatar seed={seed} avatarUrl={avatarUrl} size={56} radius={28} />
         <div className="min-w-28 grow">
           <b className="text-ui">{name}</b>
-          <span className="block text-small text-muted-foreground">A photo is optional and can be changed at any time.</span>
+          <span className="block text-small text-muted-foreground">{imageHint('avatar')}</span>
         </div>
         <input
           ref={fileInput}
-          type="file"
-          accept={PROFILE_IMAGE_TYPES.join(',')}
+          type="file" disabled={!getConfiguration().features.imageUploads}
+          accept={getConfiguration().rules.images.mimeTypes.join(',')}
           className="sr-only"
           aria-label="Profile photo"
           onChange={(event) => {
@@ -118,7 +123,7 @@ function ProfileCard({ name, avatarUrl, seed }: { name: string; avatarUrl: strin
             event.target.value = ''
           }}
         />
-        <Button variant="outline" size="sm" disabled={pending !== null} onClick={() => fileInput.current?.click()}>
+        <Button variant="outline" size="sm" disabled={pending !== null || !getConfiguration().features.imageUploads} onClick={() => fileInput.current?.click()}>
           {pending === 'upload' ? 'Uploading…' : avatarUrl ? 'Change photo' : 'Add photo'}
         </Button>
         {avatarUrl ? (

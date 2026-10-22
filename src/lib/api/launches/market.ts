@@ -1,3 +1,5 @@
+import { requireLaunchSlug } from '../../launch-slug';
+import { getConfiguration } from '../config';
 import { ApiError, apiRequest } from '../client';
 import type { ApiNetwork } from './types';
 import { decodePublicTeamMember, type PublicTeamMember } from './team';
@@ -36,6 +38,7 @@ export type LaunchResult = {
   network: ApiNetwork;
   factoryContractId: string;
   factoryIndex: number;
+  slug: string | null;
   contractId: string;
   owner: string;
   team?: PublicTeamMember[];
@@ -108,6 +111,11 @@ export type MarketResult = {
 export const chartTimeframes = {
   '1D': '15m', '1W': '4h', '1M': '1d', '3M': '1w', ALL: '1d',
 } as const;
+export function getChartRanges(): ChartRange[] {
+  const rule = getConfiguration().rules.chart;
+  return rule.maxTimeframes < 1 ? [] : (Object.keys(chartTimeframes) as ChartRange[])
+    .filter(range => rule.legacyRanges.includes(range) && rule.timeframes.includes(chartTimeframes[range]));
+}
 export type Candle = {
   timestamp: string;
   endsAt: string;
@@ -280,6 +288,7 @@ export function decodeLaunch(v: unknown): LaunchResult {
   }
   return {
     network: network(l.network),
+    slug: l.slug == null ? null : string(l.slug),
     contractId: string(l.contractId),
     factoryContractId: string(l.factoryContractId),
     factoryIndex: number(l.factoryIndex),
@@ -400,8 +409,10 @@ export function decodeTrades(v: unknown): TradesResult {
     priceScale: scale(t.priceScale),
   };
 }
-const path = (id: string, n: ApiNetwork, section = '') =>
-  `/launches/${encodeURIComponent(id)}${section}?network=${n}`;
+const path = (slug: string, n: ApiNetwork, section = '') => {
+  requireLaunchSlug(slug);
+  return `/launches/${encodeURIComponent(slug)}${section}?network=${n}`;
+};
 export async function getLaunchList(
   n: ApiNetwork,
   page: number,
@@ -410,13 +421,24 @@ export async function getLaunchList(
   signal?: AbortSignal,
   filters: LaunchListFilters = {},
 ): Promise<LaunchList> {
+  const rule = getConfiguration().rules.launches;
+  if (
+    !Number.isSafeInteger(page) || page < rule.minPage || page > rule.maxPage ||
+    !Number.isSafeInteger(limit) || limit < rule.minLimit || limit > rule.maxLimit ||
+    (filters.search?.length ?? 0) > rule.searchMaxLength ||
+    !rule.categories.includes(filters.category ?? rule.defaultCategory) ||
+    !rule.sorts.includes(filters.sort ?? rule.defaultSort) ||
+    !rule.directions.includes(filters.direction ?? rule.defaultDirection) ||
+    (rule.pairRequiredSorts.includes(filters.sort ?? rule.defaultSort) && !filters.pair)
+  )
+    throw new ApiError('Invalid launch filters for the current server configuration.', 'http', { status: 400 });
   const q = new URLSearchParams({
     network: n,
     page: String(page),
     limit: String(limit),
-    category: filters.category ?? 'all',
-    sort: filters.sort ?? 'newest',
-    direction: filters.direction ?? 'desc',
+    category: filters.category ?? rule.defaultCategory,
+    sort: filters.sort ?? rule.defaultSort,
+    direction: filters.direction ?? rule.defaultDirection,
   });
   if (owner) q.set('owner', owner);
   if (filters.search) q.set('search', filters.search);
@@ -470,8 +492,8 @@ export async function getLaunchList(
 /** Defaults are explicit so every consumer shares only identical requests. */
 export function launchListKey(
   network: ApiNetwork,
-  page = 1,
-  limit = 20,
+  page = getConfiguration().rules.launches.minPage,
+  limit = getConfiguration().rules.launches.defaultLimit,
   owner?: string,
   filters: LaunchListFilters = {},
 ) {
@@ -479,9 +501,9 @@ export function launchListKey(
     network,
     owner: owner ?? '',
     search: filters.search ?? '',
-    category: filters.category ?? 'all',
-    sort: filters.sort ?? 'newest',
-    direction: filters.direction ?? 'desc',
+    category: filters.category ?? getConfiguration().rules.launches.defaultCategory,
+    sort: filters.sort ?? getConfiguration().rules.launches.defaultSort,
+    direction: filters.direction ?? getConfiguration().rules.launches.defaultDirection,
     pair: filters.pair ?? '',
     page,
     limit,
@@ -489,50 +511,49 @@ export function launchListKey(
 }
 function identity<T extends { network: ApiNetwork; contractId: string }>(
   result: T,
-  id: string,
   n: ApiNetwork,
 ): T {
-  return result.network === n && result.contractId === id ? result : invalid();
+  return result.network === n ? result : invalid();
 }
 export async function getLaunchDetail(
-  id: string,
+  slug: string,
   n: ApiNetwork,
   signal?: AbortSignal,
 ) {
-  return identity(
-    decodeLaunch(await apiRequest<unknown>(path(id, n), { signal })),
-    id,
-    n,
-  );
+  const launch = identity(decodeLaunch(await apiRequest<unknown>(path(slug, n), { signal })), n);
+  if (launch.slug !== slug) invalid();
+  return launch;
 }
 export async function getMarket(
-  id: string,
+  slug: string,
   n: ApiNetwork,
   signal?: AbortSignal,
 ) {
   return identity(
-    decodeMarket(await apiRequest<unknown>(path(id, n, '/market'), { signal })),
-    id,
+    decodeMarket(await apiRequest<unknown>(path(slug, n, '/market'), { signal })),
     n,
   );
 }
 export async function getChart(
-  id: string,
+  slug: string,
   n: ApiNetwork,
   range: ChartRange,
   signal?: AbortSignal,
   referenceTime = Date.now(),
 ): Promise<ChartHistory> {
+  const rule = getConfiguration().rules.chart;
   const timeframe = chartTimeframes[range];
+  if (!rule.legacyRanges.includes(range) || !rule.timeframes.includes(timeframe) || rule.maxTimeframes < 1) throw new ApiError('This chart timeframe is not available in server configuration.', 'http', { status: 400 });
   const from = chartFrom(range, referenceTime);
   async function page(to?: string) {
     signal?.throwIfAborted();
-    const query = new URLSearchParams({ network: n, timeframes: timeframe, limit: '1000' });
+    requireLaunchSlug(slug);
+    const query = new URLSearchParams({ network: n, timeframes: timeframe, limit: String(rule.defaultLimit) });
     if (from) query.set('from', from);
     if (to) query.set('to', to);
     const result = identity(decodeChart(await apiRequest<unknown>(
-      `/launches/${encodeURIComponent(id)}/chart?${query}`, { signal },
-    )), id, n);
+      `/launches/${encodeURIComponent(slug)}/chart?${query}`, { signal },
+    )), n);
     signal?.throwIfAborted();
     const frame = result.timeframes.find((entry) => entry.timeframe === timeframe);
     if (!frame) invalid();
@@ -566,7 +587,7 @@ export async function getChart(
   };
 }
 export async function getTrades(
-  id: string,
+  slug: string,
   n: ApiNetwork,
   filters: {
     cursor?: string;
@@ -576,22 +597,29 @@ export async function getTrades(
   },
   signal?: AbortSignal,
 ) {
-  const q = new URLSearchParams({ limit: String(filters.limit ?? 20) });
+  const rule = getConfiguration().rules.trades;
+  const limit = filters.limit ?? rule.defaultLimit;
+  if (
+    !Number.isSafeInteger(limit) || limit < rule.minLimit || limit > rule.maxLimit ||
+    (filters.cursor?.length ?? 0) > rule.cursorMaxLength ||
+    (filters.side && !rule.sides.includes(filters.side))
+  ) throw new ApiError('Invalid trade filters.', 'http', { status: 400 });
+  const q = new URLSearchParams({ limit: String(limit) });
   if (filters.cursor) q.set('cursor', filters.cursor);
   if (filters.trader) q.set('trader', filters.trader);
   if (filters.side) q.set('side', filters.side);
   return decodeTrades(
-    await apiRequest<unknown>(`${path(id, n, '/trades')}&${q}`, { signal }),
+    await apiRequest<unknown>(`${path(slug, n, '/trades')}&${q}`, { signal }),
   );
 }
 export async function recordTrade(
-  id: string,
+  slug: string,
   n: ApiNetwork,
   transactionHash: string,
   signal?: AbortSignal,
 ) {
   const r = object(
-    await apiRequest<unknown>(path(id, n, '/trades'), {
+    await apiRequest<unknown>(path(slug, n, '/trades'), {
       method: 'POST',
       user: true,
       expectedStatus: 200,

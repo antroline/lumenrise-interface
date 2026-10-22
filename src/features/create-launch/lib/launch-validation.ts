@@ -1,3 +1,5 @@
+import { projectNameError } from '../../../lib/launch-slug';
+import { getConfiguration } from '../../../lib/api/config';
 import {
   numberValue,
   validNonNegativeInteger,
@@ -89,23 +91,23 @@ export function validateLaunchStep(
   const errors: FieldErrors = {};
 
   if (step === 'project') {
-    if (!draft.name.trim() || draft.name.trim().length > 40)
-      errors['project-name'] = 'Enter a project name of up to 40 characters.';
+    const nameError = projectNameError(draft.name);
+    if (nameError) errors['project-name'] = nameError;
     if (!/^[A-Z0-9]{1,12}$/.test(draft.symbol))
       errors['launch-symbol'] = 'Use 1–12 letters or numbers.';
     if (!draft.logo)
       errors['launch-logo'] =
-        'Add a project image (PNG, JPG or WebP, up to 2 MB).';
+        'Add a project image.';
     if (!draft.description.trim())
       errors['launch-description'] = 'Briefly describe the project.';
     else if (draft.description.length > 3000)
       errors['launch-description'] = 'Use up to 3000 characters.';
-    if (!validOptionalUrl(draft.xAccount))
+    if (!validOptionalUrl(draft.xAccount, getConfiguration().rules.projectLinks.xAccountRequired))
       errors['launch-x'] =
-        'Enter an HTTPS URL of up to 2048 characters without embedded credentials.';
-    if (!validOptionalUrl(draft.website))
+        `Enter a valid ${getConfiguration().rules.projectLinks.protocols.join(' or ')} link of up to ${getConfiguration().rules.projectLinks.maxLength} characters.`;
+    if (!validOptionalUrl(draft.website, getConfiguration().rules.projectLinks.websiteRequired))
       errors['launch-website'] =
-        'Enter an HTTPS URL of up to 2048 characters without embedded credentials.';
+        `Enter a valid ${getConfiguration().rules.projectLinks.protocols.join(' or ')} link of up to ${getConfiguration().rules.projectLinks.maxLength} characters.`;
   }
 
   if (step === 'method' && !draft.methodSelected)

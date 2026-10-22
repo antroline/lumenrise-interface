@@ -1,3 +1,4 @@
+import { configurationModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -15,7 +16,7 @@ function compile(path, imports, globals = {}) {
         jsx: ts.JsxEmit.ReactJSX,
       },
     }).outputText,
-    { exports, require: imports, URL, URLSearchParams, ...globals },
+    { exports, require: name => name.endsWith('/api/config') ? configurationModule : imports(name), URL, URLSearchParams, ...globals },
   );
   return exports;
 }
@@ -90,6 +91,8 @@ function harness(initial = status(), initialProps = {}) {
   const component = compile(
     './public-projects.tsx',
     (name) => {
+      if (name === '@/lib/api/config') return configurationModule;
+      if (name === '@/lib/stellar/network') return networkModule;
       if (name === 'react') return react;
       if (name === 'react/jsx-runtime')
         return { jsx, jsxs: jsx, Fragment: 'Fragment' };
@@ -195,6 +198,7 @@ function harness(initial = status(), initialProps = {}) {
 const launch = (id, extras = {}) => ({
   network: 'testnet',
   contractId: id,
+  slug: `project-${id}`,
   pair: 'PAIR',
   category: 'bonding-curve',
   createdAt: null,
@@ -395,4 +399,12 @@ test('monetary Clear keeps its required asset and disappears when only sort sett
     !h.nodes().some((node) => node.props?.['aria-label'] === 'Clear filters'),
   );
   assert.equal(h.options.enabled, true);
+});
+
+
+test('directory links use server slugs and unresolved projects return to the directory', () => {
+  const h = harness(status({ launches: [launch('contract', { slug: 'blue-man', metadata: { name: 'A different display name', symbol: 'TOK' } }), launch('legacy', { slug: null })], total: 2 }));
+  const rows = h.find('ProjectsTable').props.rows;
+  assert.equal(rows[0].href, '/launches/blue-man?network=testnet');
+  assert.equal(rows[1].href, '/launches?network=testnet');
 });

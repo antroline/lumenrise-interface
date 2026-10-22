@@ -1,3 +1,4 @@
+import { networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
@@ -16,7 +17,8 @@ const mocks = {
   '@/components/ui/button': { Button: 'Button', buttonVariants: () => 'button' },
   '@/lib/utils': { cn: (...values) => values.filter(Boolean).join(' ') },
 };
-runInNewContext(source, { module, exports: module.exports, require: (name) => {
+runInNewContext(source, { module, exports: module.exports, URLSearchParams, require: (name) => {
+  if (name === '@/lib/stellar/network') return networkModule;
   if (!(name in mocks)) throw new Error(`Unexpected import: ${name}`);
   return mocks[name];
 } });
@@ -28,9 +30,9 @@ const props = {
 const actions = (overrides = {}) => LaunchNavigation({ ...props, ...overrides }).props.children.flat().filter(Boolean);
 
 test('indexed success replaces launch submission with a link to the created launch, even after wallet disconnect', () => {
-  const nodes = actions({ launchAddress: 'confirmed-curve', ready: false, accountReady: false });
+  const nodes = actions({ launchSlug: 'blue-man', ready: false, accountReady: false });
   const link = nodes.find((node) => node.type === 'Link');
-  assert.equal(link.props.href, '/launch/confirmed-curve');
+  assert.equal(link.props.href, '/launches/blue-man?network=testnet');
   assert.ok(link.props.children.includes('View launch '));
   assert.ok(!nodes.some((node) => node.props.onClick === props.onLaunch));
 });
@@ -44,7 +46,7 @@ test('unfinished launches keep the real launch action and wallet readiness check
 
 test('running launches retain progress feedback and earlier steps retain Continue', () => {
   assert.equal(actions({ working: true }).find((node) => node.props.onClick === props.onLaunch).props.children, 'Launching…');
-  const nodes = actions({ step: 'token', launchAddress: 'confirmed-curve' });
+  const nodes = actions({ step: 'token', launchSlug: 'confirmed-curve' });
   assert.ok(nodes.some((node) => node.props.onClick === props.onNext));
   assert.ok(!nodes.some((node) => node.type === 'Link'));
 });

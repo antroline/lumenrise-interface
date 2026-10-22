@@ -30,12 +30,12 @@ function retryable(error: unknown): boolean {
  * and contract id either way so the check can run again later.
  */
 export async function waitForIndexedLaunch(
-  contractId: string,
+  slug: string,
   network: ApiNetwork,
 ): Promise<'ready' | 'pending'> {
   for (let attempt = 0; ; attempt++) {
     try {
-      await getIndexedLaunch(contractId, { network });
+      await getIndexedLaunch(slug, { network });
       return 'ready';
     } catch (error) {
       if (!retryable(error)) throw error;

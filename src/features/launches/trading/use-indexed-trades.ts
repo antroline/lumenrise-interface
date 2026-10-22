@@ -8,7 +8,7 @@ import {
   usePageVisible,
 } from '@/features/launches/hooks/queries';
 import type { ApiNetwork } from '@/lib/api/launches/types';
-export function useIndexedTrades(address: string, network: ApiNetwork) {
+export function useIndexedTrades(slug: string, network: ApiNetwork) {
   const [side, setSide] = useState<'all' | 'buy' | 'sell'>('all');
   const [size, setSize] = useState('all');
   const [period, setPeriod] = useState('all');
@@ -17,11 +17,11 @@ export function useIndexedTrades(address: string, network: ApiNetwork) {
     client = useQueryClient();
   const query = useInfiniteQuery({
     ...publicQueryOptions,
-    queryKey: [...launchKey(network, address), 'trades', side],
+    queryKey: [...launchKey(network, slug), 'trades', side],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam, signal }) =>
       getTrades(
-        address,
+        slug,
         network,
         {
           cursor: pageParam,
@@ -33,14 +33,14 @@ export function useIndexedTrades(address: string, network: ApiNetwork) {
       last.nextCursor !== null && !params.includes(last.nextCursor)
         ? last.nextCursor
         : undefined,
-    enabled: visible,
+    enabled: visible && !!slug,
   });
   useEffect(() => {
     if (!visible)
       void client.cancelQueries({
-        queryKey: [...launchKey(network, address), 'trades', side],
+        queryKey: [...launchKey(network, slug), 'trades', side],
       });
-  }, [visible, client, address, network, side]);
+  }, [visible, client, slug, network, side]);
   const trades = query.data?.pages.flatMap((page) => page.items) ?? [];
   const asOf = Math.max(filterAsOf, query.dataUpdatedAt);
   const cutoff =

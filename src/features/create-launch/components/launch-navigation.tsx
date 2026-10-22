@@ -1,3 +1,4 @@
+import { API_NETWORK } from '@/lib/stellar/network';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, ArrowUpRight } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -5,7 +6,7 @@ import { cn } from '@/lib/utils';
 import type { LaunchMethod } from '../lib/launch-draft';
 import type { LaunchStageId } from '../lib/launch-stages';
 
-export function LaunchNavigation({ step, canGoBack, method, ready, working, accountReady, hasMoreContent = false, launchAddress, onBack, onNext, onLaunch }: {
+export function LaunchNavigation({ step, canGoBack, method, ready, working, accountReady, hasMoreContent = false, launchSlug, onBack, onNext, onLaunch }: {
   step: LaunchStageId;
   canGoBack: boolean;
   method: LaunchMethod;
@@ -13,14 +14,14 @@ export function LaunchNavigation({ step, canGoBack, method, ready, working, acco
   working: boolean;
   accountReady: boolean;
   hasMoreContent?: boolean;
-  launchAddress?: string;
+  launchSlug?: string;
   onBack: () => void;
   onNext: () => void;
   onLaunch: () => void;
 }) {
   const launchLabel = method !== 'bonding'
     ? 'Launch unavailable'
-    : working ? 'Launching…' : accountReady ? 'Launch on Testnet' : 'Connect wallet to continue';
+    : working ? 'Launching…' : accountReady ? `Launch on ${API_NETWORK === 'public' ? 'Mainnet' : 'Testnet'}` : 'Connect wallet to continue';
 
   return (
     <div data-launch-footer="" className="relative flex items-center gap-3 bg-card px-(--launch-pad) pt-3 pb-[calc(--spacing(3)+env(safe-area-inset-bottom))] sm:pt-4 sm:pb-[calc(--spacing(4)+env(safe-area-inset-bottom))] lg:rounded-b-[15px]">
@@ -30,8 +31,8 @@ export function LaunchNavigation({ step, canGoBack, method, ready, working, acco
           <ArrowLeft data-icon="inline-start" /> Back
         </Button>
       )}
-      {step === 'review' && launchAddress ? (
-        <Link href={`/launch/${launchAddress}`} className={cn(buttonVariants({ size: 'lg' }), 'h-auto min-h-control-lg min-w-0 flex-1 whitespace-normal py-2 text-center sm:ml-auto sm:max-w-80')}>
+      {step === 'review' && launchSlug ? (
+        <Link href={`/launches/${launchSlug}?network=${API_NETWORK}`} className={cn(buttonVariants({ size: 'lg' }), 'h-auto min-h-control-lg min-w-0 flex-1 whitespace-normal py-2 text-center sm:ml-auto sm:max-w-80')}>
           View launch <ArrowUpRight data-icon="inline-end" />
         </Link>
       ) : step === 'review' ? (

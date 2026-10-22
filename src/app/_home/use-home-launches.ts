@@ -1,5 +1,6 @@
 'use client';
 
+import { getConfiguration } from '@/lib/api/config';
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -19,7 +20,7 @@ export type { HomeLaunch } from './home-discovery';
 export { progressLabel } from './home-discovery';
 
 /** Same page size as /launches, so both routes share one cached first page. */
-const PAGE_SIZE = 20;
+
 
 const byTime =
   (key: 'startsAt' | 'endsAt', direction: 1 | -1) =>
@@ -34,6 +35,7 @@ const byTime =
   };
 
 export function useHomeLaunches(network: ApiNetwork) {
+  const PAGE_SIZE = getConfiguration().rules.launches.defaultLimit;
   const visible = usePageVisible();
   const client = useQueryClient();
   const query = useQuery({
@@ -45,7 +47,7 @@ export function useHomeLaunches(network: ApiNetwork) {
   useEffect(() => {
     if (!visible)
       void client.cancelQueries({ queryKey: launchListKey(network, 1, PAGE_SIZE) });
-  }, [client, network, visible]);
+  }, [client, network, visible, PAGE_SIZE]);
 
   const { launches, open, recent, featured } = discoverLaunches(query.data?.launches ?? []);
   const status = (value: Bonding['status']) =>
@@ -80,7 +82,7 @@ export function timeUntil(seconds: string | null, now: number) {
 }
 
 export const launchHref = (launch: HomeLaunch, network: ApiNetwork) =>
-  `/launch/${launch.contractId}?network=${network}`;
+  launch.slug ? `/launches/${encodeURIComponent(launch.slug)}?network=${network}` : `/launches?network=${network}`;
 
 export const networkName = (network: ApiNetwork) =>
   network === 'public' ? 'Stellar Mainnet' : 'Stellar Testnet';

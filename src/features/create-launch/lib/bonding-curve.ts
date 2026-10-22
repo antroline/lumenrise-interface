@@ -12,8 +12,8 @@ import { assetFor, NETWORK } from './transactions';
 import { calculateDraftLaunch } from './calculate-launch';
 import { monthsToSeconds } from './team-vesting';
 
-export const FACTORY_CONTRACT_ID =
-  process.env.NEXT_PUBLIC_FACTORY_CONTRACT_ID?.trim() ?? '';
+export { FACTORY_CONTRACT_ID } from '../../../lib/stellar/network';
+import { API_NETWORK } from '../../../lib/stellar/network';
 
 const PAIR_SACS = {
   USDC: 'CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA',
@@ -97,6 +97,7 @@ export function buildBondingCurveParams(
   // blob URLs) must never reach `metadata.logo`.
   if (!/^https?:\/\//.test(logo))
     throw new Error('Upload the project image before launching.');
+  if (API_NETWORK !== 'testnet') throw new Error('Payment assets for creating launches are not configured on this network.');
   const token = validateInput({
     name: draft.name,
     code: draft.symbol,

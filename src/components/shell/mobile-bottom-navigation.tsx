@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { API_NETWORK } from '@/lib/stellar/network';
 import { cn } from '@/lib/utils';
 import { isActive, mobilePrimaryItems, navigationHref } from './navigation';
 
@@ -17,10 +18,10 @@ export function MobileBottomNavigation() {
 
 function NetworkBottomNavigation({ pathname }: { pathname: string }) {
   const params = useSearchParams();
-  return <BottomNavigationItems pathname={pathname} network={params.get('network')} />;
+  return <BottomNavigationItems pathname={pathname} network={params.get('network') ?? API_NETWORK} />;
 }
 
-function BottomNavigationItems({ pathname, network }: { pathname: string; network?: string | null }) {
+function BottomNavigationItems({ pathname, network = API_NETWORK }: { pathname: string; network?: string | null }) {
   return (
     <nav
       aria-label="Mobile primary"

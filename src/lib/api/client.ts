@@ -48,6 +48,15 @@ const UPLOAD_TIMEOUT_MS = 30_000;
 
 let apiBaseUrl = '';
 let currentUserId: string | null = null;
+let selectedNetwork: string | undefined;
+let supportedNetworks: readonly string[] = [];
+const retryDeadlines = new Map<string, number>();
+
+export function configureApiNetwork(network: string, supported: readonly string[]) {
+  if (!supported.includes(network)) throw new Error('Unsupported API network.');
+  selectedNetwork = network;
+  supportedNetworks = supported;
+}
 
 /**
  * Points the client at the configured API origin. Called once by the app
@@ -117,7 +126,7 @@ type ApiEnvelope = {
 };
 
 export type ApiRequestOptions = {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   json?: unknown;
   formData?: FormData;
   /** Attach the `X-User-Id` header for endpoints that identify a user. */
@@ -126,6 +135,7 @@ export type ApiRequestOptions = {
   signal?: AbortSignal;
   /** Some mutations only complete on a specific success status (trade recording: 200). */
   expectedStatus?: number;
+  network?: 'testnet' | 'public';
 };
 
 function parseEnvelope(text: string): ApiEnvelope {
@@ -153,6 +163,17 @@ export async function apiRequest<T>(
   options: ApiRequestOptions = {},
 ): Promise<T> {
   const headers: Record<string, string> = {};
+  if (path !== '/config') {
+    const queryNetwork = new URLSearchParams(path.split('?')[1]).get('network');
+    if (queryNetwork && options.network && queryNetwork !== options.network)
+      throw new ApiError('Conflicting Stellar networks.', 'invalid-response');
+    const network = options.network ?? queryNetwork ?? selectedNetwork;
+    if (network) {
+      if (selectedNetwork && !supportedNetworks.includes(network))
+        throw new ApiError('Unsupported Stellar network.', 'invalid-response');
+      headers['X-Stellar-Network'] = network;
+    }
+  }
   if (options.json !== undefined) headers['Content-Type'] = 'application/json';
   // FormData bodies intentionally set no Content-Type: the browser adds the
   // multipart boundary itself.
@@ -166,6 +187,11 @@ export async function apiRequest<T>(
     }
     headers['X-User-Id'] = userId;
   }
+
+  const retryKey = JSON.stringify([options.method ?? 'GET', path.split('?')[0], headers['X-Stellar-Network'], currentUserId]);
+  const remaining = (retryDeadlines.get(retryKey) ?? 0) - Date.now();
+  if (remaining > 0) throw new ApiError('Please wait before trying this request again.', 'http', { status: 429, retryAfterMs: remaining });
+  retryDeadlines.delete(retryKey);
 
   const controller = new AbortController();
   let timedOut = false;
@@ -196,6 +222,7 @@ export async function apiRequest<T>(
         options.formData ??
         (options.json !== undefined ? JSON.stringify(options.json) : undefined),
       signal: controller.signal,
+      ...(path === '/config' ? { cache: 'no-store' as const } : {}),
     });
     responseText = await response.text();
   } catch (error) {
@@ -217,9 +244,12 @@ export async function apiRequest<T>(
   const envelope = parseEnvelope(responseText);
 
   const retryAfter = response.headers?.get('Retry-After');
-  const retryAfterMs = retryAfter
+  const parsedRetryAfterMs = retryAfter
     ? /^\d+$/.test(retryAfter) ? Number(retryAfter) * 1000 : Math.max(0, Date.parse(retryAfter) - Date.now())
     : undefined;
+  const retryAfterMs = Number.isFinite(parsedRetryAfterMs) ? parsedRetryAfterMs : undefined;
+  if (response.status === 429 && retryAfterMs !== undefined && retryAfterMs > 0)
+    retryDeadlines.set(retryKey, Date.now() + retryAfterMs);
   if (!response.ok || response.status === 202) {
     const serverMessage = envelopeMessage(envelope);
     throw new ApiError(

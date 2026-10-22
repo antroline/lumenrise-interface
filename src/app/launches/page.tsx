@@ -1,6 +1,5 @@
 import { PublicProjects } from '@/features/launches/components/public-projects';
 import { ResultsTransition } from '@/components/results-transition';
-import { API_NETWORK } from '@/lib/stellar/network';
 
 type SearchParams = Promise<{
   category?: string | string[];
@@ -30,12 +29,6 @@ export default async function ProjectsPage({
   );
   const requestedPage = Number(params.page ?? params.livePage);
   const requestedLimit = Number(params.limit);
-  const limit = Number.isSafeInteger(requestedLimit) && requestedLimit >= 1 && requestedLimit <= 100
-    ? requestedLimit
-    : 20;
-  const page = Number.isSafeInteger(requestedPage)
-    ? Math.max(1, Math.min(100000, requestedPage))
-    : 1;
   return (
     <ResultsTransition>
       <div className="w-full min-w-0 pb-12 text-neutral-900 [--color-lime:var(--color-brand-lime)] dark:text-neutral-50">
@@ -49,15 +42,14 @@ export default async function ProjectsPage({
         </div>
         <div className="mx-auto w-full min-w-0 max-w-[1400px]">
           <PublicProjects
-            network={params.network === 'public' ? 'public' : API_NETWORK}
             owner={params.owner}
-            page={page}
+            page={requestedPage}
             category={params.category}
             sort={params.sort}
             direction={params.direction ?? params.dir}
             search={params.search ?? params.q}
             pair={params.pair}
-            limit={limit}
+            limit={requestedLimit}
           />
         </div>
       </div>

@@ -1,11 +1,62 @@
 'use client';
 
 import { useId } from 'react';
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, useChartWidth } from 'recharts';
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart';
 import { formatPriceAxis, formatPriceTime, priceDomain } from './price-history-format';
 
 export type PriceHistoryPoint = { time: number; price: number; exactPrice: string };
+
+function PriceHistoryAxes({ start, end, domain }: {
+  start: number;
+  end: number;
+  domain: [number, number];
+}) {
+  const width = useChartWidth();
+  const compact = width !== undefined && width < 480;
+  const intraday = end - start <= 2 * 86_400_000;
+  const formatTick = (value: number) => formatPriceAxis(value, compact);
+  const axisWidth = Math.min(
+    compact ? 88 : 180,
+    Math.max(
+      compact ? 64 : 88,
+      ...domain.map(value => formatTick(value).length * (compact ? 6 : 7) + (compact ? 12 : 24)),
+    ),
+  );
+
+  return (
+    <>
+      <XAxis
+        dataKey="time"
+        type="number"
+        scale="time"
+        domain={[start, end]}
+        allowDataOverflow
+        tickFormatter={value => formatPriceTime(Number(value), intraday)}
+        axisLine={false}
+        tickLine={false}
+        tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+        tickCount={compact ? 3 : 5}
+        interval="preserveStartEnd"
+        minTickGap={compact ? 24 : 60}
+        tickMargin={12}
+        height={32}
+      />
+      <YAxis
+        orientation="right"
+        domain={domain}
+        allowDataOverflow
+        tickFormatter={formatTick}
+        axisLine={false}
+        tickLine={false}
+        tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+        tickMargin={compact ? 6 : 12}
+        width={axisWidth}
+        tickCount={compact ? 3 : 4}
+      />
+    </>
+  );
+}
 
 export function PriceHistoryPlot({ points, timeDomain, ticker, pair, embedded = false }: {
   points: PriceHistoryPoint[];
@@ -18,14 +69,12 @@ export function PriceHistoryPlot({ points, timeDomain, ticker, pair, embedded = 
   const domain = priceDomain(points.map(point => point.price));
   const start = timeDomain?.[0] ?? points[0].time;
   const end = timeDomain?.[1] ?? points[points.length - 1].time;
-  const intraday = end - start <= 86_400_000;
-  const axisWidth = Math.min(180, Math.max(88, ...domain.map(value => formatPriceAxis(value).length * 7 + 24)));
 
   return (
     <ChartContainer
       config={{ price: { label: `${ticker} / ${pair}` } }}
       aria-label={`${ticker} recorded price history in ${pair}. Times in UTC.`}
-      className={`w-full aspect-auto [&_.recharts-surface:focus-visible]:outline-2 [&_.recharts-surface:focus-visible]:outline-neutral-400 [&_.recharts-surface:focus-visible]:outline-offset-2 ${embedded ? 'h-full min-h-48 flex-1' : 'h-60'}`}
+      className={`min-w-0 w-full aspect-auto tabular-nums [&_.recharts-surface:focus-visible]:outline-2 [&_.recharts-surface:focus-visible]:outline-neutral-400 [&_.recharts-surface:focus-visible]:outline-offset-2 ${embedded ? 'h-full min-h-48 flex-1' : 'h-60'}`}
     >
       <AreaChart
         data={points}
@@ -40,32 +89,7 @@ export function PriceHistoryPlot({ points, timeDomain, ticker, pair, embedded = 
           </linearGradient>
         </defs>
         <CartesianGrid vertical={false} stroke="var(--border)" />
-        <XAxis
-          dataKey="time"
-          type="number"
-          scale="time"
-          domain={[start, end]}
-          allowDataOverflow
-          tickFormatter={value => formatPriceTime(Number(value), intraday)}
-          axisLine={false}
-          tickLine={false}
-          tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
-          minTickGap={60}
-          tickMargin={12}
-          height={32}
-        />
-        <YAxis
-          orientation="right"
-          domain={domain}
-          allowDataOverflow
-          tickFormatter={formatPriceAxis}
-          axisLine={false}
-          tickLine={false}
-          tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
-          tickMargin={12}
-          width={axisWidth}
-          tickCount={4}
-        />
+        <PriceHistoryAxes start={start} end={end} domain={domain} />
         <ChartTooltip
           isAnimationActive={false}
           cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1, strokeDasharray: '3 4', strokeOpacity: 0.4 }}
@@ -96,7 +120,7 @@ export function PriceHistoryPlot({ points, timeDomain, ticker, pair, embedded = 
           strokeLinejoin="round"
           fill={`url(#${gradientId})`}
           fillOpacity={1}
-          dot={false}
+          dot={points.length === 1 ? { r: 3.5, fill: 'var(--foreground)', stroke: 'var(--card)', strokeWidth: 2 } : false}
           activeDot={{ r: 3.5, fill: 'var(--foreground)', stroke: 'var(--card)', strokeWidth: 2 }}
           isAnimationActive={false}
           connectNulls={false}

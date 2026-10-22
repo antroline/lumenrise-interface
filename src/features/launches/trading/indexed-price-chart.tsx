@@ -1,5 +1,6 @@
 'use client';
 
+import { getConfiguration } from '@/lib/api/config';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PriceHistoryPlot } from './price-history-plot';
@@ -14,6 +15,7 @@ import {
 } from '@/components/ui/empty';
 import {
   chartTimeframes,
+  getChartRanges,
   getChart,
   type ChartRange,
 } from '@/lib/api/launches/market';
@@ -27,7 +29,7 @@ import type { ApiNetwork } from '@/lib/api/launches/types';
 import { PriceChart } from './price-chart';
 
 export function IndexedPriceChart({
-  address,
+  slug,
   network,
   ticker,
   pair,
@@ -35,7 +37,7 @@ export function IndexedPriceChart({
   active = true,
   embedded = false,
 }: {
-  address: string;
+  slug: string;
   network: ApiNetwork;
   ticker: string;
   pair: string;
@@ -43,27 +45,30 @@ export function IndexedPriceChart({
   active?: boolean;
   embedded?: boolean;
 }) {
-  const [range, setRange] = useState<ChartRange>('1D');
+  const rules = getConfiguration().rules.chart;
+  const supportedRanges = getChartRanges();
+  const defaultRange = supportedRanges.find(range => range === rules.defaultLegacyRange) ?? supportedRanges[0];
+  const [range, setRange] = useState<ChartRange>(defaultRange ?? '1D');
   const visible = usePageVisible() && active;
   const client = useQueryClient();
   const query = useQuery({
     ...publicQueryOptions,
     queryKey: [
-      ...launchKey(network, address),
+      ...launchKey(network, slug),
       'chart',
       range,
       chartTimeframes[range],
-      { limit: 1000, window: range, to: 'server-now' },
+      { limit: rules.defaultLimit, window: range, to: 'server-now' },
     ],
-    queryFn: ({ signal }) => getChart(address, network, range, signal),
-    enabled: visible,
+    queryFn: ({ signal }) => getChart(slug, network, range, signal),
+    enabled: visible && !!slug && supportedRanges.includes(range),
   });
   useEffect(() => {
     if (!visible)
       void client.cancelQueries({
-        queryKey: [...launchKey(network, address), 'chart', range],
+        queryKey: [...launchKey(network, slug), 'chart', range],
       });
-  }, [client, address, network, range, visible]);
+  }, [client, slug, network, range, visible]);
   let points: ReturnType<typeof chartPoints> = [],
     precisionError = '';
   try {
@@ -79,7 +84,7 @@ export function IndexedPriceChart({
     Date.parse(candle.timestamp),
     formatExactPrice(candle.close ?? candle.latestPrice, query.data.priceScale),
   ]));
-  const content = query.isPending ? (
+  const content = !supportedRanges.length ? <p role="status" className="p-4 text-small text-muted-foreground">Price history is not configured for the supported chart ranges.</p> : query.isPending ? (
     <Skeleton className={embedded ? 'h-full min-h-0 w-full' : 'h-60 w-full'} />
   ) : query.isError && !query.data ? (
     <Empty className={embedded ? 'h-full min-h-0 p-3' : undefined}>
@@ -91,18 +96,16 @@ export function IndexedPriceChart({
         Retry
       </Button>
     </Empty>
-  ) : precisionError || points.length < 2 ? (
+  ) : precisionError || points.length === 0 ? (
     <Empty className={embedded ? 'h-full min-h-0 p-3' : 'min-h-60'}>
       <EmptyHeader>
         <EmptyTitle>
           {precisionError
             ? 'Price chart unavailable'
-            : points.length === 1 ? 'Not enough price history' : 'Price history not available yet'}
+            : 'Price history not available yet'}
         </EmptyTitle>
         <EmptyDescription>
-          {precisionError || (points.length === 1
-            ? 'At least two recorded prices are needed to draw price history.'
-            : 'Recorded prices will appear here when available.')}
+          {precisionError || 'Recorded prices will appear here when available.'}
         </EmptyDescription>
       </EmptyHeader>
     </Empty>

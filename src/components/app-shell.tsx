@@ -16,13 +16,13 @@ function isFullWidth(pathname: string) {
   return (
     pathname === '/' ||
     pathname === '/launches' ||
-    /^\/launch\/[^/]+$/.test(pathname)
+    /^\/launch(?:es)?\/[^/]+$/.test(pathname)
   );
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isLaunchDetails = /^\/launch\/[^/]+$/.test(pathname);
+  const isLaunchDetails = /^\/launch(?:es)?\/[^/]+$/.test(pathname);
 
   if (bareRoutes.has(pathname) || (process.env.NODE_ENV === 'development' && pathname === '/design-lab')) return children;
   if (pathname === '/create') return <FocusedShell title="Create a launch">{children}</FocusedShell>;

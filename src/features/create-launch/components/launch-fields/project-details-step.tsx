@@ -1,5 +1,6 @@
 'use client';
 
+import { getConfiguration } from '@/lib/api/config';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import type { LaunchDraft } from '../../lib/launch-draft';
 import { LaunchFieldError } from '../launch-motion';
@@ -24,7 +25,6 @@ export function ProjectDetailsStep({ draft, setDraft, errors = {} }: DraftProps)
             label="Project name *"
             value={draft.name}
             onChange={(value) => update('name', value)}
-            maxLength={40}
             placeholder="e.g. Tide Finance"
             required
             error={errors['project-name']}
@@ -62,8 +62,8 @@ export function ProjectDetailsStep({ draft, setDraft, errors = {} }: DraftProps)
           <LaunchFieldError id="launch-description-error" className="text-small text-bad">{errors['launch-description']}</LaunchFieldError>
         </Field>
         <FieldGroup className="grid gap-3 @min-[28rem]/project:grid-cols-2">
-          <TextField id="launch-x" label="X account (optional)" value={draft.xAccount} onChange={(value) => update('xAccount', value)} placeholder="https://x.com/yourproject" maxLength={2048} error={errors['launch-x']} />
-          <TextField id="launch-website" label="Website (optional)" value={draft.website} onChange={(value) => update('website', value)} placeholder="https://yourproject.com" maxLength={2048} error={errors['launch-website']} />
+          <TextField id="launch-x" label={getConfiguration().rules.projectLinks.xAccountRequired ? 'X account *' : 'X account (optional)'} value={draft.xAccount} onChange={(value) => update('xAccount', value)} placeholder="https://x.com/yourproject" maxLength={getConfiguration().rules.projectLinks.maxLength} error={errors['launch-x']} />
+          <TextField id="launch-website" label={getConfiguration().rules.projectLinks.websiteRequired ? 'Website *' : 'Website (optional)'} value={draft.website} onChange={(value) => update('website', value)} placeholder="https://yourproject.com" maxLength={getConfiguration().rules.projectLinks.maxLength} error={errors['launch-website']} />
         </FieldGroup>
       </FieldGroup>
     </div>

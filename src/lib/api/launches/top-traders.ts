@@ -4,7 +4,7 @@ import type { ApiNetwork } from './types';
 
 /** Rank the complete recorded history using the same estimated pair value as Activity. */
 export async function getTopTraders(
-  contractId: string,
+  slug: string,
   network: ApiNetwork,
   signal?: AbortSignal,
 ) {
@@ -15,7 +15,7 @@ export async function getTopTraders(
   let priceScale = 7;
   do {
     signal?.throwIfAborted();
-    const page = await getTrades(contractId, network, { limit: 100, cursor: cursor ?? undefined }, signal);
+    const page = await getTrades(slug, network, { limit: 100, cursor: cursor ?? undefined }, signal);
     signal?.throwIfAborted();
     if (pair !== undefined && (page.pair !== pair || page.priceScale !== priceScale))
       throw new ApiError('Trade history returned inconsistent currencies.', 'invalid-response');

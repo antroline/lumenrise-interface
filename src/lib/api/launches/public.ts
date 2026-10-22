@@ -1,7 +1,8 @@
+import { requireLaunchSlug } from '../../launch-slug';
 /**
  * Public launch reads.
  *
- * `GET /launches/:contractId` needs no `X-User-Id` or other credential. A 404
+ * `GET /launches/:slug` needs no `X-User-Id` or other credential. A 404
  * after a confirmed transaction means the server has not indexed the launch
  * yet; it is not an on-chain failure.
  */
@@ -14,11 +15,12 @@ import type { ApiNetwork } from './types';
  * needed by the launch flow, only the fact that the server has it.
  */
 export async function getIndexedLaunch(
-  contractId: string,
+  slug: string,
   options: { network: ApiNetwork; signal?: AbortSignal },
 ): Promise<void> {
+  requireLaunchSlug(slug);
   await apiRequest<unknown>(
-    `/launches/${encodeURIComponent(contractId)}?network=${options.network}`,
+    `/launches/${encodeURIComponent(slug)}?network=${options.network}`,
     { signal: options.signal },
   );
 }

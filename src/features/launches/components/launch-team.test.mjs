@@ -1,3 +1,4 @@
+import { configurationModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -11,9 +12,12 @@ const directory = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const jsx = (type, props, key) => ({ type, props, key });
 const profile = { userId: '42', identityId: 'identity-42', addresses: ['owner'] };
-const registered = { memberId: 'membership-9', kind: 'registered', identityId: 'identity-42', name: 'Ava', role: 'Developer', avatarUrl: null, xAccount: null };
+const registered = { memberId: 'membership-9', kind: 'registered', status: 'active', identityId: 'identity-42', name: 'Ava', role: 'Developer', avatarUrl: null, xAccount: null };
 const external = { ...registered, memberId: 'external-5', kind: 'external', identityId: null, xAccount: 'https://x.com/ava' };
-const props = { owner: 'owner', contractId: 'confirmed-contract', network: 'public' };
+const props = { owner: 'owner', slug: 'blue-man', contractId: 'confirmed-contract', network: 'public' };
+class ApiError extends Error {
+  constructor(status) { super('Team conflict'); this.status = status; }
+}
 
 function load(filename, mocks) {
   const module = { exports: {} };
@@ -22,7 +26,7 @@ function load(filename, mocks) {
   }).outputText;
   runInNewContext(output, {
     module, exports: module.exports, URL, AbortController, Error, setTimeout, clearTimeout,
-    require: (name) => name in mocks ? mocks[name] : require(name),
+    require: (name) => name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name === '@/lib/configuration' || name === '@/lib/blux-config' ? {} : name === '@/lib/client-rules' ? {imageHint: () => 'Server image rules'} : name in mocks ? mocks[name] : require(name),
   });
   return module.exports;
 }
@@ -50,11 +54,12 @@ function stateHooks() {
     },
   };
 }
-function ownerHarness(account = { status: 'registered', profile }, address = 'owner', members) {
+function ownerHarness(account = { status: 'registered', profile }, address = 'owner', members, privateMembers = [registered, external]) {
   const hooks = stateHooks(), calls = [], invalidated = [], observers = [];
   let userId = '42', mutationOptions;
   const api = {
     getLaunchTeam: () => {},
+    teamCapacity: (members) => 1 + members.filter((member) => member.status !== 'canceled').length,
     putRegisteredTeamMember: async (...args) => calls.push(['registered', ...args]),
     saveExternalTeamMember: async (...args) => calls.push(['external', ...args]),
     removeTeamMember: async (...args) => calls.push(['remove', ...args]),
@@ -65,7 +70,7 @@ function ownerHarness(account = { status: 'registered', profile }, address = 'ow
     'react/jsx-runtime': { jsx, jsxs: jsx },
     '@tanstack/react-query': {
       useQueryClient: () => ({ invalidateQueries: async (input) => invalidated.push(input) }),
-      useQuery: (options) => { observers.push(options); return { data: [registered, external], isPending: false }; },
+      useQuery: (options) => { observers.push(options); return { data: privateMembers, isPending: false }; },
       useMutation: (options) => {
         mutationOptions = options;
         return { reset() {}, mutate() {}, mutateAsync: async (change) => { await options.mutationFn(change); await options.onSuccess(); } };
@@ -73,10 +78,13 @@ function ownerHarness(account = { status: 'registered', profile }, address = 'ow
     },
     'lucide-react': { Pencil: 'Pencil', Plus: 'Plus', Trash2: 'Trash2' },
     '@/components/ui/button': { Button: 'Button' },
+    '@/components/ui/badge': { Badge: 'Badge' },
     '@/components/app-dialog': Object.fromEntries(['AppDialogContent', 'AppDialogHeader', 'AppDialogFooter'].map(name => [name, name])),
     '@/components/ui/dialog': { Dialog: 'Dialog' },
+    '@/components/ui/dropdown-menu': Object.fromEntries(['DropdownMenu', 'DropdownMenuContent', 'DropdownMenuGroup', 'DropdownMenuItem', 'DropdownMenuTrigger'].map(name => [name, name])),
+    '@/components/brand-icons': { XLogoIcon: 'XLogoIcon' },
     '@/components/ui/skeleton': { Skeleton: 'Skeleton' },
-    '@/lib/api/client': { getApiUserId: () => userId },
+    '@/lib/api/client': { ApiError, getApiUserId: () => userId },
     '@/lib/api/launches/team': api,
     '@/lib/launchpad': { useLaunchpad: () => ({ address, account }) },
     './launch-team-member-dialog': { LaunchTeamMemberDialog: 'MemberDialog', MemberAvatar: 'MemberAvatar' },
@@ -86,6 +94,15 @@ function ownerHarness(account = { status: 'registered', profile }, address = 'ow
   return { root, render, calls, invalidated, observers,
     mutation: () => mutationOptions, changeUser: (id) => { userId = id; } };
 }
+
+test('team capacity counts the automatic owner against the configured maximum', () => {
+  const max = configurationModule.getConfiguration().rules.team.maxMembers;
+  for (const count of [max - 2, max - 1]) {
+    const h = ownerHarness(undefined, undefined, undefined, Array.from({ length: count }, (_, i) => ({ ...registered, memberId: String(i) })));
+    const add = elements(h.render()).find(node => node.type === 'Button' && node.props.children?.includes?.('Add Team Member'));
+    assert.equal(add.props.disabled, count + 1 >= max);
+  }
+});
 
 test('team controls never mount or request private data for visitors, preview, or another wallet', () => {
   for (const [account, address] of [[{ status: 'signed-out' }, undefined], [{ status: 'preview' }, 'owner'], [{ status: 'checking' }, 'owner'], [{ status: 'registered', profile }, 'another-wallet']]) {
@@ -101,7 +118,7 @@ test('owner sees an obvious add action; members are keyed by memberId and query 
   const nodes = elements(h.render());
   assert.ok(nodes.some((node) => node.type === 'Button' && node.props.children?.includes?.('Add Team Member')));
   assert.deepEqual(nodes.filter((node) => node.type === 'li').map((node) => node.key), ['membership-9', 'external-5']);
-  assert.equal(JSON.stringify(h.observers[0].queryKey), JSON.stringify(['launch-team', 'public', 'confirmed-contract', '42']));
+  assert.equal(JSON.stringify(h.observers[0].queryKey), JSON.stringify(['launch-team', 'public', 'blue-man', '42']));
   assert.ok(!nodes.some((node) => node.type === 'a' && node.props.href === null));
 });
 
@@ -132,7 +149,7 @@ test('saving registered roles preserves identityId and refreshes the scoped list
   assert.equal(h.calls[0][3], 'Designer');
   assert.equal(h.calls[0][4].network, 'public');
   assert.equal(h.invalidated.length, 2);
-  assert.equal(JSON.stringify(h.invalidated[1].queryKey), JSON.stringify(['launch', 'public', 'confirmed-contract', 'detail']));
+  assert.equal(JSON.stringify(h.invalidated[1].queryKey), JSON.stringify(['launch', 'public', 'blue-man', 'detail']));
   assert.equal(elements(h.render()).some((node) => node.type === 'MemberDialog'), false);
 });
 
@@ -150,7 +167,7 @@ test('all mutation types use the selected network and are blocked after the acco
   assert.equal(h.calls.length, 2);
 });
 
-function formHarness(member = null) {
+function formHarness(member = null, capacityFull = false) {
   const hooks = stateHooks(), saved = [];
   const ui = (names) => Object.fromEntries(names.map((name) => [name, name]));
   const exported = load('launch-team-member-dialog.tsx', {
@@ -164,13 +181,14 @@ function formHarness(member = null) {
     '@/components/ui/dialog': ui(['DialogContent', 'DialogDescription', 'DialogFooter', 'DialogHeader', 'DialogTitle']),
     '@/components/ui/field': ui(['Field', 'FieldDescription', 'FieldGroup', 'FieldLabel']),
     '@/components/ui/input': ui(['Input']),
+    '@/components/form-controls': { FieldSurface: 'FieldSurface', FormInput: 'Input' },
     '@/components/ui/toggle-group': ui(['ToggleGroup', 'ToggleGroupItem']),
     '@/lib/api/client': { resolveApiFileUrl: (value) => value },
     '@/lib/api/launches/team': { searchTeamCandidates() {}, teamErrorMessage: (error) => error.message },
   });
   function render() {
     hooks.reset();
-    return exported.LaunchTeamMemberDialog({ contractId: 'confirmed-contract', network: 'public', sessionId: '42', member, busy: false, onSave: async (change) => saved.push(change), onCancel() {} });
+    return exported.LaunchTeamMemberDialog({ slug: 'blue-man', contractId: 'confirmed-contract', network: 'public', sessionId: '42', member, busy: false, capacityFull, onSave: async (change) => saved.push(change), onCancel() {} });
   }
   return { render, saved, MemberAvatar: exported.MemberAvatar };
 }
@@ -226,4 +244,138 @@ test('adding an external member preserves typed fields and the chosen photo acro
   assert.equal(h.saved[0].input.name, 'Ava');
   assert.equal(h.saved[0].input.role, 'Developer');
   assert.equal(h.saved[0].input.image, image);
+});
+
+test('owner capacity includes pending invitations, excludes canceled, and leaves edits/removal enabled', () => {
+  const active = Array.from({ length: 4 }, (_, i) => ({ ...registered, memberId: String(i) }));
+  for (const status of ['active', 'pending', 'canceled']) {
+    const h = ownerHarness(undefined, undefined, undefined, [...active, { ...registered, memberId: 'invitation', status }]);
+    const nodes = elements(h.render());
+    const add = nodes.find((node) => node.type === 'Button' && node.props.children?.includes?.('Add Team Member'));
+    assert.equal(Boolean(add.props.disabled), status !== 'canceled');
+    const controls = nodes.filter((node) => /^(Edit|Remove) /.test(node.props?.['aria-label'] ?? ''));
+    assert.equal(controls.length, 10);
+    assert.ok(controls.every((node) => !node.props.disabled));
+    const identities = nodes.filter((node) => typeof node.type === 'function' && node.props.showStatus);
+    const badges = identities.flatMap((node) => elements(node.type(node.props))).filter((node) => node.type === 'Badge');
+    assert.equal(badges.at(-1).props.children, status === 'active' ? 'Active' : status === 'pending' ? 'Pending' : 'Canceled');
+  }
+});
+
+test('owner refreshes the team after a 409 without treating the failed save as success', async () => {
+  const h = ownerHarness(); h.render();
+  await h.mutation().onError(new ApiError(409));
+  assert.equal(JSON.stringify(h.invalidated), JSON.stringify([{ queryKey: ['launch-team', 'public', 'blue-man', '42'] }]));
+  await h.mutation().onError(new ApiError(403));
+  assert.equal(h.invalidated.length, 1);
+});
+
+test('dialog uses invitation language for adding/reinviting and normal editing for active roles', () => {
+  for (const [member, label] of [[null, 'Send invitation'], [{ ...registered, status: 'canceled' }, 'Send invitation'], [registered, 'Save changes'], [external, 'Save changes']]) {
+    const nodes = elements(formHarness(member).render());
+    assert.ok(nodes.find((node) => node.type === 'Button' && node.props.type === 'submit').props.children.includes(label));
+    const description = nodes.find((node) => node.type === 'AppDialogHeader').props.description;
+    if (!member || member.status === 'canceled') assert.match(description, /after accepting/);
+    else assert.equal(description, undefined);
+  }
+});
+
+test('full teams block additions/reinvitations while active and pending role edits remain usable', async () => {
+  for (const member of [null, { ...registered, status: 'canceled' }, registered, { ...registered, status: 'pending' }, external]) {
+    const h = formHarness(member, true);
+    const nodes = elements(h.render());
+    const blocked = !member || member.status === 'canceled';
+    assert.equal(Boolean(nodes.find((node) => node.type === 'Button' && node.props.type === 'submit').props.disabled), blocked);
+    if (blocked) {
+      await nodes.find((node) => node.type === 'form').props.onSubmit({ preventDefault() {} });
+      assert.equal(h.saved.length, 0);
+    }
+  }
+});
+
+function invitationsHarness({ account = { status: 'registered', profile }, data, isError = false, isPending = false, error, busy = false } = {}) {
+  const hooks = stateHooks(), calls = [], invalidated = [], observers = [];
+  let userId = '42', mutationOptions;
+  const exported = load('team-invitations.tsx', {
+    react: hooks.react,
+    'react/jsx-runtime': { jsx, jsxs: jsx },
+    'next/link': { default: 'Link' },
+    '@tanstack/react-query': {
+      useQueryClient: () => ({ invalidateQueries: async (input) => invalidated.push(input) }),
+      useQuery: (options) => { observers.push(options); return { data, isError, isPending, error, refetch() {} }; },
+      useMutation: (options) => { mutationOptions = options; return { isPending: busy, mutate: (value) => calls.push(value) }; },
+    },
+    '@/components/ui/button': { Button: 'Button' },
+    '@/lib/api/client': { ApiError, getApiUserId: () => userId },
+    '@/lib/api/launches/team': {
+      getTeamInvitations: async () => [],
+      respondToTeamInvitation: async (...args) => calls.push(args),
+      invitationErrorMessage: (error) => error.message,
+    },
+    '@/lib/launchpad': { useLaunchpad: () => ({ account }) },
+  });
+  const root = exported.TeamInvitations();
+  function render() { hooks.reset(); return typeof root?.type === 'function' ? root.type(root.props) : root; }
+  return { root, render, calls, invalidated, observers, mutation: () => mutationOptions, changeUser: (id) => { userId = id; } };
+}
+const invitation = { memberId: 'invitation', network: 'public', slug: 'blue-man', contractId: 'confirmed-contract', role: 'Developer', status: 'pending' };
+
+test('invitations are private, account-scoped, show only pending entries, and wire Accept/Decline', () => {
+  for (const status of ['signed-out', 'checking', 'preview']) {
+    const h = invitationsHarness({ account: { status } });
+    assert.equal(h.root, null); assert.equal(h.observers.length, 0);
+  }
+  const h = invitationsHarness({ data: [invitation, { ...invitation, memberId: 'old', status: 'canceled' }, { ...invitation, memberId: 'accepted', status: 'active' }] });
+  const nodes = elements(h.render());
+  assert.equal(nodes.filter((node) => node.type === 'li').length, 1);
+  assert.equal(h.observers[0].queryKey.at(-1), '42');
+  const buttons = nodes.filter((node) => node.type === 'Button');
+  buttons.find((node) => node.props.children === 'Accept').props.onClick();
+  buttons.find((node) => node.props.children === 'Decline').props.onClick();
+  assert.deepEqual(h.calls.map((value) => value.status), ['active', 'canceled']);
+  assert.ok(h.calls.every((value) => value.invitation.memberId === 'invitation'));
+});
+
+test('invitation responses use the invitation network, refresh launch and team, and reject account switches', async () => {
+  for (const status of ['active', 'canceled']) {
+    const h = invitationsHarness({ data: [invitation] }); h.render();
+    const options = h.mutation();
+    await options.mutationFn({ invitation, status });
+    assert.equal(h.calls[0][0], invitation.slug);
+    assert.equal(h.calls[0][1], status);
+    assert.equal(h.calls[0][2].network, invitation.network);
+    await options.onSuccess(undefined, { invitation, status });
+    assert.equal(h.invalidated.length, 3);
+    assert.equal(JSON.stringify(h.invalidated[1].queryKey), JSON.stringify(['launch', 'public', 'blue-man']));
+    assert.equal(JSON.stringify(h.invalidated[2].queryKey), JSON.stringify(['launch-team', 'public', 'blue-man']));
+    h.changeUser('99');
+    await assert.rejects(() => options.mutationFn({ invitation, status }), /account changed/);
+    assert.equal(h.calls.length, 1);
+  }
+});
+
+test('invitation conflicts refresh the inbox; loading, empty, error and busy states stay actionable', async () => {
+  const h = invitationsHarness({ data: [invitation], busy: true });
+  const buttons = elements(h.render()).filter((node) => node.type === 'Button');
+  assert.ok(buttons.every((node) => node.props.disabled));
+  await h.mutation().onError(new ApiError(409));
+  assert.equal(h.invalidated.length, 1);
+  await h.mutation().onError(new ApiError(403));
+  assert.equal(h.invalidated.length, 1);
+  assert.ok(elements(invitationsHarness({ isPending: true }).render()).some((node) => node.props?.role === 'status'));
+  assert.ok(elements(invitationsHarness({ data: [] }).render()).some((node) => node.props?.children === 'No pending team invitations.'));
+  const failure = elements(invitationsHarness({ isError: true, error: new Error('Unavailable') }).render());
+  assert.ok(failure.some((node) => node.props?.role === 'alert'));
+  assert.ok(failure.some((node) => node.props?.children === 'Reload invitations'));
+});
+
+
+test('unresolved invitations show unavailable text and cannot submit a contract ID', async () => {
+  const unresolved = { ...invitation, slug: null };
+  const h = invitationsHarness({ data: [unresolved] });
+  const nodes = elements(h.render());
+  assert.equal(nodes.filter(node => node.type === 'Link').length, 0);
+  assert.ok(nodes.filter(node => node.type === 'Button').every(node => node.props.disabled));
+  await assert.rejects(h.mutation().mutationFn({ invitation: unresolved, status: 'active' }), /not available/);
+  assert.equal(h.calls.length, 0);
 });

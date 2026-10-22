@@ -1,3 +1,4 @@
+import { configurationModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -12,6 +13,8 @@ const require = createRequire(import.meta.url),
   directory = dirname(fileURLToPath(import.meta.url));
 const sourceRoot = resolve(directory, '../../..');
 const ID = 'CD63E3VCNGZGC66ZUTCZDV2YLIBMMFOIFESPM25J5REMU7VM6LNF4B7X';
+const SLUG = 'blue-man';
+const OTHER_SLUG = 'other-project';
 const OWNER = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
 const ASSET = 'CAWK7TNWJW3EYE5FMHF2AWKCSPYF5FA6ERSEPTKU7VAK7VWA64OJTENK';
 const PAIR = 'CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA';
@@ -25,6 +28,7 @@ const common = {
   priceScale: 7,
 };
 const launch = {
+  slug: SLUG,
   ...common,
   factoryContractId: 'factory',
   factoryIndex: 1,
@@ -49,11 +53,11 @@ const launch = {
 
 test('launch detail retains public owner and team photos, including profiles without images', async () => {
   const owner = { kind: 'owner', memberId: null, identityId: 'identity-owner', address: OWNER, name: 'Creator', avatarUrl: '/profiles/creator.webp', xAccount: null, role: 'owner' };
-  const registered = { kind: 'registered', memberId: 'membership', identityId: 'identity-member', name: 'Member', avatarUrl: '/profiles/member.webp', xAccount: null, role: 'Developer' };
-  const external = { kind: 'external', memberId: 'external', identityId: null, name: 'External', avatarUrl: null, xAccount: null, role: 'Designer' };
+  const registered = { kind: 'registered', status: 'active', memberId: 'membership', identityId: 'identity-member', name: 'Member', avatarUrl: '/profiles/member.webp', xAccount: null, role: 'Developer' };
+  const external = { kind: 'external', status: 'active', memberId: 'external', identityId: null, name: 'External', avatarUrl: null, xAccount: null, role: 'Designer' };
   const team = [owner, registered, external];
   const h = harness(() => ({ result: { ...launch, team } }));
-  same((await h.api.getLaunchDetail(ID, 'testnet')).team, team);
+  same((await h.api.getLaunchDetail(SLUG, 'testnet')).team, team);
   same(h.api.decodeLaunch(launch).team, []);
   same(h.api.decodeLaunch({ ...launch, team: [{ ...owner, identityId: null, name: null, avatarUrl: null }] }).team, [{ ...owner, identityId: null, name: null, avatarUrl: null }]);
   for (const team of [{}, [{}], [{ ...registered, avatarUrl: 123 }]]) {
@@ -106,6 +110,8 @@ const chart = {
 const same = (a, b) => assert.deepEqual(JSON.parse(JSON.stringify(a)), b);
 function load(filename, globals, cache = new Map()) {
   const path = resolve(directory, filename);
+  if (path.replaceAll('\\', '/').endsWith('/lib/api/config.ts')) return configurationModule;
+  if (path.replaceAll('\\', '/').endsWith('/lib/stellar/network.ts')) return networkModule;
   if (cache.has(path)) return cache.get(path).exports;
   const module = { exports: {} };
   cache.set(path, module);
@@ -134,7 +140,7 @@ function load(filename, globals, cache = new Map()) {
       setTimeout,
       clearTimeout,
       console,
-      require: (name) =>
+      require: (name) => name.endsWith('/api/config') ? configurationModule : name === '@/lib/stellar/network' ? networkModule :
         name.startsWith('.')
           ? load(resolve(dirname(path), `${name}.ts`), globals, cache)
           : name.startsWith('@/')
@@ -214,7 +220,7 @@ function harness(handler = () => ({ result: recorded }), store = storage()) {
 const drain = (h) =>
   h.queue.flushTradeQueue({
     network: 'testnet',
-    contractId: ID,
+    contractId: ID, slug: SLUG,
     traderAddress: OWNER,
     signal: new AbortController().signal,
     onRecorded() {},
@@ -233,10 +239,10 @@ test('all public GETs carry explicit network and no account header; list uses pa
             : launch,
   }));
   await h.api.getLaunchList('testnet', 2, 20, OWNER);
-  await h.api.getLaunchDetail(ID, 'testnet');
-  await h.api.getMarket(ID, 'testnet');
-  await h.api.getChart(ID, 'testnet', '1D');
-  await h.api.getTrades(ID, 'testnet', {
+  await h.api.getLaunchDetail(SLUG, 'testnet');
+  await h.api.getMarket(SLUG, 'testnet');
+  await h.api.getChart(SLUG, 'testnet', '1D');
+  await h.api.getTrades(SLUG, 'testnet', {
     cursor: 'opaque/+==',
     trader: OWNER,
     side: 'sell',
@@ -274,7 +280,7 @@ test('decoders retain null, exact large amounts and six trade fields', () => {
 test('detail rejects another launch or network instead of poisoning its cache', async () => {
   const h = harness(() => ({ result: { ...launch, network: 'public' } }));
   await assert.rejects(
-    h.api.getLaunchDetail(ID, 'testnet'),
+    h.api.getLaunchDetail(SLUG, 'testnet'),
     (e) => e.code === 'invalid-response',
   );
 });
@@ -307,9 +313,9 @@ test('all five ranges request the specified timeframe and rolling/calendar bound
   ];
   const h = harness(url => ({ result: { ...chart, timeframes: [{ ...frame, timeframe: new URL(url).searchParams.get('timeframes') }] } }));
   for (const [range, timeframe, from] of expected) {
-    await h.api.getChart(ID, 'testnet', range, undefined, reference);
+    await h.api.getChart(SLUG, 'testnet', range, undefined, reference);
     const url = new URL(h.calls.at(-1).url);
-    assert.equal(url.pathname, `/v1/launches/${ID}/chart`);
+    assert.equal(url.pathname, `/v1/launches/${SLUG}/chart`);
     assert.equal(url.searchParams.get('timeframes'), timeframe);
     assert.equal(url.searchParams.get('from'), from);
     assert.equal(url.searchParams.get('limit'), '1000');
@@ -333,7 +339,7 @@ test('ALL paginates daily candles, preserves initial asOf, sorts and deduplicate
       nextBefore: new URL(url).searchParams.has('to') ? null : boundary,
     }],
   } }));
-  const history = await h.api.getChart(ID, 'testnet', 'ALL');
+  const history = await h.api.getChart(SLUG, 'testnet', 'ALL');
   assert.equal(h.calls.length, 2);
   assert.equal(new URL(h.calls[1].url).searchParams.get('to'), boundary);
   assert.equal(new URL(h.calls[1].url).searchParams.has('from'), false);
@@ -346,12 +352,12 @@ test('ALL paginates daily candles, preserves initial asOf, sorts and deduplicate
 test('ALL rejects stuck/missing cursors and older-page failures instead of returning partial history', async () => {
   for (const nextBefore of [null, DATE]) {
     const h = harness(() => ({ result: { ...chart, timeframes: [{ ...frame, timeframe: '1d', hasMore: true, nextBefore }] } }));
-    await assert.rejects(h.api.getChart(ID, 'testnet', 'ALL'), /pagination/);
+    await assert.rejects(h.api.getChart(SLUG, 'testnet', 'ALL'), /pagination/);
   }
   const h = harness(url => new URL(url).searchParams.has('to')
     ? { status: 503 }
     : { result: { ...chart, timeframes: [{ ...frame, timeframe: '1d', hasMore: true, nextBefore: '2026-10-11T00:00:00Z' }] } });
-  await assert.rejects(h.api.getChart(ID, 'testnet', 'ALL'), e => e.status === 503);
+  await assert.rejects(h.api.getChart(SLUG, 'testnet', 'ALL'), e => e.status === 503);
   assert.equal(h.calls.length, 2);
 });
 
@@ -361,22 +367,22 @@ test('ALL cancellation stops pagination and invalid response identities/timefram
     controller.abort();
     return { result: { ...chart, timeframes: [{ ...frame, timeframe: '1d', hasMore: true, nextBefore: '2026-10-11T00:00:00Z' }] } };
   });
-  await assert.rejects(h.api.getChart(ID, 'testnet', 'ALL', controller.signal));
+  await assert.rejects(h.api.getChart(SLUG, 'testnet', 'ALL', controller.signal));
   assert.equal(h.calls.length, 1);
-  for (const result of [{ ...chart, network: 'public' }, { ...chart, contractId: ASSET }, { ...chart, timeframes: [] }]) {
+  for (const result of [{ ...chart, network: 'public' }, { ...chart, contractId: 42 }, { ...chart, timeframes: [] }]) {
     const other = harness(() => ({ result }));
-    await assert.rejects(other.api.getChart(ID, 'testnet', '1D'), e => e.code === 'invalid-response');
+    await assert.rejects(other.api.getChart(SLUG, 'testnet', '1D'), e => e.code === 'invalid-response');
   }
 });
 
 test('trade POST sends exactly the hash and provider user id, never the wallet', async () => {
   const h = harness();
-  await h.api.recordTrade(ID, 'testnet', 'hash');
+  await h.api.recordTrade(SLUG, 'testnet', 'hash');
   same(JSON.parse(h.calls[0].init.body), { transactionHash: 'hash' });
   assert.equal(h.calls[0].init.headers['X-User-Id'], '42');
   h.client.setApiUserId(null);
   await assert.rejects(
-    h.api.recordTrade(ID, 'testnet', 'hash'),
+    h.api.recordTrade(SLUG, 'testnet', 'hash'),
     (e) => e.code === 'unauthenticated',
   );
   assert.equal(h.calls.length, 1);
@@ -391,7 +397,7 @@ test('queue survives reload, retains several hashes and deduplicates resubmissio
   let refreshes = 0;
   await reloaded.queue.flushTradeQueue({
     network: 'testnet',
-    contractId: ID,
+    contractId: ID, slug: SLUG,
     traderAddress: OWNER,
     signal: new AbortController().signal,
     onRecorded() {
@@ -475,7 +481,7 @@ test('queue never sends a hash for another wallet, user, network, launch or API 
   h.client.configureApi('http://api.example/v1');
   await h.queue.flushTradeQueue({
     network: 'testnet',
-    contractId: ID,
+    contractId: ID, slug: SLUG,
     traderAddress: 'another-wallet',
     signal: new AbortController().signal,
     onRecorded() {},
@@ -511,7 +517,7 @@ test('only one POST per hash can be in flight and unmount abort preserves it', a
   const controller = new AbortController(),
     flushing = h.queue.flushTradeQueue({
       network: 'testnet',
-      contractId: ID,
+      contractId: ID, slug: SLUG,
       traderAddress: OWNER,
       signal: controller.signal,
       onRecorded() {},
@@ -526,7 +532,7 @@ test('current TanStack cache deduplicates reads, isolates ranges and invalidates
   });
   let resolveRequest,
     calls = 0;
-  const key = ['launch', 'testnet', ID, 'chart', '1D'];
+  const key = ['launch', 'testnet', SLUG, 'chart', '1D'];
   const options = {
     queryKey: key,
     queryFn: () => {
@@ -539,20 +545,20 @@ test('current TanStack cache deduplicates reads, isolates ranges and invalidates
   const first = client.fetchQuery(options),
     duplicate = client.fetchQuery(options);
   assert.equal(calls, 1);
-  client.setQueryData(['launch', 'testnet', ID, 'chart', '1W'], 'weekly');
-  client.setQueryData(['launch', 'public', ID, 'market'], 'public');
+  client.setQueryData(['launch', 'testnet', SLUG, 'chart', '1W'], 'weekly');
+  client.setQueryData(['launch', 'public', SLUG, 'market'], 'public');
   resolveRequest('daily');
   await Promise.all([first, duplicate]);
   assert.equal(
-    client.getQueryData(['launch', 'testnet', ID, 'chart', '1W']),
+    client.getQueryData(['launch', 'testnet', SLUG, 'chart', '1W']),
     'weekly',
   );
   await client.invalidateQueries({
-    queryKey: ['launch', 'testnet', ID],
+    queryKey: ['launch', 'testnet', SLUG],
     refetchType: 'none',
   });
   assert.equal(
-    client.getQueryState(['launch', 'public', ID, 'market']).isInvalidated,
+    client.getQueryState(['launch', 'public', SLUG, 'market']).isInvalidated,
     false,
   );
   client.clear();
@@ -594,24 +600,24 @@ test('compact token amounts retain exact rounding and promote suffixes at bounda
 });
 
 const holderResult = {
-  network: 'testnet', contractId: ID, asset: ASSET, amountScale: 7,
+  network: 'testnet', contractId: ID, slug: SLUG, asset: ASSET, amountScale: 7,
   balanceSource: 'token_contract', coverage: 'trade_participants',
   totalHolders: 42, nextCursor: 'opaque/+==',
   items: [{ address: OWNER, balance: '9007199254740993', observedAt: DATE }],
 };
 
-test('holders unwrap the public response, preserve opaque cursors and use the launch contract', async () => {
+test('holders unwrap the public response, preserve opaque cursors and use the launch slug', async () => {
   const h = harness(() => ({ result: holderResult }));
-  same(await h.holders.getHolders(ID, 'testnet'), holderResult);
-  assert.equal(h.calls[0].url, `http://api.example/v1/launches/${ID}/holders?network=testnet&limit=20`);
+  same(await h.holders.getHolders(SLUG, 'testnet'), holderResult);
+  assert.equal(h.calls[0].url, `http://api.example/v1/launches/${SLUG}/holders?network=testnet&limit=20`);
   assert.equal(h.calls[0].init.headers['X-User-Id'], undefined);
   assert.equal(h.calls[0].init.body, undefined);
-  await h.holders.getHolders(ID, 'testnet', { cursor: holderResult.nextCursor });
+  await h.holders.getHolders(SLUG, 'testnet', { cursor: holderResult.nextCursor });
   assert.equal(new URL(h.calls[1].url).searchParams.get('cursor'), holderResult.nextCursor);
   h.client.configureApi('http://api.example');
   h.setHandler(() => ({ result: { ...holderResult, network: 'public' } }));
-  await h.holders.getHolders(ID, 'public');
-  assert.equal(h.calls[2].url, `http://api.example/v1/launches/${ID}/holders?network=public&limit=20`);
+  await h.holders.getHolders(SLUG, 'public');
+  assert.equal(h.calls[2].url, `http://api.example/v1/launches/${SLUG}/holders?network=public&limit=20`);
 });
 
 test('holder balances remain exact above MAX_SAFE_INTEGER and appended rows retain server order', () => {
@@ -627,23 +633,23 @@ test('holder balances remain exact above MAX_SAFE_INTEGER and appended rows reta
 
 test('holders accept empty results and contract holders, reject invalid requests and malformed responses', async () => {
   const h = harness(() => ({ result: { ...holderResult, items: [], totalHolders: 0, nextCursor: null } }));
-  assert.equal((await h.holders.getHolders(ID, 'testnet')).totalHolders, 0);
+  assert.equal((await h.holders.getHolders(SLUG, 'testnet')).totalHolders, 0);
   h.setHandler(() => ({ result: { ...holderResult, items: [{ ...holderResult.items[0], address: ID }] } }));
-  assert.equal((await h.holders.getHolders(ID, 'testnet')).items[0].address, ID);
+  assert.equal((await h.holders.getHolders(SLUG, 'testnet')).items[0].address, ID);
   for (const [id, network, limit] of [[OWNER, 'testnet', 20], [ID, 'mainnet', 20], [ID, 'public', 0], [ID, 'testnet', 101]]) {
-    await assert.rejects(h.holders.getHolders(id, network, { limit }), (e) => e.status === 400);
+    await assert.rejects(h.holders.getHolders(id, network, { limit }), (e) => e.status === 400 || /not available/.test(e.message));
   }
   assert.equal(h.calls.length, 2);
-  for (const patch of [{ contractId: ASSET }, { network: 'public' }, { amountScale: 6 }, { items: [{ ...holderResult.items[0], balance: 42 }] }]) {
+  for (const patch of [{ contractId: 'invalid' }, { network: 'public' }, { amountScale: 6 }, { items: [{ ...holderResult.items[0], balance: 42 }] }]) {
     h.setHandler(() => ({ result: { ...holderResult, ...patch } }));
-    await assert.rejects(h.holders.getHolders(ID, 'testnet'), (e) => e.code === 'invalid-response');
+    await assert.rejects(h.holders.getHolders(SLUG, 'testnet'), (e) => e.code === 'invalid-response');
   }
 });
 
 test('holder HTTP failures are errors rather than zero counts', async () => {
   for (const status of [400, 404, 503]) {
     const h = harness(() => ({ status, result: {} }));
-    await assert.rejects(h.holders.getHolders(ID, 'testnet'), (e) => e.status === status);
+    await assert.rejects(h.holders.getHolders(SLUG, 'testnet'), (e) => e.status === status);
   }
 });
 
@@ -651,22 +657,22 @@ test('recorded trades invalidate this launch’s holders while allowing delayed 
   let snapshot = holderResult;
   const h = harness((url) => ({ result: url.includes('/holders?') ? snapshot : recorded }));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
-  const key = ['launch', 'testnet', ID, 'holders', 20];
+  const key = ['launch', 'testnet', SLUG, 'holders', 20];
   const observer = new QueryObserver(client, {
-    queryKey: key, queryFn: ({ signal }) => h.holders.getHolders(ID, 'testnet', {}, signal),
+    queryKey: key, queryFn: ({ signal }) => h.holders.getHolders(SLUG, 'testnet', {}, signal),
   });
   const unsubscribe = observer.subscribe(() => {});
   await observer.refetch();
-  client.setQueryData(['launch', 'public', ID, 'holders', 20], 'other network');
+  client.setQueryData(['launch', 'public', SLUG, 'holders', 20], 'other network');
   h.queue.enqueueTrade('testnet', ID, 'holder-trade', OWNER);
   await h.queue.flushTradeQueue({
-    network: 'testnet', contractId: ID, traderAddress: OWNER,
+    network: 'testnet', contractId: ID, slug: SLUG, traderAddress: OWNER,
     signal: new AbortController().signal,
-    onRecorded: () => client.invalidateQueries({ queryKey: ['launch', 'testnet', ID] }),
+    onRecorded: () => client.invalidateQueries({ queryKey: ['launch', 'testnet', SLUG] }),
   });
   await observer.refetch();
   assert.equal(observer.getCurrentResult().data.items[0].balance, holderResult.items[0].balance);
-  assert.equal(client.getQueryData(['launch', 'public', ID, 'holders', 20]), 'other network');
+  assert.equal(client.getQueryData(['launch', 'public', SLUG, 'holders', 20]), 'other network');
   snapshot = { ...holderResult, items: [{ ...holderResult.items[0], balance: '10000000' }] };
   await observer.refetch();
   assert.equal(observer.getCurrentResult().data.items[0].balance, '10000000');
@@ -701,7 +707,7 @@ test('holders lifecycle scopes pages, blocks duplicate loads, resets on refresh 
     },
   };
   const hook = load('../../../features/launches/hooks/use-holders.ts', {
-    require: (name) => name === 'react' ? react
+    require: (name) => name.endsWith('/api/config') ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name === 'react' ? react
       : name === '@tanstack/react-query' ? {
         useQuery: (value) => { options = value; return query; }, useQueryClient: () => client,
       } : name === './queries' ? {
@@ -709,7 +715,7 @@ test('holders lifecycle scopes pages, blocks duplicate loads, resets on refresh 
         publicQueryOptions: { retry: false }, usePageVisible: () => true,
       } : name === '../../../lib/api/launches/holders' ? h.holders : require(name),
   });
-  function render(id = ID, network = 'testnet', active = true) {
+  function render(id = SLUG, network = 'testnet', active = true) {
     stateIndex = refIndex = effectIndex = 0;
     const result = hook.useHolders(id, network, active);
     for (const effect of effects) if (effect.pending) {
@@ -719,7 +725,7 @@ test('holders lifecycle scopes pages, blocks duplicate loads, resets on refresh 
     return result;
   }
   let result = render();
-  same(options.queryKey, ['launch', 'testnet', ID, 'holders', 20]);
+  same(options.queryKey, ['launch', 'testnet', SLUG, 'holders', 20]);
   assert.equal(options.refetchInterval, 60_000);
   await Promise.all([result.loadMore(), result.loadMore()]);
   result = render();
@@ -732,10 +738,10 @@ test('holders lifecycle scopes pages, blocks duplicate loads, resets on refresh 
   assert.equal(result.items.length, 1, 'Refresh replaces appended pages');
   assert.equal(result.cursor, holderResult.nextCursor);
   query = { data: undefined, isFetching: true };
-  result = render(ASSET, 'public', false);
+  result = render(OTHER_SLUG, 'public', false);
   assert.equal(result.items.length, 0, 'No previous launch/network rows while loading');
   assert.equal(result.cursor, undefined);
-  same(options.queryKey, ['launch', 'public', ASSET, 'holders', 20]);
+  same(options.queryKey, ['launch', 'public', OTHER_SLUG, 'holders', 20]);
   assert.equal(options.refetchInterval, false);
 
   query = { data: holderResult, isFetching: false };
@@ -750,9 +756,9 @@ test('holders lifecycle scopes pages, blocks duplicate loads, resets on refresh 
   assert.equal(states[1], true, 'A page request started');
   await ready;
   query = { data: undefined, isFetching: true };
-  result = render(ASSET, 'public');
+  result = render(OTHER_SLUG, 'public');
   await pending;
-  result = render(ASSET, 'public');
+  result = render(OTHER_SLUG, 'public');
   assert.equal(result.items.length, 0);
   assert.equal(result.pageError, undefined);
   for (const effect of effects) effect.cleanup?.();
@@ -762,7 +768,7 @@ test('holders lifecycle scopes pages, blocks duplicate loads, resets on refresh 
 test('holder UI distinguishes loading, empty, failures and populated balances with retry/load-more actions', () => {
   const jsx = (type, props) => ({ type, props });
   const { IndexedHolders } = load('../../../features/launches/trading/indexed-holders.tsx', {
-    require: (name) => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
+    require: (name) => name.endsWith('/api/config') ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
       : name === '@/lib/api/launches/holders' ? harness().holders
       : name === './trade-table-style' ? { tradeTableClass: 'existing-table' }
       : Object.fromEntries(['Blockie', 'Button', 'Empty', 'EmptyHeader', 'EmptyTitle', 'EmptyDescription',
@@ -802,7 +808,7 @@ test('price history preserves observed data and range wiring, with loading/insuf
   let selected = '1D', options;
   let query = { isPending: true, isError: false, refetch() {} };
   const { IndexedPriceChart } = load('../../../features/launches/trading/indexed-price-chart.tsx', {
-    require: name => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
+    require: name => name.endsWith('/api/config') ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
       : name === 'react' ? { useState: initial => [typeof initial === 'string' ? selected : initial, value => { selected = value; }], useEffect() {}, useRef: () => ({ current: null }) }
       : name === '@tanstack/react-query' ? { useQuery: value => { options = value; return query; }, useQueryClient: () => ({}) }
       : name === '@/lib/api/launches/market' ? h.api
@@ -816,8 +822,8 @@ test('price history preserves observed data and range wiring, with loading/insuf
     if (!value || typeof value !== 'object') return [value];
     return [value, ...nodes(value.props?.children)];
   }
-  const render = (address = ID, network = 'testnet') => {
-    const tree = nodes(IndexedPriceChart({ address, network, ticker: 'TOK', pair: 'XLM', price: '2 XLM' }));
+  const render = (slug = SLUG, network = 'testnet') => {
+    const tree = nodes(IndexedPriceChart({ slug, network, ticker: 'TOK', pair: 'XLM', price: '2 XLM' }));
     const wrapper = tree.find(node => node?.type === 'PriceChart');
     assert.equal(wrapper.props.quoteSymbol, 'XLM');
     return [wrapper, nodes(wrapper.props.history.content)];
@@ -829,7 +835,9 @@ test('price history preserves observed data and range wiring, with loading/insuf
   query = { ...query, isError: false, data: { ...chart, items: [], from: null } };
   assert.ok(render()[1].includes('Price history not available yet'));
   query = { ...query, data: { ...chart, items: [candle], from: '2026-10-11T12:00:00Z' } };
-  assert.ok(render()[1].includes('Not enough price history'));
+  const singlePointPlot = render()[1].find(node => node?.type === 'PriceHistoryPlot');
+  assert.equal(singlePointPlot.props.points.length, 1);
+  assert.equal(singlePointPlot.props.points[0].price, h.display.chartPoints(query.data)[0].price);
   const earlier = { ...candle, timestamp: '2026-10-11T13:00:00Z' };
   query = { ...query, data: { ...query.data, items: [candle, earlier] } };
   const plot = render()[1].find(node => node?.type === 'PriceHistoryPlot');
@@ -838,8 +846,8 @@ test('price history preserves observed data and range wiring, with loading/insuf
   same(plot.props.timeDomain, Array.from(h.display.chartWindow(query.data)));
   for (const range of ['1D', '1W', '1M', '3M', 'ALL']) {
     render()[0].props.history.onRangeChange(range);
-    render(ASSET, 'public');
-    same(options.queryKey.slice(0, 6), ['launch', 'public', ASSET, 'chart', range, h.api.chartTimeframes[range]]);
+    render(OTHER_SLUG, 'public');
+    same(options.queryKey.slice(0, 6), ['launch', 'public', OTHER_SLUG, 'chart', range, h.api.chartTimeframes[range]]);
   }
   query = { ...query, isError: true };
   assert.ok(render()[1].some(node => node?.props?.role === 'alert'));
@@ -858,8 +866,8 @@ test('switching chart range, launch and network cancels the old request and cann
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   const observer = new QueryObserver(client, {
-    queryKey: ['launch', 'testnet', ID, 'chart', '1D', '15m'],
-    queryFn: ({ signal }) => h.api.getChart(ID, 'testnet', '1D', signal),
+    queryKey: ['launch', 'testnet', SLUG, 'chart', '1D', '15m'],
+    queryFn: ({ signal }) => h.api.getChart(SLUG, 'testnet', '1D', signal),
   });
   const unsubscribe = observer.subscribe(() => {});
   try {
@@ -868,15 +876,15 @@ test('switching chart range, launch and network cancels the old request and cann
       const stop = observer.subscribe(result => { if (result.isSuccess) { stop(); resolve(result.data); } });
     });
     observer.setOptions({
-      queryKey: ['launch', 'public', ASSET, 'chart', '1W', '4h'],
-      queryFn: ({ signal }) => h.api.getChart(ASSET, 'public', '1W', signal),
+      queryKey: ['launch', 'public', OTHER_SLUG, 'chart', '1W', '4h'],
+      queryFn: ({ signal }) => h.api.getChart(OTHER_SLUG, 'public', '1W', signal),
     });
     const active = await completed;
     assert.equal(aborted, true);
     assert.equal(active.network, 'public');
     assert.equal(active.contractId, ASSET);
     assert.equal(observer.getCurrentResult().data, active);
-    assert.equal(client.getQueryData(['launch', 'testnet', ID, 'chart', '1D', '15m']), undefined);
+    assert.equal(client.getQueryData(['launch', 'testnet', SLUG, 'chart', '1D', '15m']), undefined);
   } finally { unsubscribe(); client.clear(); }
 });
 
@@ -922,7 +930,7 @@ test('top traders reads every page, combines buys and sells and ranks the top te
       : rows,
     nextCursor: new URL(url).searchParams.has('cursor') ? null : cursor,
   } }));
-  const result = await h.topTraders.getTopTraders(ID, 'testnet');
+  const result = await h.topTraders.getTopTraders(SLUG, 'testnet');
   assert.equal(h.calls.length, 2);
   assert.equal(new URL(h.calls[1].url).searchParams.get('cursor'), cursor);
   assert.equal(new URL(h.calls[0].url).searchParams.get('limit'), '100');
@@ -944,9 +952,9 @@ test('top traders preserves sub-stroop contributions until total conversion and 
     { ...trade, assetAmount: '5000000', executionPrice: '1' },
     { ...trade, assetAmount: '5000000', executionPrice: '1' },
   ], nextCursor: null } }));
-  assert.equal((await h.topTraders.getTopTraders(ID, 'testnet')).items[0].volume, '1');
+  assert.equal((await h.topTraders.getTopTraders(SLUG, 'testnet')).items[0].volume, '1');
   h.setHandler(() => ({ result: { ...common, items: [], nextCursor: null } }));
-  assert.equal((await h.topTraders.getTopTraders(ID, 'public')).items.length, 0);
+  assert.equal((await h.topTraders.getTopTraders(SLUG, 'public')).items.length, 0);
   assert.equal(new URL(h.calls.at(-1).url).searchParams.get('network'), 'public');
 });
 
@@ -958,7 +966,7 @@ test('top traders rejects partial history failures, repeated cursors and currenc
         : { result: { ...common, pair: failure === 'pair' && older ? ASSET : PAIR,
           items: [trade], nextCursor: failure === 'cursor' || !older ? 'older' : null } };
     });
-    await assert.rejects(h.topTraders.getTopTraders(ID, 'testnet'));
+    await assert.rejects(h.topTraders.getTopTraders(SLUG, 'testnet'));
     assert.equal(h.calls.length, 2);
   }
   const controller = new AbortController();
@@ -966,7 +974,7 @@ test('top traders rejects partial history failures, repeated cursors and currenc
     controller.abort();
     return { result: { ...common, items: [trade], nextCursor: 'older' } };
   });
-  await assert.rejects(h.topTraders.getTopTraders(ID, 'testnet', controller.signal));
+  await assert.rejects(h.topTraders.getTopTraders(SLUG, 'testnet', controller.signal));
   assert.equal(h.calls.length, 1);
 });
 
@@ -1052,4 +1060,32 @@ test('list HTTP 400 and 503 propagate and invalid currency or metadata never bec
   await assert.rejects(h.api.getLaunchList('testnet', 1, 20, undefined, undefined, { sort: 'figure', pair: ID }), (error) => error.code === 'invalid-response');
   h.setHandler(() => ({ result: listResponse(undefined, 1, 20, { statsCoverage: 'all_onchain' }) }));
   await assert.rejects(h.api.getLaunchList('testnet', 1, 20), (error) => error.code === 'invalid-response');
+});
+
+
+test('unresolved slugs and contract addresses never reach launch API endpoints', async () => {
+  const h = harness();
+  for (const slug of [null, undefined, '', ID]) {
+    for (const call of [
+      () => h.api.getLaunchDetail(slug, 'testnet'),
+      () => h.api.getMarket(slug, 'testnet'),
+      () => h.api.getChart(slug, 'testnet', '1D'),
+      () => h.api.getTrades(slug, 'testnet', {}),
+      () => h.api.recordTrade(slug, 'testnet', 'hash'),
+      () => h.holders.getHolders(slug, 'testnet'),
+    ]) await assert.rejects(call);
+  }
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.api.decodeLaunch({ ...launch, slug: null }).slug, null);
+});
+
+test('legacy queued hashes wait for an API slug and then register against the resolved launch', async () => {
+  const h = harness();
+  h.queue.enqueueTrade('testnet', ID, 'legacy-hash', OWNER);
+  await h.queue.flushTradeQueue({ network: 'testnet', contractId: ID, traderAddress: OWNER, signal: new AbortController().signal, onRecorded() {} });
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.queue.readTradeQueue().length, 1);
+  await drain(h);
+  assert.ok(h.calls[0].url.includes('/launches/blue-man/trades?'));
+  assert.equal(h.queue.readTradeQueue().length, 0);
 });

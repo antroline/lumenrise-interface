@@ -1,3 +1,5 @@
+import { getConfiguration } from './config';
+import { validateText, validateImage } from '../client-rules';
 /**
  * Account identification and registration endpoints.
  *
@@ -108,10 +110,14 @@ export async function registerAccount(input: {
       'unauthenticated',
     );
   }
-  const name = input.name.trim();
+  if (!getConfiguration().features.registration) throw new Error('Registration is not configured right now.');
+  const rule = getConfiguration().rules.profile;
+  const name = validateText(input.name, rule.nameMinLength, rule.nameMaxLength, 'Name');
 
   let result: unknown;
   if (input.avatar) {
+    const issue = await validateImage(input.avatar, 'avatar');
+    if (issue) throw new Error(issue);
     const formData = new FormData();
     formData.append('userId', userId);
     formData.append('name', name);
@@ -170,6 +176,8 @@ export async function uploadAvatar(
   file: File,
   options?: { signal?: AbortSignal },
 ): Promise<void> {
+  const issue = await validateImage(file, 'avatar');
+  if (issue) throw new Error(issue);
   const formData = new FormData();
   formData.append('avatar', file);
   await apiRequest<unknown>('/user/avatar', {

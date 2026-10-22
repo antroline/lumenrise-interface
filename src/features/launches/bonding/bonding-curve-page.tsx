@@ -40,20 +40,21 @@ function decodeRead<T>(
 }
 
 export function BondingCurvePage({
-  address,
+  slug,
   network = API_NETWORK,
 }: {
-  address: string;
+  slug: string;
   network?: ApiNetwork;
 }) {
   const { user, isReady } = useBlux();
   const notify = useNotify();
   const lastTradingNotice = useRef<string | null>(null);
   const { retryStatusCheck } = useLaunchpad();
-  const indexed = useLaunchDetail(address, network);
-  const { records: queued, recoveryError } = useTradeQueue(network, address);
+  const indexed = useLaunchDetail(slug, network);
+  const address = indexed.data?.contractId ?? '';
+  const { records: queued, recoveryError } = useTradeQueue(network, address, indexed.data?.slug ?? undefined);
   const visible = usePageVisible();
-  const liveEnabled = visible && network === API_NETWORK;
+  const liveEnabled = visible && !!address && network === API_NETWORK;
   const queueFeedback = queued.some(
     (trade) => trade.state === 'invalid' || trade.state === 'identity',
   ) ? (
@@ -82,9 +83,9 @@ export function BondingCurvePage({
       {indexed.isError && (
         <p role="alert" className="text-small text-muted-foreground">
           {indexed.error instanceof ApiError && indexed.error.status === 404
-            ? 'This launch has not been indexed yet. Contract information and trading are shown when available.'
+            ? 'This launch is unavailable or has not been indexed yet. Try again in a moment.'
             : indexed.error instanceof ApiError && indexed.error.status === 400
-              ? 'The launch address or network is invalid.'
+              ? 'The project slug or network is invalid.'
               : 'Launch information is temporarily unavailable.'}{' '}
           <Button
             variant="outline"
@@ -97,7 +98,7 @@ export function BondingCurvePage({
       )}
       {network !== API_NETWORK && (
         <p className="text-small text-muted-foreground">
-          Wallet trading is currently configured for Testnet.
+          Wallet trading is configured for {API_NETWORK === 'public' ? 'Mainnet' : 'Testnet'}.
         </p>
       )}
       {queueFeedback}
@@ -243,7 +244,7 @@ export function BondingCurvePage({
         )}
         {account.data === null && (
           <p role="alert" className="text-destructive">
-            This wallet is not funded on Testnet. Fund it with XLM before
+            This wallet is not funded on {API_NETWORK === 'public' ? 'Mainnet' : 'Testnet'}. Fund it with XLM before
             trading.
           </p>
         )}
@@ -272,6 +273,7 @@ export function BondingCurvePage({
       ? (quoteHost: HTMLElement | null, active: boolean) => (
           <TradeForm
             key={`buy:${owner ?? 'disconnected'}`}
+            slug={indexed.data?.slug ?? undefined}
             address={address}
             network={network}
             snapshot={snapshot}
@@ -294,6 +296,7 @@ export function BondingCurvePage({
       ? (quoteHost: HTMLElement | null, active: boolean) => (
           <TradeForm
             key={`sell:${owner ?? 'disconnected'}`}
+            slug={indexed.data?.slug ?? undefined}
             address={address}
             network={network}
             snapshot={snapshot}
@@ -358,7 +361,7 @@ export function BondingCurvePage({
     notify(tradingNotice, { tone: 'error' });
   }, [address, network, tradingNotice, tokens, visible, notify]);
   const pageLoading =
-    indexed.isPending || (network === API_NETWORK && !snapshot && !coreError);
+    indexed.isPending || (!!address && network === API_NETWORK && !snapshot && !coreError);
   if (
     indexed.isPending &&
     !indexed.data &&
@@ -379,7 +382,7 @@ export function BondingCurvePage({
       sell={sellForm}
       walletFeedback={walletFeedback}
       tradingLoading={
-        network === API_NETWORK &&
+        !!address && network === API_NETWORK &&
         (!isReady ||
           (!snapshot && !coreError) ||
           (!!snapshot && !tokens && !tokensRead.error && !decodedTokens.error))

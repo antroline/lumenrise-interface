@@ -1,5 +1,7 @@
 'use client';
 
+import { API_NETWORK } from '@/lib/stellar/network';
+import { getConfiguration } from '@/lib/api/config';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowDown, ArrowUp, CornerDownLeft, Search, X } from 'lucide-react';
@@ -103,7 +105,7 @@ export function GlobalSearchDialog({
         }
       >
         <div className="relative shrink-0 border-b border-border pr-14">
-          <CommandInput
+          <CommandInput maxLength={getConfiguration().rules.launches.searchMaxLength}
             autoFocus
             value={query}
             onValueChange={setQuery}
@@ -157,8 +159,7 @@ export function GlobalSearchDialog({
               value={`Search projects ${query}`}
               onSelect={() => {
                 const params = new URLSearchParams();
-                const network = new URLSearchParams(window.location.search).get('network');
-                if (network === 'public') params.set('network', network);
+                params.set('network', API_NETWORK);
                 if (query.trim()) params.set('q', query.trim());
                 navigate(`/launches${params.size ? `?${params}` : ''}`);
               }}

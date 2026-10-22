@@ -1,3 +1,4 @@
+import { configurationModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -14,6 +15,7 @@ const owner = Keypair.random().publicKey(),
   address = 'launch-contract';
 const quote = { gross: '10000000', creator_fee: '0', user_amount: '10000000' };
 function load(filename, mocks = {}, globals = {}) {
+  if (filename.replaceAll('\\', '/').endsWith('/lib/api/config.ts')) return configurationModule;
   const path = resolve(directory, filename),
     module = { exports: {} };
   const output = ts.transpileModule(readFileSync(path, 'utf8'), {
@@ -28,7 +30,7 @@ function load(filename, mocks = {}, globals = {}) {
     exports: module.exports,
     Error,
     ...globals,
-    require: (name) =>
+    require: (name) => name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule :
       name in mocks
         ? mocks[name]
         : name.startsWith('.')
@@ -86,7 +88,8 @@ function harness({
         },
       }),
       useWriteContract: () => ({
-        mutateAsync: async () => {
+        mutateAsync: async (request) => {
+          assert.equal(request.call.address, address);
           events.push('broadcast');
           writes++;
           if (writeGate) await writeGate;
@@ -121,7 +124,8 @@ function harness({
     ),
     '@/features/launches/hooks/queries': { usePageVisible: () => true },
     '@/lib/api/launches/trade-queue': {
-      enqueueTrade(network, id, hash, trader) {
+      enqueueTrade(network, id, hash, trader, slug) {
+        assert.equal(slug, 'blue-man');
         events.push(`queue:${hash}`);
         assert.equal(network, 'testnet');
         assert.equal(id, address);
@@ -165,6 +169,7 @@ function harness({
     stateIndex = refIndex = 0;
     return TradeForm({
     address,
+    slug: 'blue-man',
     network: 'testnet',
     side,
     snapshot: { config: { buckets: { curve: 500000000000000n }, params: { curve: { virtual_base_reserve: 1000000000000000n, virtual_quote_reserve: 1000000000000n, creator_fee_bps: 0n } } }, state: { busy, sold: 0n }, status, price: 10000000n },
@@ -278,7 +283,7 @@ for (const side of ['buy', 'sell']) test(`signed-out ${side} connects the wallet
   assert.equal(action.props.type, 'button');
   assert.equal(action.props.disabled, false);
   action.props.onClick();
-  assert.deepEqual(h.events, ['connect:/launch/launch-contract?network=testnet']);
+  assert.deepEqual(h.events, ['connect:/launches/blue-man?network=testnet']);
   await h.submit();
   assert.equal(h.writes(), 0);
 });

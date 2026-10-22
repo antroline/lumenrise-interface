@@ -2,12 +2,14 @@
 
 import dynamic from 'next/dynamic'
 import { usePathname } from 'next/navigation'
-import type { ReactNode } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import { LaunchPageSkeleton } from '@/features/launches/components/launch-page-skeleton'
+import { ConfigurationProvider } from './configuration-provider'
+import { AppLoading } from './app-loading'
 
 function ClientAppLoading() {
   const pathname = usePathname()
-  if (!/^\/launch\/[^/]+\/?$/.test(pathname)) return null
+  if (!/^\/launch(?:es)?\/[^/]+\/?$/.test(pathname)) return <AppLoading />
   return (
     <div className="min-h-screen bg-page lg:flex">
       <div aria-hidden="true" className="hidden h-svh w-62 shrink-0 border-r border-sidebar-border bg-sidebar lg:block" />
@@ -35,5 +37,11 @@ export function Providers({
   children: ReactNode
   apiBaseUrl: string
 }) {
-  return <ClientApp apiBaseUrl={apiBaseUrl}>{children}</ClientApp>
+  return (
+    <Suspense fallback={<AppLoading />}>
+      <ConfigurationProvider apiBaseUrl={apiBaseUrl}>
+        <ClientApp apiBaseUrl={apiBaseUrl}>{children}</ClientApp>
+      </ConfigurationProvider>
+    </Suspense>
+  )
 }

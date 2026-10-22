@@ -1,3 +1,6 @@
+import { isLaunchSlug, projectNameError } from '../../launch-slug';
+import { getConfiguration } from '../config';
+import { validProjectLink, validateImage } from '../../client-rules';
 /**
  * Bonding Curve prelaunch endpoints.
  *
@@ -63,7 +66,10 @@ function readNetwork(value: unknown): ApiNetwork {
 function readUpload(result: unknown): UploadedLaunchImage {
   const record = asRecord(result);
   if (!record) invalid('The server returned an invalid image response.');
+  if (!isLaunchSlug(record.slug)) invalid('The server returned an invalid project slug.');
   return {
+    name: readString(record.name, 'The server returned an invalid project name.'),
+    slug: readString(record.slug, 'The server returned an invalid project slug.'),
     imageId: readString(
       record.imageId,
       'The server returned an invalid image response.',
@@ -82,25 +88,25 @@ function readUpload(result: unknown): UploadedLaunchImage {
  * produced.
  */
 export function fileFromDataUrl(dataUrl: string): File {
-  const match = /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/.exec(dataUrl);
-  if (!match)
+  const match = /^data:([^;,]+);base64,(.+)$/.exec(dataUrl);
+  if (!match || !getConfiguration().rules.images.mimeTypes.includes(match[1]))
     throw new Error('Choose the project image again before launching.');
   const binary = atob(match[2]);
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index++)
     bytes[index] = binary.charCodeAt(index);
-  const extension =
-    match[1] === 'image/png' ? 'png' : match[1] === 'image/webp' ? 'webp' : 'jpg';
+  const extension = match[1] === 'image/jpeg' ? 'jpg' : match[1].split('/')[1].replace(/[^a-z0-9]/gi, '');
   return new File([bytes], `logo.${extension}`, { type: match[1] });
 }
 
 /**
- * POST /launches/prelaunch — multipart with `network`, `ownerAddress`,
+ * POST /launches/prelaunch — multipart with `name`, `network`, `ownerAddress`,
  * one `image` file, and optional links stored by the server for confirmed
  * launch metadata. Identified by `X-User-Id`; the FormData boundary is
  * left to the browser.
  */
 export async function uploadLaunchImage(input: {
+  name: string;
   network: ApiNetwork;
   ownerAddress: string;
   image: File;
@@ -108,29 +114,26 @@ export async function uploadLaunchImage(input: {
   xAccount?: string;
   signal?: AbortSignal;
 }): Promise<UploadedLaunchImage> {
+  const nameError = projectNameError(input.name);
+  if (nameError) throw new Error(nameError);
+  const imageError = await validateImage(input.image, 'tokenImage');
+  if (imageError) throw new Error(imageError);
   const formData = new FormData();
+  formData.append('name', input.name);
   formData.append('network', input.network);
   formData.append('ownerAddress', input.ownerAddress);
   formData.append('image', input.image);
   for (const field of ['website', 'xAccount'] as const) {
     const value = input[field]?.trim();
-    if (!value) continue;
-    let url: URL;
-    try {
-      url = new URL(value);
-    } catch {
-      throw new Error(`${field} must be an HTTPS URL of up to 2048 characters without embedded credentials.`);
-    }
-    if (value.length > 2048 || url.protocol !== 'https:' || url.username || url.password) {
-      throw new Error(`${field} must be an HTTPS URL of up to 2048 characters without embedded credentials.`);
-    }
-    formData.append(field, value);
+    if (!validProjectLink(value ?? '', getConfiguration().rules.projectLinks[field === 'website' ? 'websiteRequired' : 'xAccountRequired'])) throw new Error(`Enter a valid ${field} link.`);
+    if (value) formData.append(field, value);
   }
   return readUpload(
     await apiRequest<unknown>('/launches/prelaunch', {
       method: 'POST',
       formData,
       user: true,
+      network: input.network,
       signal: input.signal,
     }),
   );
@@ -150,6 +153,8 @@ export async function getLaunchImage(
   if (!record) invalid('The server returned an invalid image response.');
   const shapeMessage = 'The server returned an invalid image response.';
   return {
+    name: readString(record.name, shapeMessage),
+    slug: readOptionalString(record.slug, shapeMessage),
     imageId: readString(record.imageId, shapeMessage),
     publicUrl: readString(record.publicUrl, shapeMessage),
     status: readStatus(record.status),
@@ -192,6 +197,8 @@ export function launchImageErrorMessage(error: unknown): string {
           return 'Finish setting up your account before launching.';
         case 403:
           return 'This wallet is not linked to your account. Connect the wallet you registered with.';
+        case 409:
+          return 'This project name is already taken on this network. Choose another name.';
         case 413:
           return tooLargeMessage(error);
         case 503:

@@ -42,13 +42,18 @@ test('status separates filled capacity from confirmed graduation', () => {
   assert.equal(launchStatus(launch('e', 400, 'Failed')), 'Failed');
 });
 
-test('recency uses verified creation only, omitting missing or invalid timestamps', () => {
+test('recency ranks elapsed opening times independently of creation dates', () => {
   const result = discoverLaunches([
-    launch('old', 0, 'Open', '2026-10-01T01:00:00Z', { startsAt: '9999999999' }),
-    launch('missing', 0), launch('invalid', 0, 'Open', 'invalid'),
-    launch('new', 0, 'Graduated', '2026-10-19T02:00:00Z'),
-    launch('middle', 0, 'Scheduled', '2026-10-10T02:00:00Z'),
-  ]);
+    launch('old', 0, 'Open', '2026-10-22T01:00:00Z', { startsAt: '100' }),
+    launch('missing', 0), launch('null', 0, 'Open', null, { startsAt: null }),
+    launch('invalid', 0, 'Open', null, { startsAt: 'invalid' }),
+    launch('zero', 0, 'Open', null, { startsAt: '0' }),
+    launch('huge', 0, 'Open', null, { startsAt: '999999999999999999' }),
+    launch('future', 0, 'Open', null, { startsAt: '501' }),
+    launch('scheduled', 0, 'Scheduled', null, { startsAt: '450' }),
+    launch('new', 0, 'Graduated', null, { startsAt: '500' }),
+    launch('middle', 0, 'Failed', 'invalid', { startsAt: '300' }),
+  ], 500_000);
   assert.equal(result.recent.map((l) => l.contractId).join(','), 'new,middle,old');
 });
 
@@ -58,4 +63,17 @@ test('percentages preserve all basis point precision including near graduation',
   assert.equal(progressLabel(1), '0.01%');
   assert.equal(progressLabel(10000), '100%');
   assert.equal(discoverLaunches([]).featured, undefined);
+});
+
+
+test('home links use the server slug, retain the network and avoid unresolved contract links', () => {
+  const module = { exports: {} };
+  runInNewContext(ts.transpileModule(readFileSync(new URL('./use-home-launches.ts', import.meta.url), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText, { module, exports: module.exports, require: () => ({}) });
+  const { launchHref } = module.exports;
+  for (const network of ['testnet', 'public']) {
+    assert.equal(launchHref({ contractId: 'contract', slug: 'blue-man', metadata: { name: 'Display name' } }, network), '/launches/blue-man?network=' + network);
+    for (const slug of [null, undefined]) assert.equal(launchHref({ contractId: 'contract', slug }, network), '/launches?network=' + network);
+  }
 });

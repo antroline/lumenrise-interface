@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { BluxProvider, networks, useBlux } from '@bluxcc/react';
+import { BluxProvider, useBlux } from '@bluxcc/react';
 import {
   deleteAvatar,
   getProfile,
@@ -25,45 +25,19 @@ import {
   isAbortError,
   setApiUserId,
 } from '@/lib/api/client';
+import { useConfiguration } from '@/lib/configuration';
+import { getConfiguration } from '@/lib/api/config';
+import { createBluxConfig } from '@/lib/blux-config';
 import { getAuthProviderUserId } from '@/lib/auth-provider';
 import { consumeAuthReturnTo, saveAuthReturnTo } from '@/lib/auth-return';
 import { ToastProvider, useNotify } from '@/components/ui/toast';
-import { HORIZON_URL, NETWORK, SOROBAN_URL } from '@/lib/stellar/network';
+import { API_NETWORK } from '@/lib/stellar/network';
 import {
   LaunchpadContext,
   type AccountActionResult,
   type AccountState,
   type LaunchpadContextValue,
 } from '@/lib/launchpad';
-
-const bluxConfig: Parameters<typeof BluxProvider>[0]['config'] = {
-  appId: process.env.NEXT_PUBLIC_BLUX_APP_ID || 'launchpad-preview',
-  appName: 'Launchpad',
-  networks: [networks.testnet],
-  showWalletUIs: false,
-  defaultNetwork: networks.testnet,
-  transports: {
-    [NETWORK]: { horizon: HORIZON_URL, soroban: SOROBAN_URL },
-  },
-  loginMethods: ['wallet'],
-  appearance: {
-    background: '#ffffff',
-    fieldBackground: '#f7f7f5',
-    accentColor: '#0b0b0b',
-    textColor: '#0b0b0b',
-    fontFamily: 'Bricolage Grotesque, ui-sans-serif, system-ui, sans-serif',
-    borderRadius: 'var(--radius-2xl)',
-    borderColor: '#e5e5e5',
-    borderWidth: '1px',
-    outlineColor: '#0b0b0b',
-    outlineWidth: '2px',
-    outlineRadius: 'var(--radius-2xl)',
-    logo: `${window.location.origin}/branding/lumenrise-symbol-for-light-background.svg`,
-    backdropBlur: '4px',
-    backdropColor: 'rgba(11, 11, 11, 0.28)',
-    boxShadow: '0 24px 70px rgba(11, 11, 11, 0.18)',
-  },
-};
 
 export default function ClientApp({
   children,
@@ -72,6 +46,8 @@ export default function ClientApp({
   children: ReactNode;
   apiBaseUrl: string;
 }) {
+  const config = useConfiguration();
+  const bluxConfig = useMemo(() => createBluxConfig(config, config.network.configurations[API_NETWORK]), [config]);
   // Public query observers start in child effects; configure their URL first.
   configureApi(apiBaseUrl);
   return (
@@ -318,6 +294,8 @@ function LaunchpadProvider({
           error: 'Your session is not ready yet. Refresh the page and try again.',
         };
       }
+      if (!getConfiguration().features.registration) return { ok: false, error: 'Registration is not configured right now.' };
+      if (getConfiguration().rules.profile.walletRequired && !blux.user?.address) return { ok: false, error: 'Connect a Stellar wallet before registering.' };
       registerInFlight.current = true;
       try {
         const profile = await registerAccount({
@@ -369,7 +347,7 @@ function LaunchpadProvider({
         registerInFlight.current = false;
       }
     },
-    [],
+    [blux.user?.address],
   );
 
   const updateAvatar = useCallback(

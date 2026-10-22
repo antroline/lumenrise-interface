@@ -12,7 +12,9 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import { PROFILE_IMAGE_MIN_DIMENSION, PROFILE_IMAGE_TYPES, validateProfileImage } from '@/lib/image'
+import { validateProfileImage } from '@/lib/image'
+import { getConfiguration } from '@/lib/api/config'
+import { imageHint } from '@/lib/client-rules'
 import { useLaunchpad } from '@/lib/launchpad'
 import { consumeAuthReturnTo } from '@/lib/auth-return'
 
@@ -42,6 +44,8 @@ export default function RegisterPage() {
       <main className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:py-16">
         {!isSignedIn ? (
           <AuthGate destination={DEFAULT_DESTINATION} description="Connect your account with Blux to set up your LumenRise profile." />
+        ) : account.status === 'unregistered' && !getConfiguration().features.registration ? (
+          <StatusPanel title="Registration unavailable" description="Account registration is not configured right now." />
         ) : account.status === 'unregistered' ? (
           <RegistrationForm />
         ) : account.status === 'error' ? (
@@ -132,8 +136,8 @@ function RegistrationForm() {
       setNameError('Enter your name.')
       return
     }
-    if (trimmed.length > 80) {
-      setNameError('Name must be 80 characters or fewer.')
+    if (trimmed.length < getConfiguration().rules.profile.nameMinLength || trimmed.length > getConfiguration().rules.profile.nameMaxLength) {
+      setNameError(`Name must contain ${getConfiguration().rules.profile.nameMinLength}–${getConfiguration().rules.profile.nameMaxLength} characters.`)
       return
     }
     setNameError('')
@@ -177,8 +181,8 @@ function RegistrationForm() {
                     <span className="sr-only">{previewUrl ? 'Change profile photo' : 'Upload profile photo'}</span>
                     <input
                       id="register-avatar"
-                      type="file"
-                      accept={PROFILE_IMAGE_TYPES.join(',')}
+                      type="file" disabled={!getConfiguration().features.imageUploads}
+                      accept={getConfiguration().rules.images.mimeTypes.join(',')}
                       className="sr-only"
                       aria-label="Profile photo"
                       aria-invalid={!!avatarError}
@@ -209,7 +213,7 @@ function RegistrationForm() {
                       setName(event.target.value)
                       if (nameError) setNameError('')
                     }}
-                    maxLength={80}
+                    maxLength={getConfiguration().rules.profile.nameMaxLength}
                     placeholder="Your name"
                     required
                     autoComplete="name"
@@ -222,7 +226,7 @@ function RegistrationForm() {
                   </FieldError>
                 </Field>
                 <FieldDescription id="register-avatar-hint" className="col-span-full text-small text-muted-foreground sm:col-start-2">
-                  Optional. PNG, JPG or WebP, at least {PROFILE_IMAGE_MIN_DIMENSION}×{PROFILE_IMAGE_MIN_DIMENSION} pixels, up to 5 MB.
+                  Optional. {imageHint('avatar')}
                 </FieldDescription>
               </div>
             </FieldGroup>

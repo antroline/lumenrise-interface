@@ -1,3 +1,4 @@
+import { configurationModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
@@ -14,7 +15,7 @@ runInNewContext(
       },
     },
   ).outputText,
-  { exports, URLSearchParams },
+  { exports, URLSearchParams, require: () => configurationModule },
 );
 const { directoryHref, directoryPage, directorySort, directoryCategory } =
   exports;

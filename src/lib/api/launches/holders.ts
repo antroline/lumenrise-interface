@@ -1,3 +1,5 @@
+import { requireLaunchSlug } from '../../launch-slug';
+import { getConfiguration } from '../config';
 import { StrKey } from '@stellar/stellar-sdk';
 import { ApiError, apiRequest } from '../client';
 import type { ApiNetwork } from './types';
@@ -16,30 +18,33 @@ export type HoldersResult = {
 };
 
 export async function getHolders(
-  contractId: string,
+  slug: string,
   network: ApiNetwork,
   options: { cursor?: string; limit?: number } = {},
   signal?: AbortSignal,
 ): Promise<HoldersResult> {
-  const limit = options.limit ?? 20;
+  requireLaunchSlug(slug);
+  const rule = getConfiguration().rules.holders;
+  const limit = options.limit ?? rule.defaultLimit;
   if (
-    !StrKey.isValidContract(contractId) ||
+    !slug ||
     (network !== 'testnet' && network !== 'public') ||
     !Number.isInteger(limit) ||
-    limit < 1 ||
-    limit > 100
+    limit < rule.minLimit ||
+    limit > rule.maxLimit ||
+    (options.cursor?.length ?? 0) > rule.cursorMaxLength
   ) {
     throw new ApiError('Invalid holder query', 'http', { status: 400 });
   }
   const params = new URLSearchParams({ network, limit: String(limit) });
   if (options.cursor !== undefined) params.set('cursor', options.cursor);
   const result = await apiRequest<HoldersResult>(
-    `/launches/${encodeURIComponent(contractId)}/holders?${params}`,
+    `/launches/${encodeURIComponent(slug)}/holders?${params}`,
     { signal },
   );
   if (
     !result ||
-    result.contractId !== contractId ||
+    !StrKey.isValidContract(result.contractId) ||
     result.network !== network ||
     !StrKey.isValidContract(result.asset) ||
     result.amountScale !== 7 ||

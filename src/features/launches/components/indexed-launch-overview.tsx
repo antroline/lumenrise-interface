@@ -229,10 +229,10 @@ export function IndexedLaunchOverview({
   walletFeedback?: ReactNode;
   tradingLoading?: boolean;
 }) {
-  const market = useMarket(address, network);
+  const market = useMarket(launch?.slug ?? '', network);
   const now = useNow(30_000);
   const [holdersActive, setHoldersActive] = useState(false);
-  const holders = useHolders(address, network, holdersActive);
+  const holders = useHolders(launch?.slug ?? '', network, holdersActive);
   const b = bondingDetails(launch, snapshot);
   const status = b?.status ?? (loading ? 'Loading' : 'Unavailable');
   const metadata = snapshot?.config.params.metadata ?? launch?.metadata;
@@ -445,7 +445,7 @@ export function IndexedLaunchOverview({
               priceChart={
                 <IndexedPriceChart
                   embedded
-                  address={address}
+                  slug={launch?.slug ?? ''}
                   network={network}
                   ticker={ticker}
                   pair={pair}
@@ -594,7 +594,7 @@ export function IndexedLaunchOverview({
 
               {owner && (
                 <LaunchSection id="creator" title="Team" collapsible accordionVariant="plain">
-                  {launch && <LaunchTeam owner={launch.owner} contractId={address} network={network} members={launch.team?.filter((member) => member.kind !== 'owner')} />}
+                  {launch && <LaunchTeam owner={launch.owner} slug={launch.slug ?? undefined} network={network} members={launch.team?.filter((member) => member.kind !== 'owner')} />}
                   <LaunchCreator
                     owner={owner}
                     network={network}
@@ -712,7 +712,7 @@ export function IndexedLaunchOverview({
               onHoldersActiveChange={setHoldersActive}
               trades={
                 <IndexedTrades
-                  address={address}
+                  slug={launch?.slug ?? ''}
                   network={network}
                   ticker={ticker}
                   pair={pair}

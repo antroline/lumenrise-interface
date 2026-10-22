@@ -23,16 +23,18 @@ export function progressLabel(progressBps: number) {
   return `${(progressBps / 100).toLocaleString('en-US', { maximumFractionDigits: 2 })}%`;
 }
 
-export function discoverLaunches(items: LaunchListItem[]) {
+export function discoverLaunches(items: LaunchListItem[], now = Date.now()) {
   const launches = [...new Map(items.map((launch) => [launch.contractId, launch])).values()]
     .filter((launch): launch is HomeLaunch => launch.bonding !== null);
   const open = launches.filter((launch) =>
     launch.bonding.status === 'Open' && !launch.bonding.state.graduated,
   ).sort((a, b) => b.bonding.progressBps - a.bonding.progressBps);
-  // Unknown creation times cannot establish recency. Trading starts and indexing
-  // observations are deliberately not substituted for verified creation dates.
-  const recent = launches.filter((launch) => launch.createdAt !== null &&
-    Number.isFinite(Date.parse(launch.createdAt)),
-  ).sort((a, b) => Date.parse(b.createdAt!) - Date.parse(a.createdAt!));
+  // Only elapsed, known trading openings establish recency; creation and indexing
+  // times say nothing about when participation opened. This ranks the loaded page.
+  const recent = launches.filter((launch) => {
+    const startsAt = launch.bonding.startsAt;
+    return launch.bonding.status !== 'Scheduled' && typeof startsAt === 'string' &&
+      /^\d+$/.test(startsAt) && Number(startsAt) > 0 && Number(startsAt) * 1000 <= now;
+  }).sort((a, b) => Number(b.bonding.startsAt) - Number(a.bonding.startsAt));
   return { launches, open, recent, featured: open.find(canParticipate) ?? launches[0] };
 }

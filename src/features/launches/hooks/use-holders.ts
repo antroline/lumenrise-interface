@@ -1,8 +1,8 @@
 'use client';
 
+import { getConfiguration } from '../../../lib/api/config';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { StrKey } from '@stellar/stellar-sdk';
 import {
   appendHolders,
   getHolders,
@@ -13,42 +13,43 @@ import { launchKey, publicQueryOptions, usePageVisible } from './queries';
 import type { ApiNetwork } from '../../../lib/api/launches/types';
 
 export function useHolders(
-  contractId: string,
+  slug: string,
   network: ApiNetwork,
   active: boolean,
 ) {
+  const limit = getConfiguration().rules.holders.defaultLimit;
   const client = useQueryClient();
   const visible = usePageVisible();
   const query = useQuery({
     ...publicQueryOptions,
-    queryKey: [...launchKey(network, contractId), 'holders', 20],
+    queryKey: [...launchKey(network, slug), 'holders', limit],
     queryFn: ({ signal }) =>
-      getHolders(contractId, network, { limit: 20 }, signal),
-    enabled: visible && StrKey.isValidContract(contractId),
+      getHolders(slug, network, { limit }, signal),
+    enabled: visible && !!slug,
     refetchInterval: active && visible ? 60_000 : false,
     // A new first-page snapshot must replace appended pages even if values match.
     structuralSharing: false,
   });
   const [extra, setExtra] = useState<{
-    contractId: string;
+    slug: string;
     network: ApiNetwork;
     first: HoldersResult;
     items: Holder[];
     cursor: string | null;
   }>();
-  if (extra && (extra.contractId !== contractId || extra.network !== network)) {
+  if (extra && (extra.slug !== slug || extra.network !== network)) {
     setExtra(undefined);
   }
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<{
-    contractId: string;
+    slug: string;
     network: ApiNetwork;
     first: HoldersResult;
     error: Error;
   }>();
   if (
     failure &&
-    (failure.contractId !== contractId || failure.network !== network)
+    (failure.slug !== slug || failure.network !== network)
   ) {
     setFailure(undefined);
   }
@@ -56,10 +57,10 @@ export function useHolders(
   const current = useRef(query.data);
   useEffect(() => {
     current.current = query.data;
-  }, [query.data, contractId, network]);
+  }, [query.data, slug, network]);
   const appended =
     extra?.first === query.data &&
-    extra?.contractId === contractId &&
+    extra?.slug === slug &&
     extra?.network === network
       ? extra
       : undefined;
@@ -67,18 +68,18 @@ export function useHolders(
   const cursor = appended ? appended.cursor : query.data?.nextCursor;
 
   useEffect(() => {
-    const key = [...launchKey(network, contractId), 'holders', 20, 'page'];
+    const key = [...launchKey(network, slug), 'holders', 20, 'page'];
     return () => {
       current.current = undefined;
       void client.cancelQueries({ queryKey: key });
     };
-  }, [client, contractId, network]);
+  }, [client, slug, network]);
   useEffect(() => {
     if (!visible)
       void client.cancelQueries({
-        queryKey: [...launchKey(network, contractId), 'holders'],
+        queryKey: [...launchKey(network, slug), 'holders'],
       });
-  }, [client, contractId, network, visible]);
+  }, [client, slug, network, visible]);
 
   async function loadMore() {
     const first = query.data;
@@ -91,18 +92,18 @@ export function useHolders(
         ...publicQueryOptions,
         staleTime: 0,
         queryKey: [
-          ...launchKey(network, contractId),
+          ...launchKey(network, slug),
           'holders',
           20,
           'page',
           cursor,
         ],
         queryFn: ({ signal }) =>
-          getHolders(contractId, network, { limit: 20, cursor }, signal),
+          getHolders(slug, network, { limit, cursor }, signal),
       });
       if (current.current === first)
         setExtra({
-          contractId,
+          slug,
           network,
           first,
           items: appendHolders(items, page.items),
@@ -111,7 +112,7 @@ export function useHolders(
     } catch (error) {
       if (current.current === first)
         setFailure({
-          contractId,
+          slug,
           network,
           first,
           error:
@@ -132,7 +133,7 @@ export function useHolders(
     pending,
     pageError:
       failure?.first === query.data &&
-      failure?.contractId === contractId &&
+      failure?.slug === slug &&
       failure?.network === network
         ? failure?.error
         : undefined,

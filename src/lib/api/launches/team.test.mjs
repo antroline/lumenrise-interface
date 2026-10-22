@@ -1,3 +1,4 @@
+import { configurationModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -9,7 +10,7 @@ import ts from 'typescript';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
-const registered = { memberId: 'membership-1', kind: 'registered', identityId: 'identity-42', name: 'Ava', avatarUrl: null, role: 'Developer', xAccount: null };
+const registered = { memberId: 'membership-1', kind: 'registered', status: 'active', identityId: 'identity-42', name: 'Ava', avatarUrl: null, role: 'Developer', xAccount: null };
 const external = { ...registered, memberId: 'external-7', kind: 'external', identityId: null, xAccount: 'https://x.com/ava' };
 const fields = { name: ' Ava ', role: ' Developer ', xAccount: ' https://x.com/ava ' };
 const image = () => new File(['image'], 'ava.png', { type: 'image/png' });
@@ -20,18 +21,20 @@ function harness({ result = {}, status = 200, bitmap = { width: 128, height: 128
   let closed = 0;
   function load(filename) {
     const path = resolve(directory, filename);
+  if (path.replaceAll('\\', '/').endsWith('/lib/api/config.ts')) return configurationModule;
+  if (path.replaceAll('\\', '/').endsWith('/lib/stellar/network.ts')) return networkModule;
     if (cache.has(path)) return cache.get(path);
     const module = { exports: {} };
     cache.set(path, module.exports);
     const output = ts.transpileModule(readFileSync(path, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
     runInNewContext(output, {
-      module, exports: module.exports, URL, FormData, File, AbortController, Error, setTimeout, clearTimeout,
+      module, exports: module.exports, URLSearchParams, URL, FormData, File, AbortController, Error, setTimeout, clearTimeout,
       createImageBitmap: async () => ({ ...bitmap, close: () => closed++ }),
       fetch: async (url, init) => {
         calls.push({ url, init });
         return { ok: status < 400, status, text: async () => JSON.stringify({ status: status < 400 ? 'success' : 'error', message: 'Server response', result }) };
       },
-      require: (name) => name.startsWith('.') ? load(resolve(dirname(path), `${name}.ts`)) : require(name),
+      require: (name) => name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name.startsWith('.') ? load(resolve(dirname(path), `${name}.ts`)) : require(name),
     }, { filename: path });
     return module.exports;
   }
@@ -43,12 +46,65 @@ function harness({ result = {}, status = 200, bitmap = { width: 128, height: 128
 
 test('team reads both member kinds, keeps distinct mutation identifiers, and authenticates with network', async () => {
   const h = harness({ result: { members: [registered, external] } });
-  same(await h.api.getLaunchTeam('launch/id', { network: 'public' }), [registered, external]);
-  assert.equal(h.calls[0].url, 'https://api.example/v1/launches/launch%2Fid/team?network=public');
+  same(await h.api.getLaunchTeam('blue-man', { network: 'public' }), [registered, external]);
+  assert.equal(h.calls[0].url, 'https://api.example/v1/launches/blue-man/team?network=public');
   assert.equal(h.calls[0].init.headers['X-User-Id'], '42');
   h.client.setApiUserId(null);
-  await assert.rejects(() => h.api.getLaunchTeam('launch/id', { network: 'public' }));
+  await assert.rejects(() => h.api.getLaunchTeam('blue-man', { network: 'public' }));
   assert.equal(h.calls.length, 1);
+});
+
+test('team decoders retain every status and reject missing or unknown statuses', async () => {
+  for (const status of ['active', 'pending', 'canceled']) {
+    const member = { ...registered, status };
+    const h = harness({ result: { members: [member] } });
+    same(await h.api.getLaunchTeam('launch', { network: 'testnet' }), [member]);
+    same(h.api.decodePublicTeamMember(member), member);
+  }
+  for (const status of [undefined, null, '', 'accepted']) {
+    const h = harness({ result: { members: [{ ...registered, status }] } });
+    await assert.rejects(() => h.api.getLaunchTeam('launch', { network: 'testnet' }), { code: 'invalid-response' });
+  }
+  const h = harness();
+  assert.equal(h.api.teamCapacity([registered, { ...registered, status: 'pending' }, { ...registered, status: 'canceled' }]), 3);
+});
+
+test('invitations decode result.invitations and preserve the response network', async () => {
+  const invitation = { memberId: 'invitation', network: 'public', contractId: 'launch/id', slug: 'blue-man', role: 'Developer', status: 'pending' };
+  const h = harness({ result: { invitations: [invitation] } });
+  same(await h.api.getTeamInvitations({ network: 'public' }), [invitation]);
+  assert.equal(h.calls[0].url, 'https://api.example/v1/launches/team/invitations?network=public');
+  assert.equal(h.calls[0].init.headers['X-User-Id'], '42');
+  assert.equal(h.calls[0].init.headers['X-Stellar-Network'], 'public');
+  for (const result of [{}, { invitations: null }, { invitations: [{}] }, { invitations: [{ ...invitation, network: 'other' }] }, { invitations: [{ ...invitation, status: 'other' }] }]) {
+    await assert.rejects(() => harness({ result }).api.getTeamInvitations({ network: 'testnet' }), { code: 'invalid-response' });
+  }
+  h.client.setApiUserId(null);
+  await assert.rejects(() => h.api.getTeamInvitations({ network: 'public' }));
+  assert.equal(h.calls.length, 1);
+});
+
+test('Accept and Decline PATCH only the status using the invited session and network', async () => {
+  const h = harness();
+  for (const status of ['active', 'canceled']) {
+    await h.api.respondToTeamInvitation('blue-man', status, { network: 'public' });
+    const call = h.calls.at(-1);
+    assert.equal(call.url, 'https://api.example/v1/launches/blue-man/team/invitation?network=public');
+    assert.equal(call.init.method, 'PATCH');
+    assert.equal(call.init.headers['X-User-Id'], '42');
+    assert.equal(call.init.headers['X-Stellar-Network'], 'public');
+    assert.deepEqual(JSON.parse(call.init.body), { status });
+  }
+  await assert.rejects(() => h.api.respondToTeamInvitation('launch', 'pending', { network: 'testnet' }));
+  h.client.setApiUserId(null);
+  await assert.rejects(() => h.api.respondToTeamInvitation('launch', 'active', { network: 'public' }));
+  assert.equal(h.calls.length, 2);
+  for (const status of [401, 403, 409]) {
+    const failed = harness({ status });
+    const error = await failed.api.respondToTeamInvitation('launch', 'active', { network: 'public' }).catch((error) => error);
+    assert.equal(error.status, status);
+    assert.match(failed.api.invitationErrorMessage(error), status === 403 ? /Only the invited user/ : status === 401 ? /Sign in again/ : /Server response/);
+  }
 });
 
 test('candidate search sends a trimmed partial name or full wallet and allows missing X', async () => {

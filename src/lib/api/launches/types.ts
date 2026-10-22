@@ -18,6 +18,8 @@ export type LaunchImageStatus =
 
 /** Result of `POST /launches/prelaunch`. */
 export type UploadedLaunchImage = {
+  name: string;
+  slug: string;
   imageId: string;
   /** Server-issued URL, stored verbatim in the launch's `metadata.logo`. */
   publicUrl: string;
@@ -25,7 +27,8 @@ export type UploadedLaunchImage = {
 };
 
 /** Result of `GET /launches/prelaunch/:imageId` (owner only). */
-export type LaunchImageInfo = UploadedLaunchImage & {
+export type LaunchImageInfo = Omit<UploadedLaunchImage, 'slug'> & {
+  slug: string | null;
   network: ApiNetwork;
   ownerAddress: string;
   launchContractId: string | null;

@@ -1,5 +1,6 @@
 'use client';
 
+import { API_NETWORK, LAUNCH_CONFIGURED } from '@/lib/stellar/network';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { useLaunchpad } from '@/lib/launchpad';
@@ -21,7 +22,7 @@ import {
 } from './launch-motion';
 
 const stepDescriptions: Partial<Record<LaunchStageId, string>> = {
-  project: 'Create a bonding-curve launch on Stellar Testnet.',
+  project: 'Create a bonding-curve launch on Stellar.',
 };
 
 export function LaunchStudio() {
@@ -142,7 +143,18 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
   const currentStage = visibleSteps[step] ?? visibleSteps[0];
   const currentStep = currentStage.id;
   const currentIndex = step;
+  const nameConflict = bondingLaunch.nameConflict?.name === draft.name ? bondingLaunch.nameConflict : null;
+  useEffect(() => {
+    if (!nameConflict) return;
+    const frame = requestAnimationFrame(() => {
+      setCompleting(false);
+      setStep(launchStageIndex('project'));
+      requestAnimationFrame(() => document.getElementById('project-name')?.focus());
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [nameConflict]);
   const fieldErrors = showErrors ? validateLaunchStage(draft, currentStage) : {};
+  if (nameConflict) fieldErrors['project-name'] = nameConflict.message;
 
   function goToStep(nextStep: number) {
     setDirection(nextStep < step ? 'back' : 'forward');
@@ -154,7 +166,7 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
   function next() {
     const errors = validateLaunchStage(draft, currentStage);
     const firstError = Object.keys(errors)[0];
-    if (firstError) {
+    if (firstError || nameConflict) {
       setShowErrors(true);
       requestAnimationFrame(() => document.getElementById(firstError === 'team-cliff' || firstError === 'team-vesting' ? 'team-vesting-control' : firstError)?.focus());
       return;
@@ -170,6 +182,7 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
       data-launch-studio=""
       className="@container/studio relative mx-auto w-full min-w-0 max-w-[88rem] scroll-mt-20 lg:scroll-mt-4 lg:h-[min(60rem,calc(100dvh-5.5rem))]"
     >
+      {(!LAUNCH_CONFIGURED || API_NETWORK !== 'testnet') && <p role="status" className="mb-4 rounded-xl border border-border bg-card p-4 text-small">{!LAUNCH_CONFIGURED ? 'Launching is not configured by the server for this network.' : 'Creating launches on this network needs a configured payment-asset registry.'}</p>}
       {completing ? <LaunchCompletion
         operation={bondingLaunch.operation}
         working={bondingLaunch.working}
@@ -238,7 +251,7 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
               working={bondingLaunch.working}
               accountReady={accountReady}
               hasMoreContent={hasMoreContent}
-              launchAddress={bondingLaunch.operation?.status === 'success' ? bondingLaunch.operation.curveAddress : undefined}
+              launchSlug={bondingLaunch.operation?.status === 'success' ? bondingLaunch.operation.slug : undefined}
               onBack={() => goToStep(step - 1)}
               onNext={next}
               onLaunch={launchBondingCurve}

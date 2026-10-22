@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
-import { StrKey } from '@stellar/stellar-sdk';
+import { isLaunchSlug } from '@/lib/launch-slug';
 import { BondingCurvePage } from '@/features/launches/bonding';
-import { API_NETWORK } from '@/lib/stellar/network';
 
 export default async function LaunchDetailPage({
   params,
@@ -12,12 +11,12 @@ export default async function LaunchDetailPage({
 }) {
   const { slug } = await params;
   const { network } = await searchParams;
-  if (StrKey.isValidContract(slug))
+  if (isLaunchSlug(slug))
     return (
       <BondingCurvePage
         key={network + ':' + slug}
-        address={slug}
-        network={network === 'public' || network === 'mainnet' ? 'public' : API_NETWORK}
+        slug={slug}
+
       />
     );
   notFound();

@@ -10,9 +10,9 @@ cp .env.example .env
 npm run dev
 ```
 
-Create a project in the Blux dashboard and set `NEXT_PUBLIC_BLUX_APP_ID` in `.env`. Without a valid app ID, the interface remains browsable and Blux correctly reports that authentication is unavailable.
+Set `LUMENRISE_API_URL` to the browser-accessible API origin (an optional `/v1` suffix is accepted). Leave it empty for same-origin `/v1` requests. The API must serve `GET /v1/config` and allow the frontend origin and `X-Stellar-Network` through CORS.
 
-While running `next dev`, append `?preview=1` to any URL to preview the signed-in experience without a wallet.
+The app loads and validates public configuration once per document before starting Blux, Stellar clients or route reads. Missing or invalid critical settings show an explicit error with Retry; no frontend environment defaults are used.
 
 ## Included flows
 
@@ -22,7 +22,7 @@ While running `next dev`, append `?preview=1` to any URL to preview the signed-i
 - Live Bonding trades, indexed market activity, holders, and price history where the connected services provide them.
 - Campaigns, developer tools, and CLI remain coming-soon routes.
 
-Identity-linking buttons outside the Blux login flow generate local prototype signals. Illustrative launches, preview transactions, portfolio positions, and reputation figures remain labeled separately from live Bonding integrations. Public views can browse `?network=public`; wallet operations remain on Stellar Testnet.
+Network selection uses `?network=testnet` or `?network=public` (legacy `mainnet` is accepted), then the network chosen in this tab, then the server default. Unsupported selections fail explicitly. Changing networks reloads the document to isolate wallet state and pending signatures. Wallet operations, clients, addresses, API headers and explorer links use that same network. Creation remains Testnet-only because the existing USDC payment-asset registry has no Mainnet entry; server `launchConfigured` is also required.
 
 ## Source organization
 
@@ -31,9 +31,11 @@ Identity-linking buttons outside the Blux login flow generate local prototype si
 - `src/features/launches`: launch details, public listings, shared project content, query hooks, Bonding operations, and trading UI. Launch and Trade share this domain without depending on route paths.
 - `src/components`: cross-feature components and the application shell; `ui/` contains the existing shadcn/Base UI primitives, and `shell/` owns navigation, breadcrumbs, search, and wallet controls.
 - `src/hooks`: cross-feature React hooks.
-- `src/lib`: shared API clients, authentication context, helpers, and cross-feature data. `stellar/network.ts` contains network defaults, `stellar/clients.ts` constructs RPC clients, and `stellar/amount.ts` handles exact token amounts without importing the SDK.
+- `src/lib`: shared API clients, authentication context, helpers, and cross-feature data. `api/config.ts` decodes the public contract, `configuration.ts` exposes shared React configuration, `stellar/network.ts` installs the selected server configuration, `stellar/clients.ts` constructs RPC clients, and `stellar/amount.ts` handles exact token amounts without importing the SDK.
 
 Features depend on shared modules, and routes compose features. Use feature entry points where available; keep internal feature imports within their owner. Architecture tests enforce route ownership, shared-module boundaries, feature isolation, and acyclic imports.
+
+The configuration gate fetches the public Blux app ID, network settings, upload limits, profile/team/link rules, directory pagination/search/filter/sort rules, and trade/holder/chart limits. Feature flags indicate configured capabilities, while request errors and `429`/`Retry-After` remain authoritative. Reputation refresh, developer keys and policy editing are not implemented and their rules are intentionally unused. Contract launch economics, the existing Testnet payment-asset registry, transaction fees/timeouts, display range-to-candle mappings, UI debounce and polling schedules remain local because `/v1/config` does not define them. Global manual refresh intervals do not describe market polling or an individual user’s cooldown.
 
 The Blux provider stays behind the browser-only boundary in `src/components/providers.tsx`. Pages remain Server Components where possible. The existing ink/lime theme tokens live in `src/app/globals.css`, and local Bricolage Grotesque loads through `next/font/local`.
 
