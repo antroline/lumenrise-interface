@@ -1,3 +1,4 @@
+import { configurationModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -14,6 +15,7 @@ const owner = Keypair.random().publicKey(),
   address = 'launch-contract';
 const quote = { gross: '10000000', creator_fee: '0', user_amount: '10000000' };
 function load(filename, mocks = {}, globals = {}) {
+  if (filename.replaceAll('\\', '/').endsWith('/lib/api/config.ts')) return configurationModule;
   const path = resolve(directory, filename),
     module = { exports: {} };
   const output = ts.transpileModule(readFileSync(path, 'utf8'), {
@@ -28,7 +30,7 @@ function load(filename, mocks = {}, globals = {}) {
     exports: module.exports,
     Error,
     ...globals,
-    require: (name) =>
+    require: (name) => name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule :
       name in mocks
         ? mocks[name]
         : name.startsWith('.')

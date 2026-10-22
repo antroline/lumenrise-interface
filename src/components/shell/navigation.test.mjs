@@ -80,15 +80,15 @@ test('mobile active states follow nested routes and leave secondary destinations
   assert.equal(isActive('/settings', navigation.settingsItem), true);
 });
 
-test('discovery navigation preserves supported networks without leaking filters or changing creation', () => {
+test('discovery navigation preserves supported networks without leaking filters across internal routes', () => {
   const { navigationHref } = navigation;
-  for (const href of ['/', '/launches']) {
+  for (const href of ['/', '/launches', '/create', '/settings', '/reputation']) {
     assert.equal(navigationHref(href, 'public'), `${href}?network=public`);
     assert.equal(navigationHref(href, 'mainnet'), `${href}?network=public`);
     assert.equal(navigationHref(href, 'testnet'), `${href}?network=testnet`);
     for (const invalid of [null, undefined, '', 'invalid']) assert.equal(navigationHref(href, invalid), href);
   }
-  for (const href of ['/create', '/settings', '/reputation', 'https://docs.lumenrise.app']) {
+  for (const href of ['https://docs.lumenrise.app']) {
     assert.equal(navigationHref(href, 'public'), href);
   }
 });

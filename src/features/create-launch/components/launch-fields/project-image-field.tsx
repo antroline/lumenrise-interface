@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { imageHint, validateImage } from '@/lib/client-rules';
+import { getConfiguration } from '@/lib/api/config';
+import { useRef, useState } from 'react';
 import { ImagePlus } from 'lucide-react';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
@@ -12,17 +14,18 @@ export function ProjectImageField({ value, onChange, error }: {
   error?: string;
 }) {
   const [fileError, setFileError] = useState('');
+  const uploadVersion = useRef(0);
 
-  function upload(file: File | undefined) {
+  async function upload(file: File | undefined) {
     if (!file) return;
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
-      setFileError('Choose a PNG, JPG or WebP image up to 2 MB.');
-      return;
-    }
+    const version = ++uploadVersion.current;
+    const issue = await validateImage(file, 'tokenImage');
+    if (version !== uploadVersion.current) return;
+    if (issue) { setFileError(issue); return; }
     setFileError('');
     const reader = new FileReader();
     reader.onload = () => {
-      if (typeof reader.result === 'string') onChange(reader.result);
+      if (version === uploadVersion.current && typeof reader.result === 'string') onChange(reader.result);
     };
     reader.onerror = () => setFileError('The image could not be read. Choose it again or try another image.');
     reader.readAsDataURL(file);
@@ -47,7 +50,7 @@ export function ProjectImageField({ value, onChange, error }: {
         <input
           id="launch-logo"
           type="file"
-          accept="image/png,image/jpeg,image/webp"
+          accept={getConfiguration().rules.images.mimeTypes.join(',')} disabled={!getConfiguration().features.imageUploads}
           className="sr-only"
           aria-label="Project image"
           aria-invalid={!!error || !!fileError}
@@ -57,7 +60,7 @@ export function ProjectImageField({ value, onChange, error }: {
       </label>
       <div className="flex min-w-0 flex-col gap-1.5">
         <FieldLabel htmlFor="launch-logo">Project image *</FieldLabel>
-        <FieldDescription id="launch-logo-hint">PNG, JPG or WebP, up to 2 MB.</FieldDescription>
+        <FieldDescription id="launch-logo-hint">{imageHint('tokenImage')}</FieldDescription>
         <LaunchFieldError id="launch-logo-error" role="alert" className="text-small text-bad">{fileError || error}</LaunchFieldError>
       </div>
     </Field>

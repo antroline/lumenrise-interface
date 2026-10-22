@@ -1,5 +1,6 @@
 'use client';
 
+import { getConfiguration } from '../../../lib/api/config';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { StrKey } from '@stellar/stellar-sdk';
@@ -17,13 +18,14 @@ export function useHolders(
   network: ApiNetwork,
   active: boolean,
 ) {
+  const limit = getConfiguration().rules.holders.defaultLimit;
   const client = useQueryClient();
   const visible = usePageVisible();
   const query = useQuery({
     ...publicQueryOptions,
-    queryKey: [...launchKey(network, contractId), 'holders', 20],
+    queryKey: [...launchKey(network, contractId), 'holders', limit],
     queryFn: ({ signal }) =>
-      getHolders(contractId, network, { limit: 20 }, signal),
+      getHolders(contractId, network, { limit }, signal),
     enabled: visible && StrKey.isValidContract(contractId),
     refetchInterval: active && visible ? 60_000 : false,
     // A new first-page snapshot must replace appended pages even if values match.
@@ -98,7 +100,7 @@ export function useHolders(
           cursor,
         ],
         queryFn: ({ signal }) =>
-          getHolders(contractId, network, { limit: 20, cursor }, signal),
+          getHolders(contractId, network, { limit, cursor }, signal),
       });
       if (current.current === first)
         setExtra({

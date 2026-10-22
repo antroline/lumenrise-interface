@@ -7,6 +7,7 @@ import {
   Operation,
   TransactionBuilder,
 } from '@stellar/stellar-sdk';
+import { HOME_DOMAIN } from '../../../lib/stellar/network';
 import { horizon, NETWORK, soroban } from '../../../lib/stellar/clients';
 
 export { horizon, NETWORK, soroban, API_NETWORK } from '../../../lib/stellar/clients';
@@ -40,10 +41,10 @@ export function buildIssuance(
 ) {
   // Blux's email wallet rejects operations sourced from this separate issuer.
   // Sign locally, then submit only after the wallet-funded setup confirms.
-  const homeDomain = process.env.NEXT_PUBLIC_STELLAR_HOME_DOMAIN?.trim();
+  const homeDomain = HOME_DOMAIN;
   if (!homeDomain) {
     throw new Error(
-      'NEXT_PUBLIC_STELLAR_HOME_DOMAIN is required for issuance.',
+      'The server has not configured a Stellar home domain for this network.',
     );
   }
   const issuer = Keypair.fromSecret(secret);

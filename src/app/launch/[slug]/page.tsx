@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import { StrKey } from '@stellar/stellar-sdk';
 import { BondingCurvePage } from '@/features/launches/bonding';
-import { API_NETWORK } from '@/lib/stellar/network';
 
 export default async function LaunchDetailPage({
   params,
@@ -17,7 +16,7 @@ export default async function LaunchDetailPage({
       <BondingCurvePage
         key={network + ':' + slug}
         address={slug}
-        network={network === 'public' || network === 'mainnet' ? 'public' : API_NETWORK}
+
       />
     );
   notFound();

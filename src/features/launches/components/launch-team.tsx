@@ -1,5 +1,6 @@
 'use client';
 
+import { getConfiguration } from '@/lib/api/config';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpRight, LoaderCircle, Pencil, Plus, Trash2 } from 'lucide-react';
@@ -136,7 +137,7 @@ function OwnerLaunchTeam({
           type="button"
           size="sm"
           onClick={() => edit(null)}
-          disabled={mutation.isPending}
+          disabled={mutation.isPending || !query.data || query.data.length + 1 >= getConfiguration().rules.team.maxMembers}
         >
           <Plus className="size-4" aria-hidden="true" />
           Add Team Member

@@ -1,5 +1,6 @@
 'use client';
 
+import { API_NETWORK, LAUNCH_CONFIGURED } from '@/lib/stellar/network';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { useLaunchpad } from '@/lib/launchpad';
@@ -21,7 +22,7 @@ import {
 } from './launch-motion';
 
 const stepDescriptions: Partial<Record<LaunchStageId, string>> = {
-  project: 'Create a bonding-curve launch on Stellar Testnet.',
+  project: 'Create a bonding-curve launch on Stellar.',
 };
 
 export function LaunchStudio() {
@@ -170,6 +171,7 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
       data-launch-studio=""
       className="@container/studio relative mx-auto w-full min-w-0 max-w-[88rem] scroll-mt-20 lg:scroll-mt-4 lg:h-[min(60rem,calc(100dvh-5.5rem))]"
     >
+      {(!LAUNCH_CONFIGURED || API_NETWORK !== 'testnet') && <p role="status" className="mb-4 rounded-xl border border-border bg-card p-4 text-small">{!LAUNCH_CONFIGURED ? 'Launching is not configured by the server for this network.' : 'Creating launches on this network needs a configured payment-asset registry.'}</p>}
       {completing ? <LaunchCompletion
         operation={bondingLaunch.operation}
         working={bondingLaunch.working}

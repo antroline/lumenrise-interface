@@ -1,4 +1,5 @@
 'use client';
+import { API_NETWORK } from '@/lib/stellar/network';
 import { useLaunchpad } from '@/lib/launchpad';
 import { TradeResultDialog } from './trade-result-dialog';
 import { Button } from '@/components/ui/button';
@@ -209,7 +210,7 @@ export function TradeForm(props: TradeFormProps) {
             ? undefined
             : () =>
                 void login(
-                  `/launch/${address}?network=${props.network ?? 'testnet'}`,
+                  `/launch/${address}?network=${props.network ?? API_NETWORK}`,
                 )
         }
         disabled={

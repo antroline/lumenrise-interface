@@ -1,3 +1,4 @@
+import { configurationModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -15,7 +16,7 @@ function compile(path, imports, globals = {}) {
         jsx: ts.JsxEmit.ReactJSX,
       },
     }).outputText,
-    { exports, require: imports, URL, URLSearchParams, ...globals },
+    { exports, require: name => name.endsWith('/api/config') ? configurationModule : imports(name), URL, URLSearchParams, ...globals },
   );
   return exports;
 }
@@ -90,6 +91,8 @@ function harness(initial = status(), initialProps = {}) {
   const component = compile(
     './public-projects.tsx',
     (name) => {
+      if (name === '@/lib/api/config') return configurationModule;
+      if (name === '@/lib/stellar/network') return networkModule;
       if (name === 'react') return react;
       if (name === 'react/jsx-runtime')
         return { jsx, jsxs: jsx, Fragment: 'Fragment' };

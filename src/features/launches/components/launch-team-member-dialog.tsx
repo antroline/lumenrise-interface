@@ -1,5 +1,7 @@
 'use client';
 
+import { getConfiguration } from '@/lib/api/config';
+import { imageHint } from '@/lib/client-rules';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Check, LoaderCircle, Search } from 'lucide-react';
@@ -51,7 +53,7 @@ export function LaunchTeamMemberDialog({ contractId, network, sessionId, member,
   const candidates = useQuery({
     queryKey: ['team-candidates', network, contractId, sessionId, debouncedSearch],
     queryFn: ({ signal }) => searchTeamCandidates(contractId, debouncedSearch, { network, signal }),
-    enabled: !member && kind === 'registered' && !!debouncedSearch && debouncedSearch === search.trim(),
+    enabled: !member && kind === 'registered' && debouncedSearch.length >= getConfiguration().rules.team.searchMinLength && debouncedSearch.length <= getConfiguration().rules.team.searchMaxLength && debouncedSearch === search.trim(),
     staleTime: 0,
     gcTime: 0,
     retry: false,
@@ -97,9 +99,9 @@ export function LaunchTeamMemberDialog({ contractId, network, sessionId, member,
                 {!member && (
                   <Field>
                     <FieldLabel htmlFor="team-search">Find a user</FieldLabel>
-                    <Input id="team-search" value={search} onChange={(event) => { setSearch(event.target.value); setSelected(null); }} placeholder="Name or full Stellar wallet address" autoComplete="off" />
-                    <FieldDescription>Search by partial name or paste a full wallet address.</FieldDescription>
-                    {search.trim() && (
+                    <Input id="team-search" maxLength={getConfiguration().rules.team.searchMaxLength} value={search} onChange={(event) => { setSearch(event.target.value); setSelected(null); }} placeholder="Name or full Stellar wallet address" autoComplete="off" />
+                    <FieldDescription>Enter at least {getConfiguration().rules.team.searchMinLength} characters or paste a full wallet address.</FieldDescription>
+                    {search.trim().length >= getConfiguration().rules.team.searchMinLength && (
                       <div className="max-h-48 overflow-y-auto rounded-lg border border-border p-1" aria-label="Search results" aria-busy={searching}>
                         {searching ? <p role="status" className="p-3 text-muted-foreground">Searching users…</p>
                           : candidates.isError ? <div role="alert" className="p-3"><p>{teamErrorMessage(candidates.error)}</p><Button type="button" variant="outline" size="sm" onClick={() => void candidates.refetch()}>Retry search</Button></div>
@@ -127,24 +129,24 @@ export function LaunchTeamMemberDialog({ contractId, network, sessionId, member,
               <>
                 <Field>
                   <FieldLabel htmlFor="team-name">Name *</FieldLabel>
-                  <Input id="team-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Member’s full name" required />
+                  <Input id="team-name" minLength={getConfiguration().rules.team.nameMinLength} maxLength={getConfiguration().rules.team.nameMaxLength} value={name} onChange={(event) => setName(event.target.value)} placeholder="Member’s full name" required />
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="team-image">Photo{member ? '' : ' *'}</FieldLabel>
-                  <Input id="team-image" type="file" accept="image/jpeg,image/png,image/webp" required={!member && !image} onChange={(event) => setImage(event.target.files?.[0])} aria-describedby={image ? 'team-image-hint team-selected-image' : 'team-image-hint'} />
-                  <FieldDescription id="team-image-hint">JPEG, PNG or WebP, at least 128 × 128 pixels. {member ? 'Leave unchanged to keep the current photo.' : 'The server enforces its upload size limit.'}</FieldDescription>
+                  <Input id="team-image" type="file" accept={getConfiguration().rules.images.mimeTypes.join(',')} disabled={!getConfiguration().features.imageUploads} required={!member && !image} onChange={(event) => setImage(event.target.files?.[0])} aria-describedby={image ? 'team-image-hint team-selected-image' : 'team-image-hint'} />
+                  <FieldDescription id="team-image-hint">{imageHint('teamImage')} {member ? 'Leave unchanged to keep the current photo.' : 'The server enforces its upload size limit.'}</FieldDescription>
                   {image && <FieldDescription id="team-selected-image">Selected: {image.name}</FieldDescription>}
                   {member && <div className="flex items-center gap-2 text-xs text-muted-foreground"><MemberAvatar {...member} />Current photo</div>}
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="team-x">X account link *</FieldLabel>
-                  <Input id="team-x" type="url" value={xAccount} onChange={(event) => setXAccount(event.target.value)} placeholder="https://x.com/username" maxLength={2048} required />
+                  <FieldLabel htmlFor="team-x">X account link {getConfiguration().rules.team.externalXAccountRequired ? '*' : '(optional)'}</FieldLabel>
+                  <Input id="team-x" type="url" value={xAccount} onChange={(event) => setXAccount(event.target.value)} placeholder="https://x.com/username" maxLength={getConfiguration().rules.projectLinks.maxLength} required={getConfiguration().rules.team.externalXAccountRequired} />
                 </Field>
               </>
             )}
             <Field>
               <FieldLabel htmlFor="team-role">Role *</FieldLabel>
-              <Input id="team-role" value={role} onChange={(event) => setRole(event.target.value)} placeholder="e.g. Developer" required />
+              <Input id="team-role" minLength={getConfiguration().rules.team.roleMinLength} maxLength={getConfiguration().rules.team.roleMaxLength} value={role} onChange={(event) => setRole(event.target.value)} placeholder="e.g. Developer" required />
             </Field>
           </FieldGroup>
         </fieldset>

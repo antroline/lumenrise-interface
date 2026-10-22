@@ -1,4 +1,5 @@
 'use client';
+import { API_NETWORK } from '@/lib/stellar/network';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { CircleCheck, CircleAlert, Wallet } from 'lucide-react';
@@ -101,7 +102,7 @@ export function TradeResultDialog({
               </motion.span>
             </DialogTitle>
             <DialogDescription className="max-w-xs text-center leading-relaxed">
-              {confirmation ? 'Your transaction is confirmed on Stellar Testnet.'
+              {confirmation ? `Your transaction is confirmed on Stellar ${API_NETWORK === 'public' ? 'Mainnet' : 'Testnet'}.`
                 : busy ? 'Follow the transaction progress here.'
                   : pendingHash ? 'Check this transaction before submitting another trade.'
                     : 'Review the message below before trying again.'}

@@ -1,3 +1,4 @@
+import { configurationModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -22,7 +23,7 @@ function load(filename, mocks) {
   }).outputText;
   runInNewContext(output, {
     module, exports: module.exports, URL, AbortController, Error, setTimeout, clearTimeout,
-    require: (name) => name in mocks ? mocks[name] : require(name),
+    require: (name) => name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name === '@/lib/configuration' || name === '@/lib/blux-config' ? {} : name === '@/lib/client-rules' ? {imageHint: () => 'Server image rules'} : name in mocks ? mocks[name] : require(name),
   });
   return module.exports;
 }
@@ -50,7 +51,7 @@ function stateHooks() {
     },
   };
 }
-function ownerHarness(account = { status: 'registered', profile }, address = 'owner', members) {
+function ownerHarness(account = { status: 'registered', profile }, address = 'owner', members, privateMembers = [registered, external]) {
   const hooks = stateHooks(), calls = [], invalidated = [], observers = [];
   let userId = '42', mutationOptions;
   const api = {
@@ -65,7 +66,7 @@ function ownerHarness(account = { status: 'registered', profile }, address = 'ow
     'react/jsx-runtime': { jsx, jsxs: jsx },
     '@tanstack/react-query': {
       useQueryClient: () => ({ invalidateQueries: async (input) => invalidated.push(input) }),
-      useQuery: (options) => { observers.push(options); return { data: [registered, external], isPending: false }; },
+      useQuery: (options) => { observers.push(options); return { data: privateMembers, isPending: false }; },
       useMutation: (options) => {
         mutationOptions = options;
         return { reset() {}, mutate() {}, mutateAsync: async (change) => { await options.mutationFn(change); await options.onSuccess(); } };
@@ -86,6 +87,15 @@ function ownerHarness(account = { status: 'registered', profile }, address = 'ow
   return { root, render, calls, invalidated, observers,
     mutation: () => mutationOptions, changeUser: (id) => { userId = id; } };
 }
+
+test('team capacity counts the automatic owner against the configured maximum', () => {
+  const max = configurationModule.getConfiguration().rules.team.maxMembers;
+  for (const count of [max - 2, max - 1]) {
+    const h = ownerHarness(undefined, undefined, undefined, Array.from({ length: count }, (_, i) => ({ ...registered, memberId: String(i) })));
+    const add = elements(h.render()).find(node => node.type === 'Button' && node.props.children?.includes?.('Add Team Member'));
+    assert.equal(add.props.disabled, count + 1 >= max);
+  }
+});
 
 test('team controls never mount or request private data for visitors, preview, or another wallet', () => {
   for (const [account, address] of [[{ status: 'signed-out' }, undefined], [{ status: 'preview' }, 'owner'], [{ status: 'checking' }, 'owner'], [{ status: 'registered', profile }, 'another-wallet']]) {

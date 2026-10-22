@@ -44,12 +44,12 @@ test('project routes reject non-contract identifiers instead of rendering sample
   assert.throws(() => route('../auction/[slug]/page.tsx')(), error => error === missing);
 });
 
-test('real project routes preserve contract identity and network selection', async () => {
-  for (const [requested, expected] of [[undefined, 'testnet'], ['testnet', 'testnet'], ['public', 'public'], ['mainnet', 'public']]) {
+test('real project routes preserve identity and defer network selection to the configuration gate', async () => {
+  for (const [requested] of [[undefined, 'testnet'], ['testnet', 'testnet'], ['public', 'public'], ['mainnet', 'public']]) {
     const tree = await detail({ params: Promise.resolve({ slug: address }), searchParams: Promise.resolve({ network: requested }) });
     assert.equal(tree.type, 'BondingCurvePage');
     assert.equal(tree.props.address, address);
-    assert.equal(tree.props.network, expected);
+    assert.equal(tree.props.network, undefined);
   }
 });
 

@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { GlobalSearchDialog } from './global-search';
+import { API_NETWORK } from '@/lib/stellar/network';
 import { isActive, mobileDrawerItems, mobilePrimaryItems, navigationHref, navGroups, type NavItem } from './navigation';
 import { WalletButton } from './wallet-button';
 
@@ -146,7 +147,7 @@ export function SideNavigation({ mobileOnly = false }: { mobileOnly?: boolean })
 
 function MobileDrawerContent({ onNavigate }: { onNavigate: () => void }) {
   const pathname = usePathname();
-  const network = useSearchParams().get('network');
+  const network = useSearchParams().get('network') ?? API_NETWORK;
   const primary = mobileDrawerItems.filter(item => mobilePrimaryItems.some(tab => tab.href === item.href));
   const secondary = mobileDrawerItems.filter(item => !mobilePrimaryItems.some(tab => tab.href === item.href));
 
@@ -189,7 +190,7 @@ function MobileDrawerContent({ onNavigate }: { onNavigate: () => void }) {
             {secondary.map(item => (
               <Link
                 key={item.href}
-                href={item.href}
+                href={navigationHref(item.href, API_NETWORK)}
                 onClick={onNavigate}
                 aria-current={isActive(pathname, item) ? 'page' : undefined}
                 className="flex min-h-12 items-center gap-4 rounded-xl px-4 py-3 text-base font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-[current=page]:bg-secondary aria-[current=page]:text-foreground motion-reduce:transition-none"
@@ -294,7 +295,7 @@ function SidebarPanel({
                       collapsed={collapsed}
                       render={
                         <Link
-                          href={item.href}
+                          href={navigationHref(item.href, API_NETWORK)}
                           onClick={onNavigate}
                           aria-current={active ? 'page' : undefined}
                           className={cn(
@@ -389,7 +390,7 @@ function HomeLink({
 }) {
   return (
     <Link
-      href="/"
+      href={navigationHref('/', API_NETWORK)}
       aria-label="LumenRise home"
       onClick={onClick}
       className={cn('flex h-10 shrink-0 items-center rounded-lg px-1.5 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none dark:focus-visible:ring-neutral-500', className)}

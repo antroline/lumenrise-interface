@@ -1,3 +1,4 @@
+import { validProjectLink } from '../../../lib/client-rules';
 export type SaleMethod = 'bonding' | 'fixed' | 'auction';
 export type LaunchMethod = SaleMethod;
 export type QuoteToken = 'XLM' | 'USDC';
@@ -217,14 +218,4 @@ export function bondingStartDate(schedule: LaunchDraft['bonding']) {
   return isLaunchScheduled(schedule) ? schedule.startsAt : '';
 }
 
-export function validOptionalUrl(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return true;
-  if (trimmed.length > 2048) return false;
-  try {
-    const url = new URL(trimmed);
-    return url.protocol === 'https:' && !!url.hostname && !url.username && !url.password;
-  } catch {
-    return false;
-  }
-}
+export const validOptionalUrl = validProjectLink;

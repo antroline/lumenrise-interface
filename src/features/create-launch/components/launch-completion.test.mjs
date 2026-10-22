@@ -1,3 +1,4 @@
+import { networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -21,7 +22,7 @@ const mocks = {
   '@/components/ui/button': { Button: 'button', buttonVariants: () => 'button' },
   '@/lib/utils': { cn: (...values) => values.filter(Boolean).join(' ') },
 };
-runInNewContext(source, { module, exports: module.exports, require: name => mocks[name] ?? require(name) });
+runInNewContext(source, { module, exports: module.exports, URLSearchParams, require: name => name === '@/lib/stellar/network' ? networkModule : mocks[name] ?? require(name) });
 const render = operation => renderToStaticMarkup(createElement(module.exports.LaunchCompletion, {
   operation, working: operation?.status === 'running', name: 'Example', symbol: 'EX', logo: '', onRetry() {}, onBack() {},
 }));
@@ -51,7 +52,7 @@ test('indexing failures retain completed signatures and expose recovery actions 
 test('success retains the three completed steps and links to the confirmed launch', () => {
   const html = render({ step: 'index', phase: 'confirming', status: 'success', message: '', curveAddress: 'confirmed-curve' });
   assert.match(html, /Your launch is ready/);
-  assert.match(html, /href="\/launch\/confirmed-curve"/);
+  assert.match(html, /href="\/launch\/confirmed-curve\?network=testnet"/);
   assert.equal((html.match(/>Complete</g) ?? []).length, 3);
   assert.doesNotMatch(html, /animate-spin|Back to review|Check \/ retry/);
 });

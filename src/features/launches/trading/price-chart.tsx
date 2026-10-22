@@ -1,10 +1,9 @@
 'use client';
 
+import { getChartRanges } from '@/lib/api/launches/market';
 import type { ReactNode } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { ChartRange } from '@/lib/api/launches/market';
-
-const timeframes: ChartRange[] = ['1D', '1W', '1M', '3M', 'ALL'];
 
 export function PriceChart({
   ticker,
@@ -22,6 +21,7 @@ export function PriceChart({
     content: ReactNode;
   };
 }) {
+  const available = getChartRanges();
   return (
     <section
       aria-label="Price analysis"
@@ -45,13 +45,13 @@ export function PriceChart({
           value={[history.range]}
           onValueChange={(values) => {
             const [next] = values;
-            if (timeframes.includes(next as ChartRange)) {
+            if (available.includes(next as ChartRange)) {
               history.onRangeChange(next as ChartRange);
             }
           }}
           className="flex-wrap data-[variant=default]:bg-neutral-100 dark:data-[variant=default]:bg-neutral-800"
         >
-          {timeframes.map((option) => (
+          {available.map((option) => (
             <ToggleGroupItem
               key={option}
               value={option}

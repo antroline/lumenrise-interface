@@ -41,9 +41,9 @@ export const navGroups: Array<{ label: string; items: NavItem[] }> = [
 export const searchPages = navGroups.flatMap(group => group.items);
 export const mobileDrawerItems: NavItem[] = searchPages;
 
-/** Keep public discovery in the selected network; creation retains its configured network. */
+/** Keep internal navigation on the same server-supported network. */
 export function navigationHref(href: string, network?: string | null) {
-  if ((href === '/' || href === '/launches') && (network === 'public' || network === 'testnet' || network === 'mainnet')) {
+  if ((href.startsWith('/') && !href.startsWith('//')) && (network === 'public' || network === 'testnet' || network === 'mainnet')) {
     return `${href}?network=${network === 'mainnet' ? 'public' : network}`;
   }
   return href;

@@ -1,3 +1,4 @@
+import { getConfiguration } from '../../../lib/api/config';
 import type { LaunchListFilters, LaunchSort } from '@/lib/api/launches/market';
 
 export const directorySorts = [
@@ -47,13 +48,14 @@ export function directorySort(value?: string): DirectorySort {
   return sorts.find((sort) => sort === value) ?? 'newest';
 }
 export const monetarySort = (sort: string) =>
-  sort === 'topVolume' || sort === 'figure';
+  getConfiguration().rules.launches.pairRequiredSorts.includes(sort);
 
-export function directoryPage(total: number, requested: number, limit = 20) {
-  const pageCount = Math.ceil(total / limit);
+export function directoryPage(total: number, requested: number, limit = getConfiguration().rules.launches.defaultLimit) {
+  const rule = getConfiguration().rules.launches;
+  const pageCount = Math.min(rule.maxPage, Math.ceil(total / limit));
   const page = Math.min(
-    Math.max(1, pageCount),
-    Number.isSafeInteger(requested) ? Math.max(1, requested) : 1,
+    Math.max(rule.minPage, pageCount),
+    Number.isSafeInteger(requested) ? Math.max(rule.minPage, requested) : rule.minPage,
   );
   return { page, pageCount, offset: (page - 1) * limit };
 }
@@ -77,7 +79,7 @@ export function activeDirectoryFilterCount(request: DirectoryRequest) {
     request.owner,
     request.category !== 'all',
     request.pair && !monetarySort(request.sort),
-    request.limit !== 20,
+    request.limit !== getConfiguration().rules.launches.defaultLimit,
   ].filter(Boolean).length;
 }
 /** A control change always resets pagination; pagination itself preserves every filter. */
@@ -85,7 +87,7 @@ export function directoryHref(
   current: DirectoryRequest,
   changes: Partial<DirectoryRequest> = {},
 ) {
-  const next = { ...current, ...changes, page: changes.page ?? 1 };
+  const next = { ...current, ...changes, page: changes.page ?? getConfiguration().rules.launches.minPage };
   const q = new URLSearchParams({
     network: next.network,
     category: next.category,

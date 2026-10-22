@@ -1,3 +1,4 @@
+import { networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
@@ -49,6 +50,7 @@ function studioHarness(status, accountReady = true) {
   runInNewContext(source, {
     module, exports: module.exports,
     require(name) {
+      if (name === '@/lib/stellar/network') return networkModule;
       assert.ok(name in mocks, `Unexpected import: ${name}`);
       return mocks[name];
     },

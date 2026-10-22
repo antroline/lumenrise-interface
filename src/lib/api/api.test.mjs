@@ -1,3 +1,4 @@
+import { configurationModule, networkModule } from '../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -13,6 +14,8 @@ const require = createRequire(import.meta.url);
 // Execute the actual TypeScript with the network boundary replaced by a stub.
 function loadSource(filename, mocks = {}, globals = {}, cache = new Map()) {
   const path = resolve(directory, filename);
+  if (path.replaceAll('\\', '/').endsWith('/lib/api/config.ts')) return configurationModule;
+  if (path.replaceAll('\\', '/').endsWith('/lib/stellar/network.ts')) return networkModule;
   if (cache.has(path)) return cache.get(path);
   const module = { exports: {} };
   cache.set(path, module.exports);
@@ -20,9 +23,9 @@ function loadSource(filename, mocks = {}, globals = {}, cache = new Map()) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
   runInNewContext(output, {
-    module, exports: module.exports, Date, Error, JSON, URL,
-    setTimeout, clearTimeout, AbortController, FormData, DOMException,
-    require: (name) => name in mocks ? mocks[name] : name.startsWith('.')
+    module, exports: module.exports, URLSearchParams, Date, Error, JSON, URL,
+    setTimeout, clearTimeout, AbortController, FormData, DOMException, createImageBitmap: async () => ({width: 128, height: 128, close() {}}),
+    require: (name) => name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name in mocks ? mocks[name] : name.startsWith('.')
       ? loadSource(resolve(dirname(path), `${name}.ts`), mocks, globals, cache)
       : require(name),
     ...globals,

@@ -1,3 +1,5 @@
+import { getConfiguration } from '../config';
+import { validProjectLink, validateText, validateImage } from '../../client-rules';
 import { ApiError, apiRequest, formatByteLimit } from '../client';
 import type { ApiNetwork } from './types';
 
@@ -76,6 +78,8 @@ export function decodePublicTeamMember(entry: unknown): PublicTeamMember {
 }
 
 export async function searchTeamCandidates(contractId: string, search: string, options: TeamRequest): Promise<TeamCandidate[]> {
+  const rule = getConfiguration().rules.team;
+  validateText(search, rule.searchMinLength, rule.searchMaxLength, 'Search');
   const result = await apiRequest<unknown>(`${path(contractId, options, '/candidates')}&search=${encodeURIComponent(search.trim())}`, { user: true, signal: options.signal });
   return entries(result, 'users').map((entry) => {
     const item = record(entry);
@@ -86,30 +90,21 @@ export async function searchTeamCandidates(contractId: string, search: string, o
 function required(value: string, label: string) {
   const trimmed = value.trim();
   if (!trimmed) throw new Error(`Enter the member’s ${label}.`);
-  return trimmed;
+  const rule = getConfiguration().rules.team;
+  return validateText(trimmed, label === 'name' ? rule.nameMinLength : rule.roleMinLength, label === 'name' ? rule.nameMaxLength : rule.roleMaxLength, label);
 }
 
 export function externalMemberFields(input: ExternalMemberInput) {
   const name = required(input.name, 'name');
   const role = required(input.role, 'role');
-  const xAccount = required(input.xAccount, 'X link');
-  let url: URL;
-  try { url = new URL(xAccount); } catch { throw new Error('Enter a valid HTTPS X link.'); }
-  if (xAccount.length > 2048 || url.protocol !== 'https:' || url.username || url.password)
-    throw new Error('Enter an HTTPS X link of up to 2048 characters without embedded credentials.');
+  const xAccount = input.xAccount.trim();
+  if (!validProjectLink(xAccount, getConfiguration().rules.team.externalXAccountRequired)) throw new Error('Enter a valid X link.');
   return { name, role, xAccount };
 }
 
 export async function validateTeamImage(image: File) {
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(image.type))
-    throw new Error('Choose a JPEG, PNG or WebP image.');
-  let bitmap: ImageBitmap;
-  try { bitmap = await createImageBitmap(image); }
-  catch { throw new Error('The image could not be read. Choose another image.'); }
-  try {
-    if (bitmap.width < 128 || bitmap.height < 128)
-      throw new Error('Choose an image at least 128 × 128 pixels.');
-  } finally { bitmap.close(); }
+  const issue = await validateImage(image, 'teamImage');
+  if (issue) throw new Error(issue);
 }
 
 export async function putRegisteredTeamMember(contractId: string, identityId: string, role: string, options: TeamRequest) {

@@ -1,3 +1,4 @@
+import { configurationModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -10,6 +11,8 @@ const directory = dirname(fileURLToPath(import.meta.url));
 const modules = new Map();
 function loadSource(filename) {
   const path = resolve(directory, filename);
+  if (path.replaceAll('\\', '/').endsWith('/lib/api/config.ts')) return configurationModule;
+  if (path.replaceAll('\\', '/').endsWith('/lib/stellar/network.ts')) return networkModule;
   if (modules.has(path)) return modules.get(path);
   const module = { exports: {} };
   modules.set(path, module.exports);
@@ -17,8 +20,8 @@ function loadSource(filename) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
   runInNewContext(output, {
-    module, exports: module.exports, URL,
-    require: (name) => loadSource(resolve(dirname(path), `${name}.ts`)),
+    module, exports: module.exports, URLSearchParams, URL,
+    require: (name) => name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule : loadSource(resolve(dirname(path), `${name}.ts`)),
   }, { filename: path });
   return module.exports;
 }

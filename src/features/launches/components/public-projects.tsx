@@ -1,4 +1,6 @@
 'use client';
+import { getConfiguration } from '@/lib/api/config';
+import { API_NETWORK } from '@/lib/stellar/network';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -96,18 +98,18 @@ function directoryDate(iso: string | null) {
 }
 
 export function PublicProjects({
-  network,
-  page,
+  network = API_NETWORK,
+  page: requestedPage,
   owner,
   category: categoryParam,
   sort: sortParam,
   direction,
   search = '',
   pair: pairParam = '',
-  limit = 20,
+  limit: requestedLimit,
   showMobileProgress = false,
 }: {
-  network: ApiNetwork;
+  network?: ApiNetwork;
   page: number;
   owner?: string;
   category?: string;
@@ -118,12 +120,15 @@ export function PublicProjects({
   limit?: number;
   showMobileProgress?: boolean;
 }) {
+  const rules = getConfiguration().rules.launches;
+  const page = Number.isSafeInteger(requestedPage) ? Math.max(rules.minPage, Math.min(rules.maxPage, requestedPage)) : rules.minPage;
+  const limit = requestedLimit !== undefined && Number.isSafeInteger(requestedLimit) && requestedLimit >= rules.minLimit && requestedLimit <= rules.maxLimit ? requestedLimit : rules.defaultLimit;
   const visible = usePageVisible();
   const router = useRouter();
   const client = useQueryClient();
-  const category = directoryCategory(categoryParam);
-  const sort = directorySort(sortParam);
-  const selectedDirection: SortDirection = direction === 'asc' ? 'asc' : 'desc';
+  const category = directoryCategory(categoryParam ?? rules.defaultCategory);
+  const sort = directorySort(sortParam ?? rules.defaultSort);
+  const selectedDirection: SortDirection = (direction ?? rules.defaultDirection) === 'asc' ? 'asc' : 'desc';
   const pair = pairParam;
   const request: DirectoryRequest = {
     network,
@@ -188,7 +193,7 @@ export function PublicProjects({
     category: 'all',
     search: '',
     owner: '',
-    limit: 20,
+    limit: rules.defaultLimit,
     pair: monetarySort(sort) ? pair : '',
   });
   const canonicalHref = directoryHref(request, { page: currentPage });
@@ -197,6 +202,7 @@ export function PublicProjects({
       router.replace(canonicalHref, { scroll: false });
   }, [query.data, query.isFetching, currentPage, page, canonicalHref, router]);
   async function applyFilters(next: DirectoryRequest) {
+    if (next.network !== network) { window.location.assign(directoryHref(next)); return; }
     setApplyingFilters(true);
     try {
       await client.fetchQuery({
@@ -392,7 +398,7 @@ export function PublicProjects({
             <span className="mr-1 hidden shrink-0 text-xs whitespace-nowrap text-muted-foreground lg:inline">
               Sort by:
             </span>
-            {directorySorts.map((item) => (
+            {directorySorts.filter(sort => rules.sorts.includes(sort)).map((item) => (
               <ResultsLink
                 key={item}
                 href={href({ sort: item, direction: 'desc' })}

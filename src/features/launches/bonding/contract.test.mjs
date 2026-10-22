@@ -1,3 +1,4 @@
+import { networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -22,7 +23,7 @@ function loadSource(filename, mocks = {}, cache = new Map(), globals = {}) {
   }).outputText;
   runInNewContext(output, {
     module, exports: module.exports, Error, ...globals,
-    require: name => name in mocks ? mocks[name] : name.startsWith('.')
+    require: name => name === '@/lib/stellar/network' ? networkModule : name in mocks ? mocks[name] : name.startsWith('.')
       ? loadSource(resolve(dirname(path), `${name}${name === './transaction-hash' ? '.tsx' : '.ts'}`), mocks, cache, globals) : require(name),
   }, { filename: path });
   return module.exports;

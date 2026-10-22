@@ -1,4 +1,5 @@
 'use client';
+import { API_NETWORK } from '@/lib/stellar/network';
 
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
@@ -12,7 +13,7 @@ import type { ApiNetwork } from '@/lib/api/launches/types';
 import { launchHref, networkName, progressLabel, useHomeLaunches } from './use-home-launches';
 import { canParticipate } from './home-discovery';
 
-export function FeaturedLaunch({ network }: { network: ApiNetwork }) {
+export function FeaturedLaunch({ network = API_NETWORK }: { network?: ApiNetwork }) {
   const { query, featured: launch } = useHomeLaunches(network);
   const participating = launch ? canParticipate(launch) : false;
   const status = launch?.bonding.state.graduated ? 'Graduated' : launch?.bonding.status;

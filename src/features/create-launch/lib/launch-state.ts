@@ -81,7 +81,7 @@ export function validateInput(input: LaunchInput): LaunchInput {
 
 export function requireCreator(address: string) {
   if (!StrKey.isValidEd25519PublicKey(address))
-    throw new Error('Connect a funded Stellar G-address on testnet.');
+    throw new Error('Connect a funded Stellar G-address on the selected network.');
 }
 
 function property(value: unknown, key: string): unknown {

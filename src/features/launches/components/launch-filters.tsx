@@ -1,7 +1,8 @@
 'use client';
 
+import { getConfiguration } from '@/lib/api/config';
 import { useState } from 'react';
-import { Asset, Networks, StrKey } from '@stellar/stellar-sdk';
+import { Asset, StrKey } from '@stellar/stellar-sdk';
 import {
   ArrowDown,
   ArrowUp,
@@ -75,7 +76,7 @@ function paymentAssets(network: DirectoryRequest['network']) {
   return [
     {
       value: Asset.native().contractId(
-        network === 'public' ? Networks.PUBLIC : Networks.TESTNET,
+        getConfiguration().network.configurations[network].networkPassphrase,
       ),
       label: 'XLM',
     },
@@ -159,7 +160,7 @@ export function LaunchFilters({
       value: {
         network: current.value.network,
         page: 1,
-        limit: 20,
+        limit: getConfiguration().rules.launches.defaultLimit,
         owner: '',
         search: '',
         pair: '',
@@ -270,7 +271,7 @@ export function LaunchFilters({
                     <InputGroupInput
                       id="launch-search"
                       type="search"
-                      maxLength={100}
+                      maxLength={getConfiguration().rules.launches.searchMaxLength}
                       value={draft.search}
                       placeholder="Name or symbol"
                       onChange={(event) =>
@@ -297,7 +298,7 @@ export function LaunchFilters({
                     className="max-w-full flex-wrap"
                     spacing={1.5}
                   >
-                    {categories.map((item) => (
+                    {categories.filter(item => getConfiguration().rules.launches.categories.includes(item.value)).map((item) => (
                       <ToggleGroupItem
                         key={item.value}
                         value={item.value}
@@ -324,13 +325,13 @@ export function LaunchFilters({
                     className="w-full"
                   >
                     <ToggleGroupItem
-                      value="public"
+                      value="public" disabled={!getConfiguration().network.supported.includes('public')}
                       className="flex-1 pointer-coarse:min-h-11"
                     >
                       Mainnet
                     </ToggleGroupItem>
                     <ToggleGroupItem
-                      value="testnet"
+                      value="testnet" disabled={!getConfiguration().network.supported.includes('testnet')}
                       className="flex-1 pointer-coarse:min-h-11"
                     >
                       Testnet
@@ -350,7 +351,7 @@ export function LaunchFilters({
                     className="max-w-full flex-wrap"
                     spacing={1.5}
                   >
-                    {sorts.map((sort) => (
+                    {sorts.filter(sort => getConfiguration().rules.launches.sorts.includes(sort)).map((sort) => (
                       <ToggleGroupItem
                         key={sort}
                         value={sort}
@@ -376,7 +377,7 @@ export function LaunchFilters({
                       }}
                     >
                       <ToggleGroupItem
-                        value="asc"
+                        value="asc" disabled={!getConfiguration().rules.launches.directions.includes('asc')}
                         aria-label="Ascending"
                         title="Ascending"
                         className="w-8 px-0 pointer-coarse:min-h-11 pointer-coarse:min-w-11"
@@ -384,7 +385,7 @@ export function LaunchFilters({
                         <ArrowUp aria-hidden="true" />
                       </ToggleGroupItem>
                       <ToggleGroupItem
-                        value="desc"
+                        value="desc" disabled={!getConfiguration().rules.launches.directions.includes('desc')}
                         aria-label="Descending"
                         title="Descending"
                         className="w-8 px-0 pointer-coarse:min-h-11 pointer-coarse:min-w-11"
@@ -509,13 +510,13 @@ export function LaunchFilters({
                           const value = Number(values[0]);
                           if (
                             Number.isInteger(value) &&
-                            value >= 1 &&
-                            value <= 100
+                            value >= getConfiguration().rules.launches.minLimit &&
+                            value <= getConfiguration().rules.launches.maxLimit
                           )
                             update({ limit: value });
                         }}
                       >
-                        {[...new Set([20, 50, 100, request.limit])].map(
+                        {[...new Set([getConfiguration().rules.launches.defaultLimit, 50, getConfiguration().rules.launches.maxLimit, request.limit].filter(value => value >= getConfiguration().rules.launches.minLimit && value <= getConfiguration().rules.launches.maxLimit))].map(
                           (limit) => (
                             <ToggleGroupItem
                               key={limit}

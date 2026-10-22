@@ -1,5 +1,6 @@
 'use client';
 
+import { getConfiguration } from '@/lib/api/config';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PriceHistoryPlot } from './price-history-plot';
@@ -14,6 +15,7 @@ import {
 } from '@/components/ui/empty';
 import {
   chartTimeframes,
+  getChartRanges,
   getChart,
   type ChartRange,
 } from '@/lib/api/launches/market';
@@ -43,7 +45,10 @@ export function IndexedPriceChart({
   active?: boolean;
   embedded?: boolean;
 }) {
-  const [range, setRange] = useState<ChartRange>('1D');
+  const rules = getConfiguration().rules.chart;
+  const supportedRanges = getChartRanges();
+  const defaultRange = supportedRanges.find(range => range === rules.defaultLegacyRange) ?? supportedRanges[0];
+  const [range, setRange] = useState<ChartRange>(defaultRange ?? '1D');
   const visible = usePageVisible() && active;
   const client = useQueryClient();
   const query = useQuery({
@@ -53,10 +58,10 @@ export function IndexedPriceChart({
       'chart',
       range,
       chartTimeframes[range],
-      { limit: 1000, window: range, to: 'server-now' },
+      { limit: rules.defaultLimit, window: range, to: 'server-now' },
     ],
     queryFn: ({ signal }) => getChart(address, network, range, signal),
-    enabled: visible,
+    enabled: visible && supportedRanges.includes(range),
   });
   useEffect(() => {
     if (!visible)
@@ -79,7 +84,7 @@ export function IndexedPriceChart({
     Date.parse(candle.timestamp),
     formatExactPrice(candle.close ?? candle.latestPrice, query.data.priceScale),
   ]));
-  const content = query.isPending ? (
+  const content = !supportedRanges.length ? <p role="status" className="p-4 text-small text-muted-foreground">Price history is not configured for the supported chart ranges.</p> : query.isPending ? (
     <Skeleton className={embedded ? 'h-full min-h-0 w-full' : 'h-60 w-full'} />
   ) : query.isError && !query.data ? (
     <Empty className={embedded ? 'h-full min-h-0 p-3' : undefined}>

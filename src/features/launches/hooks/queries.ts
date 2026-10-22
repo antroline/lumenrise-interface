@@ -1,5 +1,6 @@
 'use client';
 
+import { getConfiguration } from '../../../lib/api/config';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../../../lib/api/client';
@@ -60,19 +61,20 @@ export function useLaunchDetail(id: string, network: ApiNetwork) {
 export function useCreatorLaunches(owner: string | undefined, network: ApiNetwork) {
   const visible = usePageVisible();
   const client = useQueryClient();
-  const queryKey = launchListKey(network, 1, 20, owner);
+  const limit = getConfiguration().rules.launches.defaultLimit;
+  const queryKey = launchListKey(network, 1, limit, owner);
   const query = useQuery({
     ...publicQueryOptions,
     queryKey,
-    queryFn: ({ signal }) => getLaunchList(network, 1, 20, owner, signal),
+    queryFn: ({ signal }) => getLaunchList(network, 1, limit, owner, signal),
     enabled: visible && !!owner,
   });
   useEffect(() => {
     if (!visible)
       void client.cancelQueries({
-        queryKey: launchListKey(network, 1, 20, owner),
+        queryKey: launchListKey(network, 1, limit, owner),
       });
-  }, [client, network, owner, visible]);
+  }, [client, network, owner, visible, limit]);
   return query;
 }
 

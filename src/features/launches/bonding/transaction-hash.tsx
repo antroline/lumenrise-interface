@@ -1,3 +1,4 @@
+import { API_NETWORK } from '@/lib/stellar/network';
 export function TransactionHash({
   hash,
   label,
@@ -13,7 +14,7 @@ export function TransactionHash({
       target="_blank"
       rel="noreferrer"
       title={hash}
-      href={`https://stellar.expert/explorer/testnet/tx/${hash}`}
+      href={`https://stellar.expert/explorer/${API_NETWORK}/tx/${hash}`}
     >
       {label}{!compact && `: ${hash}`}
     </a>

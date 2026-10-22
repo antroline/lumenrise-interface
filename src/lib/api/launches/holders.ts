@@ -1,3 +1,4 @@
+import { getConfiguration } from '../config';
 import { StrKey } from '@stellar/stellar-sdk';
 import { ApiError, apiRequest } from '../client';
 import type { ApiNetwork } from './types';
@@ -21,13 +22,15 @@ export async function getHolders(
   options: { cursor?: string; limit?: number } = {},
   signal?: AbortSignal,
 ): Promise<HoldersResult> {
-  const limit = options.limit ?? 20;
+  const rule = getConfiguration().rules.holders;
+  const limit = options.limit ?? rule.defaultLimit;
   if (
     !StrKey.isValidContract(contractId) ||
     (network !== 'testnet' && network !== 'public') ||
     !Number.isInteger(limit) ||
-    limit < 1 ||
-    limit > 100
+    limit < rule.minLimit ||
+    limit > rule.maxLimit ||
+    (options.cursor?.length ?? 0) > rule.cursorMaxLength
   ) {
     throw new ApiError('Invalid holder query', 'http', { status: 400 });
   }

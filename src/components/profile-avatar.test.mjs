@@ -1,3 +1,4 @@
+import { configurationModule, networkModule } from '../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -18,7 +19,7 @@ function load(filename, mocks) {
   }).outputText;
   runInNewContext(output, {
     module, exports: module.exports,
-    require: (name) => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx } : name in mocks ? mocks[name] : require(name),
+    require: (name) => name === '@/lib/stellar/network' ? networkModule : name === '@/lib/api/config' ? configurationModule : name === 'react/jsx-runtime' ? { jsx, jsxs: jsx } : name in mocks ? mocks[name] : require(name),
   });
   return module.exports;
 }

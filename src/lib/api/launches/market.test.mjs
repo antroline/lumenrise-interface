@@ -1,3 +1,4 @@
+import { configurationModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -106,6 +107,8 @@ const chart = {
 const same = (a, b) => assert.deepEqual(JSON.parse(JSON.stringify(a)), b);
 function load(filename, globals, cache = new Map()) {
   const path = resolve(directory, filename);
+  if (path.replaceAll('\\', '/').endsWith('/lib/api/config.ts')) return configurationModule;
+  if (path.replaceAll('\\', '/').endsWith('/lib/stellar/network.ts')) return networkModule;
   if (cache.has(path)) return cache.get(path).exports;
   const module = { exports: {} };
   cache.set(path, module);
@@ -134,7 +137,7 @@ function load(filename, globals, cache = new Map()) {
       setTimeout,
       clearTimeout,
       console,
-      require: (name) =>
+      require: (name) => name.endsWith('/api/config') ? configurationModule : name === '@/lib/stellar/network' ? networkModule :
         name.startsWith('.')
           ? load(resolve(dirname(path), `${name}.ts`), globals, cache)
           : name.startsWith('@/')
@@ -701,7 +704,7 @@ test('holders lifecycle scopes pages, blocks duplicate loads, resets on refresh 
     },
   };
   const hook = load('../../../features/launches/hooks/use-holders.ts', {
-    require: (name) => name === 'react' ? react
+    require: (name) => name.endsWith('/api/config') ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name === 'react' ? react
       : name === '@tanstack/react-query' ? {
         useQuery: (value) => { options = value; return query; }, useQueryClient: () => client,
       } : name === './queries' ? {
@@ -762,7 +765,7 @@ test('holders lifecycle scopes pages, blocks duplicate loads, resets on refresh 
 test('holder UI distinguishes loading, empty, failures and populated balances with retry/load-more actions', () => {
   const jsx = (type, props) => ({ type, props });
   const { IndexedHolders } = load('../../../features/launches/trading/indexed-holders.tsx', {
-    require: (name) => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
+    require: (name) => name.endsWith('/api/config') ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
       : name === '@/lib/api/launches/holders' ? harness().holders
       : name === './trade-table-style' ? { tradeTableClass: 'existing-table' }
       : Object.fromEntries(['Blockie', 'Button', 'Empty', 'EmptyHeader', 'EmptyTitle', 'EmptyDescription',
@@ -802,7 +805,7 @@ test('price history preserves observed data and range wiring, with loading/insuf
   let selected = '1D', options;
   let query = { isPending: true, isError: false, refetch() {} };
   const { IndexedPriceChart } = load('../../../features/launches/trading/indexed-price-chart.tsx', {
-    require: name => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
+    require: name => name.endsWith('/api/config') ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
       : name === 'react' ? { useState: initial => [typeof initial === 'string' ? selected : initial, value => { selected = value; }], useEffect() {}, useRef: () => ({ current: null }) }
       : name === '@tanstack/react-query' ? { useQuery: value => { options = value; return query; }, useQueryClient: () => ({}) }
       : name === '@/lib/api/launches/market' ? h.api

@@ -1,11 +1,12 @@
 'use client';
+import { API_NETWORK } from '@/lib/stellar/network';
 
 import { Button } from '@/components/ui/button';
 import type { ApiNetwork } from '@/lib/api/launches/types';
 import { ProjectMarquee } from './project-marquee';
 import { useHomeLaunches } from './use-home-launches';
 
-export function LaunchBrowser({ network }: { network: ApiNetwork }) {
+export function LaunchBrowser({ network = API_NETWORK }: { network?: ApiNetwork }) {
   const { query, launches } = useHomeLaunches(network);
 
   return (

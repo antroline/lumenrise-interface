@@ -1,3 +1,4 @@
+import { configurationModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -20,18 +21,20 @@ function harness({ result = {}, status = 200, bitmap = { width: 128, height: 128
   let closed = 0;
   function load(filename) {
     const path = resolve(directory, filename);
+  if (path.replaceAll('\\', '/').endsWith('/lib/api/config.ts')) return configurationModule;
+  if (path.replaceAll('\\', '/').endsWith('/lib/stellar/network.ts')) return networkModule;
     if (cache.has(path)) return cache.get(path);
     const module = { exports: {} };
     cache.set(path, module.exports);
     const output = ts.transpileModule(readFileSync(path, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
     runInNewContext(output, {
-      module, exports: module.exports, URL, FormData, File, AbortController, Error, setTimeout, clearTimeout,
+      module, exports: module.exports, URLSearchParams, URL, FormData, File, AbortController, Error, setTimeout, clearTimeout,
       createImageBitmap: async () => ({ ...bitmap, close: () => closed++ }),
       fetch: async (url, init) => {
         calls.push({ url, init });
         return { ok: status < 400, status, text: async () => JSON.stringify({ status: status < 400 ? 'success' : 'error', message: 'Server response', result }) };
       },
-      require: (name) => name.startsWith('.') ? load(resolve(dirname(path), `${name}.ts`)) : require(name),
+      require: (name) => name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name.startsWith('.') ? load(resolve(dirname(path), `${name}.ts`)) : require(name),
     }, { filename: path });
     return module.exports;
   }

@@ -97,7 +97,7 @@ export function BondingCurvePage({
       )}
       {network !== API_NETWORK && (
         <p className="text-small text-muted-foreground">
-          Wallet trading is currently configured for Testnet.
+          Wallet trading is configured for {API_NETWORK === 'public' ? 'Mainnet' : 'Testnet'}.
         </p>
       )}
       {queueFeedback}
@@ -243,7 +243,7 @@ export function BondingCurvePage({
         )}
         {account.data === null && (
           <p role="alert" className="text-destructive">
-            This wallet is not funded on Testnet. Fund it with XLM before
+            This wallet is not funded on {API_NETWORK === 'public' ? 'Mainnet' : 'Testnet'}. Fund it with XLM before
             trading.
           </p>
         )}

@@ -1,5 +1,7 @@
 'use client';
 
+import { API_NETWORK } from '@/lib/stellar/network';
+import { getConfiguration } from '@/lib/api/config';
 import Link from 'next/link';
 import { ChevronDown, Copy, LogOut, Settings, UserRound, Wallet } from 'lucide-react';
 import { ProfileAvatar } from '@/components/profile-avatar';
@@ -117,16 +119,20 @@ export function WalletButton({
         <DropdownMenuSeparator className="mx-1 my-2 bg-divider" />
         <DropdownMenuGroup>
           <DropdownMenuLabel className="px-3 pb-2 text-xs font-medium text-muted-foreground">
-            Network display
+            Network
           </DropdownMenuLabel>
           <DropdownMenuRadioGroup
-            value="Testnet"
+            value={API_NETWORK}
+            onValueChange={(network) => {
+              if (network !== API_NETWORK && getConfiguration().network.supported.some(value => value === network))
+                window.location.assign('/launches?network=' + network);
+            }}
             className="grid grid-cols-2 gap-1 rounded-xl bg-secondary/70 p-1"
           >
-            <DropdownMenuRadioItem value="Testnet" className="min-h-11 rounded-lg pl-3 text-xs font-medium focus:bg-card focus:text-foreground data-checked:bg-card data-checked:text-foreground">
+            <DropdownMenuRadioItem value="testnet" disabled={!getConfiguration().network.supported.includes('testnet')} className="min-h-11 rounded-lg pl-3 text-xs font-medium focus:bg-card focus:text-foreground data-checked:bg-card data-checked:text-foreground">
               Testnet
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="Mainnet" disabled className="min-h-11 gap-1 rounded-lg pl-2 text-xs font-medium focus:bg-card focus:text-foreground data-checked:bg-card data-checked:text-foreground">
+            <DropdownMenuRadioItem value="public" disabled={!getConfiguration().network.supported.includes('public')} className="min-h-11 gap-1 rounded-lg pl-2 text-xs font-medium focus:bg-card focus:text-foreground data-checked:bg-card data-checked:text-foreground">
               Mainnet
             </DropdownMenuRadioItem>
           </DropdownMenuRadioGroup>
@@ -137,7 +143,7 @@ export function WalletButton({
             <UserRound className="text-muted-foreground" />
             Wallet profile
           </DropdownMenuItem>
-          <DropdownMenuItem className="min-h-11 gap-3 rounded-lg px-3 focus:bg-secondary focus:text-foreground" render={<Link href={settingsItem.href} onClick={onNavigate} />}>
+          <DropdownMenuItem className="min-h-11 gap-3 rounded-lg px-3 focus:bg-secondary focus:text-foreground" render={<Link href={`${settingsItem.href}?network=${API_NETWORK}`} onClick={onNavigate} />}>
             <Settings className="text-muted-foreground" />
             Account settings
           </DropdownMenuItem>

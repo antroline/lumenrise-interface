@@ -1,3 +1,4 @@
+import { configurationModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -31,6 +32,8 @@ class ApiError extends Error {
 // No signatures, image uploads, or live transactions are submitted by these tests.
 function loadSource(filename, mocks = { '@bluxcc/react': {} }, globals = {}, cache = new Map()) {
   const path = resolve(directory, filename);
+  if (path.replaceAll('\\', '/').endsWith('/lib/api/config.ts')) return configurationModule;
+  if (path.replaceAll('\\', '/').endsWith('/lib/stellar/network.ts')) return networkModule;
   if (cache.has(path)) return cache.get(path);
   const module = { exports: {} };
   cache.set(path, module.exports);
@@ -38,9 +41,9 @@ function loadSource(filename, mocks = { '@bluxcc/react': {} }, globals = {}, cac
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
   runInNewContext(output, {
-    module, exports: module.exports, Date, Error,
-    process: { env: { NEXT_PUBLIC_FACTORY_CONTRACT_ID: curve } },
-    require: (name) => name in mocks ? mocks[name] : name.startsWith('.')
+    module, exports: module.exports, URLSearchParams, Date, Error,
+    URL,
+    require: (name) => name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name in mocks ? mocks[name] : name.startsWith('.')
       ? loadSource(resolve(dirname(path), `${name}.ts`), mocks, globals, cache)
       : require(name),
     ...globals,

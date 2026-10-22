@@ -1,4 +1,5 @@
 'use client';
+import { API_NETWORK } from '@/lib/stellar/network';
 
 import { forwardRef, useEffect, useRef, type ReactNode } from 'react';
 import { AnimatePresence, motion, useIsPresent } from 'motion/react';
@@ -359,7 +360,7 @@ export function LaunchCompletion({
                 >
                   {hash && (
                     <Link
-                      href={`https://stellar.expert/explorer/testnet/tx/${hash}`}
+                      href={`https://stellar.expert/explorer/${API_NETWORK}/tx/${hash}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={`View transaction for ${step.title}`}
@@ -394,7 +395,7 @@ export function LaunchCompletion({
               )}
               {success && operation.curveAddress && (
                 <Link
-                  href={`/launch/${operation.curveAddress}`}
+                  href={`/launch/${operation.curveAddress}?network=${API_NETWORK}`}
                   className={buttonVariants({ size: 'lg' })}
                 >
                   View launch <ArrowUpRight data-icon="inline-end" />

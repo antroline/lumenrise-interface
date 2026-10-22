@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBlux, useWriteContract } from '@bluxcc/react';
 import { Keypair, scValToNative, StrKey } from '@stellar/stellar-sdk';
+import { LAUNCH_CONFIGURED } from '@/lib/stellar/network';
 import { ApiError } from '@/lib/api/client';
 import {
   fileFromDataUrl,
@@ -40,7 +41,7 @@ import {
   transactionHash,
 } from '../lib/transactions';
 
-const STORAGE_PREFIX = 'launchpad:testnet-bonding:';
+const storagePrefix = () => `launchpad:${API_NETWORK}-bonding:`;
 export const BONDING_AUTH_RETURN_KEY = 'launchpad:bonding-auth-return';
 /** The uploaded logo stored beside a launch record so retries reuse it. */
 type LaunchImageRecord = {
@@ -56,7 +57,7 @@ type BondingRecord = {
 };
 
 function recordKey(owner: string, input: LaunchInput) {
-  return `${STORAGE_PREFIX}${owner}:${encodeURIComponent(input.name)}:${input.code}:${toUnits(input.amount)}`;
+  return `${storagePrefix()}${owner}:${encodeURIComponent(input.name)}:${input.code}:${toUnits(input.amount)}`;
 }
 
 function matchesInput(token: LaunchInput, input: LaunchInput) {
@@ -125,7 +126,7 @@ function loadRecord(owner: string, input: LaunchInput): BondingRecord | null {
 
   // Older versions kept one launch per wallet. Migrate only the matching token,
   // preserving every transaction hash and the issuer key needed to resume it.
-  const legacyKey = `${STORAGE_PREFIX}${owner}`;
+  const legacyKey = `${storagePrefix()}${owner}`;
   const legacy = localStorage.getItem(legacyKey);
   if (!legacy) return null;
   const record = readRecord(legacy, owner);
@@ -310,12 +311,13 @@ export function useBondingLaunch() {
       if (!user) {
         setOperation(null);
         sessionStorage.setItem(BONDING_AUTH_RETURN_KEY, JSON.stringify(draft));
-        await account.login('/create');
+        await account.login(`/create?network=${API_NETWORK}`);
         return;
       }
       report('check', 'Checking your wallet and launch settings.');
-      if (!FACTORY_CONTRACT_ID)
-        throw new Error('Set NEXT_PUBLIC_FACTORY_CONTRACT_ID before launching a curve.');
+      if (API_NETWORK !== 'testnet') throw new Error('Payment assets for creating launches are not configured on this network.');
+      if (!LAUNCH_CONFIGURED || !FACTORY_CONTRACT_ID)
+        throw new Error('Launching is not configured by the server for this network.');
       const owner = user.address;
       requireCreator(owner);
       requireRegisteredAccount(account.account);
@@ -542,5 +544,5 @@ export function useBondingLaunch() {
     }
   }
 
-  return { launch, working, isReady, operation };
+  return { launch, working, isReady: isReady && LAUNCH_CONFIGURED && API_NETWORK === 'testnet', operation };
 }

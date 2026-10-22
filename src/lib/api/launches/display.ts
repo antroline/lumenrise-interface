@@ -1,4 +1,5 @@
-import { Asset, Networks } from '@stellar/stellar-sdk';
+import { getConfiguration } from '../config';
+import { Asset } from '@stellar/stellar-sdk';
 import { formatAmount } from '@/lib/stellar/amount';
 import type { ApiNetwork } from './types';
 import type { ChartHistory } from './market';
@@ -52,7 +53,7 @@ export function pairLabel(pair: string | undefined, network: ApiNetwork) {
   if (
     pair ===
     Asset.native().contractId(
-      network === 'public' ? Networks.PUBLIC : Networks.TESTNET,
+      getConfiguration().network.configurations[network].networkPassphrase,
     )
   )
     return 'XLM';

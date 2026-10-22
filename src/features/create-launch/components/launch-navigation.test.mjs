@@ -1,3 +1,4 @@
+import { networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
@@ -16,7 +17,8 @@ const mocks = {
   '@/components/ui/button': { Button: 'Button', buttonVariants: () => 'button' },
   '@/lib/utils': { cn: (...values) => values.filter(Boolean).join(' ') },
 };
-runInNewContext(source, { module, exports: module.exports, require: (name) => {
+runInNewContext(source, { module, exports: module.exports, URLSearchParams, require: (name) => {
+  if (name === '@/lib/stellar/network') return networkModule;
   if (!(name in mocks)) throw new Error(`Unexpected import: ${name}`);
   return mocks[name];
 } });
@@ -30,7 +32,7 @@ const actions = (overrides = {}) => LaunchNavigation({ ...props, ...overrides })
 test('indexed success replaces launch submission with a link to the created launch, even after wallet disconnect', () => {
   const nodes = actions({ launchAddress: 'confirmed-curve', ready: false, accountReady: false });
   const link = nodes.find((node) => node.type === 'Link');
-  assert.equal(link.props.href, '/launch/confirmed-curve');
+  assert.equal(link.props.href, '/launch/confirmed-curve?network=testnet');
   assert.ok(link.props.children.includes('View launch '));
   assert.ok(!nodes.some((node) => node.props.onClick === props.onLaunch));
 });
