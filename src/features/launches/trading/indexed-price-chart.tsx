@@ -96,18 +96,16 @@ export function IndexedPriceChart({
         Retry
       </Button>
     </Empty>
-  ) : precisionError || points.length < 2 ? (
+  ) : precisionError || points.length === 0 ? (
     <Empty className={embedded ? 'h-full min-h-0 p-3' : 'min-h-60'}>
       <EmptyHeader>
         <EmptyTitle>
           {precisionError
             ? 'Price chart unavailable'
-            : points.length === 1 ? 'Not enough price history' : 'Price history not available yet'}
+            : 'Price history not available yet'}
         </EmptyTitle>
         <EmptyDescription>
-          {precisionError || (points.length === 1
-            ? 'At least two recorded prices are needed to draw price history.'
-            : 'Recorded prices will appear here when available.')}
+          {precisionError || 'Recorded prices will appear here when available.'}
         </EmptyDescription>
       </EmptyHeader>
     </Empty>

@@ -25,6 +25,13 @@ test('tooltip preserves indexed integer precision and scale', () => {
   assert.equal(formatExactPrice('0', 7), '0');
 });
 
+test('compact price labels fit narrow charts without rounding tiny prices to zero', () => {
+  assert.equal(formatPriceAxis(0.000037944, true), '0.0000379');
+  assert.equal(formatPriceAxis(1e-24, true), '1.00e-24');
+  assert.equal(formatPriceAxis(1234567890123, true), '1.23e+12');
+  assert.equal(formatPriceAxis(0, true), '0');
+});
+
 test('flat, zero and very small domains remain finite without fixed decimal padding', () => {
   assert.deepEqual(priceDomain([2, 2]), [1.96, 2.04]);
   assert.deepEqual(priceDomain([0, 0]), [0, 1]);

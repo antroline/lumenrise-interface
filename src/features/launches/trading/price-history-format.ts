@@ -1,9 +1,10 @@
-/** Decimal labels retain small prices without switching to scientific notation. */
-export function formatPriceAxis(value: number) {
-  return value.toLocaleString('en-US', {
+/** Keep decimal labels, abbreviating only long values on narrow charts. */
+export function formatPriceAxis(value: number, compact = false) {
+  const label = value.toLocaleString('en-US', {
     notation: 'standard',
-    maximumSignificantDigits: 6,
+    maximumSignificantDigits: compact ? 3 : 6,
   });
+  return compact && label.length > 10 ? value.toExponential(2) : label;
 }
 
 /** Preserve every indexed digit in the tooltip, independently of SVG precision. */

@@ -832,7 +832,9 @@ test('price history preserves observed data and range wiring, with loading/insuf
   query = { ...query, isError: false, data: { ...chart, items: [], from: null } };
   assert.ok(render()[1].includes('Price history not available yet'));
   query = { ...query, data: { ...chart, items: [candle], from: '2026-10-11T12:00:00Z' } };
-  assert.ok(render()[1].includes('Not enough price history'));
+  const singlePointPlot = render()[1].find(node => node?.type === 'PriceHistoryPlot');
+  assert.equal(singlePointPlot.props.points.length, 1);
+  assert.equal(singlePointPlot.props.points[0].price, h.display.chartPoints(query.data)[0].price);
   const earlier = { ...candle, timestamp: '2026-10-11T13:00:00Z' };
   query = { ...query, data: { ...query.data, items: [candle, earlier] } };
   const plot = render()[1].find(node => node?.type === 'PriceHistoryPlot');
