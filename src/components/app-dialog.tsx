@@ -9,14 +9,14 @@ import styles from './app-dialog.module.css';
 /** Application modal frame, extracted from the three-signature launch dialog.
  * Keep CommandDialog on the UI primitive so global search stays independent.
  */
-export function AppDialogContent({ className, overlayProps, children, ...props }: ComponentProps<typeof DialogContent>) {
+export function AppDialogContent({ className, overlayProps, children, animateSize = true, ...props }: ComponentProps<typeof DialogContent> & { animateSize?: boolean }) {
   const reduced = useReducedMotion();
 
   // The portal mounts on open; a callback ref observes each mount, including reopenings.
   const observeBody = useCallback((body: HTMLDivElement | null) => {
     const viewport = body?.parentElement;
     const popup = viewport?.parentElement;
-    if (!body || !viewport || !popup || reduced !== false) return;
+    if (!animateSize || !body || !viewport || !popup || reduced !== false) return;
 
     let animation: ReturnType<typeof animate> | undefined;
     let previousHeight = popup.offsetHeight;
@@ -63,7 +63,7 @@ export function AppDialogContent({ className, overlayProps, children, ...props }
       delete viewport.dataset.resizing;
       popup.style.removeProperty('height');
     };
-  }, [reduced]);
+  }, [animateSize, reduced]);
 
   return (
     <DialogContent
@@ -83,7 +83,7 @@ export function AppDialogContent({ className, overlayProps, children, ...props }
 
 export function AppDialogHeader({ title, description, leading, descriptionTitle, truncateDescription = false }: {
   title: ReactNode;
-  description: ReactNode;
+  description?: ReactNode;
   leading?: ReactNode;
   descriptionTitle?: string;
   truncateDescription?: boolean;
@@ -93,9 +93,9 @@ export function AppDialogHeader({ title, description, leading, descriptionTitle,
       {leading}
       <div className="min-w-0">
         <DialogTitle className="text-lg leading-tight tracking-tight">{title}</DialogTitle>
-        <DialogDescription className={cn('mt-1', truncateDescription && 'truncate')} title={descriptionTitle}>
+        {description && <DialogDescription className={cn('mt-1', truncateDescription && 'truncate')} title={descriptionTitle}>
           {description}
-        </DialogDescription>
+        </DialogDescription>}
       </div>
     </DialogHeader>
   );

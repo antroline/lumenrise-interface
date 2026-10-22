@@ -460,6 +460,41 @@
   animation: marquee 72s linear infinite;
 }
 
+/* Reputation map: one signal travels at a time on a 9s cycle, staggered 3s per source. */
+@keyframes reputation-signal-pulse {
+  0% { stroke-dashoffset: 8; opacity: 0; }
+  4% { opacity: 1; }
+  28% { opacity: 1; }
+  32% { stroke-dashoffset: -92; opacity: 0; }
+  100% { stroke-dashoffset: -92; opacity: 0; }
+}
+
+@keyframes reputation-signal-source {
+  0% { opacity: 0; }
+  4% { opacity: 1; }
+  20%, 100% { opacity: 0; }
+}
+
+@keyframes reputation-signal-arrival {
+  0%, 28% { opacity: 0; transform: scale(0.6); }
+  31% { opacity: 0.9; }
+  44%, 100% { opacity: 0; transform: scale(1.5); }
+}
+
+.reputation-signal-pulse {
+  animation: reputation-signal-pulse 9s cubic-bezier(0.45, 0, 0.25, 1) infinite both;
+}
+
+.reputation-signal-source {
+  animation: reputation-signal-source 9s ease-out infinite both;
+}
+
+.reputation-signal-arrival {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: reputation-signal-arrival 9s ease-out infinite both;
+}
+
 /* Uppercase caption used for field labels, table heads and nav groups. */
 @utility caps {
   font-family: var(--font-mono);
@@ -622,13 +657,6 @@
   padding: 0 0 20px;
   background: transparent;
   box-shadow: none;
-}
-
-.launch-sections
-  :where([aria-label='Founder'], [aria-label='Team members'] > li) {
-  padding-inline: 0;
-  border: 0;
-  background: transparent;
 }
 
 .launch-sections [aria-label='Holder wallets'] > li {

@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select';
 import type { QuoteToken } from '../../lib/launch-draft';
 import { cn } from '@/lib/utils';
-import { launchFieldSurfaceClassName } from './field-controls';
+import { fieldSurfaceClassName as launchFieldSurfaceClassName } from '@/components/form-controls';
 import { QuoteIcon } from './quote-icon';
 
 export function QuoteChoice({
