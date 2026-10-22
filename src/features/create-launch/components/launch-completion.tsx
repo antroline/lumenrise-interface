@@ -393,9 +393,9 @@ export function LaunchCompletion({
                   {idle ? 'Connect wallet to continue' : 'Check / retry'}
                 </Button>
               )}
-              {success && operation.curveAddress && (
+              {success && operation.slug && (
                 <Link
-                  href={`/launch/${operation.curveAddress}?network=${API_NETWORK}`}
+                  href={`/launches/${operation.slug}?network=${API_NETWORK}`}
                   className={buttonVariants({ size: 'lg' })}
                 >
                   View launch <ArrowUpRight data-icon="inline-end" />

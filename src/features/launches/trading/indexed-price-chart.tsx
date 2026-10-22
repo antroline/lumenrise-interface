@@ -29,7 +29,7 @@ import type { ApiNetwork } from '@/lib/api/launches/types';
 import { PriceChart } from './price-chart';
 
 export function IndexedPriceChart({
-  address,
+  slug,
   network,
   ticker,
   pair,
@@ -37,7 +37,7 @@ export function IndexedPriceChart({
   active = true,
   embedded = false,
 }: {
-  address: string;
+  slug: string;
   network: ApiNetwork;
   ticker: string;
   pair: string;
@@ -54,21 +54,21 @@ export function IndexedPriceChart({
   const query = useQuery({
     ...publicQueryOptions,
     queryKey: [
-      ...launchKey(network, address),
+      ...launchKey(network, slug),
       'chart',
       range,
       chartTimeframes[range],
       { limit: rules.defaultLimit, window: range, to: 'server-now' },
     ],
-    queryFn: ({ signal }) => getChart(address, network, range, signal),
-    enabled: visible && supportedRanges.includes(range),
+    queryFn: ({ signal }) => getChart(slug, network, range, signal),
+    enabled: visible && !!slug && supportedRanges.includes(range),
   });
   useEffect(() => {
     if (!visible)
       void client.cancelQueries({
-        queryKey: [...launchKey(network, address), 'chart', range],
+        queryKey: [...launchKey(network, slug), 'chart', range],
       });
-  }, [client, address, network, range, visible]);
+  }, [client, slug, network, range, visible]);
   let points: ReturnType<typeof chartPoints> = [],
     precisionError = '';
   try {

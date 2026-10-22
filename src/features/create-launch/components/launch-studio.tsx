@@ -143,7 +143,18 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
   const currentStage = visibleSteps[step] ?? visibleSteps[0];
   const currentStep = currentStage.id;
   const currentIndex = step;
+  const nameConflict = bondingLaunch.nameConflict?.name === draft.name ? bondingLaunch.nameConflict : null;
+  useEffect(() => {
+    if (!nameConflict) return;
+    const frame = requestAnimationFrame(() => {
+      setCompleting(false);
+      setStep(launchStageIndex('project'));
+      requestAnimationFrame(() => document.getElementById('project-name')?.focus());
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [nameConflict]);
   const fieldErrors = showErrors ? validateLaunchStage(draft, currentStage) : {};
+  if (nameConflict) fieldErrors['project-name'] = nameConflict.message;
 
   function goToStep(nextStep: number) {
     setDirection(nextStep < step ? 'back' : 'forward');
@@ -155,7 +166,7 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
   function next() {
     const errors = validateLaunchStage(draft, currentStage);
     const firstError = Object.keys(errors)[0];
-    if (firstError) {
+    if (firstError || nameConflict) {
       setShowErrors(true);
       requestAnimationFrame(() => document.getElementById(firstError === 'team-cliff' || firstError === 'team-vesting' ? 'team-vesting-control' : firstError)?.focus());
       return;
@@ -240,7 +251,7 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
               working={bondingLaunch.working}
               accountReady={accountReady}
               hasMoreContent={hasMoreContent}
-              launchAddress={bondingLaunch.operation?.status === 'success' ? bondingLaunch.operation.curveAddress : undefined}
+              launchSlug={bondingLaunch.operation?.status === 'success' ? bondingLaunch.operation.slug : undefined}
               onBack={() => goToStep(step - 1)}
               onNext={next}
               onLaunch={launchBondingCurve}

@@ -45,6 +45,8 @@ const storagePrefix = () => `launchpad:${API_NETWORK}-bonding:`;
 export const BONDING_AUTH_RETURN_KEY = 'launchpad:bonding-auth-return';
 /** The uploaded logo stored beside a launch record so retries reuse it. */
 type LaunchImageRecord = {
+  name?: string;
+  slug?: string;
   imageId: string;
   publicUrl: string;
   fingerprint: string;
@@ -79,6 +81,8 @@ function readImageRecord(value: unknown): LaunchImageRecord {
     typeof value.fingerprint === 'string'
   )
     return {
+      name: 'name' in value && typeof value.name === 'string' ? value.name : undefined,
+      slug: 'slug' in value && typeof value.slug === 'string' ? value.slug : undefined,
       imageId: value.imageId,
       publicUrl: value.publicUrl,
       fingerprint: value.fingerprint,
@@ -149,7 +153,7 @@ function saveRecord(record: BondingRecord) {
  */
 function imageFingerprint(draft: LaunchDraft, owner: string) {
   const input = JSON.stringify([
-    API_NETWORK, owner, draft.logo, draft.website.trim(), draft.xAccount.trim(),
+    API_NETWORK, owner, draft.name, draft.logo, draft.website.trim(), draft.xAccount.trim(),
   ]);
   let first = 0x811c9dc5;
   let second = 0x811c9dc5 ^ 0x9e3779b9;
@@ -197,6 +201,7 @@ export function useBondingLaunch() {
   const [working, setWorking] = useState(false);
   const [operation, setOperation] = useState<LaunchOperation | null>(null);
   const running = useRef(false);
+  const [nameConflict, setNameConflict] = useState<{ name: string; message: string } | null>(null);
 
   function report(
     step: LaunchOperationStep,
@@ -213,13 +218,14 @@ export function useBondingLaunch() {
     }));
   }
 
-  function complete(address: string, hash?: string) {
+  function complete(address: string, slug: string, hash?: string) {
     setOperation((current) => ({
       step: 'index',
       status: 'success',
       phase: 'confirming',
       message: 'Your launch is confirmed and the project page is ready.',
       curveAddress: address,
+      slug,
       hash,
       transactionHashes: {
         ...current?.transactionHashes,
@@ -234,18 +240,24 @@ export function useBondingLaunch() {
    * the user at the token page; a still-pending index is not a launch failure
    * and never triggers another transaction.
    */
-  async function finish(address: string, hash?: string) {
+  async function finish(address: string, image: LaunchImageRecord | undefined, hash?: string) {
     report(
       'index', 'Confirmed on Stellar. Preparing your project page.',
       'confirming', hash,
     );
-    const result = await waitForIndexedLaunch(address, API_NETWORK);
+    let slug = image?.slug;
+    if (!slug && image) {
+      const info = await getLaunchImage(image.imageId);
+      slug = info.slug ?? undefined;
+    }
+    if (!slug) throw new Error('Your launch is confirmed on Stellar. The project page is still preparing — check again in a moment.');
+    const result = await waitForIndexedLaunch(slug, API_NETWORK);
     if (result !== 'ready')
       throw new Error(
         'Your launch is confirmed on Stellar. The project page is still preparing — check again in a moment.',
       );
     router.refresh();
-    complete(address, hash);
+    complete(address, slug, hash);
   }
 
   /**
@@ -257,7 +269,7 @@ export function useBondingLaunch() {
     draft: LaunchDraft,
     saved: BondingRecord | null,
     owner: string,
-  ): Promise<LaunchImageRecord> {
+  ): Promise<LaunchImageRecord & { name: string; slug: string }> {
     const fingerprint = imageFingerprint(draft, owner);
     const existing = saved?.image;
     if (existing && existing.fingerprint === fingerprint) {
@@ -265,12 +277,15 @@ export function useBondingLaunch() {
       try {
         const info = await getLaunchImage(existing.imageId);
         if (
+          !!info.slug && !!info.name &&
           info.status !== 'expired' &&
           info.status !== 'deleting' &&
           info.ownerAddress === owner &&
           info.network === API_NETWORK
         ) {
           return {
+            name: info.name,
+            slug: info.slug,
             imageId: info.imageId,
             publicUrl: info.publicUrl,
             fingerprint,
@@ -291,20 +306,27 @@ export function useBondingLaunch() {
     report('logo', 'Uploading your project image.');
     try {
       const uploaded = await uploadLaunchImage({
+        name: draft.name,
         network: API_NETWORK,
         ownerAddress: owner,
         image: fileFromDataUrl(draft.logo),
         website: draft.website,
         xAccount: draft.xAccount,
       });
+      if (!uploaded.name || !uploaded.slug) throw new Error('The server returned an incomplete project reservation.');
       return { ...uploaded, fingerprint };
     } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 409) {
+        setNameConflict({ name: draft.name, message: launchImageErrorMessage(cause) });
+      }
       throw new Error(launchImageErrorMessage(cause));
     }
   }
 
   async function launch(draft: LaunchDraft) {
     if (draft.method !== 'bonding' || running.current) return;
+    if (nameConflict?.name === draft.name) return;
+    setNameConflict(null);
     running.current = true;
     setWorking(true);
     try {
@@ -337,7 +359,7 @@ export function useBondingLaunch() {
         setOperation((current) => current ? { ...current, transactionHashes } : current);
       }
       if (saved?.curveAddress) {
-        await finish(saved.curveAddress, saved.factoryHash);
+        await finish(saved.curveAddress, saved.image, saved.factoryHash);
         return;
       }
       // Recover a submitted factory call before considering another transfer.
@@ -352,7 +374,7 @@ export function useBondingLaunch() {
             result.returnValue ? scValToNative(result.returnValue) : null,
           );
           saveRecord({ ...saved, curveAddress: address });
-          await finish(address, saved.factoryHash);
+          await finish(address, saved.image, saved.factoryHash);
           return;
         }
         if (result.status !== 'FAILED')
@@ -370,7 +392,7 @@ export function useBondingLaunch() {
         saveRecord(saved);
       }
       // Validate all contract inputs before funding or issuing a token.
-      buildBondingCurveParams(draft, owner, issuer, image.publicUrl);
+      buildBondingCurveParams({ ...draft, name: image.name }, owner, issuer, image.publicUrl);
       if (!saved) {
         report('setup', 'Preparing the issuer account and token trustline.');
         const wallet = await horizon.loadAccount(owner);
@@ -508,7 +530,8 @@ export function useBondingLaunch() {
         throw new Error(
           'Your connected wallet must hold the full token supply before launching the curve.',
         );
-      const params = buildBondingCurveParams(draft, owner, token.issuer, image.publicUrl);
+      const params = buildBondingCurveParams({ ...draft, name: image.name }, owner, token.issuer, image.publicUrl);
+      params.metadata.name = image.name;
       report(
         'curve', 'Approve curve creation and the full supply transfer in your wallet.',
         'approval',
@@ -528,7 +551,7 @@ export function useBondingLaunch() {
       );
       const address = curveAddress(await result.returnValue());
       saveRecord({ token, factoryHash: result.hash, curveAddress: address, image });
-      await finish(address, result.hash);
+      await finish(address, image, result.hash);
     } catch (cause) {
       const message = describeError(cause);
       setOperation((current) =>
@@ -544,5 +567,5 @@ export function useBondingLaunch() {
     }
   }
 
-  return { launch, working, isReady: isReady && LAUNCH_CONFIGURED && API_NETWORK === 'testnet', operation };
+  return { launch, working, nameConflict, isReady: isReady && LAUNCH_CONFIGURED && API_NETWORK === 'testnet', operation };
 }

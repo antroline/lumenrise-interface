@@ -7,6 +7,7 @@ export const QUEUE_EVENT = 'lumenrise:trade-registration-changed';
 export type QueuedTrade = {
   network: ApiNetwork;
   contractId: string;
+  slug?: string;
   transactionHash: string;
   traderAddress: string;
   userId: string | null;
@@ -64,6 +65,7 @@ export function readTradeQueue(): QueuedTrade[] {
           const record = {
             network: t.network,
             contractId: t.contractId,
+            slug: typeof t.slug === 'string' ? t.slug : undefined,
             transactionHash: t.transactionHash,
             traderAddress: t.traderAddress,
             userId: t.userId,
@@ -89,6 +91,7 @@ export function enqueueTrade(
   contractId: string,
   transactionHash: string,
   traderAddress: string,
+  slug?: string,
 ): boolean {
   const existing = readTradeQueue().find(
     (t) =>
@@ -97,10 +100,11 @@ export function enqueueTrade(
       t.transactionHash === transactionHash,
   );
   const persisted = existing
-    ? save(existing)
+    ? save({ ...existing, slug: slug ?? existing.slug })
     : save({
         network,
         contractId,
+        slug,
         transactionHash,
         traderAddress,
         userId: getApiUserId(),
@@ -146,12 +150,14 @@ export function retryDelay(error: unknown, attempts: number) {
 export async function flushTradeQueue(options: {
   network: ApiNetwork;
   contractId: string;
+  slug?: string;
   traderAddress?: string;
   signal: AbortSignal;
   onRecorded: () => void;
 }) {
   const userId = getApiUserId();
-  if (!userId || !options.traderAddress || options.signal.aborted) return;
+  const slug = options.slug;
+  if (!userId || !options.traderAddress || !slug || options.signal.aborted) return;
   // Sequential draining bounds network traffic even after many pending trades.
   for (const original of readTradeQueue()) {
     if (options.signal.aborted || getApiUserId() !== userId) break;
@@ -180,7 +186,7 @@ export async function flushTradeQueue(options: {
       save(bound);
       try {
         await recordTrade(
-          trade.contractId,
+          slug,
           trade.network,
           trade.transactionHash,
           options.signal,

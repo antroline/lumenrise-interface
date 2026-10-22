@@ -1,3 +1,4 @@
+import { projectNameError } from '../../../lib/launch-slug';
 import { StrKey } from '@stellar/stellar-sdk';
 import { horizon, soroban } from './transactions';
 
@@ -68,8 +69,8 @@ export function validateAmount(value: string) {
 export function validateInput(input: LaunchInput): LaunchInput {
   const name = input.name.trim();
   const code = input.code.trim().toUpperCase();
-  if (!name || name.length > 40)
-    throw new Error('Enter a name, up to 40 characters.');
+  const nameError = projectNameError(name);
+  if (nameError) throw new Error(nameError);
   if (!/^[A-Z0-9]{1,12}$/.test(code))
     throw new Error('Asset code must be 1 to 12 letters or numbers.');
   return {

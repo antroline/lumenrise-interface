@@ -221,6 +221,7 @@ function harness({ signedIn = true, rejectLogin = false, rejectSetup = false, se
   let transactionCount = 0;
   let factoryCalls = 0;
   let indexChecks = 0;
+  const indexedSlugs = [];
   let indexed = indexResult;
   const store = {
     getItem: (key) => storage.get(key) ?? null,
@@ -239,7 +240,7 @@ function harness({ signedIn = true, rejectLogin = false, rejectSetup = false, se
         let current = value;
         return [value, (next) => {
           current = typeof next === 'function' ? next(current) : next;
-          if (current && typeof current === 'object' && 'status' in current)
+          if (current && typeof current === 'object' && ('status' in current || 'name' in current))
             progress.push(structuredClone(current));
         }];
       },
@@ -257,13 +258,13 @@ function harness({ signedIn = true, rejectLogin = false, rejectSetup = false, se
           const status = uploadFailures.shift();
           throw new ApiError(`Upload failed (${status})`, 'http', { status });
         }
-        return { imageId: `image-${uploads.length}`, publicUrl: IMAGE_URL, status: 'pending' };
+        return { name: 'Server Project', slug: 'server-project', imageId: `image-${uploads.length}`, publicUrl: IMAGE_URL, status: 'pending' };
       },
       getLaunchImage: async (imageId) => {
         events.push('status-check');
         statusChecks.push(imageId);
         return {
-          imageId, publicUrl: IMAGE_URL, status: imageStatus, network: 'testnet', ownerAddress: owner,
+          name: 'Server Project', slug: 'server-project', imageId, publicUrl: IMAGE_URL, status: imageStatus, network: 'testnet', ownerAddress: owner,
           launchContractId: null, assetContractId: null, cleanupReadyAt: null, expiredAt: null,
         };
       },
@@ -298,7 +299,8 @@ function harness({ signedIn = true, rejectLogin = false, rejectSetup = false, se
       account: { status: accountStatus },
     }) },
     '../lib/indexing': {
-      waitForIndexedLaunch: async () => {
+      waitForIndexedLaunch: async (slug) => {
+        indexedSlugs.push(slug);
         events.push('index');
         indexChecks++;
         return indexed;
@@ -325,7 +327,7 @@ function harness({ signedIn = true, rejectLogin = false, rejectSetup = false, se
     },
   }, { localStorage: store, sessionStorage: store });
   return {
-    flow: exports.useBondingLaunch(), storage, calls, sends, messages, progress, events, uploads, statusChecks, refreshes,
+    flow: exports.useBondingLaunch(), indexedSlugs, storage, calls, sends, messages, progress, events, uploads, statusChecks, refreshes,
     factoryCalls: () => factoryCalls,
     indexChecks: () => indexChecks,
     setIndexResult: (value) => { indexed = value; },
@@ -354,6 +356,9 @@ test('only bonding reaches the factory, with the uploaded image URL and explicit
   assert.equal(typeof h.calls[0].call.args[0], 'object');
   // metadata.logo is exactly the URL returned by the image upload.
   assert.equal(h.calls[0].call.args[0].metadata.logo, IMAGE_URL);
+  assert.equal(h.calls[0].call.args[0].metadata.name, 'Server Project');
+  assert.equal(h.uploads[0].name, draft().name);
+  assert.deepEqual(h.indexedSlugs, ['server-project']);
   assert.equal(h.calls[0].options.network, Networks.TESTNET);
   assert.ok(h.sends.every((send) => send.options.network === Networks.TESTNET));
   // The upload ran before any wallet transaction, addressed to the owner.
@@ -819,4 +824,32 @@ test('accepts zero team vesting and maps percentage fees exactly without an expi
   assert.equal(params.vesting.duration_seconds, '0');
   assert.equal(params.curve.creator_fee_bps, 125);
   assert.equal(Object.hasOwn(params, 'ends_at'), false);
+});
+
+
+test('a name conflict preserves the draft, exposes a name error and stops before signing', async () => {
+  const h = harness({ uploadFailures: [409] });
+  const form = draft(), original = structuredClone(form);
+  await h.flow.launch(form);
+  assert.deepEqual(form, original);
+  assert.equal(h.sends.length, 0);
+  assert.equal(h.factoryCalls(), 0);
+  assert.equal(h.storage.size, 0);
+  assert.ok(h.progress.some(value => value?.name === form.name && /409/.test(value.message)));
+  await h.flow.launch({ ...form, name: 'A different project' });
+  assert.equal(h.factoryCalls(), 1);
+});
+
+test('legacy confirmed records without a slug stay in indexing recovery without contract-address API reads', async () => {
+  const h = harness();
+  await h.flow.launch(draft());
+  const [key, stored] = [...h.storage.entries()].find(([key]) => key.startsWith('launchpad:testnet-bonding:'));
+  const record = JSON.parse(stored);
+  delete record.image;
+  h.storage.set(key, JSON.stringify(record));
+  const checks = h.indexedSlugs.length;
+  await h.flow.launch(draft());
+  assert.equal(h.factoryCalls(), 1);
+  assert.equal(h.indexedSlugs.length, checks);
+  assert.match(h.progress.at(-1).message, /still preparing/);
 });

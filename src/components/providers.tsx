@@ -9,7 +9,7 @@ import { AppLoading } from './app-loading'
 
 function ClientAppLoading() {
   const pathname = usePathname()
-  if (!/^\/launch\/[^/]+\/?$/.test(pathname)) return <AppLoading />
+  if (!/^\/launch(?:es)?\/[^/]+\/?$/.test(pathname)) return <AppLoading />
   return (
     <div className="min-h-screen bg-page lg:flex">
       <div aria-hidden="true" className="hidden h-svh w-62 shrink-0 border-r border-sidebar-border bg-sidebar lg:block" />

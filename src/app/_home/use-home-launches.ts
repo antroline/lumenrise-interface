@@ -82,7 +82,7 @@ export function timeUntil(seconds: string | null, now: number) {
 }
 
 export const launchHref = (launch: HomeLaunch, network: ApiNetwork) =>
-  `/launch/${launch.contractId}?network=${network}`;
+  launch.slug ? `/launches/${encodeURIComponent(launch.slug)}?network=${network}` : `/launches?network=${network}`;
 
 export const networkName = (network: ApiNetwork) =>
   network === 'public' ? 'Stellar Mainnet' : 'Stellar Testnet';

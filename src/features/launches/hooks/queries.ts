@@ -12,8 +12,8 @@ import {
 } from '../../../lib/api/launches/market';
 import type { ApiNetwork } from '../../../lib/api/launches/types';
 
-export const launchKey = (network: ApiNetwork, contractId: string) =>
-  ['launch', network, contractId] as const;
+export const launchKey = (network: ApiNetwork, slug: string) =>
+  ['launch', network, slug] as const;
 export const publicQueryOptions = {
   staleTime: 30_000,
   gcTime: 5 * 60_000,
@@ -39,21 +39,21 @@ export function usePageVisible() {
   return visible;
 }
 
-export function useLaunchDetail(id: string, network: ApiNetwork) {
+export function useLaunchDetail(slug: string, network: ApiNetwork) {
   const visible = usePageVisible();
   const client = useQueryClient();
   const query = useQuery({
     ...publicQueryOptions,
-    queryKey: [...launchKey(network, id), 'detail'],
-    queryFn: ({ signal }) => getLaunchDetail(id, network, signal),
-    enabled: visible,
+    queryKey: [...launchKey(network, slug), 'detail'],
+    queryFn: ({ signal }) => getLaunchDetail(slug, network, signal),
+    enabled: visible && !!slug,
   });
   useEffect(() => {
     if (!visible)
       void client.cancelQueries({
-        queryKey: [...launchKey(network, id), 'detail'],
+        queryKey: [...launchKey(network, slug), 'detail'],
       });
-  }, [client, id, network, visible]);
+  }, [client, slug, network, visible]);
   return query;
 }
 
@@ -78,20 +78,20 @@ export function useCreatorLaunches(owner: string | undefined, network: ApiNetwor
   return query;
 }
 
-export function useMarket(id: string, network: ApiNetwork) {
+export function useMarket(slug: string, network: ApiNetwork) {
   const visible = usePageVisible();
   const client = useQueryClient();
   const query = useQuery({
     ...publicQueryOptions,
-    queryKey: [...launchKey(network, id), 'market'],
-    queryFn: ({ signal }) => getMarket(id, network, signal),
-    enabled: visible,
+    queryKey: [...launchKey(network, slug), 'market'],
+    queryFn: ({ signal }) => getMarket(slug, network, signal),
+    enabled: visible && !!slug,
   });
   useEffect(() => {
     if (!visible)
       void client.cancelQueries({
-        queryKey: [...launchKey(network, id), 'market'],
+        queryKey: [...launchKey(network, slug), 'market'],
       });
-  }, [client, id, network, visible]);
+  }, [client, slug, network, visible]);
   return query;
 }

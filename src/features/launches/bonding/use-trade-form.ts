@@ -33,6 +33,7 @@ import type { TradeConfirmation } from './trade-result-dialog';
 import type { TradeFormProps } from './trade-form-types';
 export function useTradeForm({
   address,
+  slug,
   network = API_NETWORK,
   snapshot,
   tokens,
@@ -58,7 +59,7 @@ export function useTradeForm({
   const [awaitingApproval, setAwaitingApproval] = useState(false);
   const visible = usePageVisible();
   function queueHash(hash: string) {
-    if (user && !enqueueTrade(network, address, hash, user.address))
+    if (user && !enqueueTrade(network, address, hash, user.address, slug))
       setRegistrationNotice(
         'Your trade was submitted, but this browser cannot save its registration across reloads. Keep the transaction hash until it is recorded.',
       );
@@ -76,8 +77,8 @@ export function useTradeForm({
   });
   useEffect(() => {
     if (pendingHash && user)
-      enqueueTrade(network, address, pendingHash, user.address);
-  }, [pendingHash, user, network, address]);
+      enqueueTrade(network, address, pendingHash, user.address, slug);
+  }, [pendingHash, user, network, address, slug]);
   function readPending() {
     try {
       return pendingKey

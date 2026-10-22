@@ -27,14 +27,14 @@ import {
 import type { ApiNetwork } from '@/lib/api/launches/types';
 
 export function IndexedTrades({
-  address,
+  slug,
   network,
   ticker,
   pair,
   tradeCount24h,
   volume24h,
 }: {
-  address: string;
+  slug: string;
   network: ApiNetwork;
   ticker: string;
   pair: string;
@@ -52,7 +52,7 @@ export function IndexedTrades({
     asOf,
     filtered,
     query,
-  } = useIndexedTrades(address, network);
+  } = useIndexedTrades(slug, network);
   return (
     <section
       className="flex min-w-0 flex-col gap-3"

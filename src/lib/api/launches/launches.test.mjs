@@ -76,7 +76,7 @@ test('prelaunch posts required fields with optional links omitted and the user h
     response({
       status: 201,
       body: successBody(
-        { imageId: 'img-1', publicUrl: IMAGE_URL, status: 'pending' },
+        { name: 'Blue Man', slug: 'blue-man', imageId: 'img-1', publicUrl: IMAGE_URL, status: 'pending' },
         'Token image uploaded',
       ),
     }),
@@ -84,7 +84,7 @@ test('prelaunch posts required fields with optional links omitted and the user h
   const image = new File([new Uint8Array([137, 80, 78, 71])], 'logo.png', {
     type: 'image/png',
   });
-  const result = await h.images.uploadLaunchImage({
+  const result = await h.images.uploadLaunchImage({ name: 'Blue Man',
     network: 'testnet',
     ownerAddress: OWNER,
     image,
@@ -96,31 +96,31 @@ test('prelaunch posts required fields with optional links omitted and the user h
   assert.equal(init.headers['X-User-Id'], '42');
   // The multipart boundary comes from the browser, never a manual header.
   assert.equal(init.headers['Content-Type'], undefined);
-  assert.deepEqual([...init.body.keys()].sort(), ['image', 'network', 'ownerAddress']);
+  assert.deepEqual([...init.body.keys()].sort(), ['image', 'name', 'network', 'ownerAddress']);
   assert.equal(init.body.get('network'), 'testnet');
   assert.equal(init.body.get('ownerAddress'), OWNER);
   const sent = init.body.get('image');
   assert.equal(sent.name, 'logo.png');
   assert.equal(sent.type, 'image/png');
-  same(result, { imageId: 'img-1', publicUrl: IMAGE_URL, status: 'pending' });
+  same(result, { name: 'Blue Man', slug: 'blue-man', imageId: 'img-1', publicUrl: IMAGE_URL, status: 'pending' });
 });
 
 test('prelaunch trims optional HTTPS links without rewriting them and omits blank values', async () => {
-  const h = harness(() => response({ body: successBody({ imageId: 'img-1', publicUrl: IMAGE_URL, status: 'pending' }) }));
+  const h = harness(() => response({ body: successBody({ name: 'Blue Man', slug: 'blue-man', imageId: 'img-1', publicUrl: IMAGE_URL, status: 'pending' }) }));
   const image = new File(['image'], 'logo.png', { type: 'image/png' });
   const website = `https://example.com/${'a'.repeat(2028)}`;
   assert.equal(website.length, 2048);
-  await h.images.uploadLaunchImage({ network: 'testnet', ownerAddress: OWNER, image,
+  await h.images.uploadLaunchImage({ name: 'Blue Man', network: 'testnet', ownerAddress: OWNER, image,
     website: `  ${website}  `, xAccount: ' https://x.com/Project?ref=launch ' });
   const body = h.calls[0].init.body;
-  assert.deepEqual([...body.keys()].sort(), ['image', 'network', 'ownerAddress', 'website', 'xAccount']);
+  assert.deepEqual([...body.keys()].sort(), ['image', 'name', 'network', 'ownerAddress', 'website', 'xAccount']);
   assert.equal(body.get('website'), website);
   assert.equal(body.get('xAccount'), 'https://x.com/Project?ref=launch');
-  await h.images.uploadLaunchImage({ network: 'testnet', ownerAddress: OWNER, image,
+  await h.images.uploadLaunchImage({ name: 'Blue Man', network: 'testnet', ownerAddress: OWNER, image,
     website: '  ', xAccount: '\t\n' });
-  assert.deepEqual([...h.calls[1].init.body.keys()].sort(), ['image', 'network', 'ownerAddress']);
+  assert.deepEqual([...h.calls[1].init.body.keys()].sort(), ['image', 'name', 'network', 'ownerAddress']);
   for (const field of ['website', 'xAccount']) {
-    await h.images.uploadLaunchImage({ network: 'testnet', ownerAddress: OWNER, image,
+    await h.images.uploadLaunchImage({ name: 'Blue Man', network: 'testnet', ownerAddress: OWNER, image,
       [field]: 'https://example.com/project' });
     assert.equal(h.calls.at(-1).init.body.get(field), 'https://example.com/project');
   }
@@ -132,7 +132,7 @@ test('invalid prelaunch links stop before a request and display the validation m
       'https://user@example.com', 'https://:secret@example.com', 'https://user:secret@example.com',
       `https://example.com/${'a'.repeat(2029)}`]) {
       const h = harness();
-      await assert.rejects(() => h.images.uploadLaunchImage({
+      await assert.rejects(() => h.images.uploadLaunchImage({ name: 'Blue Man',
         network: 'testnet', ownerAddress: OWNER, image: new File(['image'], 'logo.png', {type:'image/png'}), [field]: value,
       }), (error) => {
         assert.match(h.images.launchImageErrorMessage(error), new RegExp(`valid ${field} link`));
@@ -152,7 +152,7 @@ test('upload responses with missing fields are rejected instead of guessed', asy
   ]) {
     const h = harness(() => response({ status: 201, body: successBody(result) }));
     await assert.rejects(() =>
-      h.images.uploadLaunchImage({
+      h.images.uploadLaunchImage({ name: 'Blue Man',
         network: 'testnet',
         ownerAddress: OWNER,
         image: new File([new Uint8Array([1])], 'logo.png', { type: 'image/png' }),
@@ -172,7 +172,7 @@ test('upload failures map to dialog messages, including the server byte limit', 
       }),
     );
     return h.images
-      .uploadLaunchImage({
+      .uploadLaunchImage({ name: 'Blue Man',
         network: 'testnet',
         ownerAddress: OWNER,
         image: new File([new Uint8Array([1])], 'logo.png', { type: 'image/png' }),
@@ -199,6 +199,7 @@ test('upload failures map to dialog messages, including the server byte limit', 
 
 test('image status reads validate the lifecycle fields and require a user', async () => {
   const info = {
+    name: 'Blue Man', slug: 'blue-man',
     imageId: 'img-1',
     network: 'testnet',
     ownerAddress: OWNER,
@@ -227,8 +228,8 @@ test('image status reads validate the lifecycle fields and require a user', asyn
 test('the indexed launch lookup is public and carries the network query', async () => {
   const h = harness(() => response({ body: successBody({ contractId: 'CABC' }) }));
   h.client.setApiUserId(null);
-  await h.publicApi.getIndexedLaunch('CABC', { network: 'testnet' });
-  assert.equal(h.calls[0].url, 'http://localhost:5000/v1/launches/CABC?network=testnet');
+  await h.publicApi.getIndexedLaunch('blue-man', { network: 'testnet' });
+  assert.equal(h.calls[0].url, 'http://localhost:5000/v1/launches/blue-man?network=testnet');
   assert.equal(h.calls[0].init.method, 'GET');
   assert.equal(h.calls[0].init.headers['X-User-Id'], undefined);
 
@@ -236,7 +237,7 @@ test('the indexed launch lookup is public and carries the network query', async 
     response({ status: 404, body: JSON.stringify({ status: 'error', message: 'Launch not found' }) }),
   );
   const error = await missing.publicApi
-    .getIndexedLaunch('CABC', { network: 'testnet' })
+    .getIndexedLaunch('blue-man', { network: 'testnet' })
     .catch((cause) => cause);
   assert.equal(error.status, 404);
   assert.equal(error.serverMessage, 'Launch not found');
@@ -255,4 +256,28 @@ test('data URLs convert back into image files for the multipart upload', () => {
   for (const invalid of ['', 'https://example.com/logo.png', 'data:image/gif;base64,R0lG', 'data:text/plain;base64,aGk=']) {
     assert.throws(() => h.images.fileFromDataUrl(invalid));
   }
+});
+
+
+test('project name rules match server normalization without changing the display name', () => {
+  const { projectNameError } = loadSource('../../launch-slug.ts');
+  for (const name of ['Blue Man', 'blue man', 'blue-man', 'blue   man', ' a ', 'a'.repeat(100), 'a'.repeat(99) + '!!!'])
+    assert.equal(projectNameError(name), undefined);
+  for (const name of ['', '   ', '!!!', '你好', 'a'.repeat(101), ' TEAM ', '--Prelaunch--'])
+    assert.ok(projectNameError(name), name);
+});
+
+test('409 is a project-name conflict and keeps the submitted form intact', async () => {
+  const h = harness(() => response({ status: 409, body: JSON.stringify({ status: 'error', message: 'Slug already reserved' }) }));
+  const input = { name: 'Blue   Man', network: 'testnet', ownerAddress: OWNER, image: new File(['image'], 'logo.png', { type: 'image/png' }) };
+  const error = await h.images.uploadLaunchImage(input).catch(error => error);
+  assert.equal(error.status, 409);
+  assert.match(h.images.launchImageErrorMessage(error), /project name is already taken/);
+  assert.equal(input.name, 'Blue   Man');
+  assert.equal(h.calls[0].init.body.get('name'), 'Blue   Man');
+});
+
+test('legacy prelaunch status retains a null slug', async () => {
+  const h = harness(() => response({ body: successBody({ name: 'Blue Man', slug: null, imageId: 'legacy', publicUrl: IMAGE_URL, status: 'pending', network: 'testnet', ownerAddress: OWNER, launchContractId: null, assetContractId: null, cleanupReadyAt: null, expiredAt: null }) }));
+  assert.equal((await h.images.getLaunchImage('legacy')).slug, null);
 });

@@ -1,3 +1,4 @@
+import { projectNameError } from '../../../lib/launch-slug';
 import { getConfiguration } from '../../../lib/api/config';
 import {
   numberValue,
@@ -90,8 +91,8 @@ export function validateLaunchStep(
   const errors: FieldErrors = {};
 
   if (step === 'project') {
-    if (!draft.name.trim() || draft.name.trim().length > 40)
-      errors['project-name'] = 'Enter a project name of up to 40 characters.';
+    const nameError = projectNameError(draft.name);
+    if (nameError) errors['project-name'] = nameError;
     if (!/^[A-Z0-9]{1,12}$/.test(draft.symbol))
       errors['launch-symbol'] = 'Use 1–12 letters or numbers.';
     if (!draft.logo)

@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import type { LaunchMethod } from '../lib/launch-draft';
 import type { LaunchStageId } from '../lib/launch-stages';
 
-export function LaunchNavigation({ step, canGoBack, method, ready, working, accountReady, hasMoreContent = false, launchAddress, onBack, onNext, onLaunch }: {
+export function LaunchNavigation({ step, canGoBack, method, ready, working, accountReady, hasMoreContent = false, launchSlug, onBack, onNext, onLaunch }: {
   step: LaunchStageId;
   canGoBack: boolean;
   method: LaunchMethod;
@@ -14,7 +14,7 @@ export function LaunchNavigation({ step, canGoBack, method, ready, working, acco
   working: boolean;
   accountReady: boolean;
   hasMoreContent?: boolean;
-  launchAddress?: string;
+  launchSlug?: string;
   onBack: () => void;
   onNext: () => void;
   onLaunch: () => void;
@@ -31,8 +31,8 @@ export function LaunchNavigation({ step, canGoBack, method, ready, working, acco
           <ArrowLeft data-icon="inline-start" /> Back
         </Button>
       )}
-      {step === 'review' && launchAddress ? (
-        <Link href={`/launch/${launchAddress}?network=${API_NETWORK}`} className={cn(buttonVariants({ size: 'lg' }), 'h-auto min-h-control-lg min-w-0 flex-1 whitespace-normal py-2 text-center sm:ml-auto sm:max-w-80')}>
+      {step === 'review' && launchSlug ? (
+        <Link href={`/launches/${launchSlug}?network=${API_NETWORK}`} className={cn(buttonVariants({ size: 'lg' }), 'h-auto min-h-control-lg min-w-0 flex-1 whitespace-normal py-2 text-center sm:ml-auto sm:max-w-80')}>
           View launch <ArrowUpRight data-icon="inline-end" />
         </Link>
       ) : step === 'review' ? (

@@ -3,6 +3,7 @@ import type { Snapshot, Tokens } from './contract';
 
 export type TradeFormProps = {
   address: string;
+  slug?: string;
   network?: ApiNetwork;
   snapshot: Snapshot;
   tokens: Tokens;

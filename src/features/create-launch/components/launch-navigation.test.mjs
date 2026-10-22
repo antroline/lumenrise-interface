@@ -30,9 +30,9 @@ const props = {
 const actions = (overrides = {}) => LaunchNavigation({ ...props, ...overrides }).props.children.flat().filter(Boolean);
 
 test('indexed success replaces launch submission with a link to the created launch, even after wallet disconnect', () => {
-  const nodes = actions({ launchAddress: 'confirmed-curve', ready: false, accountReady: false });
+  const nodes = actions({ launchSlug: 'blue-man', ready: false, accountReady: false });
   const link = nodes.find((node) => node.type === 'Link');
-  assert.equal(link.props.href, '/launch/confirmed-curve?network=testnet');
+  assert.equal(link.props.href, '/launches/blue-man?network=testnet');
   assert.ok(link.props.children.includes('View launch '));
   assert.ok(!nodes.some((node) => node.props.onClick === props.onLaunch));
 });
@@ -46,7 +46,7 @@ test('unfinished launches keep the real launch action and wallet readiness check
 
 test('running launches retain progress feedback and earlier steps retain Continue', () => {
   assert.equal(actions({ working: true }).find((node) => node.props.onClick === props.onLaunch).props.children, 'Launching…');
-  const nodes = actions({ step: 'token', launchAddress: 'confirmed-curve' });
+  const nodes = actions({ step: 'token', launchSlug: 'confirmed-curve' });
   assert.ok(nodes.some((node) => node.props.onClick === props.onNext));
   assert.ok(!nodes.some((node) => node.type === 'Link'));
 });

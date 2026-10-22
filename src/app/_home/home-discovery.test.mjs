@@ -64,3 +64,16 @@ test('percentages preserve all basis point precision including near graduation',
   assert.equal(progressLabel(10000), '100%');
   assert.equal(discoverLaunches([]).featured, undefined);
 });
+
+
+test('home links use the server slug, retain the network and avoid unresolved contract links', () => {
+  const module = { exports: {} };
+  runInNewContext(ts.transpileModule(readFileSync(new URL('./use-home-launches.ts', import.meta.url), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText, { module, exports: module.exports, require: () => ({}) });
+  const { launchHref } = module.exports;
+  for (const network of ['testnet', 'public']) {
+    assert.equal(launchHref({ contractId: 'contract', slug: 'blue-man', metadata: { name: 'Display name' } }, network), '/launches/blue-man?network=' + network);
+    for (const slug of [null, undefined]) assert.equal(launchHref({ contractId: 'contract', slug }, network), '/launches?network=' + network);
+  }
+});

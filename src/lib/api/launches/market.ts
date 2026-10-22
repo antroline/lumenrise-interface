@@ -1,3 +1,4 @@
+import { requireLaunchSlug } from '../../launch-slug';
 import { getConfiguration } from '../config';
 import { ApiError, apiRequest } from '../client';
 import type { ApiNetwork } from './types';
@@ -37,6 +38,7 @@ export type LaunchResult = {
   network: ApiNetwork;
   factoryContractId: string;
   factoryIndex: number;
+  slug: string | null;
   contractId: string;
   owner: string;
   team?: PublicTeamMember[];
@@ -286,6 +288,7 @@ export function decodeLaunch(v: unknown): LaunchResult {
   }
   return {
     network: network(l.network),
+    slug: l.slug == null ? null : string(l.slug),
     contractId: string(l.contractId),
     factoryContractId: string(l.factoryContractId),
     factoryIndex: number(l.factoryIndex),
@@ -406,8 +409,10 @@ export function decodeTrades(v: unknown): TradesResult {
     priceScale: scale(t.priceScale),
   };
 }
-const path = (id: string, n: ApiNetwork, section = '') =>
-  `/launches/${encodeURIComponent(id)}${section}?network=${n}`;
+const path = (slug: string, n: ApiNetwork, section = '') => {
+  requireLaunchSlug(slug);
+  return `/launches/${encodeURIComponent(slug)}${section}?network=${n}`;
+};
 export async function getLaunchList(
   n: ApiNetwork,
   page: number,
@@ -506,35 +511,31 @@ export function launchListKey(
 }
 function identity<T extends { network: ApiNetwork; contractId: string }>(
   result: T,
-  id: string,
   n: ApiNetwork,
 ): T {
-  return result.network === n && result.contractId === id ? result : invalid();
+  return result.network === n ? result : invalid();
 }
 export async function getLaunchDetail(
-  id: string,
+  slug: string,
   n: ApiNetwork,
   signal?: AbortSignal,
 ) {
-  return identity(
-    decodeLaunch(await apiRequest<unknown>(path(id, n), { signal })),
-    id,
-    n,
-  );
+  const launch = identity(decodeLaunch(await apiRequest<unknown>(path(slug, n), { signal })), n);
+  if (launch.slug !== slug) invalid();
+  return launch;
 }
 export async function getMarket(
-  id: string,
+  slug: string,
   n: ApiNetwork,
   signal?: AbortSignal,
 ) {
   return identity(
-    decodeMarket(await apiRequest<unknown>(path(id, n, '/market'), { signal })),
-    id,
+    decodeMarket(await apiRequest<unknown>(path(slug, n, '/market'), { signal })),
     n,
   );
 }
 export async function getChart(
-  id: string,
+  slug: string,
   n: ApiNetwork,
   range: ChartRange,
   signal?: AbortSignal,
@@ -546,12 +547,13 @@ export async function getChart(
   const from = chartFrom(range, referenceTime);
   async function page(to?: string) {
     signal?.throwIfAborted();
+    requireLaunchSlug(slug);
     const query = new URLSearchParams({ network: n, timeframes: timeframe, limit: String(rule.defaultLimit) });
     if (from) query.set('from', from);
     if (to) query.set('to', to);
     const result = identity(decodeChart(await apiRequest<unknown>(
-      `/launches/${encodeURIComponent(id)}/chart?${query}`, { signal },
-    )), id, n);
+      `/launches/${encodeURIComponent(slug)}/chart?${query}`, { signal },
+    )), n);
     signal?.throwIfAborted();
     const frame = result.timeframes.find((entry) => entry.timeframe === timeframe);
     if (!frame) invalid();
@@ -585,7 +587,7 @@ export async function getChart(
   };
 }
 export async function getTrades(
-  id: string,
+  slug: string,
   n: ApiNetwork,
   filters: {
     cursor?: string;
@@ -607,17 +609,17 @@ export async function getTrades(
   if (filters.trader) q.set('trader', filters.trader);
   if (filters.side) q.set('side', filters.side);
   return decodeTrades(
-    await apiRequest<unknown>(`${path(id, n, '/trades')}&${q}`, { signal }),
+    await apiRequest<unknown>(`${path(slug, n, '/trades')}&${q}`, { signal }),
   );
 }
 export async function recordTrade(
-  id: string,
+  slug: string,
   n: ApiNetwork,
   transactionHash: string,
   signal?: AbortSignal,
 ) {
   const r = object(
-    await apiRequest<unknown>(path(id, n, '/trades'), {
+    await apiRequest<unknown>(path(slug, n, '/trades'), {
       method: 'POST',
       user: true,
       expectedStatus: 200,

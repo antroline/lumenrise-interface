@@ -15,4 +15,5 @@ export type LaunchOperation = {
   hash?: string;
   transactionHashes?: Partial<Record<LaunchOperationStep, string>>;
   curveAddress?: string;
+  slug?: string;
 };

@@ -7,7 +7,7 @@ import { launchKey, usePageVisible } from './queries';
 import { flushTradeQueue, QUEUE_EVENT, readTradeQueue } from '../../../lib/api/launches/trade-queue';
 import type { ApiNetwork } from '../../../lib/api/launches/types';
 
-export function useTradeQueue(network: ApiNetwork, contractId: string) {
+export function useTradeQueue(network: ApiNetwork, contractId: string, slug?: string) {
   const { address, account } = useLaunchpad();
   const client = useQueryClient();
   const visible = usePageVisible();
@@ -37,11 +37,12 @@ export function useTradeQueue(network: ApiNetwork, contractId: string) {
         await flushTradeQueue({
           network,
           contractId,
+          slug,
           traderAddress: address,
           signal: controller.signal,
           onRecorded: () => {
             void client.invalidateQueries({
-              queryKey: launchKey(network, contractId),
+              queryKey: launchKey(network, slug ?? ''),
             });
             void client.invalidateQueries({
               queryKey: ['launch-list', { network }],
@@ -72,6 +73,6 @@ export function useTradeQueue(network: ApiNetwork, contractId: string) {
       window.removeEventListener('storage', wake);
       window.removeEventListener('online', wake);
     };
-  }, [address, userId, network, contractId, client, visible]);
+  }, [address, userId, network, contractId, slug, client, visible]);
   return { records, recoveryError };
 }

@@ -198,6 +198,7 @@ function harness(initial = status(), initialProps = {}) {
 const launch = (id, extras = {}) => ({
   network: 'testnet',
   contractId: id,
+  slug: `project-${id}`,
   pair: 'PAIR',
   category: 'bonding-curve',
   createdAt: null,
@@ -398,4 +399,12 @@ test('monetary Clear keeps its required asset and disappears when only sort sett
     !h.nodes().some((node) => node.props?.['aria-label'] === 'Clear filters'),
   );
   assert.equal(h.options.enabled, true);
+});
+
+
+test('directory links use server slugs and unresolved projects return to the directory', () => {
+  const h = harness(status({ launches: [launch('contract', { slug: 'blue-man', metadata: { name: 'A different display name', symbol: 'TOK' } }), launch('legacy', { slug: null })], total: 2 }));
+  const rows = h.find('ProjectsTable').props.rows;
+  assert.equal(rows[0].href, '/launches/blue-man?network=testnet');
+  assert.equal(rows[1].href, '/launches?network=testnet');
 });

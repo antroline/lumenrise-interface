@@ -25,7 +25,6 @@ export function ProjectDetailsStep({ draft, setDraft, errors = {} }: DraftProps)
             label="Project name *"
             value={draft.name}
             onChange={(value) => update('name', value)}
-            maxLength={40}
             placeholder="e.g. Tide Finance"
             required
             error={errors['project-name']}
