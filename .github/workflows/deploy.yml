@@ -44,14 +44,7 @@ jobs:
           docker compose --project-name lumenrise-interface --env-file "$APP_ENV_FILE" -f compose.yaml config --quiet
 
           docker build --tag lumenrise-interface \
-            --build-arg NEXT_PUBLIC_BLUX_APP_ID \
-            --build-arg NEXT_PUBLIC_STELLAR_HOME_DOMAIN \
             --build-arg LUMENRISE_API_URL \
-            --build-arg NEXT_PUBLIC_STELLAR_HORIZON_URL \
-            --build-arg NEXT_PUBLIC_STELLAR_RPC_URL \
-            --build-arg NEXT_PUBLIC_FACTORY_CONTRACT_ID \
-            --build-arg NEXT_PUBLIC_USDC_CONTRACT_ID \
-            --build-arg NEXT_PUBLIC_XLM_CONTRACT_ID \
             .
 
           docker compose --project-name lumenrise-interface --env-file "$APP_ENV_FILE" -f compose.yaml \
