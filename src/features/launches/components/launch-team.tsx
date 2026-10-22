@@ -3,17 +3,21 @@
 import { getConfiguration } from '@/lib/api/config';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowUpRight, LoaderCircle, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Ellipsis, LoaderCircle, Pencil, Plus, Trash2 } from 'lucide-react';
+import { XLogoIcon } from '@/components/brand-icons';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Dialog } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getApiUserId } from '@/lib/api/client';
+import { ApiError, getApiUserId } from '@/lib/api/client';
 import {
   getLaunchTeam,
   putRegisteredTeamMember,
   removeTeamMember,
   saveExternalTeamMember,
   teamErrorMessage,
+  teamCapacity,
   type TeamMember,
 } from '@/lib/api/launches/team';
 import type { ApiNetwork } from '@/lib/api/launches/types';
@@ -26,7 +30,7 @@ import {
 
 type LaunchTeamProps = {
   owner: string;
-  contractId: string;
+  slug?: string;
   network: ApiNetwork;
   members?: TeamMember[];
 };
@@ -34,12 +38,12 @@ type LaunchTeamProps = {
 /** Mounted only for an indexed, confirmed launch. The server authorizes every request. */
 export function LaunchTeam(props: LaunchTeamProps) {
   const { address, account } = useLaunchpad();
-  if (address !== props.owner || account.status !== 'registered') {
+  if (!props.slug || address !== props.owner || account.status !== 'registered') {
     if (!props.members?.length) return null;
     return (
-      <ul className="mb-4 grid gap-2 sm:grid-cols-2" aria-label="Team members">
+      <ul className="mb-2 grid gap-2 sm:grid-cols-2" aria-label="Team members">
         {props.members.map((member) => (
-          <li key={member.memberId} className="flex min-w-0 items-start gap-3 rounded-xl border border-border bg-card p-3 text-card-foreground">
+          <li key={member.memberId} className="flex min-w-0 flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-3 text-card-foreground">
             <MemberIdentity member={member} />
           </li>
         ))}
@@ -48,18 +52,19 @@ export function LaunchTeam(props: LaunchTeamProps) {
   }
   return (
     <OwnerLaunchTeam
-      key={`${props.network}:${props.contractId}:${account.profile.userId}:${address}`}
+      key={`${props.network}:${props.slug}:${account.profile.userId}:${address}`}
       {...props}
+      slug={props.slug}
       sessionId={account.profile.userId}
     />
   );
 }
 
 function OwnerLaunchTeam({
-  contractId,
+  slug,
   network,
   sessionId,
-}: LaunchTeamProps & { sessionId: string }) {
+}: LaunchTeamProps & { slug: string; sessionId: string }) {
   const client = useQueryClient();
   const [editor, setEditor] = useState<{ member: TeamMember | null } | null>(
     null,
@@ -71,10 +76,10 @@ function OwnerLaunchTeam({
     controller.current = current;
     return () => current.abort();
   }, []);
-  const queryKey = ['launch-team', network, contractId, sessionId];
+  const queryKey = ['launch-team', network, slug, sessionId];
   const query = useQuery({
     queryKey,
-    queryFn: ({ signal }) => getLaunchTeam(contractId, { network, signal }),
+    queryFn: ({ signal }) => getLaunchTeam(slug, { network, signal }),
     staleTime: 15_000,
     gcTime: 0,
     retry: false,
@@ -92,25 +97,29 @@ function OwnerLaunchTeam({
       const options = { network, signal: controller.current.signal };
       if (change.kind === 'registered')
         await putRegisteredTeamMember(
-          contractId,
+          slug,
           change.identityId,
           change.role,
           options,
         );
       else if (change.kind === 'external')
         await saveExternalTeamMember(
-          contractId,
+          slug,
           change.input,
           options,
           change.memberId,
         );
-      else await removeTeamMember(contractId, change.member, options);
+      else await removeTeamMember(slug, change.member, options);
     },
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey }),
-        client.invalidateQueries({ queryKey: ['launch', network, contractId, 'detail'] }),
+        client.invalidateQueries({ queryKey: ['launch', network, slug, 'detail'] }),
       ]);
+    },
+    onError: async (error) => {
+      if (error instanceof ApiError && error.status === 409)
+        await client.invalidateQueries({ queryKey });
     },
   });
 
@@ -131,17 +140,18 @@ function OwnerLaunchTeam({
   }
 
   return (
-    <div className="mb-4 flex min-w-0 flex-col gap-3">
+    <div className="mb-2 flex min-w-0 flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button
           type="button"
           size="sm"
           onClick={() => edit(null)}
-          disabled={mutation.isPending || !query.data || query.data.length + 1 >= getConfiguration().rules.team.maxMembers}
+          disabled={mutation.isPending || query.isError || !query.data || teamCapacity(query.data) >= Math.min(6, getConfiguration().rules.team.maxMembers)}
         >
           <Plus className="size-4" aria-hidden="true" />
           Add Team Member
         </Button>
+        {query.data && <p className="text-xs text-muted-foreground">{teamCapacity(query.data)} / {Math.min(6, getConfiguration().rules.team.maxMembers)} people · Includes owner and pending invitations</p>}
       </div>
       {query.isPending ? (
         <div
@@ -149,8 +159,8 @@ function OwnerLaunchTeam({
           aria-label="Loading team members"
           className="grid gap-2 sm:grid-cols-2"
         >
-          <Skeleton className="h-24 rounded-xl motion-reduce:animate-none" />
-          <Skeleton className="h-24 rounded-xl motion-reduce:animate-none" />
+          <Skeleton className="h-18 rounded-xl motion-reduce:animate-none" />
+          <Skeleton className="h-18 rounded-xl motion-reduce:animate-none" />
         </div>
       ) : query.isError ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
@@ -175,43 +185,33 @@ function OwnerLaunchTeam({
           {query.data.map((member) => (
             <li
               key={member.memberId}
-              className="flex min-w-0 items-start gap-3 rounded-xl border border-border bg-card p-3 text-card-foreground"
+              className="flex min-w-0 flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-3 text-card-foreground"
             >
-              <MemberIdentity member={member} />
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <MemberIdentity member={member} showStatus />
+              </div>
               <div className="-mr-1 flex shrink-0 items-center">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="size-9 text-muted-foreground hover:text-foreground"
-                  disabled={mutation.isPending}
-                  onClick={() => edit(member)}
-                  aria-label={`Edit ${member.name}`}
-                  title={`Edit ${member.name}`}
-                >
-                  <Pencil className="size-3.5" aria-hidden="true" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="size-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  disabled={mutation.isPending}
-                  onClick={() => mutation.mutate({ kind: 'remove', member })}
-                  aria-label={`Remove ${member.name}`}
-                  title={`Remove ${member.name}`}
-                >
-                  {mutation.isPending &&
-                  mutation.variables?.kind === 'remove' &&
-                  mutation.variables.member.memberId === member.memberId ? (
-                    <LoaderCircle
-                      className="size-3.5 animate-spin motion-reduce:animate-none"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <Trash2 className="size-3.5" aria-hidden="true" />
-                  )}
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    disabled={mutation.isPending}
+                    aria-label={`Actions for ${member.name}`}
+                    render={<Button type="button" variant="ghost" size="icon-sm" />}
+                  >
+                    {mutation.isPending && mutation.variables?.kind === 'remove' && mutation.variables.member.memberId === member.memberId
+                      ? <LoaderCircle className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                      : <Ellipsis aria-hidden="true" />}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-36">
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem disabled={mutation.isPending} onClick={() => edit(member)} aria-label={`Edit ${member.name}`}>
+                        <Pencil aria-hidden="true" /> Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem variant="destructive" disabled={mutation.isPending} onClick={() => mutation.mutate({ kind: 'remove', member })} aria-label={`Remove ${member.name}`}>
+                        <Trash2 aria-hidden="true" /> Remove
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </li>
           ))}
@@ -231,11 +231,12 @@ function OwnerLaunchTeam({
         {editor && (
           <LaunchTeamMemberDialog
             key={editor.member?.memberId ?? 'new'}
-            contractId={contractId}
+            slug={slug}
             network={network}
             sessionId={sessionId}
             member={editor.member}
             busy={mutation.isPending}
+            capacityFull={!query.data || query.isError || teamCapacity(query.data) >= Math.min(6, getConfiguration().rules.team.maxMembers)}
             onSave={save}
             onCancel={() => setEditor(null)}
           />
@@ -245,29 +246,27 @@ function OwnerLaunchTeam({
   );
 }
 
-function MemberIdentity({ member }: { member: TeamMember }) {
+function MemberIdentity({ member, showStatus = false }: { member: TeamMember; showStatus?: boolean }) {
   return (
     <>
       <MemberAvatar {...member} />
-      <div className="min-w-0 flex-1 py-0.5">
-        <h3 className="truncate text-sm font-semibold" title={member.name}>
-          {member.name}
-        </h3>
-        <p className="mt-0.5 break-words text-xs leading-relaxed text-muted-foreground">
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+          <div className="flex min-w-0 flex-1 items-center gap-1">
+            <h3 className="truncate text-sm leading-tight font-semibold" title={member.name}>
+              {member.name}
+            </h3>
+            {member.xAccount && safeXLink(member.xAccount) && (
+              <a href={member.xAccount} target="_blank" rel="noopener noreferrer" aria-label={`${member.name} on X`} className="relative inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground after:absolute after:-inset-1 hover:bg-secondary hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
+                <XLogoIcon className="size-3.5" aria-hidden="true" />
+              </a>
+            )}
+          </div>
+          {showStatus && <Badge size="sm" className="before:size-1.5 before:rounded-full before:bg-current" variant={member.status === 'active' ? 'ok' : member.status === 'pending' ? 'warn' : 'soft'}>{member.status === 'active' ? 'Active' : member.status === 'pending' ? 'Pending' : 'Canceled'}</Badge>}
+        </div>
+        <p className="mt-1 break-words text-xs text-muted-foreground">
           {member.role}
         </p>
-        {member.xAccount && safeXLink(member.xAccount) && (
-          <a
-            href={member.xAccount}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-1 inline-flex min-h-8 items-center gap-1 rounded-sm text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            X profile
-            <ArrowUpRight className="size-3" aria-hidden="true" />
-            <span className="sr-only"> for {member.name}</span>
-          </a>
-        )}
       </div>
     </>
   );

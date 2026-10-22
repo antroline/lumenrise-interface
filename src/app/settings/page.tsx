@@ -18,6 +18,7 @@ import { API_NETWORK } from '@/lib/stellar/network'
 import { shortAddress } from '@/lib/connections'
 import { useLaunchpad } from '@/lib/launchpad'
 import { RuledPanel, Trajectory } from '@/components/visual-system'
+import { TeamInvitations } from '@/features/launches/components/team-invitations'
 
 const providers: { key: 'x' | 'github' | 'gitlab'; label: string; Icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
   { key: 'x', label: 'X', Icon: XLogoIcon }, { key: 'github', label: 'GitHub', Icon: GithubIcon }, { key: 'gitlab', label: 'GitLab', Icon: GitFork },
@@ -49,6 +50,7 @@ function SettingsContent({ address, logout }: { address?: string; logout: () => 
     <div className="grid items-start gap-6 lg:grid-cols-[190px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)]"><aside className="flex flex-col gap-1 text-ui font-medium lg:sticky lg:top-6">{[...(profile?[['Profile','profile']]:[]),['Wallets','wallets'],['Linked accounts','linked'],['Privacy','privacy'],['Notifications','notifications'],['API permissions','permissions'],['Security','security']].map(([label,id],index)=><a key={id} href={`#${id}`} className={`rounded-lg px-3 py-2 ${index===0?'bg-secondary':'text-muted-foreground hover:bg-muted'}`}>{label}</a>)}<div className="mt-4 rounded-xl bg-muted p-4"><Wallet className="size-5" /><b className="mt-2 block">{shortAddress(address)}</b><span className="text-small text-muted-foreground">Stellar {API_NETWORK === 'public' ? 'Mainnet' : 'Testnet'} · Blux</span></div></aside>
       <div className="flex min-w-0 flex-col gap-5">
         {profile ? <ProfileCard name={profile.name} avatarUrl={profile.avatarUrl} seed={address || profile.identityId} /> : null}
+        {profile ? <SettingsCard id="team-invitations" title="Team invitations" description="Accept an invitation to appear on a launch’s team, or decline it."><TeamInvitations /></SettingsCard> : null}
         <SettingsCard id="wallets" title="Wallets" description="Wallets you prove ownership of by signing a message. No funds move."><div className="flex flex-wrap items-center gap-3 border-t py-4"><span className="grid size-10 place-items-center rounded-lg bg-muted"><Wallet className="size-5" /></span><div className="grow"><b className="font-mono text-ui">{shortAddress(address)}</b><span className="block text-small text-muted-foreground">Connected through Blux</span></div><Badge variant="lime">Primary</Badge><Badge variant="net">{API_NETWORK === 'public' ? 'MAINNET' : 'TESTNET'}</Badge><Button variant="outline" size="sm" onClick={() => router.push('/portfolio')}>Portfolio</Button></div><p className="text-small text-muted-foreground">Additional wallet linking is not available through the current Blux integration.</p></SettingsCard>
         <SettingsCard id="linked" title="Linked accounts" description="External account linking is not available yet.">
           <div className="flex flex-col">

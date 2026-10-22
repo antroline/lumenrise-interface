@@ -126,7 +126,7 @@ type ApiEnvelope = {
 };
 
 export type ApiRequestOptions = {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   json?: unknown;
   formData?: FormData;
   /** Attach the `X-User-Id` header for endpoints that identify a user. */
