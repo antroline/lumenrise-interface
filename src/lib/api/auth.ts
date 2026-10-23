@@ -4,8 +4,8 @@ import { validateText, validateImage } from '../client-rules';
  * Account identification and registration endpoints.
  *
  * The API verifies the user behind the authentication provider's user id
- * server-side; the client only sends the numeric `userId` (in the `X-User-Id`
- * header or the registration body). Wallet addresses are never sent as proof.
+ * server-side. Resolution and registration send the current userId/address
+ * pair for verification; subsequent requests retain that userId in X-User-Id.
  */
 
 import { ApiError, apiRequest, getApiUserId } from './client';
@@ -58,6 +58,36 @@ function readAvatarUrl(value: unknown): string | null {
   return invalid('The server returned an invalid profile response.');
 }
 
+/** POST /auth/resolve — verifies and links the current Blux login to an identity. */
+export async function resolveAccount(input: {
+  userId: string;
+  address: string;
+  signal?: AbortSignal;
+}): Promise<RegistrationStatus> {
+  const result = asRecord(await apiRequest<unknown>('/auth/resolve', {
+    method: 'POST',
+    json: { userId: input.userId, address: input.address },
+    signal: input.signal,
+  }));
+  if (!result || typeof result.registered !== 'boolean') {
+    invalid('The server returned an invalid identity resolution.');
+  }
+  // A linked identity may have an older provider ID. Always retain this login's ID.
+  const userId = input.userId;
+  if (!result.registered) return { registered: false, userId };
+  if (typeof result.identityId !== 'string' || !result.identityId ||
+      (result.name != null && typeof result.name !== 'string')) {
+    invalid('The server returned an invalid profile response.');
+  }
+  return {
+    registered: true,
+    userId,
+    identityId: result.identityId,
+    name: result.name ?? '',
+    avatarUrl: readAvatarUrl(result.avatarUrl),
+  };
+}
+
 /** GET /auth/status — registration check for the current provider user. */
 export async function getRegistrationStatus(options?: {
   signal?: AbortSignal;
@@ -95,10 +125,10 @@ function readAddresses(value: unknown): string[] {
 
 /**
  * POST /auth/register — creates the account for the current provider user.
- * JSON when no photo is chosen, multipart with exactly `userId`, `name`, and
- * `avatar` fields when one is. This endpoint does not edit existing profiles.
+ * JSON when no photo is chosen, multipart when one is included.
  */
 export async function registerAccount(input: {
+  address: string;
   name: string;
   avatar?: File | null;
   signal?: AbortSignal;
@@ -120,6 +150,7 @@ export async function registerAccount(input: {
     if (issue) throw new Error(issue);
     const formData = new FormData();
     formData.append('userId', userId);
+    formData.append('address', input.address);
     formData.append('name', name);
     formData.append('avatar', input.avatar);
     result = await apiRequest<unknown>('/auth/register', {
@@ -130,7 +161,7 @@ export async function registerAccount(input: {
   } else {
     result = await apiRequest<unknown>('/auth/register', {
       method: 'POST',
-      json: { userId, name },
+      json: { userId, address: input.address, name },
       signal: input.signal,
     });
   }
@@ -143,7 +174,7 @@ export async function registerAccount(input: {
     invalid('The server returned an invalid registration response.');
   }
   return {
-    userId: readUserId(record.userId),
+    userId,
     identityId: record.identityId,
     name: record.name,
     avatarUrl: readAvatarUrl(record.avatarUrl),

@@ -75,15 +75,15 @@ function loginHarness(outcome, { path, authenticated = false, saved, environment
     react: {
       useState: initial => {
         const index = stateIndex++;
-        return [index === 1 ? account : typeof initial === 'function' ? initial() : initial, value => phases.push(value)];
+        return [index === 1 ? { identity: authenticated ? '42:wallet:wallet:owner' : null, value: account } : typeof initial === 'function' ? initial() : initial, value => phases.push(value)];
       },
       useRef: current => { const ref = { current }; refs.push(ref); return ref; },
-      useEffect() {}, useCallback: fn => fn, useMemo: fn => fn(),
+      useEffect() {}, useLayoutEffect() {}, useEffectEvent: fn => fn, useCallback: fn => fn, useMemo: fn => fn(),
     },
     'react/jsx-runtime': { jsx, jsxs: jsx },
     'next/navigation': { useRouter: () => ({ push: value => pushes.push(value), replace: value => replacements.push(value) }), usePathname: () => h.window.location.pathname },
     '@bluxcc/react': { useBlux: () => blux, networks: { testnet: {} } },
-    '@/lib/api/auth': {}, '@/lib/api/client': {}, '@/lib/auth-provider': {},
+    '@/lib/api/auth': {}, '@/lib/api/client': {}, '@/lib/auth-provider': { getAuthProviderUserId: () => '42' },
     '@/lib/auth-return': h.auth,
     '@/components/ui/toast': { useNotify: () => message => { throw new Error(message); } },
     '@/lib/stellar/network': {}, '@/lib/launchpad': { LaunchpadContext: { Provider: 'Provider' } },
