@@ -6,6 +6,10 @@ import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 import ts from 'typescript';
 const require = createRequire(import.meta.url);
+const paymentAssets = {};
+runInNewContext(ts.transpileModule(readFileSync(new URL('../../../lib/stellar/payment-assets.ts', import.meta.url), 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS },
+}).outputText, { exports: paymentAssets });
 const directory = {};
 runInNewContext(
   ts.transpileModule(
@@ -60,6 +64,7 @@ function harness(request = defaults, apply = async () => {}) {
       require: (name) => {
         if (name === '@/lib/api/config') return configurationModule;
         if (name === '@/lib/stellar/network') return networkModule;
+        if (name === '@/lib/stellar/payment-assets') return paymentAssets;
         if (name === 'react')
           return {
             useState(initial) {
@@ -234,6 +239,18 @@ test('network switches map native contracts and clear invalid monetary selection
   other.render();
   assert.equal(other.group('Payment asset').props.value[0], 'any');
   assert.equal(other.group('Sort').props.value[0], 'newest');
+});
+
+test('Mainnet monetary filters offer the native Mainnet USDC contract', async () => {
+  const h = harness({ ...defaults, network: 'public', sort: 'topVolume' });
+  const pair = 'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75';
+  assert.ok(h.text.includes(pair));
+  assert.ok(!h.text.includes(USDC));
+  h.group('Payment asset').props.onValueChange([pair]);
+  h.render();
+  await h.submit();
+  assert.equal(h.calls[0].network, 'public');
+  assert.equal(h.calls[0].pair, pair);
 });
 test('invalid payment selections and failed Apply keep the drawer open and edits intact', async () => {
   const h = harness({ ...defaults, sort: 'topVolume' });

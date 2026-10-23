@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/sheet';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { pairLabel } from '@/lib/api/launches/display';
+import { USDC_CONTRACTS } from '@/lib/stellar/payment-assets';
 import {
   monetarySort,
   activeDirectoryFilterCount,
@@ -80,14 +81,7 @@ function paymentAssets(network: DirectoryRequest['network']) {
       ),
       label: 'XLM',
     },
-    ...(network === 'testnet'
-      ? [
-          {
-            value: 'CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA',
-            label: 'USDC',
-          },
-        ]
-      : []),
+    { value: USDC_CONTRACTS[network], label: 'USDC' },
   ];
 }
 function customAsset(request: DirectoryRequest) {

@@ -33,7 +33,7 @@ class ApiError extends Error {
 function loadSource(filename, mocks = { '@bluxcc/react': {} }, globals = {}, cache = new Map()) {
   const path = resolve(directory, filename);
   if (path.replaceAll('\\', '/').endsWith('/lib/api/config.ts')) return configurationModule;
-  if (path.replaceAll('\\', '/').endsWith('/lib/stellar/network.ts')) return networkModule;
+  if (path.replaceAll('\\', '/').endsWith('/lib/stellar/network.ts')) return mocks['@/lib/stellar/network'] ?? networkModule;
   if (cache.has(path)) return cache.get(path);
   const module = { exports: {} };
   cache.set(path, module.exports);
@@ -43,7 +43,7 @@ function loadSource(filename, mocks = { '@bluxcc/react': {} }, globals = {}, cac
   runInNewContext(output, {
     module, exports: module.exports, URLSearchParams, Date, Error,
     URL,
-    require: (name) => name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name in mocks ? mocks[name] : name.startsWith('.')
+    require: (name) => name === '@/lib/api/config' ? configurationModule : name in mocks ? mocks[name] : name === '@/lib/stellar/network' ? networkModule : name.startsWith('.')
       ? loadSource(resolve(dirname(path), `${name}.ts`), mocks, globals, cache)
       : require(name),
     ...globals,
@@ -206,7 +206,7 @@ test('rejects unsupported methods, local image references, and invalid contract 
   assert.equal(isBondingDraft({ method: 'bonding' }), false);
 });
 
-function harness({ signedIn = true, rejectLogin = false, rejectSetup = false, setupError, rejectSac = false, rejectReturn = false, factoryStatus = 'NOT_FOUND', balance, returnWait, accountStatus = 'registered', imageStatus = 'pending', uploadFailures = [], indexResult = 'ready' } = {}) {
+function harness({ network = networkModule, signedIn = true, rejectLogin = false, rejectSetup = false, setupError, rejectSac = false, rejectReturn = false, factoryStatus = 'NOT_FOUND', balance, returnWait, accountStatus = 'registered', imageStatus = 'pending', uploadFailures = [], indexResult = 'ready' } = {}) {
   const storage = new Map();
   const messages = [];
   const calls = [];
@@ -228,13 +228,15 @@ function harness({ signedIn = true, rejectLogin = false, rejectSetup = false, se
     setItem: (key, value) => storage.set(key, value),
     removeItem: (key) => storage.delete(key),
   };
-  const state = loadSource('launch-state.ts');
-  const transactions = loadSource('transactions.ts');
+  const runtimeMocks = { '@/lib/stellar/network': network };
+  const state = loadSource('launch-state.ts', runtimeMocks);
+  const transactions = loadSource('transactions.ts', runtimeMocks);
   const makeTransaction = (kind) => {
     const xdr = `${kind}:${++transactionCount}`;
     return { toXDR: () => xdr, hash: () => Buffer.from(xdr) };
   };
   const exports = loadSource('../hooks/use-bonding-launch.ts', {
+    ...runtimeMocks,
     react: {
       useState: (value) => {
         let current = value;
@@ -264,7 +266,7 @@ function harness({ signedIn = true, rejectLogin = false, rejectSetup = false, se
         events.push('status-check');
         statusChecks.push(imageId);
         return {
-          name: 'Server Project', slug: 'server-project', imageId, publicUrl: IMAGE_URL, status: imageStatus, network: 'testnet', ownerAddress: owner,
+          name: 'Server Project', slug: 'server-project', imageId, publicUrl: IMAGE_URL, status: imageStatus, network: network.API_NETWORK, ownerAddress: owner,
           launchContractId: null, assetContractId: null, cleanupReadyAt: null, expiredAt: null,
         };
       },
@@ -339,6 +341,29 @@ function savedRecords(h) {
     .filter(([key]) => key.startsWith('launchpad:testnet-bonding:'))
     .map(([, value]) => JSON.parse(value));
 }
+
+test('Mainnet launch uses its own USDC, signing network, API uploads and recovery records', async () => {
+  const network = { ...networkModule, API_NETWORK: 'public', NETWORK: Networks.PUBLIC, HOME_DOMAIN: 'lumenrise.app' };
+  const h = harness({ network });
+  assert.equal(h.flow.isReady, true);
+  await h.flow.launch(draft());
+  assert.equal(h.factoryCalls(), 1);
+  assert.equal(h.calls[0].call.args[0].pair, 'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75');
+  assert.equal(h.calls[0].options.network, Networks.PUBLIC);
+  assert.ok(h.sends.every(send => send.options.network === Networks.PUBLIC));
+  assert.equal(h.uploads[0].network, 'public');
+  assert.ok([...h.storage.keys()].some(key => key.startsWith('launchpad:public-bonding:')));
+  assert.ok(![...h.storage.keys()].some(key => key.startsWith('launchpad:testnet-bonding:')));
+});
+
+test('server launch availability still gates Mainnet before signing', async () => {
+  const h = harness({ network: { ...networkModule, API_NETWORK: 'public', NETWORK: Networks.PUBLIC, LAUNCH_CONFIGURED: false } });
+  assert.equal(h.flow.isReady, false);
+  await h.flow.launch(draft());
+  assert.equal(h.sends.length, 0);
+  assert.equal(h.factoryCalls(), 0);
+  assert.equal(h.uploads.length, 0);
+});
 
 test('only bonding reaches the factory, with the uploaded image URL and explicit testnet', async () => {
   const h = harness();

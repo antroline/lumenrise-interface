@@ -579,10 +579,13 @@ test('unmount cancellation also aborts a response body after HTTP headers arrive
 });
 
 
-test('pair labels identify configured Testnet USDC without relabeling other assets', () => {
+test('pair labels identify each network USDC without relabeling assets from another network', () => {
   const { display } = harness();
   assert.equal(display.pairLabel(PAIR, 'testnet'), 'USDC');
   assert.equal(display.pairLabel(PAIR, 'public'), 'CBIE…DAMA');
+  const mainnetUsdc = 'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75';
+  assert.equal(display.pairLabel(mainnetUsdc, 'public'), 'USDC');
+  assert.equal(display.pairLabel(mainnetUsdc, 'testnet'), 'CCW6…MI75');
   assert.equal(display.pairLabel(ASSET, 'testnet'), 'CAWK…TENK');
 });
 
