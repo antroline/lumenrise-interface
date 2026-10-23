@@ -1,15 +1,16 @@
-import type { BluxProvider } from '@bluxcc/react';
+import { networks, type BluxProvider } from '@bluxcc/react';
 import type { PublicConfiguration, NetworkConfiguration } from './api/config';
 
 export function createBluxConfig(config: PublicConfiguration, network: NetworkConfiguration): Parameters<typeof BluxProvider>[0]['config'] {
   return {
     appId: config.auth.appId,
     appName: 'Launchpad',
-    networks: [network.networkPassphrase],
+    networks: [networks.mainnet, networks.testnet],
     showWalletUIs: false,
-    defaultNetwork: network.networkPassphrase,
+    defaultNetwork: networks.testnet,
     transports: {
-      [network.networkPassphrase]: { horizon: network.horizonUrl, soroban: network.rpcUrl },
+      [networks.testnet]: { horizon: 'https://lb.drpc.live/stellar-testnet/Ahh1rnxVdErIlO_oTMvCRlN9SvIXxjYR8YVDbj3Fs6u0', soroban: 'https://rpc.ankr.com/stellar_soroban/b193c6b0b103d87578a6be96201c2dfbdf8c93c272a76f4257093cca02511068' },
+      [networks.mainnet]: { horizon: 'https://lb.drpc.live/stellar/Ahh1rnxVdErIlO_oTMvCRlN9SvIXxjYR8YVDbj3Fs6u0', soroban: 'https://rpc.ankr.com/stellar_soroban/b193c6b0b103d87578a6be96201c2dfbdf8c93c272a76f4257093cca02511068' },
     },
     loginMethods: ['wallet'],
     appearance: {
