@@ -8,12 +8,14 @@ import { configuration } from '../lib/api/config.fixture.mjs';
 const code = ts.transpileModule(readFileSync(new URL('./configuration-provider.tsx', import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
 }).outputText;
-function harness() {
+function harness({ initializationError, waitForClients = false } = {}) {
   const states = [], effects = [], events = [], storage = new Map();
   const timers = new Map();
   let now = 0, timerId = 0;
   let stateIndex = 0, effectIndex = 0, resolve, reject, requested = null;
   let pending = new Promise((yes, no) => { resolve = yes; reject = no; });
+  let releaseClients;
+  const clientsReady = new Promise(resolve => { releaseClients = resolve; });
   const jsx = (type, props) => ({ type, props });
   const network = { API_NETWORK: undefined, configureNetwork: (config, selected) => { events.push('network:' + selected); network.API_NETWORK = selected; } };
   const mocks = {
@@ -42,7 +44,11 @@ function harness() {
       },
     },
     '@/lib/stellar/network': network,
-    '@/lib/stellar/clients': { initializeStellarClients: () => events.push('clients') },
+    '@/lib/stellar/clients': { initializeStellarClients: async () => {
+      events.push('clients');
+      if (initializationError) throw new Error(initializationError);
+      if (waitForClients) await clientsReady;
+    } },
     './app-loading': { AppLoading: 'AppLoading' },
     '@/components/ui/button': { Button: 'Button' },
     '@/lib/configuration': { ConfigurationContext: { Provider: 'Config' } },
@@ -68,7 +74,7 @@ function harness() {
     return tree;
   }
   return {
-    render, events,
+    render, events, releaseClients,
     advance(ms) {
       now += ms;
       for (const [id, timer] of timers) if (timer.at <= now) {
@@ -82,6 +88,25 @@ function harness() {
   };
 }
 const settle = () => new Promise(resolve => setImmediate(resolve));
+
+test('wallet and application remain unmounted until network identity is verified', async () => {
+  const h = harness({ waitForClients: true });
+  h.select('public'); h.render(); h.resolve(); await settle(); h.advance(1000);
+  assert.equal(h.render().type, 'AppLoading');
+  assert.ok(!h.events.includes('header:public'));
+  h.releaseClients(); await settle();
+  assert.equal(h.render().type, 'Config');
+  assert.ok(h.events.includes('header:public'));
+});
+
+test('mismatched Mainnet providers show an error before mounting the wallet', async () => {
+  const h = harness({ initializationError: 'Mainnet endpoints connect to a different Stellar network.' });
+  h.select('public'); h.render(); h.resolve(); await settle(); h.advance(1000);
+  const error = h.render();
+  assert.equal(error.type, 'main');
+  assert.match(error.props.children[0].props.children, /Mainnet endpoints/);
+  assert.ok(!h.events.includes('header:public'));
+});
 
 test('loading never renders dependent children or initializes wallet clients early', async () => {
   const h = harness();

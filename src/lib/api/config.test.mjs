@@ -35,7 +35,23 @@ function harness(handler = () => response(configuration), bitmap = { width: 128,
     }).outputText;
     runInNewContext(code, {
       ...globals, module, exports: module.exports,
-      require: name => name.startsWith('.') ? load(resolve(dirname(path), name + '.ts')) : name.startsWith('@/') ? load(name.slice(2) + '.ts') : require(name),
+      require: name => {
+        if (name === '@stellar/stellar-sdk' && path.endsWith('clients.ts')) {
+          const sdk = require(name);
+          const passphrase = url => url.endsWith('/public') ? sdk.Networks.PUBLIC : sdk.Networks.TESTNET;
+          return { ...sdk,
+            Horizon: { Server: class extends sdk.Horizon.Server {
+              constructor(url) { super(url); this.fixturePassphrase = passphrase(url); }
+              async root() { return { network_passphrase: this.fixturePassphrase }; }
+            } },
+            rpc: { Server: class extends sdk.rpc.Server {
+              constructor(url) { super(url); this.fixturePassphrase = passphrase(url); }
+              async getNetwork() { return { passphrase: this.fixturePassphrase }; }
+            } },
+          };
+        }
+        return name.startsWith('.') ? load(resolve(dirname(path), name + '.ts')) : name.startsWith('@/') ? load(name.slice(2) + '.ts') : require(name);
+      },
     }, { filename: path });
     return module.exports;
   }
@@ -111,7 +127,7 @@ for (const network of ['testnet', 'public']) test(`Blux, clients, transaction pa
   runtime.configureNetwork(config, network);
   const clients = h.load('lib/stellar/clients.ts');
   assert.equal(clients.horizon, undefined);
-  clients.initializeStellarClients();
+  await clients.initializeStellarClients();
   assert.equal(clients.horizon.serverURL.href, config.network.configurations[network].horizonUrl);
   const blux = h.load('lib/blux-config.ts').createBluxConfig(config, config.network.configurations[network]);
   assert.equal(blux.appId, config.auth.appId);
@@ -129,7 +145,9 @@ for (const network of ['testnet', 'public']) test(`Blux, clients, transaction pa
   if (network === 'public') {
     const { initialLaunchDraft } = h.load('features/create-launch/lib/launch-draft.ts');
     const { buildBondingCurveParams } = h.load('features/create-launch/lib/bonding-curve.ts');
-    assert.throws(() => buildBondingCurveParams({ ...initialLaunchDraft, quote: 'USDC' }, owner.publicKey(), issuer.publicKey(), 'https://images.example/logo.png'), /Payment assets/);
+    const params = buildBondingCurveParams({ ...initialLaunchDraft, name: 'Mainnet token', symbol: 'MAIN', description: 'Mainnet launch' }, owner.publicKey(), issuer.publicKey(), 'https://images.example/logo.png');
+    assert.equal(params.pair, 'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75');
+    assert.equal(params.asset, new (require('@stellar/stellar-sdk').Asset)('MAIN', issuer.publicKey()).contractId(runtime.NETWORK));
   }
   h.client.configureApiNetwork(network, config.network.supported);
   await h.client.apiRequest('/launches/test');
