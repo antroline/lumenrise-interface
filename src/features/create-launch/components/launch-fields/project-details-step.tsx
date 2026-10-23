@@ -50,7 +50,7 @@ export function ProjectDetailsStep({ draft, setDraft, errors = {} }: DraftProps)
             <LaunchTextarea
               className="h-32 min-h-32 resize-none rounded-none bg-transparent px-0 py-1 text-[15px] focus-visible:ring-0 aria-invalid:border-0 aria-invalid:ring-0 studio-compact:h-24 studio-compact:min-h-24"
               id="launch-description"
-              maxLength={3000}
+              maxLength={10000}
               required
               value={draft.description}
               onChange={(event) => update('description', event.target.value)}
