@@ -15,7 +15,7 @@ const DELAYS = ['0s', '3s', '6s']
 export function ReputationSignalMap() {
   return (
     <figure className="relative isolate m-0 w-full">
-      <CoordinateField className="-inset-x-6 -inset-y-10 -z-10 opacity-45 [mask-image:radial-gradient(ellipse_at_70%_50%,#000_20%,transparent_70%)]" />
+      <CoordinateField className="-inset-y-8 inset-x-0 sm:-inset-x-6 -z-10 opacity-45 [mask-image:radial-gradient(ellipse_at_70%_50%,#000_20%,transparent_70%)]" />
       <figcaption className="sr-only">
         On-chain activity, ecosystem contributions and connected accounts each contribute a separate dimension to a reputation profile.
       </figcaption>
@@ -75,7 +75,7 @@ export function ReputationSignalMap() {
         {SIGNALS.map((signal) => (
           <span
             key={signal.label}
-            className="absolute left-[calc(16/560*100%)] -translate-y-[calc(100%+8px)] pl-0.5 text-small font-semibold whitespace-nowrap sm:text-ui"
+            className="absolute left-[calc(16/560*100%)] -translate-y-[calc(100%+6px)] pl-0.5 text-meta font-semibold sm:-translate-y-[calc(100%+8px)] whitespace-nowrap sm:text-ui"
             style={{ top: `${(signal.y / 400) * 100}%` }}
           >
             {signal.label}

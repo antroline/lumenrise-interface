@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'My Reputation' }
 
 export default function ReputationPage() {
   return (
-    <section className="grid min-h-[min(68svh,680px)] items-center gap-10 border-y border-divider py-10 sm:py-14 md:gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16 xl:gap-20">
+    <section className="relative isolate grid items-center gap-8 overflow-hidden border-y border-divider py-8 sm:gap-10 sm:py-14 md:gap-12 lg:min-h-[min(68svh,680px)] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16 xl:gap-20">
       <div className="max-w-xl">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <h1 className="text-big font-semibold tracking-[-0.035em] text-balance sm:text-display">My Reputation</h1>
