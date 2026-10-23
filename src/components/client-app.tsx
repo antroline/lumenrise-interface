@@ -17,7 +17,8 @@ import {
   getProfile,
   resolveAccount,
   registerAccount,
-  uploadAvatar,
+  updateProfile as updateUserProfile,
+  type ProfileUpdateInput,
 } from '@/lib/api/auth';
 import {
   ApiError,
@@ -130,16 +131,17 @@ function registrationErrorMessage(error: unknown): string {
   return 'Something went wrong. Try again.';
 }
 
-function avatarErrorMessage(error: unknown): string {
+function profileErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === 'http' && error.status === 413) {
       return photoTooLargeMessage(error);
     }
     if (error.code === 'http' && error.status === 400) {
-      return error.serverMessage ?? 'Choose a valid photo file.';
+      return error.serverMessage ?? 'Check your name and photo, then try again.';
     }
   }
-  return 'We could not update your photo right now. Try again.';
+  if (error instanceof Error) return error.message;
+  return 'We could not update your profile right now. Try again.';
 }
 
 const SESSION_EXPIRED_RESULT: AccountActionResult = {
@@ -192,6 +194,7 @@ function LaunchpadProvider({
   // Each resolution owns a token; logout invalidates it synchronously, and
   // effect cleanup also invalidates requests when switching away and back.
   const session = useRef<object | null>(null);
+  const profileRevision = useRef(0);
   const latestIdentity = useRef(userIdentity);
   // A login() call awaiting the registration status check resolves through
   // this ref when the check settles.
@@ -405,8 +408,8 @@ function LaunchpadProvider({
     [blux.user?.address, userIdentity, setAccount],
   );
 
-  const updateAvatar = useCallback(
-    async (file: File): Promise<AccountActionResult> => {
+  const updateProfile = useCallback(
+    async (input: ProfileUpdateInput): Promise<AccountActionResult> => {
       const token = session.current;
       const isCurrent = () => token !== null && token === session.current && latestIdentity.current === userIdentity;
       const userId = getApiUserId();
@@ -417,10 +420,9 @@ function LaunchpadProvider({
         };
       }
       try {
-        await uploadAvatar(file);
+        const fresh = await updateUserProfile(input);
         if (!isCurrent()) return SESSION_EXPIRED_RESULT;
-        const fresh = await getProfile();
-        if (!isCurrent()) return SESSION_EXPIRED_RESULT;
+        profileRevision.current++;
         setAccount((current) =>
           current.status === 'registered'
             ? { status: 'registered', profile: { ...current.profile, ...fresh } }
@@ -428,19 +430,22 @@ function LaunchpadProvider({
         );
         return { ok: true };
       } catch (error) {
-        return { ok: false, error: avatarErrorMessage(error) };
+        return { ok: false, error: profileErrorMessage(error) };
       }
     },
     [userIdentity, setAccount],
   );
 
+  const updateAvatar = useCallback((file: File) => updateProfile({ avatar: file }), [updateProfile]);
+
   const refreshProfile = useCallback(async (): Promise<void> => {
     const token = session.current;
+    const revision = profileRevision.current;
     const userId = getApiUserId();
     if (!userId) return;
     try {
       const fresh = await getProfile();
-      if (!token || session.current !== token || latestIdentity.current !== userIdentity) return;
+      if (!token || session.current !== token || latestIdentity.current !== userIdentity || revision !== profileRevision.current) return;
       setAccount((current) =>
         current.status === 'registered'
           ? { status: 'registered', profile: { ...current.profile, ...fresh } }
@@ -464,6 +469,7 @@ function LaunchpadProvider({
     try {
       await deleteAvatar();
       if (!token || session.current !== token || latestIdentity.current !== userIdentity) return SESSION_EXPIRED_RESULT;
+      profileRevision.current++;
       setAccount((current) =>
         current.status === 'registered'
           ? {
@@ -576,6 +582,7 @@ function LaunchpadProvider({
       retryStatusCheck,
       register,
       refreshProfile,
+      updateProfile,
       updateAvatar,
       removeAvatar,
     }),
@@ -592,6 +599,7 @@ function LaunchpadProvider({
       retryStatusCheck,
       register,
       refreshProfile,
+      updateProfile,
       updateAvatar,
       removeAvatar,
     ],

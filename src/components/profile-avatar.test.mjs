@@ -62,6 +62,7 @@ test('both wallet avatars use the current account photo and update when it is re
     '@/lib/utils': { cn: (...values) => values.filter(Boolean).join(' ') },
     '@bluxcc/react': { useBlux: () => ({ profile() {} }) },
     './navigation': { settingsItem: { href: '/settings' } },
+    './network-switcher': ui('NetworkMenuItems'),
   });
   for (const photo of ['/first.webp', null, '/replacement.webp']) {
     avatarUrl = photo;

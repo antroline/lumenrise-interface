@@ -4,6 +4,7 @@ import { getConfiguration } from '@/lib/api/config';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ImagePlus, LoaderCircle } from 'lucide-react';
+import { ImageCropInput } from '@/components/image-crop-input';
 import { ProfileAvatar } from '@/components/profile-avatar';
 import { Button } from '@/components/ui/button';
 import { AppDialogContent, AppDialogHeader, AppDialogFooter } from '@/components/app-dialog';
@@ -77,6 +78,10 @@ export function LaunchTeamMemberDialog({ slug, network, sessionId, member, busy,
       setError('Search for and select a registered user.');
       return;
     }
+    if (kind === 'external' && !member && !image) {
+      setError('Upload and confirm a member photo.');
+      return;
+    }
     try {
       if (kind === 'registered' && selected)
         await onSave({ kind, identityId: selected.identityId, role });
@@ -142,11 +147,9 @@ export function LaunchTeamMemberDialog({ slug, network, sessionId, member, busy,
                   </FieldSurface>
                 </Field>
                 <Field orientation="horizontal" className="items-center gap-3">
-                  <label htmlFor="team-image" className="group relative grid size-16 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-lg border border-dashed border-border bg-secondary/60 transition-colors hover:bg-secondary focus-within:ring-2 focus-within:ring-ring has-disabled:cursor-not-allowed has-disabled:opacity-50">
+                  <label htmlFor="team-image" className="group relative grid size-16 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full border border-dashed border-border bg-secondary/60 transition-colors hover:bg-secondary focus-within:ring-2 focus-within:ring-ring has-disabled:cursor-not-allowed has-disabled:opacity-50">
                     {photo ? <img src={photo} alt="Member photo preview" className="size-full object-cover" /> : <ImagePlus className="size-5 text-muted-foreground" aria-hidden="true" />}
-                    <input id="team-image" type="file" className="sr-only" aria-label={photo ? 'Change member photo' : 'Upload member photo'} accept={getConfiguration().rules.images.mimeTypes.join(',')} disabled={!getConfiguration().features.imageUploads} required={!member && !image} onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (!file) return;
+                    <ImageCropInput kind="teamImage" onError={setError} id="team-image" className="sr-only" aria-label={photo ? 'Change member photo' : 'Upload member photo'} disabled={!getConfiguration().features.imageUploads} onCropped={(file) => {
                       if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
                       previewUrl.current = URL.createObjectURL(file);
                       setImagePreview(previewUrl.current);

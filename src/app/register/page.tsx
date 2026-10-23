@@ -12,7 +12,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import { validateProfileImage } from '@/lib/image'
+import { ImageCropInput } from '@/components/image-crop-input'
 import { getConfiguration } from '@/lib/api/config'
 import { imageHint } from '@/lib/client-rules'
 import { useLaunchpad } from '@/lib/launchpad'
@@ -107,17 +107,11 @@ function RegistrationForm() {
     if (!file) return
     setAvatarError('')
     setFormError('')
-    void validateProfileImage(file).then((error) => {
-      if (error) {
-        setAvatarError(error)
-        return
-      }
-      const url = URL.createObjectURL(file)
-      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
-      previewUrlRef.current = url
-      setAvatarFile(file)
-      setPreviewUrl(url)
-    })
+    const url = URL.createObjectURL(file)
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+    previewUrlRef.current = url
+    setAvatarFile(file)
+    setPreviewUrl(url)
   }
 
   function clearAvatar() {
@@ -171,7 +165,7 @@ function RegistrationForm() {
                 <Field className="w-20 sm:w-28">
                   <label
                     htmlFor="register-avatar"
-                    className="group relative grid size-20 cursor-pointer place-items-center overflow-hidden rounded-xl bg-surface transition-colors hover:bg-secondary focus-within:ring-3 focus-within:ring-ring/55 sm:size-28 dark:bg-muted"
+                    className="group relative grid size-20 cursor-pointer place-items-center overflow-hidden rounded-full bg-surface transition-colors hover:bg-secondary focus-within:ring-3 focus-within:ring-ring/55 sm:size-28 dark:bg-muted"
                   >
                     {previewUrl ? (
                       <img src={previewUrl} alt="Profile photo preview" className="size-full object-cover" />
@@ -179,18 +173,16 @@ function RegistrationForm() {
                       <ImagePlus className="size-7 text-muted-foreground transition-transform duration-200 group-hover:scale-110 motion-reduce:transform-none sm:size-8" aria-hidden="true" />
                     )}
                     <span className="sr-only">{previewUrl ? 'Change profile photo' : 'Upload profile photo'}</span>
-                    <input
+                    <ImageCropInput
+                      kind="avatar"
+                      onCropped={pickAvatar}
+                      onError={setAvatarError}
                       id="register-avatar"
-                      type="file" disabled={!getConfiguration().features.imageUploads}
-                      accept={getConfiguration().rules.images.mimeTypes.join(',')}
+                      disabled={!getConfiguration().features.imageUploads}
                       className="sr-only"
                       aria-label="Profile photo"
                       aria-invalid={!!avatarError}
                       aria-describedby={avatarError ? 'register-avatar-error' : 'register-avatar-hint'}
-                      onChange={(event) => {
-                        pickAvatar(event.target.files?.[0])
-                        event.target.value = ''
-                      }}
                     />
                   </label>
                   <FieldError id="register-avatar-error" className="mt-1.5 text-small">
