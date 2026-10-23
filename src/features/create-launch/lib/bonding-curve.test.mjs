@@ -71,7 +71,7 @@ test('maps exact amounts, pair, allocations, team vesting, and percentage fee wi
   assert.equal(params.asset, new Asset('TIDE', issuer).contractId(Networks.TESTNET));
   assert.equal(params.pair, 'CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA');
   assert.equal(params.metadata.symbol, 'TIDE');
-  assert.equal(params.metadata.description, 'Entered description');
+  assert.equal(params.metadata.description, params.metadata.name);
   assert.equal(params.metadata.logo, IMAGE_URL);
   const calculation = calculateDraftLaunch(draft());
   assert.equal(params.allocations.curve_bps, calculation.allocations.curve_bps);
@@ -501,12 +501,23 @@ test('optional links reach prelaunch but never enter contract metadata', async (
   await h.flow.launch({ ...draft(), ...links });
   assert.equal(h.uploads[0].website, links.website);
   assert.equal(h.uploads[0].xAccount, links.xAccount);
+  assert.equal(h.uploads[0].description, draft().description);
   const params = h.calls[0].call.args[0];
   assert.equal(params.metadata.logo, IMAGE_URL);
   assert.equal('website' in params.metadata, false);
   assert.equal('xAccount' in params.metadata, false);
   assert.equal(JSON.stringify(params).includes('https://example.com/project'), false);
   assert.equal(JSON.stringify(params).includes('https://x.com/project'), false);
+});
+
+test('a changed description sends a fresh prelaunch on retry', async () => {
+  const h = harness({ rejectSac: true });
+  await h.flow.launch(draft());
+  await h.flow.launch({ ...draft(), description: 'Updated project description.' });
+  assert.equal(h.uploads.length, 2);
+  assert.equal(h.uploads[1].description, 'Updated project description.');
+  assert.equal(h.statusChecks.length, 0);
+  assert.equal(h.progress.at(-1).status, 'success');
 });
 
 test('adding, changing, or clearing either optional link forces a fresh prelaunch on retry', async () => {

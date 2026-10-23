@@ -4,7 +4,7 @@ import { validProjectLink, validateImage } from '../../client-rules';
 /**
  * Bonding Curve prelaunch endpoints.
  *
- * `POST /launches/prelaunch` stores a logo and optional project links for the signed-in
+ * `POST /launches/prelaunch` stores a description, logo and optional project links for the signed-in
  * user's wallet before the launch transaction; the returned `publicUrl` goes
  * into the contract's `metadata.logo` unchanged. `GET /launches/prelaunch/:id`
  * reports the image lifecycle to its owner, so a retry can reuse a still
@@ -100,13 +100,14 @@ export function fileFromDataUrl(dataUrl: string): File {
 }
 
 /**
- * POST /launches/prelaunch — multipart with `name`, `network`, `ownerAddress`,
+ * POST /launches/prelaunch — multipart with `name`, `description`, `network`, `ownerAddress`,
  * one `image` file, and optional links stored by the server for confirmed
  * launch metadata. Identified by `X-User-Id`; the FormData boundary is
  * left to the browser.
  */
 export async function uploadLaunchImage(input: {
   name: string;
+  description: string;
   network: ApiNetwork;
   ownerAddress: string;
   image: File;
@@ -116,10 +117,14 @@ export async function uploadLaunchImage(input: {
 }): Promise<UploadedLaunchImage> {
   const nameError = projectNameError(input.name);
   if (nameError) throw new Error(nameError);
+  const description = input.description.trim();
+  if (!description || description.length > 10_000)
+    throw new Error('Enter a project description of 1 to 10000 characters.');
   const imageError = await validateImage(input.image, 'tokenImage');
   if (imageError) throw new Error(imageError);
   const formData = new FormData();
   formData.append('name', input.name);
+  formData.append('description', description);
   formData.append('network', input.network);
   formData.append('ownerAddress', input.ownerAddress);
   formData.append('image', input.image);

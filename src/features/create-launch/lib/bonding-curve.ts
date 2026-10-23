@@ -118,7 +118,7 @@ export function buildBondingCurveParams(
     pair: USDC_CONTRACTS[API_NETWORK],
     metadata: {
       name: token.name,
-      description: draft.description,
+      description: token.name,
       logo,
       symbol: token.code,
     },
