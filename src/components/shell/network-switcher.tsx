@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronDown, Globe } from 'lucide-react';
+import { useBlux, useSwitchNetwork } from '@bluxcc/react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -47,6 +48,8 @@ export function NetworkSwitcher({ compact = false }: { compact?: boolean }) {
 
 export function NetworkMenuItems() {
   const supported = getConfiguration().network.supported;
+  const { isReady } = useBlux();
+  const { networks, switchNetwork } = useSwitchNetwork();
 
   return (
     <DropdownMenuGroup>
@@ -55,14 +58,15 @@ export function NetworkMenuItems() {
         aria-label="Stellar network"
         value={API_NETWORK}
         onValueChange={(network) => {
-          if (network !== API_NETWORK && supported.some(value => value === network))
-            window.location.assign('/projects?network=' + network);
+          if (!isReady || network === API_NETWORK || !supported.some(value => value === network)) return;
+          switchNetwork(network === 'public' ? networks.mainnet : networks.testnet);
+          window.location.assign('/projects?network=' + network);
         }}
       >
-        <DropdownMenuRadioItem value="testnet" disabled={!supported.includes('testnet')} className="min-h-11">
+        <DropdownMenuRadioItem value="testnet" disabled={!isReady || !supported.includes('testnet')} className="min-h-11">
           Testnet
         </DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value="public" disabled={!supported.includes('public')} className="min-h-11">
+        <DropdownMenuRadioItem value="public" disabled={!isReady || !supported.includes('public')} className="min-h-11">
           Mainnet
         </DropdownMenuRadioItem>
       </DropdownMenuRadioGroup>

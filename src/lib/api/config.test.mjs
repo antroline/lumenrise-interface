@@ -36,6 +36,10 @@ function harness(handler = () => response(configuration), bitmap = { width: 128,
     runInNewContext(code, {
       ...globals, module, exports: module.exports,
       require: name => {
+        if (name === '@bluxcc/react') {
+          const { Networks } = require('@stellar/stellar-sdk');
+          return { networks: { mainnet: Networks.PUBLIC, testnet: Networks.TESTNET } };
+        }
         if (name === '@stellar/stellar-sdk' && path.endsWith('clients.ts')) {
           const sdk = require(name);
           const passphrase = url => url.endsWith('/public') ? sdk.Networks.PUBLIC : sdk.Networks.TESTNET;
@@ -133,7 +137,12 @@ for (const network of ['testnet', 'public']) test(`Blux, clients, transaction pa
   assert.equal(blux.appId, config.auth.appId);
   assert.equal(blux.networks[0], runtime.NETWORK);
   assert.equal(blux.defaultNetwork, runtime.NETWORK);
-  assert.equal(blux.transports[runtime.NETWORK].soroban, config.network.configurations[network].rpcUrl);
+  for (const name of config.network.supported) {
+    const entry = config.network.configurations[name];
+    assert.ok(blux.networks.includes(entry.networkPassphrase));
+    assert.equal(blux.transports[entry.networkPassphrase].soroban, entry.rpcUrl);
+    assert.equal(blux.transports[entry.networkPassphrase].horizon, entry.horizonUrl);
+  }
   const { Account, Keypair } = require('@stellar/stellar-sdk');
   const owner = Keypair.random(), issuer = Keypair.random();
   const transactions = h.load('features/create-launch/lib/transactions.ts');

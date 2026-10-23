@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { BluxProvider, useBlux } from '@bluxcc/react';
+import { BluxProvider, useBlux, useSwitchNetwork } from '@bluxcc/react';
 import {
   deleteAvatar,
   getProfile,
@@ -54,11 +54,24 @@ export default function ClientApp({
   configureApi(apiBaseUrl);
   return (
     <BluxProvider config={bluxConfig}>
+      <BluxNetworkSync />
       <ToastProvider>
         <LaunchpadProvider apiBaseUrl={apiBaseUrl}>{children}</LaunchpadProvider>
       </ToastProvider>
     </BluxProvider>
   );
+}
+
+function BluxNetworkSync() {
+  const { isReady } = useBlux();
+  const { networks, switchNetwork } = useSwitchNetwork();
+  const network = API_NETWORK === 'public' ? networks.mainnet : networks.testnet;
+
+  useEffect(() => {
+    if (isReady) switchNetwork(network);
+  }, [isReady, network, switchNetwork]);
+
+  return null;
 }
 
 function statusCheckMessage(error: unknown): string {

@@ -2,16 +2,19 @@ import { networks, type BluxProvider } from '@bluxcc/react';
 import type { PublicConfiguration, NetworkConfiguration } from './api/config';
 
 export function createBluxConfig(config: PublicConfiguration, network: NetworkConfiguration): Parameters<typeof BluxProvider>[0]['config'] {
+  const selected = network.network === 'public' ? networks.mainnet : networks.testnet;
+  const supported = config.network.supported.map(name => name === 'public' ? networks.mainnet : networks.testnet);
   return {
     appId: config.auth.appId,
     appName: 'Launchpad',
-    networks: [networks.mainnet, networks.testnet],
+    networks: [selected, ...supported.filter(value => value !== selected)],
     showWalletUIs: false,
-    defaultNetwork: networks.testnet,
-    transports: {
-      [networks.testnet]: { horizon: 'https://lb.drpc.live/stellar-testnet/Ahh1rnxVdErIlO_oTMvCRlN9SvIXxjYR8YVDbj3Fs6u0', soroban: 'https://rpc.ankr.com/stellar_soroban/b193c6b0b103d87578a6be96201c2dfbdf8c93c272a76f4257093cca02511068' },
-      [networks.mainnet]: { horizon: 'https://lb.drpc.live/stellar/Ahh1rnxVdErIlO_oTMvCRlN9SvIXxjYR8YVDbj3Fs6u0', soroban: 'https://rpc.ankr.com/stellar_soroban/b193c6b0b103d87578a6be96201c2dfbdf8c93c272a76f4257093cca02511068' },
-    },
+    defaultNetwork: selected,
+    transports: Object.fromEntries(config.network.supported.map(name => {
+      const entry = config.network.configurations[name];
+      const passphrase = name === 'public' ? networks.mainnet : networks.testnet;
+      return [passphrase, { horizon: entry.horizonUrl, soroban: entry.rpcUrl }];
+    })),
     loginMethods: ['wallet'],
     appearance: {
       background: '#ffffff',

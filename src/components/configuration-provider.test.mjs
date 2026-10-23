@@ -8,8 +8,8 @@ import { configuration } from '../lib/api/config.fixture.mjs';
 const code = ts.transpileModule(readFileSync(new URL('./configuration-provider.tsx', import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
 }).outputText;
-function harness({ initializationError, waitForClients = false } = {}) {
-  const states = [], effects = [], events = [], storage = new Map();
+function harness({ initializationError, waitForClients = false, storedNetwork } = {}) {
+  const states = [], effects = [], events = [], storage = new Map(storedNetwork ? [['lumenrise:network', storedNetwork]] : []);
   const timers = new Map();
   let now = 0, timerId = 0;
   let stateIndex = 0, effectIndex = 0, resolve, reject, requested = null;
@@ -74,7 +74,7 @@ function harness({ initializationError, waitForClients = false } = {}) {
     return tree;
   }
   return {
-    render, events, releaseClients,
+    render, events, releaseClients, storage,
     advance(ms) {
       now += ms;
       for (const [id, timer] of timers) if (timer.at <= now) {
@@ -88,6 +88,14 @@ function harness({ initializationError, waitForClients = false } = {}) {
   };
 }
 const settle = () => new Promise(resolve => setImmediate(resolve));
+
+for (const selected of ['public', 'testnet']) test(`initial network=${selected} overrides a previously saved network`, async () => {
+  const h = harness({ storedNetwork: selected === 'public' ? 'testnet' : 'public' });
+  h.select(selected); h.render(); h.resolve(); await settle(); h.advance(500);
+  assert.equal(h.render().type, 'Config');
+  assert.deepEqual(h.events.slice(2), ['network:' + selected, 'clients', 'header:' + selected]);
+  assert.equal(h.storage.get('lumenrise:network'), selected);
+});
 
 test('wallet and application remain unmounted until network identity is verified', async () => {
   const h = harness({ waitForClients: true });
