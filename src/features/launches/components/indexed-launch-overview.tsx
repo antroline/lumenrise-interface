@@ -246,7 +246,7 @@ export function IndexedLaunchOverview({
       : tokens?.pairSymbol || (label === 'USDC' ? 'USDC' : 'quote tokens');
   const name = metadata?.name || 'Bonding curve launch';
   const ticker = metadata?.symbol || tokens?.assetSymbol || 'TOKEN';
-  const description = metadata?.description?.trim();
+  const description = launch?.metadata.description?.trim();
   const progress = b
     ? graduationPercent(b.state.quoteReserve, b.curve.graduationTarget)
     : null;
@@ -403,7 +403,7 @@ export function IndexedLaunchOverview({
         className="launch-details mx-auto w-full max-w-[1320px] pb-24 lg:pb-16 selection:bg-lime selection:text-ink dark:bg-neutral-950 dark:text-neutral-50 dark:[--muted:var(--color-neutral-800)]! dark:[--surface:var(--color-neutral-800)]! dark:[--input:var(--color-neutral-800)]! [&_section]:shadow-none [&_[data-slot=card]]:shadow-none"
       >
         <div className="mb-4 px-4 sm:px-0 md:hidden">
-          <BackLink href={`/launches?network=${network}`}>Projects</BackLink>
+          <BackLink href={`/projects?network=${network}`}>Projects</BackLink>
         </div>
         <div className="mb-4 flex flex-col gap-2 px-4 text-small empty:hidden sm:px-0">
           {feedback}

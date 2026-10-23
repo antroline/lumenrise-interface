@@ -66,7 +66,7 @@ function PendingInvitations({ sessionId }: { sessionId: string }) {
     {invitations?.length ? <ul aria-label="Pending team invitations" aria-busy={mutation.isPending} className="flex flex-col gap-3">
       {invitations.map((invitation) => <li key={`${invitation.network}:${invitation.memberId}`} className="flex min-w-0 flex-wrap items-center gap-3 border-t py-3">
         <div className="min-w-0 flex-1 basis-48">
-          {invitation.slug ? <Link href={`/launches/${encodeURIComponent(invitation.slug)}?network=${invitation.network}`} className="block truncate text-ui font-medium underline underline-offset-4">{invitation.slug}</Link> : <p className="text-small text-muted-foreground">Project page unavailable</p>}
+          {invitation.slug ? <Link href={`/projects/${encodeURIComponent(invitation.slug)}?network=${invitation.network}`} className="block truncate text-ui font-medium underline underline-offset-4">{invitation.slug}</Link> : <p className="text-small text-muted-foreground">Project page unavailable</p>}
           <p className="break-words text-small text-muted-foreground">{invitation.role} · {invitation.network === 'public' ? 'Mainnet' : 'Testnet'}</p>
         </div>
         <div className="flex gap-2">

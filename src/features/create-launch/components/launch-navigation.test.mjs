@@ -32,7 +32,7 @@ const actions = (overrides = {}) => LaunchNavigation({ ...props, ...overrides })
 test('indexed success replaces launch submission with a link to the created launch, even after wallet disconnect', () => {
   const nodes = actions({ launchSlug: 'blue-man', ready: false, accountReady: false });
   const link = nodes.find((node) => node.type === 'Link');
-  assert.equal(link.props.href, '/launches/blue-man?network=testnet');
+  assert.equal(link.props.href, '/projects/blue-man?network=testnet');
   assert.ok(link.props.children.includes('View launch '));
   assert.ok(!nodes.some((node) => node.props.onClick === props.onLaunch));
 });

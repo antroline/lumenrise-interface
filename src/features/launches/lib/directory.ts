@@ -99,5 +99,5 @@ export function directoryHref(
   if (next.owner) q.set('owner', next.owner);
   if (next.search) q.set('search', next.search);
   if (next.pair) q.set('pair', next.pair);
-  return `/launches?${q}`;
+  return `/projects?${q}`;
 }

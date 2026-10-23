@@ -3,6 +3,8 @@
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -13,7 +15,7 @@ import { BluxProvider, useBlux } from '@bluxcc/react';
 import {
   deleteAvatar,
   getProfile,
-  getRegistrationStatus,
+  resolveAccount,
   registerAccount,
   uploadAvatar,
 } from '@/lib/api/auth';
@@ -63,13 +65,19 @@ function statusCheckMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === 'http') {
       if (error.status === 400) {
-        return 'We could not verify your account. Sign out and sign in again.';
+        return 'Your sign-in ID or Stellar address is invalid. Sign out and sign in again.';
+      }
+      if (error.status === 401) {
+        return 'Blux could not verify your sign-in and Stellar wallet. Sign out and sign in again.';
       }
       if (error.status === 403) {
         return 'This account has been deactivated. Contact support if you believe this is a mistake.';
       }
       if (error.status === 503) {
-        return 'The registration service is unavailable right now. Try again in a moment.';
+        return 'Account verification is temporarily unavailable. Try again in a moment.';
+      }
+      if (error.status === 409) {
+        return 'Your sign-in and wallet conflict with existing profile ownership. Contact support.';
       }
     }
     return error.message;
@@ -100,6 +108,8 @@ function registrationErrorMessage(error: unknown): string {
           );
         case 401:
           return 'We could not verify your account with the authentication service. Sign out and sign in again.';
+        case 403:
+          return 'This account has been deactivated. Contact support if you believe this is a mistake.';
         case 409:
           return (
             error.serverMessage ??
@@ -139,6 +149,8 @@ const SESSION_EXPIRED_RESULT: AccountActionResult = {
 
 /** Terminal outcomes of the registration status check that login() awaits. */
 type CheckOutcome = 'registered' | 'unregistered' | 'error' | 'cancelled';
+const CHECKING_ACCOUNT: AccountState = { status: 'checking' };
+const SIGNED_OUT_ACCOUNT: AccountState = { status: 'signed-out' };
 
 function LaunchpadProvider({
   children,
@@ -150,15 +162,37 @@ function LaunchpadProvider({
   const blux = useBlux();
   const router = useRouter();
   const pathname = usePathname();
+  const providerUserId = blux.isAuthenticated ? getAuthProviderUserId() : null;
+  const selectedAddress = blux.user?.address;
+  const userIdentity = blux.isAuthenticated && blux.user
+    ? `${providerUserId}:${blux.user.authMethod}:${blux.user.authValue}:${blux.user.address}`
+    : null;
   const [loginPhase, setLoginPhase] = useState<'connecting' | 'checking' | null>(
     null,
   );
   const notify = useNotify();
-  const [account, setAccount] = useState<AccountState>({ status: 'signed-out' });
-  const [statusNonce, setStatusNonce] = useState(0);
-  const registerInFlight = useRef(false);
+  const [snapshot, setSnapshot] = useState<{ identity: string | null; value: AccountState }>({
+    identity: null, value: { status: 'signed-out' },
+  });
+  // Hide the previous profile immediately, before the account-change effect runs.
+  const account: AccountState = snapshot.identity === userIdentity
+    ? snapshot.value
+    : userIdentity ? CHECKING_ACCOUNT : SIGNED_OUT_ACCOUNT;
   // Latest account state for async continuations that read it after awaits.
   const accountRef = useRef(account);
+  const setAccount = useCallback((value: AccountState | ((current: AccountState) => AccountState)) => {
+    const next = typeof value === 'function' ? value(accountRef.current) : value;
+    accountRef.current = next;
+    setSnapshot({ identity: userIdentity, value: next });
+  }, [userIdentity]);
+  const [statusNonce, setStatusNonce] = useState(0);
+  const registerInFlight = useRef(false);
+  const loginInFlight = useRef(false);
+  const loginAttempt = useRef(0);
+  // Each resolution owns a token; logout invalidates it synchronously, and
+  // effect cleanup also invalidates requests when switching away and back.
+  const session = useRef<object | null>(null);
+  const latestIdentity = useRef(userIdentity);
   // A login() call awaiting the registration status check resolves through
   // this ref when the check settles.
   const statusWaiter = useRef<{
@@ -171,16 +205,26 @@ function LaunchpadProvider({
     configureApi(apiBaseUrl);
   }, [apiBaseUrl]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (latestIdentity.current !== null && latestIdentity.current !== userIdentity) {
+      // A switch/disconnect also cancels a login still awaiting the Blux modal,
+      // before it has installed its resolution waiter.
+      loginAttempt.current++;
+      loginInFlight.current = false;
+      setLoginPhase(null);
+      statusWaiter.current?.resolve('cancelled');
+      statusWaiter.current = null;
+    }
+    latestIdentity.current = userIdentity;
     accountRef.current = account;
-  }, [account]);
+  }, [userIdentity, account]);
 
-  // Stable identity for the signed-in provider user; the SDK may hand out a
-  // fresh user object on unrelated store updates, which must not re-run the
-  // status check.
-  const userIdentity = blux.user
-    ? `${blux.user.authMethod}:${blux.user.authValue}:${blux.user.address}`
-    : null;
+  const navigateToCompletion = useEffectEvent(() => {
+    if (pathname.startsWith('/register')) return;
+    saveAuthReturnTo();
+    registerRoutePending.current = true;
+    router.push('/register');
+  });
 
   // Identifies the signed-in provider user against the LumenRise API and
   // resolves whether they still need to register. Until this settles, pages
@@ -189,6 +233,9 @@ function LaunchpadProvider({
   // outcome is resolved first, so it can route before the new account state
   // renders anywhere.
   useEffect(() => {
+    const token = {};
+    session.current = token;
+    const isCurrent = () => session.current === token && latestIdentity.current === userIdentity;
     const settleWaiter = (outcome: CheckOutcome) => {
       const waiter = statusWaiter.current;
       statusWaiter.current = null;
@@ -200,8 +247,9 @@ function LaunchpadProvider({
       settleWaiter('cancelled');
       return;
     }
-    const userId = getAuthProviderUserId();
-    if (!userId) {
+    const userId = providerUserId;
+    const address = selectedAddress;
+    if (!userId || !address) {
       setApiUserId(null);
       settleWaiter('error');
       setAccount({
@@ -214,24 +262,24 @@ function LaunchpadProvider({
     setApiUserId(userId);
     let cancelled = false;
     const controller = new AbortController();
-    setAccount((current) =>
-      current.status === 'registered' && current.profile.userId === userId
-        ? current
-        : { status: 'checking' },
-    );
-    getRegistrationStatus({ signal: controller.signal })
+    setAccount({ status: 'checking' });
+    resolveAccount({ userId, address, signal: controller.signal })
       .then((status) => {
-        if (cancelled) return;
-        settleWaiter(status.registered ? 'registered' : 'unregistered');
-        if (status.registered) {
+        if (cancelled || !isCurrent()) return;
+        const complete = status.registered && !!status.name.trim();
+        // Route before publishing the unregistered state so its disconnect
+        // guard cannot run before login() resumes (also covers restored sessions).
+        if (!complete) navigateToCompletion();
+        settleWaiter(complete ? 'registered' : 'unregistered');
+        if (complete && status.registered) {
           setAccount({
             status: 'registered',
             profile: {
-              userId: status.userId,
+              userId,
               identityId: status.identityId,
               name: status.name,
               avatarUrl: status.avatarUrl,
-              addresses: [],
+              addresses: [address],
             },
           });
         } else {
@@ -239,18 +287,19 @@ function LaunchpadProvider({
         }
       })
       .catch((error) => {
-        if (cancelled || isAbortError(error)) return;
+        if (cancelled || !isCurrent() || isAbortError(error)) return;
         settleWaiter('error');
         setAccount({ status: 'error', message: statusCheckMessage(error) });
       });
     return () => {
       cancelled = true;
+      if (session.current === token) session.current = null;
       controller.abort();
       settleWaiter('cancelled');
     };
     // userIdentity is the stable key for blux.user; statusNonce re-runs the
     // check on retry.
-  }, [blux.isAuthenticated, userIdentity, statusNonce]);
+  }, [blux.isAuthenticated, userIdentity, selectedAddress, statusNonce, providerUserId, setAccount]);
 
   // The registration-navigation guard only needs to survive until the route
   // actually changes.
@@ -273,7 +322,7 @@ function LaunchpadProvider({
       'Account setup was not completed, so your wallet was disconnected.',
       { tone: 'warning' },
     );
-  }, [account.status, pathname, blux, notify]);
+  }, [account.status, pathname, blux, notify, setAccount]);
 
   const retryStatusCheck = useCallback(() => {
     setStatusNonce((nonce) => nonce + 1);
@@ -288,7 +337,10 @@ function LaunchpadProvider({
         return { ok: false, error: 'Your registration is already being submitted.' };
       }
       const userId = getApiUserId();
-      if (!userId) {
+      const address = blux.user?.address;
+      const token = session.current;
+      const isCurrent = () => token !== null && session.current === token && latestIdentity.current === userIdentity;
+      if (!userId || !address || accountRef.current.status !== 'unregistered' || !isCurrent()) {
         return {
           ok: false,
           error: 'Your session is not ready yet. Refresh the page and try again.',
@@ -299,14 +351,16 @@ function LaunchpadProvider({
       registerInFlight.current = true;
       try {
         const profile = await registerAccount({
+          address,
           name: input.name,
           avatar: input.avatar ?? null,
         });
-        if (getApiUserId() !== userId) return SESSION_EXPIRED_RESULT;
-        setAccount({ status: 'registered', profile });
+        if (!isCurrent()) return SESSION_EXPIRED_RESULT;
+        if (!profile.name.trim()) return { ok: false, error: 'Enter a complete profile name and try again.' };
+        setAccount({ status: 'registered', profile: { ...profile, userId } });
         return { ok: true };
       } catch (error) {
-        if (getApiUserId() !== userId) return SESSION_EXPIRED_RESULT;
+        if (!isCurrent()) return SESSION_EXPIRED_RESULT;
         if (
           error instanceof ApiError &&
           (error.code === 'timeout' || error.code === 'network')
@@ -314,17 +368,17 @@ function LaunchpadProvider({
           // The request may still have reached the server. Never assume the
           // registration succeeded — confirm with a fresh status check.
           try {
-            const status = await getRegistrationStatus();
-            if (status.registered) {
-              if (getApiUserId() !== userId) return SESSION_EXPIRED_RESULT;
+            const status = await resolveAccount({ userId, address });
+            if (!isCurrent()) return SESSION_EXPIRED_RESULT;
+            if (status.registered && status.name.trim()) {
               setAccount({
                 status: 'registered',
                 profile: {
-                  userId: status.userId,
+                  userId,
                   identityId: status.identityId,
                   name: status.name,
                   avatarUrl: status.avatarUrl,
-                  addresses: [],
+                  addresses: [address],
                 },
               });
               return { ok: true };
@@ -335,6 +389,7 @@ function LaunchpadProvider({
                 'We could not reach the registration service. Your details are intact — try again.',
             };
           } catch {
+            if (!isCurrent()) return SESSION_EXPIRED_RESULT;
             return {
               ok: false,
               error:
@@ -347,11 +402,13 @@ function LaunchpadProvider({
         registerInFlight.current = false;
       }
     },
-    [blux.user?.address],
+    [blux.user?.address, userIdentity, setAccount],
   );
 
   const updateAvatar = useCallback(
     async (file: File): Promise<AccountActionResult> => {
+      const token = session.current;
+      const isCurrent = () => token !== null && token === session.current && latestIdentity.current === userIdentity;
       const userId = getApiUserId();
       if (!userId) {
         return {
@@ -361,8 +418,9 @@ function LaunchpadProvider({
       }
       try {
         await uploadAvatar(file);
+        if (!isCurrent()) return SESSION_EXPIRED_RESULT;
         const fresh = await getProfile();
-        if (getApiUserId() !== userId) return SESSION_EXPIRED_RESULT;
+        if (!isCurrent()) return SESSION_EXPIRED_RESULT;
         setAccount((current) =>
           current.status === 'registered'
             ? { status: 'registered', profile: { ...current.profile, ...fresh } }
@@ -373,15 +431,16 @@ function LaunchpadProvider({
         return { ok: false, error: avatarErrorMessage(error) };
       }
     },
-    [],
+    [userIdentity, setAccount],
   );
 
   const refreshProfile = useCallback(async (): Promise<void> => {
+    const token = session.current;
     const userId = getApiUserId();
     if (!userId) return;
     try {
       const fresh = await getProfile();
-      if (getApiUserId() !== userId) return;
+      if (!token || session.current !== token || latestIdentity.current !== userIdentity) return;
       setAccount((current) =>
         current.status === 'registered'
           ? { status: 'registered', profile: { ...current.profile, ...fresh } }
@@ -391,9 +450,10 @@ function LaunchpadProvider({
       // A background refresh failure keeps the last known profile; explicit
       // actions surface their own errors.
     }
-  }, []);
+  }, [userIdentity, setAccount]);
 
   const removeAvatar = useCallback(async (): Promise<AccountActionResult> => {
+    const token = session.current;
     const userId = getApiUserId();
     if (!userId) {
       return {
@@ -403,7 +463,7 @@ function LaunchpadProvider({
     }
     try {
       await deleteAvatar();
-      if (getApiUserId() !== userId) return SESSION_EXPIRED_RESULT;
+      if (!token || session.current !== token || latestIdentity.current !== userIdentity) return SESSION_EXPIRED_RESULT;
       setAccount((current) =>
         current.status === 'registered'
           ? {
@@ -416,12 +476,14 @@ function LaunchpadProvider({
     } catch {
       return { ok: false, error: 'We could not remove your photo. Try again.' };
     }
-  }, []);
+  }, [userIdentity, setAccount]);
 
   const login = useCallback(
     async (destination?: string) => {
+      if (loginInFlight.current) return;
       if (blux.isAuthenticated && accountRef.current.status === 'registered') return;
-
+      loginInFlight.current = true;
+      const attempt = ++loginAttempt.current;
       saveAuthReturnTo(destination);
       try {
         if (!blux.isAuthenticated) {
@@ -429,6 +491,7 @@ function LaunchpadProvider({
           setLoginPhase('connecting');
           await loginRequest;
         }
+        if (loginAttempt.current !== attempt) return;
 
         // The sign-in effect above is now running the registration status
         // check. Await its outcome: registered users stay on their page without the
@@ -445,12 +508,13 @@ function LaunchpadProvider({
                 statusWaiter.current = { resolve };
               });
 
+        if (loginAttempt.current !== attempt) return;
         if (outcome === 'registered') {
           // The registration page owns its redirect; consuming its target here
           // would race that effect. Other pages stay mounted after signing in.
           if (window.location.pathname !== '/register') consumeAuthReturnTo();
         } else if (outcome === 'unregistered') {
-          if (pathname !== '/register') {
+          if (pathname !== '/register' && !registerRoutePending.current) {
             registerRoutePending.current = true;
             router.push('/register');
           }
@@ -461,19 +525,29 @@ function LaunchpadProvider({
         // 'cancelled': the sign-in changed while the check was running, so
         // routing follows the current account state instead.
       } catch (error) {
+        if (loginAttempt.current !== attempt) return;
         const message =
           error instanceof Error
             ? error.message
             : 'Blux could not open the login flow.';
         notify(message.replace(/^BLUX:\s*/i, ''), { tone: 'error' });
       } finally {
-        setLoginPhase(null);
+        if (loginAttempt.current === attempt) {
+          loginInFlight.current = false;
+          setLoginPhase(null);
+        }
       }
     },
     [blux, router, pathname, notify],
   );
 
   const logout = useCallback(() => {
+    session.current = null;
+    loginAttempt.current++;
+    loginInFlight.current = false;
+    statusWaiter.current?.resolve('cancelled');
+    statusWaiter.current = null;
+    setLoginPhase(null);
     // Signing out is handled by the auth provider SDK; the API has no login
     // or logout endpoint of its own. Local account state resets so nothing
     // from the previous user leaks into the next session.
@@ -482,17 +556,18 @@ function LaunchpadProvider({
     setAccount({ status: 'signed-out' });
     router.push('/');
     notify('You are now logged out.', { tone: 'success' });
-  }, [blux, router, notify]);
+  }, [blux, router, notify, setAccount]);
 
   const accountReady = account.status === 'registered';
-  const loginPending = loginPhase !== null;
+  const effectiveLoginPhase = account.status === 'checking' ? 'checking' : loginPhase;
+  const loginPending = effectiveLoginPhase !== null;
 
   const value = useMemo<LaunchpadContextValue>(
     () => ({
       isSignedIn: blux.isAuthenticated,
       address: blux.user?.address,
       loginPending,
-      loginPhase,
+      loginPhase: effectiveLoginPhase,
       login,
       logout,
       notify,
@@ -508,7 +583,7 @@ function LaunchpadProvider({
       blux.isAuthenticated,
       blux.user,
       loginPending,
-      loginPhase,
+      effectiveLoginPhase,
       login,
       logout,
       notify,

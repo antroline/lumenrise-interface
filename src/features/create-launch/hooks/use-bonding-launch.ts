@@ -148,12 +148,12 @@ function saveRecord(record: BondingRecord) {
 }
 
 /**
- * Detects image, link, owner, or network changes without persisting the image
+ * Detects description, image, link, owner, or network changes without persisting the image
  * itself: two FNV-1a passes over the prelaunch input plus its length.
  */
 function imageFingerprint(draft: LaunchDraft, owner: string) {
   const input = JSON.stringify([
-    API_NETWORK, owner, draft.name, draft.logo, draft.website.trim(), draft.xAccount.trim(),
+    API_NETWORK, owner, draft.name, draft.description.trim(), draft.logo, draft.website.trim(), draft.xAccount.trim(),
   ]);
   let first = 0x811c9dc5;
   let second = 0x811c9dc5 ^ 0x9e3779b9;
@@ -262,7 +262,7 @@ export function useBondingLaunch() {
 
   /**
    * Uploads the project image before any wallet transaction, or reuses the
-   * stored upload when the image, links, owner, and network are unchanged and the
+   * stored upload when the description, image, links, owner, and network are unchanged and the
    * server still holds it. The returned publicUrl goes to the contract as-is.
    */
   async function resolveLaunchImage(
@@ -307,6 +307,7 @@ export function useBondingLaunch() {
     try {
       const uploaded = await uploadLaunchImage({
         name: draft.name,
+        description: draft.description,
         network: API_NETWORK,
         ownerAddress: owner,
         image: fileFromDataUrl(draft.logo),

@@ -56,7 +56,7 @@ export function NetworkMenuItems() {
         value={API_NETWORK}
         onValueChange={(network) => {
           if (network !== API_NETWORK && supported.some(value => value === network))
-            window.location.assign('/launches?network=' + network);
+            window.location.assign('/projects?network=' + network);
         }}
       >
         <DropdownMenuRadioItem value="testnet" disabled={!supported.includes('testnet')} className="min-h-11">

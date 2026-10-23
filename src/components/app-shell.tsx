@@ -15,20 +15,20 @@ const bareRoutes = new Set(['/onboarding', '/register']);
 function isFullWidth(pathname: string) {
   return (
     pathname === '/' ||
-    pathname === '/launches' ||
-    /^\/launch(?:es)?\/[^/]+$/.test(pathname)
+    pathname === '/projects' ||
+    /^\/(?:projects|launch(?:es)?)\/[^/]+$/.test(pathname)
   );
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isLaunchDetails = /^\/launch(?:es)?\/[^/]+$/.test(pathname);
+  const isLaunchDetails = /^\/(?:projects|launch(?:es)?)\/[^/]+$/.test(pathname);
 
   if (bareRoutes.has(pathname) || (process.env.NODE_ENV === 'development' && pathname === '/design-lab')) return children;
   if (pathname === '/create') return <FocusedShell title="Create a launch">{children}</FocusedShell>;
 
   return (
-    <div className={cn('relative isolate min-h-screen bg-page pb-[calc(5.5rem+max(0.75rem,env(safe-area-inset-bottom)))] lg:flex lg:pb-0', pathname === '/launches' && 'bg-neutral-100 dark:bg-page', isLaunchDetails && 'dark:bg-black')}>
+    <div className={cn('relative isolate min-h-screen bg-page pb-[calc(5.5rem+max(0.75rem,env(safe-area-inset-bottom)))] lg:flex lg:pb-0', pathname === '/projects' && 'bg-neutral-100 dark:bg-page', isLaunchDetails && 'dark:bg-black')}>
       <SideNavigation />
 
       <div className={cn('min-w-0 flex-1', isLaunchDetails && 'dark:bg-neutral-950')}>

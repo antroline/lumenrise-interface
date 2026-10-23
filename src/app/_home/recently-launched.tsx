@@ -55,7 +55,7 @@ export function RecentlyLaunched({ launches, network, loaded, total, pending, fa
           <h2 id="recently-launched-heading" className="text-h2 font-semibold">Recently Launched</h2>
           <p className="mt-1 text-sm text-muted-foreground">The latest openings among projects loaded on Home.</p>
         </div>
-        <Button variant="outline" size="sm" render={<Link href={`/launches?network=${network}`} />} nativeButton={false}>
+        <Button variant="outline" size="sm" render={<Link href={`/projects?network=${network}`} />} nativeButton={false}>
           View all <ArrowRight data-icon="inline-end" />
         </Button>
       </div>

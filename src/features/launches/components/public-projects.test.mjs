@@ -405,6 +405,6 @@ test('monetary Clear keeps its required asset and disappears when only sort sett
 test('directory links use server slugs and unresolved projects return to the directory', () => {
   const h = harness(status({ launches: [launch('contract', { slug: 'blue-man', metadata: { name: 'A different display name', symbol: 'TOK' } }), launch('legacy', { slug: null })], total: 2 }));
   const rows = h.find('ProjectsTable').props.rows;
-  assert.equal(rows[0].href, '/launches/blue-man?network=testnet');
-  assert.equal(rows[1].href, '/launches?network=testnet');
+  assert.equal(rows[0].href, '/projects/blue-man?network=testnet');
+  assert.equal(rows[1].href, '/projects?network=testnet');
 });

@@ -246,7 +246,7 @@ export function PublicProjects({
       logo: l.metadata.logo,
       website,
       xAccount,
-      href: l.slug ? `/launches/${encodeURIComponent(l.slug)}?network=${network}` : `/launches?network=${network}`,
+      href: l.slug ? `/projects/${encodeURIComponent(l.slug)}?network=${network}` : `/projects?network=${network}`,
       category: 'Bonding Curve',
       phase: b ? phases[b.status] : 'unavailable',
       graduation: b

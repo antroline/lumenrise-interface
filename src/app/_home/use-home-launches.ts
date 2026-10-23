@@ -19,7 +19,7 @@ import { discoverLaunches, type HomeLaunch } from './home-discovery';
 export type { HomeLaunch } from './home-discovery';
 export { progressLabel } from './home-discovery';
 
-/** Same page size as /launches, so both routes share one cached first page. */
+/** Same page size as /projects, so both routes share one cached first page. */
 
 
 const byTime =
@@ -82,7 +82,7 @@ export function timeUntil(seconds: string | null, now: number) {
 }
 
 export const launchHref = (launch: HomeLaunch, network: ApiNetwork) =>
-  launch.slug ? `/launches/${encodeURIComponent(launch.slug)}?network=${network}` : `/launches?network=${network}`;
+  launch.slug ? `/projects/${encodeURIComponent(launch.slug)}?network=${network}` : `/projects?network=${network}`;
 
 export const networkName = (network: ApiNetwork) =>
   network === 'public' ? 'Stellar Mainnet' : 'Stellar Testnet';

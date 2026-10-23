@@ -49,7 +49,7 @@ for (const network of ['testnet', 'public']) test(`wallet menu selects ${network
   assert.equal(h.navigations.length, 0);
   const other = network === 'testnet' ? 'public' : 'testnet';
   group.props.onValueChange(other);
-  assert.deepEqual(h.navigations, ['/launches?network=' + other]);
+  assert.deepEqual(h.navigations, ['/projects?network=' + other]);
   const settings = h.nodes.find(node => node.props?.href?.startsWith('/settings'));
   // Link is passed through the dropdown's render prop.
   const renderLink = h.nodes.map(node => node.props?.render).find(node => node?.props?.href?.startsWith('/settings'));
@@ -72,7 +72,7 @@ for (const compact of [false, true]) test(`sidebar network switcher works withou
   group.props.onValueChange('unsupported');
   assert.equal(h.navigations.length, 0);
   group.props.onValueChange('public');
-  assert.deepEqual(h.navigations, ['/launches?network=public']);
+  assert.deepEqual(h.navigations, ['/projects?network=public']);
 });
 
 test('sidebar network switcher disables unsupported networks', () => {

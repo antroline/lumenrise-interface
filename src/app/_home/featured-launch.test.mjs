@@ -112,7 +112,7 @@ test('loading, empty, and retry states preserve behavior', () => {
   assert.ok(nodes(pending).some((node) => node.props?.['aria-label'] === 'Loading featured launch'));
   const empty = render({ featured: undefined });
   assert.ok(text(empty).includes('No featured launch is available'));
-  assert.equal(buttons(empty)[0].props.render.props.href, '/launches?network=public');
+  assert.equal(buttons(empty)[0].props.render.props.href, '/projects?network=public');
   let retries = 0;
   const error = render({ query: { isError: true, data: undefined, refetch: () => { retries += 1; } } });
   assert.ok(nodes(error).some((node) => node.props?.role === 'alert'));

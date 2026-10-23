@@ -240,6 +240,27 @@ function elements(node) {
   return [node, ...[node.props?.children].flat().flatMap(elements)];
 }
 
+function content(node) {
+  if (Array.isArray(node)) return node.map(content).join('');
+  if (node && typeof node === 'object') return content(node.props?.children);
+  return node == null ? '' : String(node);
+}
+
+for (const side of ['buy', 'sell']) test(`${side} shows the current token price before an amount or wallet connection`, () => {
+  const h = harness({ side, entry: '', connected: false });
+  const price = h.form.props.children.find(node => node?.type === 'dl');
+  assert.ok(price, 'Price stays outside the collapsed quote details');
+  assert.match(content(price), /Current price/);
+  assert.match(content(price), /1 TOK ≈ 1 XLM/);
+});
+
+test('sell shows the net quoted price per token instead of the current marginal price', () => {
+  const h = harness({ side: 'sell', entry: '2' });
+  const price = h.form.props.children.find(node => node?.type === 'dl');
+  assert.match(content(price), /Quoted price/);
+  assert.match(content(price), /1 TOK ≈ 0.5 XLM/);
+});
+
 test('balance presets retain exact stroops on both sides', () => {
   for (const side of ['buy', 'sell']) {
     for (const [percent, expected] of [[25, '3.0864197'], [50, '6.1728394'], [75, '9.2592591'], [100, '12.3456789']]) {
@@ -283,7 +304,7 @@ for (const side of ['buy', 'sell']) test(`signed-out ${side} connects the wallet
   assert.equal(action.props.type, 'button');
   assert.equal(action.props.disabled, false);
   action.props.onClick();
-  assert.deepEqual(h.events, ['connect:/launches/blue-man?network=testnet']);
+  assert.deepEqual(h.events, ['connect:/projects/blue-man?network=testnet']);
   await h.submit();
   assert.equal(h.writes(), 0);
 });

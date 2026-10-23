@@ -84,7 +84,7 @@ test('prelaunch posts required fields with optional links omitted and the user h
   const image = new File([new Uint8Array([137, 80, 78, 71])], 'logo.png', {
     type: 'image/png',
   });
-  const result = await h.images.uploadLaunchImage({ name: 'Blue Man',
+  const result = await h.images.uploadLaunchImage({ name: 'Blue Man', description: '  A project on Stellar.  ',
     network: 'testnet',
     ownerAddress: OWNER,
     image,
@@ -96,8 +96,9 @@ test('prelaunch posts required fields with optional links omitted and the user h
   assert.equal(init.headers['X-User-Id'], '42');
   // The multipart boundary comes from the browser, never a manual header.
   assert.equal(init.headers['Content-Type'], undefined);
-  assert.deepEqual([...init.body.keys()].sort(), ['image', 'name', 'network', 'ownerAddress']);
+  assert.deepEqual([...init.body.keys()].sort(), ['description', 'image', 'name', 'network', 'ownerAddress']);
   assert.equal(init.body.get('network'), 'testnet');
+  assert.equal(init.body.get('description'), 'A project on Stellar.');
   assert.equal(init.body.get('ownerAddress'), OWNER);
   const sent = init.body.get('image');
   assert.equal(sent.name, 'logo.png');
@@ -105,22 +106,33 @@ test('prelaunch posts required fields with optional links omitted and the user h
   same(result, { name: 'Blue Man', slug: 'blue-man', imageId: 'img-1', publicUrl: IMAGE_URL, status: 'pending' });
 });
 
+test('prelaunch rejects blank or oversized descriptions before sending a request', async () => {
+  for (const description of ['', ' \t\n ', 'a'.repeat(10_001)]) {
+    const h = harness();
+    await assert.rejects(() => h.images.uploadLaunchImage({
+      name: 'Blue Man', description, network: 'testnet', ownerAddress: OWNER,
+      image: new File(['image'], 'logo.png', { type: 'image/png' }),
+    }), /description of 1 to 10000 characters/);
+    assert.equal(h.calls.length, 0);
+  }
+});
+
 test('prelaunch trims optional HTTPS links without rewriting them and omits blank values', async () => {
   const h = harness(() => response({ body: successBody({ name: 'Blue Man', slug: 'blue-man', imageId: 'img-1', publicUrl: IMAGE_URL, status: 'pending' }) }));
   const image = new File(['image'], 'logo.png', { type: 'image/png' });
   const website = `https://example.com/${'a'.repeat(2028)}`;
   assert.equal(website.length, 2048);
-  await h.images.uploadLaunchImage({ name: 'Blue Man', network: 'testnet', ownerAddress: OWNER, image,
+  await h.images.uploadLaunchImage({ name: 'Blue Man', description: '  A project on Stellar.  ', network: 'testnet', ownerAddress: OWNER, image,
     website: `  ${website}  `, xAccount: ' https://x.com/Project?ref=launch ' });
   const body = h.calls[0].init.body;
-  assert.deepEqual([...body.keys()].sort(), ['image', 'name', 'network', 'ownerAddress', 'website', 'xAccount']);
+  assert.deepEqual([...body.keys()].sort(), ['description', 'image', 'name', 'network', 'ownerAddress', 'website', 'xAccount']);
   assert.equal(body.get('website'), website);
   assert.equal(body.get('xAccount'), 'https://x.com/Project?ref=launch');
-  await h.images.uploadLaunchImage({ name: 'Blue Man', network: 'testnet', ownerAddress: OWNER, image,
+  await h.images.uploadLaunchImage({ name: 'Blue Man', description: '  A project on Stellar.  ', network: 'testnet', ownerAddress: OWNER, image,
     website: '  ', xAccount: '\t\n' });
-  assert.deepEqual([...h.calls[1].init.body.keys()].sort(), ['image', 'name', 'network', 'ownerAddress']);
+  assert.deepEqual([...h.calls[1].init.body.keys()].sort(), ['description', 'image', 'name', 'network', 'ownerAddress']);
   for (const field of ['website', 'xAccount']) {
-    await h.images.uploadLaunchImage({ name: 'Blue Man', network: 'testnet', ownerAddress: OWNER, image,
+    await h.images.uploadLaunchImage({ name: 'Blue Man', description: '  A project on Stellar.  ', network: 'testnet', ownerAddress: OWNER, image,
       [field]: 'https://example.com/project' });
     assert.equal(h.calls.at(-1).init.body.get(field), 'https://example.com/project');
   }
@@ -132,7 +144,7 @@ test('invalid prelaunch links stop before a request and display the validation m
       'https://user@example.com', 'https://:secret@example.com', 'https://user:secret@example.com',
       `https://example.com/${'a'.repeat(2029)}`]) {
       const h = harness();
-      await assert.rejects(() => h.images.uploadLaunchImage({ name: 'Blue Man',
+      await assert.rejects(() => h.images.uploadLaunchImage({ name: 'Blue Man', description: '  A project on Stellar.  ',
         network: 'testnet', ownerAddress: OWNER, image: new File(['image'], 'logo.png', {type:'image/png'}), [field]: value,
       }), (error) => {
         assert.match(h.images.launchImageErrorMessage(error), new RegExp(`valid ${field} link`));
@@ -152,7 +164,7 @@ test('upload responses with missing fields are rejected instead of guessed', asy
   ]) {
     const h = harness(() => response({ status: 201, body: successBody(result) }));
     await assert.rejects(() =>
-      h.images.uploadLaunchImage({ name: 'Blue Man',
+      h.images.uploadLaunchImage({ name: 'Blue Man', description: '  A project on Stellar.  ',
         network: 'testnet',
         ownerAddress: OWNER,
         image: new File([new Uint8Array([1])], 'logo.png', { type: 'image/png' }),
@@ -172,7 +184,7 @@ test('upload failures map to dialog messages, including the server byte limit', 
       }),
     );
     return h.images
-      .uploadLaunchImage({ name: 'Blue Man',
+      .uploadLaunchImage({ name: 'Blue Man', description: '  A project on Stellar.  ',
         network: 'testnet',
         ownerAddress: OWNER,
         image: new File([new Uint8Array([1])], 'logo.png', { type: 'image/png' }),
@@ -269,7 +281,7 @@ test('project name rules match server normalization without changing the display
 
 test('409 is a project-name conflict and keeps the submitted form intact', async () => {
   const h = harness(() => response({ status: 409, body: JSON.stringify({ status: 'error', message: 'Slug already reserved' }) }));
-  const input = { name: 'Blue   Man', network: 'testnet', ownerAddress: OWNER, image: new File(['image'], 'logo.png', { type: 'image/png' }) };
+  const input = { name: 'Blue   Man', description: 'A project on Stellar.', network: 'testnet', ownerAddress: OWNER, image: new File(['image'], 'logo.png', { type: 'image/png' }) };
   const error = await h.images.uploadLaunchImage(input).catch(error => error);
   assert.equal(error.status, 409);
   assert.match(h.images.launchImageErrorMessage(error), /project name is already taken/);

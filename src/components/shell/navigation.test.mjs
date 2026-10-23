@@ -19,19 +19,21 @@ const items = navGroups.flatMap((group) => group.items);
 
 test('project browsing has one entry; categories belong to the listing', () => {
   assert.equal(projectBrowseItems.length, 1);
-  assert.equal(projectBrowseItems[0].href, '/launches');
+  assert.equal(projectBrowseItems[0].href, '/projects');
   assert.ok(items.every((item) => !item.href.includes('?category=')));
 });
 
 test('project listing, launch, participation and auction have one active entry', () => {
   for (const pathname of [
+    '/projects',
+    '/projects/blue-man',
     '/launches',
     '/launch/example',
     '/launch/example/participate',
     '/auction/example',
   ]) {
     const active = items.filter((item) => isActive(pathname, item));
-    assert.deepEqual(active.map((item) => item.href), ['/launches'], pathname);
+    assert.deepEqual(active.map((item) => item.href), ['/projects'], pathname);
   }
 });
 
@@ -60,18 +62,18 @@ test('unavailable destinations are absent from desktop and mobile navigation', (
 
 test('mobile primary navigation has exactly the four requested destinations', () => {
   assert.deepEqual(navigation.mobilePrimaryItems.map(({ label, href }) => [label, href]), [
-    ['Home', '/'], ['Projects', '/launches'], ['Create', '/create'], ['Reputation', '/reputation'],
+    ['Home', '/'], ['Projects', '/projects'], ['Create', '/create'], ['Reputation', '/reputation'],
   ]);
   assert.deepEqual(navigation.mobileDrawerItems.map(({ label, href }) => [label, href]), items.map(({ label, href }) => [label, href]));
   assert.equal(new Set(navigation.mobileDrawerItems.map(item => item.href)).size, items.length);
-  assert.deepEqual(items.map(item => item.href), ['/', '/launches', '/reputation', '/create', 'https://docs.lumenrise.app', '/settings']);
+  assert.deepEqual(items.map(item => item.href), ['/', '/projects', '/reputation', '/create', 'https://docs.lumenrise.app', '/settings']);
   assert.deepEqual(navigation.searchPages.map(item => item.href), items.map(item => item.href));
 });
 
 test('mobile active states follow nested routes and leave secondary destinations unselected', () => {
   for (const [pathname, expected] of [
-    ['/', '/'], ['/launches', '/launches'], ['/launch/contract', '/launches'],
-    ['/launch/contract/participate', '/launches'], ['/create', '/create'],
+    ['/', '/'], ['/projects', '/projects'], ['/launch/contract', '/projects'],
+    ['/launch/contract/participate', '/projects'], ['/create', '/create'],
     ['/create/review', '/create'], ['/reputation', '/reputation'],
     ['/settings', undefined], ['/documentation', undefined], ['/launcher', undefined],
   ]) {
@@ -82,7 +84,7 @@ test('mobile active states follow nested routes and leave secondary destinations
 
 test('discovery navigation preserves supported networks without leaking filters across internal routes', () => {
   const { navigationHref } = navigation;
-  for (const href of ['/', '/launches', '/create', '/settings', '/reputation']) {
+  for (const href of ['/', '/projects', '/create', '/settings', '/reputation']) {
     assert.equal(navigationHref(href, 'public'), `${href}?network=public`);
     assert.equal(navigationHref(href, 'mainnet'), `${href}?network=public`);
     assert.equal(navigationHref(href, 'testnet'), `${href}?network=testnet`);

@@ -60,6 +60,45 @@ function harness(handler) {
   return { calls, client, auth };
 }
 
+test('resolution posts the selected wallet and retains the current Blux ID for later headers', async () => {
+  const { client, auth, calls } = harness((url, init) => {
+    if (url.endsWith('/auth/resolve')) {
+      assert.equal(init.method, 'POST');
+      assert.equal(init.headers['Content-Type'], 'application/json');
+      assert.deepEqual(JSON.parse(init.body), { userId: '87', address: 'GABC' });
+      return response({ body: successBody({ registered: true, userId: '42', identityId: 'same-identity', name: 'Alice', avatarUrl: '/a.png' }) });
+    }
+    assert.equal(init.headers['X-User-Id'], '87');
+    return response({ body: successBody({ identityId: 'same-identity', name: 'Alice' }) });
+  });
+  client.setApiUserId('87');
+  same(await auth.resolveAccount({ userId: '87', address: 'GABC' }), {
+    registered: true, userId: '87', identityId: 'same-identity', name: 'Alice', avatarUrl: '/a.png',
+  });
+  await auth.getProfile();
+  assert.equal(calls[0].url, '/v1/auth/resolve');
+});
+
+test('resolution accepts new wallets and identities with incomplete names', async () => {
+  for (const result of [{ registered: false }, { registered: true, identityId: 'id', name: null }]) {
+    const { auth } = harness(() => response({ body: successBody(result) }));
+    const status = await auth.resolveAccount({ userId: '87', address: 'GABC' });
+    assert.equal(status.registered, result.registered);
+    if (status.registered) assert.equal(status.name, '');
+  }
+});
+
+test('resolution never converts HTTP failures or malformed responses into onboarding', async () => {
+  for (const status of [400, 401, 403, 409, 503]) {
+    const { auth } = harness(() => response({ status, body: JSON.stringify({ status: 'error', message: 'Failed', result: { registered: false } }) }));
+    await assert.rejects(auth.resolveAccount({ userId: '87', address: 'GABC' }), error => error.status === status);
+  }
+  for (const result of [{}, { registered: true }, { registered: true, identityId: 'id', name: 123 }]) {
+    const { auth } = harness(() => response({ body: successBody(result) }));
+    await assert.rejects(auth.resolveAccount({ userId: '87', address: 'GABC' }), error => error.code === 'invalid-response');
+  }
+});
+
 test('joins the API base URL without duplicating /v1', () => {
   const { client } = harness();
   client.configureApi('http://localhost:5000');
@@ -237,12 +276,12 @@ test('requests requiring a user fail fast without a signed-in user', async () =>
   assert.equal(called, false);
 });
 
-test('registration without a photo posts JSON with userId and name', async () => {
+test('registration without a photo posts JSON with current userId, address and name', async () => {
   const { calls, client, auth } = harness((_url, init) => {
     assert.equal(init.method, 'POST');
     assert.equal(init.headers['Content-Type'], 'application/json');
     assert.equal(init.headers['X-User-Id'], undefined);
-    assert.deepEqual(JSON.parse(init.body), { userId: '42', name: 'Alice' });
+    assert.deepEqual(JSON.parse(init.body), { userId: '42', address: 'GABC', name: 'Alice' });
     return response({
       body: successBody(
         { userId: '42', identityId: 'idn_1', name: 'Alice', avatarUrl: null, addresses: ['GABC'] },
@@ -252,14 +291,14 @@ test('registration without a photo posts JSON with userId and name', async () =>
   });
   client.configureApi('http://localhost:5000');
   client.setApiUserId('42');
-  const profile = await auth.registerAccount({ name: '  Alice  ' });
+  const profile = await auth.registerAccount({ address: 'GABC', name: '  Alice  ' });
   same(profile, {
     userId: '42', identityId: 'idn_1', name: 'Alice', avatarUrl: null, addresses: ['GABC'],
   });
   assert.equal(calls[0].url, 'http://localhost:5000/v1/auth/register');
 });
 
-test('registration with a photo posts multipart with exactly three fields', async () => {
+test('registration with a photo posts multipart including the selected address', async () => {
   const { calls, client, auth } = harness(() =>
     response({
       body: successBody({
@@ -270,7 +309,7 @@ test('registration with a photo posts multipart with exactly three fields', asyn
   client.configureApi('http://localhost:5000');
   client.setApiUserId('42');
   const file = new File([new Uint8Array(140000)], 'avatar.png', { type: 'image/png' });
-  const profile = await auth.registerAccount({ name: 'Alice', avatar: file });
+  const profile = await auth.registerAccount({ address: 'GABC', name: 'Alice', avatar: file });
   assert.equal(profile.avatarUrl, '/files/a.png');
   const init = calls[0].init;
   assert.equal(init.headers['Content-Type'], undefined);
@@ -278,9 +317,10 @@ test('registration with a photo posts multipart with exactly three fields', asyn
   const entries = [...init.body.entries()];
   assert.deepEqual(
     entries.map(([key]) => key).sort(),
-    ['avatar', 'name', 'userId'],
+    ['address', 'avatar', 'name', 'userId'],
   );
   assert.equal(init.body.get('userId'), '42');
+  assert.equal(init.body.get('address'), 'GABC');
   assert.equal(init.body.get('name'), 'Alice');
   assert.equal(init.body.get('avatar').name, 'avatar.png');
 });
