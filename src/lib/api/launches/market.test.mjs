@@ -84,6 +84,13 @@ const market = {
   curveReserve: '0',
   netTokensSold: '0',
   distinctBuyers: 3,
+  volumeTotal: {
+    grossPairAmount: '9223372036854775807',
+    assetAmount: '9007199254740993',
+    tradeCount: 42,
+    buyCount: 30,
+    sellCount: 12,
+  },
   volume24h: {
     grossPairAmount: '12345678901234567',
     assetAmount: '10',
@@ -277,6 +284,15 @@ test('decoders retain null, exact large amounts and six trade fields', () => {
   assert.throws(() => h.api.decodeMarket({ ...market, priceScale: 0 }));
   assert.throws(() => h.api.decodeChart({ ...chart, timeframes: [{ ...frame, timezone: 'local' }] }));
 });
+test('market decodes total volume exactly and rejects invalid total statistics', () => {
+  const h = harness();
+  same(h.api.decodeMarket(market).volumeTotal, market.volumeTotal);
+  const zero = { grossPairAmount: '0', assetAmount: '0', tradeCount: 0, buyCount: 0, sellCount: 0 };
+  same(h.api.decodeMarket({ ...market, volumeTotal: zero }).volumeTotal, zero);
+  for (const volumeTotal of [undefined, null, { ...zero, grossPairAmount: 123 }, { ...zero, tradeCount: -1 }])
+    assert.throws(() => h.api.decodeMarket({ ...market, volumeTotal }));
+});
+
 test('detail rejects another launch or network instead of poisoning its cache', async () => {
   const h = harness(() => ({ result: { ...launch, network: 'public' } }));
   await assert.rejects(

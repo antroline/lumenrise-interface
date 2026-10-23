@@ -84,6 +84,13 @@ export type LaunchList = {
   statsSince: string;
   statsCoverage: 'verified_client_submitted_trades';
 };
+type MarketVolume = {
+  grossPairAmount: string;
+  assetAmount: string;
+  tradeCount: number;
+  buyCount: number;
+  sellCount: number;
+};
 export type MarketResult = {
   network: ApiNetwork;
   contractId: string;
@@ -100,13 +107,8 @@ export type MarketResult = {
   curveReserve: string;
   netTokensSold: string;
   distinctBuyers: number;
-  volume24h: {
-    grossPairAmount: string;
-    assetAmount: string;
-    tradeCount: number;
-    buyCount: number;
-    sellCount: number;
-  };
+  volume24h: MarketVolume;
+  volumeTotal: MarketVolume;
 };
 export const chartTimeframes = {
   '1D': '15m', '1W': '4h', '1M': '1d', '3M': '1w', ALL: '1d',
@@ -317,9 +319,18 @@ export function decodeLaunch(v: unknown): LaunchResult {
     bonding,
   };
 }
+function decodeMarketVolume(value: unknown): MarketVolume {
+  const volume = object(value);
+  return {
+    grossPairAmount: raw(volume.grossPairAmount),
+    assetAmount: raw(volume.assetAmount),
+    tradeCount: number(volume.tradeCount),
+    buyCount: number(volume.buyCount),
+    sellCount: number(volume.sellCount),
+  };
+}
 export function decodeMarket(v: unknown): MarketResult {
-  const m = object(v),
-    vol = object(m.volume24h);
+  const m = object(v);
   return {
     network: network(m.network),
     contractId: string(m.contractId),
@@ -336,13 +347,8 @@ export function decodeMarket(v: unknown): MarketResult {
     curveReserve: raw(m.curveReserve),
     netTokensSold: raw(m.netTokensSold),
     distinctBuyers: number(m.distinctBuyers),
-    volume24h: {
-      grossPairAmount: raw(vol.grossPairAmount),
-      assetAmount: raw(vol.assetAmount),
-      tradeCount: number(vol.tradeCount),
-      buyCount: number(vol.buyCount),
-      sellCount: number(vol.sellCount),
-    },
+    volume24h: decodeMarketVolume(m.volume24h),
+    volumeTotal: decodeMarketVolume(m.volumeTotal),
   };
 }
 export function decodeChart(v: unknown): ChartResult {

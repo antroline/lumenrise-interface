@@ -29,7 +29,7 @@ function Figures({
   loading?: boolean;
 }) {
   return (
-    <dl className="mt-4 divide-y divide-neutral-200 border-t border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
+    <dl className="mt-4 divide-y divide-neutral-200 dark:divide-neutral-800">
       {items.map((item) => (
         <div key={item.label} className={figureRow}>
           <dt className={figureLabel}>
@@ -75,6 +75,7 @@ export function LaunchHero({
   stale,
   figures,
   priceChart,
+  marketStats,
   timeline,
   graduationPrice,
   loading = false,
@@ -89,6 +90,7 @@ export function LaunchHero({
   stale: boolean;
   figures: LaunchFigure[];
   priceChart: ReactNode;
+  marketStats?: ReactNode;
   timeline?: ReactNode;
   graduationPrice?: string;
   loading?: boolean;
@@ -186,6 +188,7 @@ export function LaunchHero({
           )}
         </div>
         <Figures items={figures} loading={loading} />
+        {marketStats}
       </div>
     </section>
   );
