@@ -32,7 +32,7 @@ export function LaunchNavigation({ step, canGoBack, method, ready, working, acco
         </Button>
       )}
       {step === 'review' && launchSlug ? (
-        <Link href={`/launches/${launchSlug}?network=${API_NETWORK}`} className={cn(buttonVariants({ size: 'lg' }), 'h-auto min-h-control-lg min-w-0 flex-1 whitespace-normal py-2 text-center sm:ml-auto sm:max-w-80')}>
+        <Link href={`/projects/${launchSlug}?network=${API_NETWORK}`} className={cn(buttonVariants({ size: 'lg' }), 'h-auto min-h-control-lg min-w-0 flex-1 whitespace-normal py-2 text-center sm:ml-auto sm:max-w-80')}>
           View launch <ArrowUpRight data-icon="inline-end" />
         </Link>
       ) : step === 'review' ? (

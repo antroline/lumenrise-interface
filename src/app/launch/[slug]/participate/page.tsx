@@ -11,5 +11,5 @@ export default async function ParticipatePage({ params, searchParams }: {
   for (const [key, value] of Object.entries(await searchParams)) {
     for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value]) query.append(key, item);
   }
-  redirect(`/launches/${slug}${query.size ? `?${query}` : ''}`);
+  redirect(`/projects/${slug}${query.size ? `?${query}` : ''}`);
 }

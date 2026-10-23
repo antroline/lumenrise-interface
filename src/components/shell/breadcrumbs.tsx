@@ -8,6 +8,7 @@ type Crumb = { label: string; href?: string };
 function crumbsFor(pathname: string): Crumb[] {
   const [first, second, third] = pathname.split('/').filter(Boolean);
   switch (first) {
+    case 'projects':
     case 'launches':
     case 'launch':
     case 'auction': {
@@ -19,7 +20,7 @@ function crumbsFor(pathname: string): Crumb[] {
             ? 'Participate'
             : null;
       const projectHref =
-        (first === 'launch' || first === 'launches') && tail ? `/launches/${second}` : undefined;
+        (first === 'projects' || first === 'launch' || first === 'launches') && tail ? `/projects/${second}` : undefined;
       return [
         { label: 'Home', href: '/' },
         { label: name, href: projectHref },
@@ -33,8 +34,8 @@ function crumbsFor(pathname: string): Crumb[] {
 
 export function Breadcrumbs() {
   const pathname = usePathname();
-  if (/^\/launch(?:es)?\/[^/]+\/?$/.test(pathname)) return null;
-  if (!/^\/(launch|launches|auction)\//.test(pathname)) return null;
+  if (/^\/(?:projects|launch(?:es)?)\/[^/]+\/?$/.test(pathname)) return null;
+  if (!/^\/(projects|launch|launches|auction)\//.test(pathname)) return null;
   const crumbs = crumbsFor(pathname);
   return (
     <nav aria-label="Breadcrumb" className="mb-6 hidden min-w-0 md:block">

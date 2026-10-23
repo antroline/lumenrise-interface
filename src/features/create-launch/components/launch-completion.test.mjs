@@ -52,7 +52,7 @@ test('indexing failures retain completed signatures and expose recovery actions 
 test('success retains the three completed steps and links to the confirmed launch', () => {
   const html = render({ step: 'index', phase: 'confirming', status: 'success', message: '', curveAddress: 'confirmed-curve', slug: 'blue-man' });
   assert.match(html, /Your launch is ready/);
-  assert.match(html, /href="\/launches\/blue-man\?network=testnet"/);
+  assert.match(html, /href="\/projects\/blue-man\?network=testnet"/);
   assert.equal((html.match(/>Complete</g) ?? []).length, 3);
   assert.doesNotMatch(html, /animate-spin|Back to review|Check \/ retry/);
 });

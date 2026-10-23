@@ -73,7 +73,7 @@ test('home links use the server slug, retain the network and avoid unresolved co
   }).outputText, { module, exports: module.exports, require: () => ({}) });
   const { launchHref } = module.exports;
   for (const network of ['testnet', 'public']) {
-    assert.equal(launchHref({ contractId: 'contract', slug: 'blue-man', metadata: { name: 'Display name' } }, network), '/launches/blue-man?network=' + network);
-    for (const slug of [null, undefined]) assert.equal(launchHref({ contractId: 'contract', slug }, network), '/launches?network=' + network);
+    assert.equal(launchHref({ contractId: 'contract', slug: 'blue-man', metadata: { name: 'Display name' } }, network), '/projects/blue-man?network=' + network);
+    for (const slug of [null, undefined]) assert.equal(launchHref({ contractId: 'contract', slug }, network), '/projects?network=' + network);
   }
 });

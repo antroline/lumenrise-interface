@@ -90,7 +90,7 @@ export function FeaturedLaunch({ network = API_NETWORK }: { network?: ApiNetwork
         <div className="flex flex-col items-start gap-4">
           <h1 className="text-2xl font-semibold">Launches on Stellar</h1>
           <p className="text-sm text-muted-foreground">No featured launch is available on this network yet.</p>
-          <Button render={<Link href={`/launches?network=${network}`} />} nativeButton={false}>Explore launches <ArrowRight data-icon="inline-end" /></Button>
+          <Button render={<Link href={`/projects?network=${network}`} />} nativeButton={false}>Explore launches <ArrowRight data-icon="inline-end" /></Button>
         </div>
       )}
     </DarkPanel>

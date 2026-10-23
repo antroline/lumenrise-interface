@@ -32,8 +32,8 @@ function route(path) {
   return module.exports.default;
 }
 
-const detail = route('./[slug]/page.tsx');
-const participate = route('./[slug]/participate/page.tsx');
+const detail = route('../projects/[slug]/page.tsx');
+const participate = route('../projects/[slug]/participate/page.tsx');
 
 test('project routes reject invalid slugs and contract addresses instead of rendering sample pages', async () => {
   for (const slug of [address, 'team', 'prelaunch', 'Bad Name', 'a'.repeat(101)]) {
@@ -57,12 +57,12 @@ test('participation links reach the real trading page and retain query parameter
   await assert.rejects(participate({
     params: Promise.resolve({ slug: 'blue-man' }),
     searchParams: Promise.resolve({ network: 'public', tag: ['one', 'two'], unused: undefined }),
-  }), error => error.href === `/launches/blue-man?network=public&tag=one&tag=two`);
+  }), error => error.href === `/projects/blue-man?network=public&tag=one&tag=two`);
 });
 
 
-test('canonical plural routes read API slugs', async () => {
-  const canonical = route('../launches/[slug]/page.tsx');
+test('canonical project routes read API slugs', async () => {
+  const canonical = route('../projects/[slug]/page.tsx');
   const tree = await canonical({ params: Promise.resolve({ slug: 'blue-man' }), searchParams: Promise.resolve({ network: 'public' }) });
   assert.equal(tree.props.slug, 'blue-man');
 });

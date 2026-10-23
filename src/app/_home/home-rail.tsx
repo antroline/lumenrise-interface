@@ -226,7 +226,7 @@ function YourLaunches({ network }: { network: ApiNetwork }) {
           </ul>
           {mine.length > 3 && (
             <Link
-              href={`/launches?owner=${owner}&network=${network}`}
+              href={`/projects?owner=${owner}&network=${network}`}
               className="mt-2 inline-flex min-h-9 items-center gap-1.5 text-[13px] font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
             >
               All of yours

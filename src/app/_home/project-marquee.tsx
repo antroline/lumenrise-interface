@@ -75,7 +75,7 @@ export function ProjectMarquee({
               {paused ? <Play /> : <Pause />}
             </Button>
           )}
-          <Button variant="outline" size="sm" render={<Link href={`/launches?network=${network}`} />} nativeButton={false}>
+          <Button variant="outline" size="sm" render={<Link href={`/projects?network=${network}`} />} nativeButton={false}>
             All projects <ArrowRight data-icon="inline-end" />
           </Button>
         </div>

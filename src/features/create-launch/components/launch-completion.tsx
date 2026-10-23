@@ -395,7 +395,7 @@ export function LaunchCompletion({
               )}
               {success && operation.slug && (
                 <Link
-                  href={`/launches/${operation.slug}?network=${API_NETWORK}`}
+                  href={`/projects/${operation.slug}?network=${API_NETWORK}`}
                   className={buttonVariants({ size: 'lg' })}
                 >
                   View launch <ArrowUpRight data-icon="inline-end" />

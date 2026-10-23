@@ -161,7 +161,7 @@ export function GlobalSearchDialog({
                 const params = new URLSearchParams();
                 params.set('network', API_NETWORK);
                 if (query.trim()) params.set('q', query.trim());
-                navigate(`/launches${params.size ? `?${params}` : ''}`);
+                navigate(`/projects${params.size ? `?${params}` : ''}`);
               }}
               className={resultClassName}
             >

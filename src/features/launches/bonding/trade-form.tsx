@@ -64,11 +64,11 @@ export function TradeForm(props: TradeFormProps) {
   const available = buying ? balances?.pairHeld : sellable;
   const received = quote ? (buying ? amount : quote.user_amount) : undefined;
   const quoteLoading = quoteRead.isFetching && entry.trim().length > 0;
-  const paid = quote ? (buying ? quote.user_amount : amount) : undefined;
-  const rate =
-    paid && paid > BigInt(0) && received !== undefined
-      ? (received * UNIT) / paid
+  const quotedPrice =
+    quote && amount !== undefined && amount > BigInt(0)
+      ? (quote.user_amount * UNIT) / amount
       : undefined;
+  const price = quotedPrice ?? props.snapshot.price;
   const needed = buying ? limit : amount;
   const insufficient =
     !!user &&
@@ -184,6 +184,25 @@ export function TradeForm(props: TradeFormProps) {
         </Field>
       </FieldGroup>
 
+      <dl className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-baseline gap-3 text-xs">
+        <dt className="text-muted-foreground">
+          <TradeTooltipText
+            content={
+              quotedPrice === undefined
+                ? 'Current contract price per token, before creator and network fees.'
+                : 'Average price per token for this quote, including the creator fee. Network fees are separate.'
+            }
+          >
+            {quotedPrice === undefined ? 'Current price' : 'Quoted price'}
+          </TradeTooltipText>
+        </dt>
+        <dd className="min-w-0 break-words text-right font-medium tabular-nums">
+          <TradeValue>
+            {`1 ${tokens.assetSymbol} ≈ ${formatAmount(price)} ${pair}`}
+          </TradeValue>
+        </dd>
+      </dl>
+
       <TradeFeedback>
         {limitError && (
           <p role="alert" className="text-xs text-destructive">
@@ -210,7 +229,7 @@ export function TradeForm(props: TradeFormProps) {
             ? undefined
             : () =>
                 void login(
-                  props.slug ? `/launches/${encodeURIComponent(props.slug)}?network=${props.network ?? API_NETWORK}` : `/launches?network=${props.network ?? API_NETWORK}`,
+                  props.slug ? `/projects/${encodeURIComponent(props.slug)}?network=${props.network ?? API_NETWORK}` : `/projects?network=${props.network ?? API_NETWORK}`,
                 )
         }
         disabled={
@@ -267,16 +286,6 @@ export function TradeForm(props: TradeFormProps) {
         visible={(props.active ?? true) && entry.trim().length > 0}
       >
         <dl className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-x-3 gap-y-2 text-xs tabular-nums">
-          <dt className="text-muted-foreground">
-            <TradeTooltipText content="Average conversion rate for this quote, including any creator fee.">
-              Rate
-            </TradeTooltipText>
-          </dt>
-          <dd className="break-words text-right font-medium">
-            {rate === undefined
-              ? '—'
-              : `1 ${paySymbol} ≈ ${formatAmount(rate)} ${receiveSymbol}`}
-          </dd>
           <dt className="text-muted-foreground">
             <TradeTooltipText content="The creator fee returned by the contract quote. Already included in the quoted payment; network fees are separate.">
               Fee · included

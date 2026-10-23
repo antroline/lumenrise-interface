@@ -15,7 +15,7 @@ export const documentationItem: NavItem = {
 };
 export const projectBrowseItems: HeaderNavItem[] = [{
   label: 'All projects', description: 'Browse projects across Stellar.',
-  href: '/launches', icon: LayoutGrid, match: ['/launch', '/auction'],
+  href: '/projects', icon: LayoutGrid, match: ['/launches', '/launch', '/auction'],
 }];
 export const projectItems: HeaderNavItem[] = [{
   label: 'Create launch', description: 'Configure a new token launch.', href: '/create', icon: Plus,
