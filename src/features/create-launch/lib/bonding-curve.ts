@@ -14,11 +14,7 @@ import { monthsToSeconds } from './team-vesting';
 
 export { FACTORY_CONTRACT_ID } from '../../../lib/stellar/network';
 import { API_NETWORK } from '../../../lib/stellar/network';
-
-const PAIR_SACS = {
-  USDC: 'CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA',
-  XLM: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC',
-};
+import { USDC_CONTRACTS } from '../../../lib/stellar/payment-assets';
 
 export type LaunchParams = {
   owner: string;
@@ -97,7 +93,6 @@ export function buildBondingCurveParams(
   // blob URLs) must never reach `metadata.logo`.
   if (!/^https?:\/\//.test(logo))
     throw new Error('Upload the project image before launching.');
-  if (API_NETWORK !== 'testnet') throw new Error('Payment assets for creating launches are not configured on this network.');
   const token = validateInput({
     name: draft.name,
     code: draft.symbol,
@@ -120,7 +115,7 @@ export function buildBondingCurveParams(
   return {
     owner,
     asset: assetFor(token.code, issuer).contractId(NETWORK),
-    pair: PAIR_SACS[draft.quote],
+    pair: USDC_CONTRACTS[API_NETWORK],
     metadata: {
       name: token.name,
       description: draft.description,

@@ -337,7 +337,6 @@ export function useBondingLaunch() {
         return;
       }
       report('check', 'Checking your wallet and launch settings.');
-      if (API_NETWORK !== 'testnet') throw new Error('Payment assets for creating launches are not configured on this network.');
       if (!LAUNCH_CONFIGURED || !FACTORY_CONTRACT_ID)
         throw new Error('Launching is not configured by the server for this network.');
       const owner = user.address;
@@ -567,5 +566,5 @@ export function useBondingLaunch() {
     }
   }
 
-  return { launch, working, nameConflict, isReady: isReady && LAUNCH_CONFIGURED && API_NETWORK === 'testnet', operation };
+  return { launch, working, nameConflict, isReady: isReady && LAUNCH_CONFIGURED, operation };
 }

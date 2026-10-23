@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useId, useState, type ComponentProps, type ReactNode } from 'react';
+import { useEffect, useState, type ComponentProps, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { ArrowRight, ArrowUpRight, Icon, PanelLeftClose, PanelLeftOpen, Search, X } from 'lucide-react';
 import { LogoHorizontal, LogoSymbol } from '@/components/logo';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import {
   Sheet,
@@ -25,6 +25,7 @@ import { GlobalSearchDialog } from './global-search';
 import { API_NETWORK } from '@/lib/stellar/network';
 import { isActive, mobileDrawerItems, mobilePrimaryItems, navigationHref, navGroups, type NavItem } from './navigation';
 import { WalletButton } from './wallet-button';
+import { NetworkSwitcher } from './network-switcher';
 
 const sideNavId = 'side-navigation';
 
@@ -162,7 +163,7 @@ function MobileDrawerContent({ onNavigate }: { onNavigate: () => void }) {
         } />
       </div>
       <nav aria-label="More navigation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-8">
-        <div className="mx-auto flex w-full max-w-lg flex-col gap-2">
+        <div className="mx-auto flex min-h-full w-full max-w-lg flex-col gap-2">
           {primary.map(item => {
             const active = isActive(pathname, item);
             const create = item.href === '/create';
@@ -175,7 +176,7 @@ function MobileDrawerContent({ onNavigate }: { onNavigate: () => void }) {
                 className={cn(
                   'group flex min-h-16 items-center gap-4 rounded-xl px-4 py-3 text-xl font-medium tracking-tight transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none',
                   create
-                    ? 'bg-primary text-primary-foreground hover:bg-lime-hover'
+                    ? 'mt-3 bg-primary text-primary-foreground hover:bg-lime-hover'
                     : 'text-foreground hover:bg-secondary',
                   active && !create && 'bg-secondary',
                 )}
@@ -186,7 +187,7 @@ function MobileDrawerContent({ onNavigate }: { onNavigate: () => void }) {
               </Link>
             );
           })}
-          <div className="mt-4 flex flex-col gap-1 border-t border-sidebar-border pt-4">
+          <div className="mt-auto flex flex-col gap-1 pt-6">
             {secondary.map(item => (
               <Link
                 key={item.href}
@@ -205,8 +206,9 @@ function MobileDrawerContent({ onNavigate }: { onNavigate: () => void }) {
         </div>
       </nav>
       <div className="shrink-0 border-t border-sidebar-border px-5 py-5 sm:px-8">
-        <div className="mx-auto flex w-full max-w-lg items-center gap-3 [&>button]:min-h-11 [&>button]:min-w-11">
-          <WalletButton menuSide="top" onNavigate={onNavigate} className="min-w-0 flex-1" />
+        <div className="mx-auto flex w-full max-w-lg flex-col gap-3 [&>button]:min-h-11 [&>button]:min-w-11">
+          <NetworkSwitcher />
+          <WalletButton menuSide="top" onNavigate={onNavigate} showNetwork={false} className="w-full min-w-0" />
         </div>
       </div>
     </div>
@@ -227,7 +229,6 @@ function SidebarPanel({
   walletMenuSide: 'top' | 'right';
 }) {
   const pathname = usePathname();
-  const id = useId();
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -257,93 +258,82 @@ function SidebarPanel({
         </RailItem>
 
         <nav aria-label="Primary" className="mt-3 flex flex-1 flex-col gap-3">
-          {navGroups.map((group, index) => {
-            const labelId = `${id}-group-${index}`;
-            return (
-              <div
-                key={group.label}
-                role="group"
-                aria-labelledby={labelId}
-                className={cn('flex shrink-0 flex-col gap-0.5', group.label === 'Account' && 'mt-auto pt-3')}
-              >
-                <div className="relative flex h-6 items-center overflow-hidden px-2.5">
-                  <span
-                    id={labelId}
-                    className={cn(
-                      'text-2xs font-medium tracking-[0.14em] whitespace-nowrap text-neutral-500 uppercase dark:text-neutral-400',
-                      fadeClass,
-                      collapsed && 'opacity-0',
-                    )}
+          {navGroups.map((group) => (
+            <div
+              key={group.label}
+              role="group"
+              aria-label={group.label}
+              className={cn(
+                'flex shrink-0 flex-col gap-0.5',
+                group.label === 'For projects' && 'mt-3',
+                group.label === 'Account' && 'mt-auto pt-6',
+              )}
+            >
+              {group.items.map((item) => {
+                const active = isActive(pathname, item);
+                const create = item.href === '/create';
+                return (
+                  <RailItem
+                    key={item.href}
+                    label={item.label}
+                    collapsed={collapsed}
+                    render={
+                      <Link
+                        href={navigationHref(item.href, API_NETWORK)}
+                        onClick={onNavigate}
+                        aria-current={active ? 'page' : undefined}
+                        className={cn(
+                          create
+                            ? buttonVariants({ className: 'relative h-10 w-full justify-start gap-0 overflow-hidden px-0 motion-reduce:transition-none' })
+                            : rowClass,
+                          active && !create &&
+                            'bg-sidebar-accent font-semibold text-sidebar-foreground before:absolute before:inset-y-2.5 before:left-0 before:w-[3px] before:rounded-full before:bg-lime hover:bg-sidebar-accent',
+                        )}
+                      />
+                    }
                   >
-                    {group.label}
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      'absolute inset-x-2 top-1/2 h-px bg-neutral-200 opacity-0 dark:bg-neutral-800',
-                      fadeClass,
-                      collapsed && 'opacity-100',
+                    <RowIcon icon={item.icon} />
+                    <span className={cn(fadeClass, collapsed && 'opacity-0')}>
+                      {item.label}
+                    </span>
+                    {item.href.startsWith('https:') && (
+                      <ArrowUpRight
+                        aria-hidden="true"
+                        className={cn('mr-2.5 ml-auto size-3.5 shrink-0', fadeClass, collapsed && 'opacity-0')}
+                      />
                     )}
-                  />
-                </div>
-                {group.items.map((item) => {
-                  const active = isActive(pathname, item);
-                  return (
-                    <RailItem
-                      key={item.href}
-                      label={item.label}
-                      collapsed={collapsed}
-                      render={
-                        <Link
-                          href={navigationHref(item.href, API_NETWORK)}
-                          onClick={onNavigate}
-                          aria-current={active ? 'page' : undefined}
-                          className={cn(
-                            rowClass,
-                            active &&
-                              'bg-sidebar-accent font-semibold text-sidebar-foreground before:absolute before:inset-y-2.5 before:left-0 before:w-[3px] before:rounded-full before:bg-lime hover:bg-sidebar-accent',
-                          )}
-                        />
-                      }
-                    >
-                      <RowIcon icon={item.icon} />
-                      <span className={cn(fadeClass, collapsed && 'opacity-0')}>
-                        {item.label}
+                    {item.count && (
+                      <span
+                        className={cn(
+                          'mr-2.5 ml-auto font-mono text-caption text-neutral-500 dark:text-neutral-400',
+                          fadeClass,
+                          collapsed && 'opacity-0',
+                        )}
+                      >
+                        {item.count}
                       </span>
-                      {item.count && (
-                        <span
-                          className={cn(
-                            'mr-2.5 ml-auto font-mono text-caption text-neutral-500 dark:text-neutral-400',
-                            fadeClass,
-                            collapsed && 'opacity-0',
-                          )}
-                        >
-                          {item.count}
-                        </span>
-                      )}
-                    </RailItem>
-                  );
-                })}
-              </div>
-            );
-          })}
+                    )}
+                  </RailItem>
+                );
+              })}
+            </div>
+          ))}
         </nav>
       </div>
 
-      <div
-        className={cn(
-          'flex shrink-0 gap-2 border-t border-neutral-200 p-3 dark:border-neutral-800',
-          collapsed ? 'flex-col' : 'items-center',
-        )}
-      >
-        <div className="shrink-0 [&>button]:text-neutral-500 [&>button]:hover:bg-neutral-100 [&>button]:hover:text-neutral-900 [&>button]:focus-visible:ring-neutral-400 dark:[&>button]:text-neutral-400 dark:[&>button]:hover:bg-neutral-800 dark:[&>button]:hover:text-neutral-100 dark:[&>button]:focus-visible:ring-neutral-500">
-          <ThemeToggle />
+      <div className="flex shrink-0 flex-col gap-3 border-t border-sidebar-border p-3">
+        <NetworkSwitcher compact={collapsed} />
+        <div className={cn('flex gap-2', collapsed ? 'flex-col' : 'items-center')}>
+          <div className="shrink-0 [&>button]:text-neutral-500 [&>button]:hover:bg-neutral-100 [&>button]:hover:text-neutral-900 [&>button]:focus-visible:ring-neutral-400 dark:[&>button]:text-neutral-400 dark:[&>button]:hover:bg-neutral-800 dark:[&>button]:hover:text-neutral-100 dark:[&>button]:focus-visible:ring-neutral-500">
+            <ThemeToggle />
+          </div>
+          <WalletButton
+            compact={collapsed}
+            showNetwork={false}
+            menuSide={walletMenuSide}
+            className={collapsed ? undefined : 'min-w-0 flex-1'}
+          />
         </div>
-        <WalletButton
-          compact={collapsed}
-          menuSide={walletMenuSide}
-          className={collapsed ? undefined : 'min-w-0 flex-1'}
-        />
       </div>
     </div>
   );
@@ -373,7 +363,7 @@ function RailItem({
 
 function RowIcon({ icon: Icon }: { icon: NavItem['icon'] }) {
   return (
-    <span className="grid size-10 shrink-0 place-items-center text-neutral-500 dark:text-neutral-400" aria-hidden="true">
+    <span className="grid size-10 shrink-0 place-items-center" aria-hidden="true">
       <Icon className="size-[18px]" />
     </span>
   );

@@ -111,7 +111,7 @@ export function LaunchActionCard({
             </div>
             {/* Page entrance transforms must not contain this viewport-fixed control. */}
             {typeof document !== 'undefined' && createPortal(
-              <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 border-t border-divider bg-card px-4 py-3 lg:hidden">
+              <div className="fixed inset-x-0 bottom-[calc(4.75rem+max(0.75rem,env(safe-area-inset-bottom)))] z-30 border-t border-divider bg-card px-4 py-3 lg:hidden">
                 <Button className="w-full" onClick={() => setOpen(true)}>
                   Buy / Sell {name}
                 </Button>

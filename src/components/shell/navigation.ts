@@ -31,11 +31,9 @@ export const mobilePrimaryItems: NavItem[] = [
 ];
 
 export const navGroups: Array<{ label: string; items: NavItem[] }> = [
-  { label: 'Explore', items: [discoverItem, documentationItem] },
-  { label: 'Projects', items: projectBrowseItems },
-  { label: 'Reputation', items: [{ ...reputationItem, label: 'My reputation' }] },
+  { label: 'Primary', items: [discoverItem, ...projectBrowseItems, { ...reputationItem, label: 'My reputation' }] },
   { label: 'For projects', items: projectItems },
-  { label: 'Account', items: [settingsItem] },
+  { label: 'Account', items: [documentationItem, settingsItem] },
 ];
 
 export const searchPages = navGroups.flatMap(group => group.items);

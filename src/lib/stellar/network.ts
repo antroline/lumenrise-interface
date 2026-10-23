@@ -10,13 +10,19 @@ export let FACTORY_CONTRACT_ID: string;
 export let HOME_DOMAIN: string;
 export let LAUNCH_CONFIGURED: boolean;
 
-export function configureNetwork(config: PublicConfiguration, network: ApiNetwork) {
+export function configureNetwork(
+  config: PublicConfiguration,
+  network: ApiNetwork,
+) {
   if (API_NETWORK) {
-    if (API_NETWORK !== network) throw new Error('Reload to change the Stellar network.');
+    if (API_NETWORK !== network)
+      throw new Error('Reload to change the Stellar network.');
   }
   const entry = config.network.configurations[network];
-  if (!entry || !config.network.supported.includes(network)) throw new Error('Unsupported Stellar network.');
-  if (!entry.rpcUrl) throw new Error('Soroban RPC is not configured for ' + network + '.');
+  if (!entry || !config.network.supported.includes(network))
+    throw new Error('Unsupported Stellar network.');
+  if (!entry.rpcUrl)
+    throw new Error('Soroban RPC is not configured for ' + network + '.');
   NETWORK = entry.networkPassphrase;
   HORIZON_URL = entry.horizonUrl;
   SOROBAN_URL = entry.rpcUrl;

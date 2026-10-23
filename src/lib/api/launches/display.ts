@@ -3,6 +3,7 @@ import { Asset } from '@stellar/stellar-sdk';
 import { formatAmount } from '@/lib/stellar/amount';
 import type { ApiNetwork } from './types';
 import type { ChartHistory } from './market';
+import { USDC_CONTRACTS } from '../../stellar/payment-assets';
 
 export function roundAmount(raw: string, maxDecimals: number) {
   // Round to the requested precision with exact integer arithmetic.
@@ -45,10 +46,7 @@ export function compactAmount(raw: string | null | undefined): string {
 
 export function pairLabel(pair: string | undefined, network: ApiNetwork) {
   if (!pair) return 'Pair token';
-  if (
-    network === 'testnet' &&
-    pair === 'CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA'
-  )
+  if (pair === USDC_CONTRACTS[network])
     return 'USDC';
   if (
     pair ===

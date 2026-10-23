@@ -38,7 +38,7 @@ export function ConfigurationProvider({
     const startedAt = Date.now();
     configureApi(apiBaseUrl);
     (attempt ? retryConfiguration() : loadConfiguration())
-      .then((config) => {
+      .then(async (config) => {
         if (!active) return;
         const selected = selectNetwork(
           config,
@@ -46,7 +46,8 @@ export function ConfigurationProvider({
             sessionStorage.getItem('lumenrise:network'),
         );
         configureNetwork(config, selected);
-        initializeStellarClients();
+        await initializeStellarClients();
+        if (!active) return;
         configureApiNetwork(selected, config.network.supported);
         sessionStorage.setItem('lumenrise:network', selected);
         const reveal = () => {

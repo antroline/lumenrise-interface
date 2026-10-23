@@ -64,7 +64,7 @@ test('mobile primary navigation has exactly the four requested destinations', ()
   ]);
   assert.deepEqual(navigation.mobileDrawerItems.map(({ label, href }) => [label, href]), items.map(({ label, href }) => [label, href]));
   assert.equal(new Set(navigation.mobileDrawerItems.map(item => item.href)).size, items.length);
-  assert.deepEqual(items.map(item => item.href), ['/', 'https://docs.lumenrise.app', '/launches', '/reputation', '/create', '/settings']);
+  assert.deepEqual(items.map(item => item.href), ['/', '/launches', '/reputation', '/create', 'https://docs.lumenrise.app', '/settings']);
   assert.deepEqual(navigation.searchPages.map(item => item.href), items.map(item => item.href));
 });
 
