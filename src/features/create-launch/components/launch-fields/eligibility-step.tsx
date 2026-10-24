@@ -1,8 +1,11 @@
 'use client';
 
 import {
-  LockKeyhole,
-  ListChecks,
+  Fingerprint,
+  KeyRound,
+  ScanFace,
+  UserRoundCheck,
+  Wallet,
   ShieldCheck,
   UsersRound,
 } from 'lucide-react';
@@ -30,7 +33,7 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
       value: 'allowlist',
       title: 'Allowlist',
       detail: 'Only approved wallets can join.',
-      icon: ListChecks,
+      icon: UserRoundCheck,
       disabled: true,
     },
     {
@@ -39,18 +42,17 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
       detail: 'Access based on selected activity.',
       icon: ShieldCheck,
       disabled: true,
-      emphasis: true,
     },
     {
       value: 'custom',
       title: 'Other Verification',
       detail: 'Define your own access checks.',
-      icon: ShieldCheck,
+      icon: KeyRound,
       disabled: true,
     },
   ] as const;
   return (
-    <FieldGroup className="gap-5 short:gap-5">
+    <FieldGroup className="gap-6 short:gap-6">
       <ChoiceCards
         compact
         title="Participation Access"
@@ -107,7 +109,7 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
         compact
         title="Identification Hook"
         description="Set identity requirements for participants."
-        icon={LockKeyhole}
+        icon={Fingerprint}
         value={draft.eligibility.identificationMode}
         options={
           [
@@ -115,13 +117,13 @@ export function EligibilityStep({ draft, setDraft, errors = {} }: DraftProps) {
               value: 'none',
               title: 'No Identity Check',
               detail: 'Wallet access rules are enough.',
-              icon: LockKeyhole,
+              icon: Wallet,
             },
             {
               value: 'required',
               title: 'Require Identification',
               detail: 'Set an identity rule for participants.',
-              icon: ShieldCheck,
+              icon: ScanFace,
               disabled: true,
             },
           ] as const

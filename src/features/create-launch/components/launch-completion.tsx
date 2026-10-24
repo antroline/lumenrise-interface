@@ -85,18 +85,22 @@ function CompletionChange({
 
 type SignatureLabel = 'Pending' | 'Processing' | 'Awaiting signature' | 'Complete' | 'Needs attention';
 
-function SignatureStatus({ label, index }: { label: SignatureLabel; index: number }) {
+function SignatureStatus({ label, index, title, hash }: { label: SignatureLabel; index: number; title: string; hash?: string }) {
   const reduced = useLaunchReducedMotion();
   const { message, onEntered } = useCompletionMessage(label, label === 'Awaiting signature' || label === 'Complete' || label === 'Needs attention', reduced ? 0 : 440);
   const done = message === 'Complete';
   const active = message !== 'Pending' && !done;
   const Icon = done ? Check : message === 'Needs attention' ? CircleAlert : message === 'Awaiting signature' ? Wallet : message === 'Processing' ? LoaderCircle : null;
   return <CompletionChange changeKey={message} onEntered={onEntered}>
-    <span className="mb-3 flex items-center justify-between gap-2">
+    <span className="mb-2 flex items-center justify-between gap-2 sm:mb-3">
       <span aria-hidden="true" className={cn('grid size-8 shrink-0 place-items-center rounded-full text-xs font-semibold tabular-nums', done ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground', active && 'bg-foreground text-background')}>
         {Icon ? <Icon className={cn('size-4', message === 'Processing' && 'animate-spin motion-reduce:animate-none')} /> : index + 1}
       </span>
-      <span className="text-xs text-muted-foreground">{message}</span>
+      <span className="min-w-0 flex-1 sm:text-right">
+        <span className="block text-sm font-semibold sm:hidden">{title}</span>
+        <span className="block text-xs font-normal text-muted-foreground">{message}</span>
+      </span>
+      {hash && <Link href={`https://stellar.expert/explorer/${API_NETWORK}/tx/${hash}`} target="_blank" rel="noopener noreferrer" aria-label={`View transaction for ${title}`} className="-mr-1 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring sm:hidden"><ArrowUpRight className="size-4" aria-hidden="true" /></Link>}
     </span>
   </CompletionChange>;
 }
@@ -209,7 +213,7 @@ export function LaunchCompletion({
           layout={reduced ? false : 'position'}
           transition={launchTransition}
           aria-hidden="true"
-          className="relative mx-auto mb-7 grid size-44 shrink-0 place-items-center sm:size-52"
+          className="relative mx-auto mb-5 grid size-28 shrink-0 place-items-center sm:mb-7 sm:size-52"
         >
             <div className="absolute inset-0 rounded-full border border-border" />
             <div
@@ -228,19 +232,19 @@ export function LaunchCompletion({
                   'animate-spin [animation-direction:reverse] [animation-duration:5s] motion-reduce:animate-none',
               )}
             />
-            <Avatar className="size-24 rounded-2xl sm:size-28">
+            <Avatar className="size-16 rounded-full sm:size-28">
               <AvatarImage
                 src={logo || undefined}
                 alt=""
-                className="rounded-2xl object-cover"
+                className="rounded-full object-cover"
               />
-              <AvatarFallback className="rounded-2xl bg-secondary text-2xl font-semibold">
+              <AvatarFallback className="rounded-full bg-secondary text-2xl font-semibold">
                 {(symbol || name || 'LR').slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <span
               className={cn(
-                'absolute right-5 bottom-5 grid size-10 place-items-center rounded-full border-4 border-card bg-foreground text-background sm:right-6 sm:bottom-6',
+                'absolute right-0 bottom-0 grid size-9 place-items-center rounded-full border-4 border-card bg-foreground text-background sm:right-6 sm:bottom-6 sm:size-10',
                 success && 'bg-primary text-primary-foreground',
                 failed && 'bg-bad-soft text-bad',
               )}
@@ -308,7 +312,7 @@ export function LaunchCompletion({
         <motion.ol
           layout={reduced ? false : 'position'}
           transition={launchTransition}
-          className="mt-8 grid gap-3 sm:grid-cols-3"
+          className="mt-5 grid gap-2 sm:mt-8 sm:grid-cols-3 sm:gap-3"
           aria-label="Wallet signatures"
         >
           {signatureSteps.map((step, index) => {
@@ -335,15 +339,15 @@ export function LaunchCompletion({
                 key={step.id}
                 aria-current={active ? 'step' : undefined}
                 className={cn(
-                  'flex h-48 min-w-0 flex-col rounded-xl border border-border p-4 transition-[background-color,border-color] duration-300 motion-reduce:transition-none',
+                  'flex min-w-0 flex-col rounded-xl border border-border px-3 py-2.5 sm:h-48 sm:p-4 transition-[background-color,border-color] duration-300 motion-reduce:transition-none',
                   active && 'border-foreground/30 bg-secondary/60',
                 )}
               >
-                <SignatureStatus label={label} index={index} />
+                <SignatureStatus label={label} index={index} title={step.title} hash={hash} />
                 <motion.h3
                   layout={reduced ? false : 'position'}
                   transition={launchTransition}
-                  className="text-sm font-semibold"
+                  className="hidden text-sm font-semibold sm:block"
                 >
                   {step.title}
                 </motion.h3>
@@ -356,7 +360,7 @@ export function LaunchCompletion({
                 </motion.p>
                 <CompletionChange
                   changeKey={hash ?? 'no-transaction'}
-                  className="mt-auto h-11 shrink-0"
+                  className="hidden shrink-0 sm:mt-auto sm:block sm:h-11"
                 >
                   {hash && (
                     <Link

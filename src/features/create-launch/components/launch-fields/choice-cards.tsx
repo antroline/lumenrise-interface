@@ -1,6 +1,6 @@
 'use client';
 
-import type { LucideIcon } from 'lucide-react';
+import { LockKeyhole, type LucideIcon } from 'lucide-react';
 import {
   Field,
   FieldContent,
@@ -32,13 +32,13 @@ export function ChoiceCards<T extends string>({
 }) {
   const selectedValue = value ?? options[0].value;
   return (
-    <FieldSet className={compact ? 'gap-4 has-[>[data-slot=radio-group]]:gap-4' : undefined}>
+    <FieldSet className={compact ? 'min-w-0 gap-0 has-[>[data-slot=radio-group]]:gap-0' : undefined}>
       <FieldLegend className={compact ? 'mb-4 w-full' : undefined}>
-        <span className="flex items-center gap-3">
-          {HeaderIcon && <span aria-hidden="true" className="grid size-11 shrink-0 place-items-center rounded-xl bg-secondary text-foreground"><HeaderIcon className="size-6" /></span>}
+        <span className="flex items-start gap-3">
+          {HeaderIcon && <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-lg bg-secondary text-foreground"><HeaderIcon className="size-5" /></span>}
           <span className="min-w-0">
-            <span className={compact ? 'block text-base font-semibold tracking-tight sm:text-lg' : undefined}>{title}</span>
-            {description && <span className="mt-0.5 block text-sm font-normal leading-relaxed text-muted-foreground">{description}</span>}
+            <span className={compact ? 'block text-base font-semibold leading-6 tracking-tight' : undefined}>{title}</span>
+            {description && <span className="mt-1 block text-sm font-normal leading-5 text-muted-foreground">{description}</span>}
           </span>
         </span>
       </FieldLegend>
@@ -48,7 +48,7 @@ export function ChoiceCards<T extends string>({
           const choice = options.find((option) => option.value === next);
           if (choice && !choice.disabled) onChange(choice.value);
         }}
-        className={compact ? 'grid auto-rows-fr gap-3 @3xl/launch:grid-cols-2' : 'grid gap-3 @md/launch:grid-cols-2'}
+        className={compact ? 'grid gap-3 @min-[620px]/launch:auto-rows-fr @min-[620px]/launch:grid-cols-2' : 'grid gap-3 @md/launch:grid-cols-2'}
       >
         {options.map((option) => (
           <FieldLabel
@@ -61,14 +61,14 @@ export function ChoiceCards<T extends string>({
                 : 'border-border! bg-card! hover:border-faint! hover:bg-muted!',
               !compact && option.disabled && 'cursor-not-allowed opacity-60',
               compact && 'border! motion-reduce:transition-none',
-              compact && selectedValue === option.value && 'border-primary! bg-primary/5!',
-              compact && option.disabled && 'cursor-default! border-border! bg-card! hover:border-border! hover:bg-card!',
+              compact && !option.disabled && selectedValue === option.value && 'border-primary! bg-primary/5!',
+              compact && option.disabled && 'cursor-not-allowed! border-dashed! border-border! bg-secondary/60! hover:border-border! hover:bg-secondary/60! dark:bg-secondary/40! dark:hover:bg-secondary/40!',
             )}
           >
             <Field
               data-disabled={option.disabled || undefined}
               orientation="horizontal"
-              className={cn('min-h-24 items-start gap-2 @md/launch:p-3! short:min-h-20 short:p-3!', compact && 'min-h-24 items-center! gap-3 p-3! @3xl/launch:min-h-26 @3xl/launch:gap-4 @3xl/launch:p-4! short:min-h-24')}
+              className={cn('min-h-24 items-start gap-2 @md/launch:p-3! short:min-h-20 short:p-3!', compact && 'min-h-28 items-start! gap-3 p-4! @md/launch:p-4! short:min-h-28 short:p-4!')}
             >
               <span
                 className={cn(
@@ -76,27 +76,28 @@ export function ChoiceCards<T extends string>({
                   selectedValue === option.value
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground',
-                  compact && 'size-10 rounded-xl @3xl/launch:size-14 motion-reduce:transition-none',
-                  compact && option.emphasis && 'bg-foreground text-background',
+                  compact && 'size-9 rounded-lg motion-reduce:transition-none',
+                  compact && option.emphasis && !option.disabled && 'bg-foreground text-background',
+                  compact && option.disabled && 'bg-background/70 text-muted-foreground/60 dark:bg-background/40',
                 )}
                 aria-hidden="true"
               >
-                <option.icon className={compact ? 'size-6 @3xl/launch:size-7' : 'size-4'} />
+                <option.icon className={compact ? 'size-5' : 'size-4'} />
               </span>
-              <FieldContent className="min-w-0">
-                <span className={cn('flex items-start justify-between gap-2', compact && 'flex-wrap items-center gap-y-1')}>
+              <FieldContent className={cn("min-w-0", compact && "gap-1")}>
+                <span className="flex items-start justify-between gap-2">
                   <strong
                     className={cn(
                       'text-ui font-semibold',
-                      compact && 'tracking-tight @3xl/launch:text-base',
+                      compact && 'text-sm leading-5 tracking-normal',
                       selectedValue === option.value
                         ? 'text-accent-foreground'
                         : 'text-foreground',
+                      compact && option.disabled && 'text-muted-foreground',
                     )}
                   >
                     {option.title}
                   </strong>
-                  {compact && option.disabled && <Badge variant="soft" size="sm">Coming Soon</Badge>}
                 </span>
                 <span
                   className={cn(
@@ -104,17 +105,18 @@ export function ChoiceCards<T extends string>({
                     selectedValue === option.value
                       ? 'text-accent-foreground/70'
                       : 'text-muted-foreground',
-                    compact && 'mt-1 leading-relaxed @3xl/launch:text-sm',
+                    compact && 'mt-0 text-sm leading-5',
                   )}
                 >
                   {option.detail}
                 </span>
+                {compact && option.disabled && <Badge className="mt-2 self-start gap-1.5 border-border bg-background/70 text-muted-foreground dark:bg-background/40" size="sm"><LockKeyhole aria-hidden="true" />Coming Soon</Badge>}
               </FieldContent>
               <RadioGroupItem
                 disabled={option.disabled}
                 value={option.value}
                 aria-label={option.title}
-                className={cn('mt-0.5 focus-visible:ring-ring data-checked:border-emphasis data-checked:bg-primary-foreground [&_[data-slot=radio-group-indicator]]:bg-primary', compact && 'mt-0 size-5 shrink-0 disabled:opacity-100 data-checked:border-foreground data-checked:bg-primary [&_[data-slot=radio-group-indicator]]:bg-foreground')}
+                className={cn('mt-0.5 focus-visible:ring-ring data-checked:border-emphasis data-checked:bg-primary-foreground [&_[data-slot=radio-group-indicator]]:bg-primary', compact && 'mt-0.5 size-4.5 shrink-0 data-disabled:cursor-not-allowed data-disabled:border-dashed data-disabled:bg-background data-disabled:opacity-40 data-checked:border-foreground data-checked:bg-primary [&_[data-slot=radio-group-indicator]]:bg-foreground')}
               />
             </Field>
           </FieldLabel>
