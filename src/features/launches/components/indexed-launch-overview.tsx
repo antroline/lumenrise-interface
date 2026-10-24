@@ -88,7 +88,7 @@ function TimelineSkeleton() {
       role="status"
       aria-label="Loading launch timeline"
       aria-busy="true"
-      className="relative grid grid-cols-3 before:absolute before:inset-x-[16.6667%] before:top-14 before:h-px before:bg-neutral-200 dark:before:bg-neutral-700"
+      className="relative grid grid-cols-3 before:absolute before:inset-x-[16.6667%] before:top-14 before:h-px before:bg-neutral-200 sm:before:top-9 dark:before:bg-neutral-700"
     >
       <span className="sr-only">Loading launch timeline…</span>
       {[0, 1, 2].map((step) => (
@@ -97,11 +97,11 @@ function TimelineSkeleton() {
           aria-hidden="true"
           className="relative flex min-w-0 flex-col items-center px-1"
         >
-          <div className="flex h-8 items-center">
+          <div className="flex h-8 items-center sm:h-5">
             <Skeleton className="h-4 w-16 max-w-full motion-reduce:animate-none" />
           </div>
-          <Skeleton className="mt-2 size-8 rounded-full motion-reduce:animate-none" />
-          <Skeleton className="mt-2 h-4 w-16 max-w-full motion-reduce:animate-none" />
+          <Skeleton className="mt-2 size-8 rounded-full motion-reduce:animate-none sm:mt-1 sm:size-6" />
+          <Skeleton className="mt-2 h-4 w-16 max-w-full motion-reduce:animate-none sm:mt-1.5" />
           <Skeleton className="mt-1 h-3 w-12 motion-reduce:animate-none" />
         </div>
       ))}
@@ -159,7 +159,7 @@ const marketHelp: Record<string, string> = {
     'Gross payment-asset volume from all verified buys and sells recorded by the API. This is not a complete on-chain volume index.',
   '24h Volume':
     'Gross payment-asset volume from recorded buys and sells in the last 24 hours.',
-  '24h trades':
+  '24h Trades':
     'Number of recorded buy and sell transactions in the last 24 hours.',
   Holders:
     'Known balances derived from processed trades. This is not a complete on-chain holder index and may be delayed.',
@@ -470,7 +470,10 @@ export function IndexedLaunchOverview({
                   : `${detailAmount(graduationPrice.toString())} ${pair}`
               }
               marketStats={
-                <section id="market-stats" aria-label="Market stats" className="mt-4 border-t border-divider pt-4">
+                <section id="market-stats" aria-labelledby="market-overview-heading" className="mt-4 border border-border bg-white p-4 text-neutral-900 sm:rounded-xl dark:bg-neutral-900 dark:text-neutral-50">
+                  <h2 id="market-overview-heading" className="mb-4 text-base font-semibold tracking-tight">
+                    Market Overview
+                  </h2>
                   {stale && (
                     <p className="mb-2 text-xs text-muted-foreground">
                       Indexed data may be outdated
@@ -508,7 +511,7 @@ export function IndexedLaunchOverview({
                           : `${compactAmount(market.data.volumeTotal.grossPairAmount)} ${pair}`,
                       ],
                       [
-                        '24h trades',
+                        '24h Trades',
                         market.data?.volume24h.tradeCount?.toLocaleString(
                           'en-US',
                         ) ?? 'Unavailable',
@@ -548,7 +551,7 @@ export function IndexedLaunchOverview({
               }
               loading={loading && !b}
             />
-            <div className="launch-sections flex min-w-0 flex-col bg-card px-4 text-card-foreground sm:rounded-2xl sm:px-5">
+            <div className="launch-sections flex min-w-0 flex-col border border-border bg-card px-4 text-card-foreground sm:rounded-2xl sm:px-5">
               <LaunchReveal>
                 <section
                   id="about"
@@ -712,6 +715,7 @@ export function IndexedLaunchOverview({
               </LaunchSection>
             </div>
             <TradeActivity
+              className="border border-border"
               onHoldersActiveChange={setHoldersActive}
               trades={
                 <IndexedTrades
