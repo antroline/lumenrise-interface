@@ -106,6 +106,7 @@ function harness({
     },
     '@/components/ui/button': mockUi('Button'),
     '@/components/ui/input': mockUi('Input'),
+    '@/components/form-controls': { FieldSurface: 'FieldSurface', FormInput: 'Input' },
     '@/components/ui/input-group': { InputGroup: 'InputGroup', InputGroupAddon: 'InputGroupAddon', InputGroupInput: 'InputGroupInput' },
     '@/features/launches/trading/trade-value': { TradeValue: 'TradeValue' },
     '@/features/launches/trading/trade-tooltip': { TradeTooltipText: 'TradeTooltipText' },

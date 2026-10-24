@@ -7,8 +7,11 @@ import test from 'node:test';
 import ts from 'typescript';
 
 const directory = dirname(fileURLToPath(import.meta.url));
-for (const state of ['loaded', 'initial', 'error', 'refresh', 'wallet-ready'])
+for (const state of ['loaded', 'initial', 'error', 'refresh', 'wallet-ready', 'wallet-missing', 'wallet-pending', 'wallet-read-error', 'wallet-refresh-error', 'wallet-disabled-null', 'wallet-no-result', 'wallet-account-retrying', 'wallet-balances-pending', 'wallet-balances-retrying', 'wallet-balances-idle', 'wallet-background-refresh', 'wallet-connecting', 'wallet-incomplete-session', 'wallet-invalid-address'])
   test(`launch on Public (${state}) keeps loading and network isolation correct`, () => {
+    const walletConnected = state.startsWith('wallet-');
+    const incompleteAddress = ['wallet-connecting', 'wallet-incomplete-session', 'wallet-invalid-address'].includes(state);
+    const accountEnabled = walletConnected && state !== 'wallet-ready' && state !== 'wallet-disabled-null';
     const observers = [],
       module = { exports: {} };
     const jsx = (type, props) => ({ type, props });
@@ -33,37 +36,60 @@ for (const state of ['loaded', 'initial', 'error', 'refresh', 'wallet-ready'])
       },
       'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'fragment' },
       '@bluxcc/react': {
-        useBlux: () => ({ user: state === 'wallet-ready' ? { address: 'connected-wallet' } : null, isReady: true }),
+        useBlux: () => ({
+          user: walletConnected ? { address: incompleteAddress ? '' : 'connected-wallet' } : null,
+          isReady: true,
+          isAuthenticated: walletConnected && state !== 'wallet-incomplete-session',
+        }),
         useReadContracts: (_calls, _network, options) => {
           observers.push(options);
+          if (_calls[0]?.fn === 'balance' && state.startsWith('wallet-balances-')) return {
+            isLoading: state !== 'wallet-balances-idle',
+            isFetched: state === 'wallet-balances-retrying',
+            refetch() {},
+          };
           return {
-            data: { values: ['cached testnet data'] },
+            data: accountEnabled ? undefined : { values: ['cached testnet data'] },
             error: new Error('Old Testnet error'),
             refetch() {},
           };
         },
         useAccount: (_params, options) => {
           observers.push(options);
-          return state === 'wallet-ready' ? { data: { balances: [] } } : {};
+          if (state === 'wallet-ready') return { data: { balances: [] } };
+          if (state === 'wallet-account-retrying') return { isLoading: true, isFetched: true };
+          if (state.startsWith('wallet-balances-') || state === 'wallet-background-refresh') return {
+            data: { balances: [] }, isSuccess: true, isFetched: true,
+            isFetching: state === 'wallet-background-refresh', isLoading: false,
+          };
+          if (state === 'wallet-pending') return { isLoading: true, isSuccess: false };
+          if (state === 'wallet-read-error' || state === 'wallet-refresh-error') return {
+            data: state === 'wallet-refresh-error' ? null : undefined,
+            isSuccess: false,
+            isError: true,
+          };
+          if (state === 'wallet-no-result') return { data: null, isSuccess: false };
+          return { data: null, isSuccess: true };
         },
       },
       '@stellar/stellar-sdk': {
-        StrKey: { isValidEd25519PublicKey: () => state === 'wallet-ready' },
+        StrKey: { isValidEd25519PublicKey: () => walletConnected && !incompleteAddress },
       },
       '@/components/ui/button': { Button: 'Button' },
       '@/components/ui/toast': { useNotify: () => () => {} },
       '@/lib/launchpad': {
-        useLaunchpad: () => ({ login() {}, retryStatusCheck() {} }),
+        useLaunchpad: () => ({ login() {}, retryStatusCheck() {}, loginPending: state === 'wallet-connecting' }),
       },
       '@/lib/stellar/network': {
-        API_NETWORK: 'testnet',
+        API_NETWORK: accountEnabled ? 'public' : 'testnet',
         NETWORK: 'Testnet passphrase',
       },
       '@/lib/api/client': { ApiError: class ApiError extends Error {} },
       '@/features/launches/hooks/queries': {
         usePageVisible: () => true,
         useLaunchDetail: () => ({
-          data: state === 'loaded' || state === 'refresh' ? {
+          data: state === 'loaded' || state === 'refresh' || walletConnected ? {
+            contractId: 'contract',
             metadata: { name: 'Public launch' },
             network: 'public',
             bonding: null,
@@ -111,7 +137,8 @@ for (const state of ['loaded', 'initial', 'error', 'refresh', 'wallet-ready'])
       address: 'contract',
       network: 'public',
     });
-    assert.ok(observers.every((observer) => observer.enabled === false));
+    if (!accountEnabled) assert.ok(observers.every((observer) => observer.enabled === false));
+    else assert.equal(observers.at(-1).enabled, !incompleteAddress);
     if (state === 'initial') {
       assert.equal(result.type, 'LaunchPageSkeleton');
       return;
@@ -123,4 +150,32 @@ for (const state of ['loaded', 'initial', 'error', 'refresh', 'wallet-ready'])
     assert.equal(result.props.buy, null);
     assert.equal(result.props.sell, null);
     if (state === 'wallet-ready') assert.equal(result.props.walletFeedback, null, 'A connected wallet without a message must not render an empty feedback panel');
+    const feedback = JSON.stringify(result.props.walletFeedback);
+    if (state === 'wallet-connecting' || state === 'wallet-incomplete-session') {
+      assert.equal(result.props.walletFeedback, null, 'An incomplete login must not display wallet errors behind Blux');
+    }
+    if (state === 'wallet-invalid-address') {
+      assert.ok(feedback.includes('A Stellar account address is required to trade.'));
+      assert.ok(feedback.includes('"role":"alert"'));
+    }
+    assert.ok(!feedback.includes('This wallet is not funded'));
+    if (state === 'wallet-missing') {
+      assert.ok(feedback.includes('activate this wallet with XLM'));
+      assert.ok(!feedback.includes('"role":"alert"'));
+      assert.ok(!feedback.includes('Loading wallet balances'));
+    }
+    if (state === 'wallet-pending' || state === 'wallet-balances-pending') {
+      assert.ok(feedback.includes('Loading wallet balances'));
+      assert.ok(!feedback.includes('activate this wallet'));
+    }
+    if (state === 'wallet-read-error' || state === 'wallet-refresh-error') {
+      assert.ok(feedback.includes('Wallet information is temporarily unavailable'));
+      assert.ok(feedback.includes('Retry'));
+      assert.ok(!feedback.includes('activate this wallet'));
+      assert.ok(!feedback.includes('Loading wallet balances'));
+    }
+    if (state === 'wallet-disabled-null' || state === 'wallet-no-result') assert.equal(result.props.walletFeedback, null);
+    if (['wallet-account-retrying', 'wallet-balances-retrying', 'wallet-balances-idle', 'wallet-background-refresh'].includes(state)) {
+      assert.equal(result.props.walletFeedback, null, 'Only the initial active fetch may show a wallet skeleton');
+    }
   });

@@ -9,7 +9,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+import { FieldSurface, FormInput } from '@/components/form-controls';
 import { InputGroup, InputGroupInput } from '@/components/ui/input-group';
 import { TradeQuoteDetails } from '@/features/launches/trading/trade-quote-details';
 import { TradeValue } from '@/features/launches/trading/trade-value';
@@ -321,7 +321,7 @@ export function TradeForm(props: TradeFormProps) {
           <Field
             orientation="horizontal"
             data-invalid={!!limitError}
-            className="items-center justify-between gap-3"
+            className="min-w-0 items-center justify-between gap-3"
           >
             <FieldLabel
               htmlFor={`${side}-limit`}
@@ -331,27 +331,29 @@ export function TradeForm(props: TradeFormProps) {
                 Slippage
               </TradeTooltipText>
             </FieldLabel>
-            <div className="flex items-center gap-1">
-              <Input
-                id={`${side}-limit`}
-                form={`${side}-trade`}
-                className="h-8 w-16 rounded-md border-input bg-card px-2 text-right text-xs tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                type="number"
-                min="0"
-                max="99.99"
-                step="0.01"
-                inputMode="decimal"
-                value={limitEntry}
-                disabled={locked || !permitted}
-                aria-invalid={!!limitError}
-                onChange={(event) => setLimitEntry(event.target.value)}
-                placeholder={slippage}
-                aria-describedby={`${side}-slippage-description`}
-              />
-              <span aria-hidden="true" className="text-xs">
-                %
-              </span>
-            </div>
+            <FieldSurface className="h-10 w-28 shrink-0 border-input bg-card px-3 py-0 hover:bg-card focus-within:border-foreground/40">
+              <div className="flex h-full min-w-0 items-center gap-1.5">
+                <FormInput
+                  id={`${side}-limit`}
+                  form={`${side}-trade`}
+                  className="h-full! flex-1 py-0 text-right text-sm! leading-5 font-medium tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  type="number"
+                  min="0"
+                  max="99.99"
+                  step="0.01"
+                  inputMode="decimal"
+                  value={limitEntry}
+                  disabled={locked || !permitted}
+                  aria-invalid={!!limitError}
+                  onChange={(event) => setLimitEntry(event.target.value)}
+                  placeholder={slippage}
+                  aria-describedby={`${side}-slippage-description`}
+                />
+                <span aria-hidden="true" className="shrink-0 text-sm leading-5 font-medium text-muted-foreground">
+                  %
+                </span>
+              </div>
+            </FieldSurface>
           </Field>
           <FieldDescription
             id={`${side}-slippage-description`}

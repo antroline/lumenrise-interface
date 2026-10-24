@@ -46,10 +46,10 @@ export function BondingCurvePage({
   slug: string;
   network?: ApiNetwork;
 }) {
-  const { user, isReady } = useBlux();
+  const { user, isReady, isAuthenticated } = useBlux();
   const notify = useNotify();
   const lastTradingNotice = useRef<string | null>(null);
-  const { retryStatusCheck } = useLaunchpad();
+  const { retryStatusCheck, loginPending } = useLaunchpad();
   const indexed = useLaunchDetail(slug, network);
   const address = indexed.data?.contractId ?? '';
   const { records: queued, recoveryError } = useTradeQueue(network, address, indexed.data?.slug ?? undefined);
@@ -177,6 +177,7 @@ export function BondingCurvePage({
   const tokens = decodedTokens.value;
   const owner = user?.address;
   const validWallet = !!owner && StrKey.isValidEd25519PublicKey(owner);
+  const accountEnabled = isReady && liveEnabled && validWallet;
   const walletRead = useReadContracts(
     [
       { address: params?.asset ?? '', fn: 'balance', args: [owner ?? ''] },
@@ -201,7 +202,7 @@ export function BondingCurvePage({
   const account = useAccount(
     { address: owner, network: NETWORK },
     {
-      enabled: isReady && liveEnabled && validWallet,
+      enabled: accountEnabled,
       refetchInterval: 15_000,
       retry: false,
     },
@@ -223,29 +224,46 @@ export function BondingCurvePage({
       ? decoded.error || (reads.error && errorMessage(reads.error))
       : undefined;
   const missingTrustlines =
+    accountEnabled &&
+    account.isSuccess &&
     !!account.data &&
     !!tokens &&
     (!trusts(account.data, tokens.asset) || !trusts(account.data, tokens.pair));
+  const missingAccount = accountEnabled && account.isSuccess && account.data === null;
+  const accountReadFailed = accountEnabled && account.isError;
+  // Polls and retries must not bring back the initial wallet-loading placeholder.
   const loadingWallet =
-    validWallet &&
-    !wallet.value &&
-    !walletRead.error &&
-    !wallet.error &&
-    network === API_NETWORK;
+    accountEnabled &&
+    !missingAccount &&
+    !accountReadFailed &&
+    ((!account.isFetched && account.isLoading) ||
+      (!walletRead.isFetched && walletRead.isLoading));
   const hasWalletFeedback =
-    !validWallet || account.data === null || missingTrustlines || loadingWallet;
+    !validWallet || missingAccount || accountReadFailed || missingTrustlines || loadingWallet;
   const walletFeedback =
-    user && hasWalletFeedback ? (
+    user && isReady && isAuthenticated && !loginPending && hasWalletFeedback ? (
       <>
         {!validWallet && (
           <p role="alert" className="text-destructive">
             A Stellar account address is required to trade.
           </p>
         )}
-        {account.data === null && (
-          <p role="alert" className="text-destructive">
-            This wallet is not funded on {API_NETWORK === 'public' ? 'Mainnet' : 'Testnet'}. Fund it with XLM before
-            trading.
+        {missingAccount && (
+          <p className="text-muted-foreground">
+            To trade on {API_NETWORK === 'public' ? 'Mainnet' : 'Testnet'}, activate this wallet with XLM.
+          </p>
+        )}
+        {accountReadFailed && (
+          <p className="text-muted-foreground">
+            Wallet information is temporarily unavailable.{' '}
+            <button
+              type="button"
+              className="underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"
+              disabled={account.isFetching}
+              onClick={() => void account.refetch()}
+            >
+              Retry
+            </button>
           </p>
         )}
         {missingTrustlines && (

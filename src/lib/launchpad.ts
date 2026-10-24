@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext } from 'react'
-import type { AccountProfile } from '@/lib/api/auth'
+import type { AccountProfile, ProfileUpdateInput } from '@/lib/api/auth'
 import type { NotificationOptions } from '@/lib/notifications'
 
 export type AccountState =
@@ -35,6 +35,8 @@ export type LaunchpadContextValue = {
   }) => Promise<AccountActionResult>
   /** Re-reads the profile from the API and merges it into account state. */
   refreshProfile: () => Promise<void>
+  /** Saves changed name/photo fields and merges the returned profile into shared state. */
+  updateProfile: (input: ProfileUpdateInput) => Promise<AccountActionResult>
   updateAvatar: (file: File) => Promise<AccountActionResult>
   removeAvatar: () => Promise<AccountActionResult>
 }

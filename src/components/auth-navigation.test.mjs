@@ -151,7 +151,7 @@ function pageHarness(file, path, saved, account = { status: 'registered' }) {
     '@/components/ui/button': {}, '@/components/ui/alert': {}, '@/components/ui/card': {},
     '@/components/ui/empty': ui(['Empty', 'EmptyHeader', 'EmptyMedia', 'EmptyTitle', 'EmptyDescription']),
     '@/components/ui/field': {}, '@/components/ui/input': {}, '@/components/ui/spinner': ui(['Spinner']),
-    '@/lib/image': {}, '@/lib/launchpad': { useLaunchpad: () => ({ isSignedIn: true, account }) },
+    '@/components/image-crop-input': { ImageCropInput: 'ImageCropInput' }, '@/lib/image': {}, '@/lib/launchpad': { useLaunchpad: () => ({ isSignedIn: true, account }) },
     '@/lib/auth-return': h.auth,
   };
   const page = load(file, mocks, h.window).default;
@@ -173,4 +173,78 @@ test('registration failures stay on the form without consuming the return page',
   h.effects.forEach(effect => effect());
   assert.deepEqual(h.replacements, []);
   assert.equal(h.storage.get('launchpad:returnTo'), '/create');
+});
+
+function profileHarness({ update = async () => ({ identityId: 'idn_1', name: 'Updated name', avatarUrl: '/updated.webp' }), read = async () => ({ identityId: 'idn_1', name: 'Old name', avatarUrl: '/old.webp' }) } = {}) {
+  const h = browser('/settings');
+  const identity = '42:wallet:wallet:owner';
+  let snapshot = { identity, value: { status: 'registered', profile: { userId: '42', identityId: 'idn_1', name: 'Old name', avatarUrl: '/old.webp', addresses: ['owner'] } } };
+  const refs = [], calls = [];
+  let stateIndex = 0, reads = 0, deletes = 0;
+  class ApiError extends Error {}
+  const mocks = {
+    react: {
+      useState(initial) {
+        const index = stateIndex++;
+        return index === 1 ? [snapshot, value => { snapshot = value; }] : [initial, () => {}];
+      },
+      useRef(current) { const ref = { current }; refs.push(ref); return ref; },
+      useEffect() {}, useLayoutEffect() {}, useEffectEvent: fn => fn, useCallback: fn => fn, useMemo: fn => fn(),
+    },
+    'react/jsx-runtime': { jsx, jsxs: jsx },
+    'next/navigation': { useRouter: () => ({ replace() {}, push() {} }), usePathname: () => '/settings' },
+    '@bluxcc/react': { useBlux: () => ({ isAuthenticated: true, user: { address: 'owner', authMethod: 'wallet', authValue: 'wallet' }, logout() {} }) },
+    '@/lib/api/auth': {
+      updateProfile: async input => { calls.push(input); return update(input); },
+      getProfile: async () => { reads++; return read(); },
+      deleteAvatar: async () => { deletes++; },
+    },
+    '@/lib/api/client': { ApiError, getApiUserId: () => '42', setApiUserId() {} },
+    '@/lib/auth-provider': { getAuthProviderUserId: () => '42' }, '@/lib/auth-return': h.auth,
+    '@/components/ui/toast': { useNotify: () => () => {} },
+    '@/lib/launchpad': { LaunchpadContext: { Provider: 'Provider' } },
+  };
+  const { LaunchpadProvider } = load('src/components/client-app.tsx', mocks, h.window, '\nexport { LaunchpadProvider };');
+  const value = LaunchpadProvider({ children: null, apiBaseUrl: '' }).props.value;
+  refs.find(ref => ref.current === null).current = {};
+  return { value, calls, current: () => snapshot.value, reads: () => reads, deletes: () => deletes };
+}
+
+test('profile update merges the PUT result into shared state without a follow-up GET', async () => {
+  const h = profileHarness();
+  const photo = new File(['photo'], 'photo.png', { type: 'image/png' });
+  assert.equal((await h.value.updateProfile({ name: 'Updated name', avatar: photo })).ok, true);
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.reads(), 0);
+  assert.equal(h.current().profile.name, 'Updated name');
+  assert.equal(h.current().profile.avatarUrl, '/updated.webp');
+  assert.deepEqual(h.current().profile.addresses, ['owner']);
+  assert.equal(h.current().profile.userId, '42');
+});
+
+test('a stale profile refresh cannot replace a successful profile mutation', async () => {
+  let finishRead;
+  const h = profileHarness({ read: () => new Promise(resolve => { finishRead = resolve; }) });
+  const refresh = h.value.refreshProfile();
+  await h.value.updateProfile({ name: 'Updated name' });
+  finishRead({ identityId: 'idn_1', name: 'Old name', avatarUrl: '/old.webp' });
+  await refresh;
+  assert.equal(h.current().profile.name, 'Updated name');
+  assert.equal(h.current().profile.avatarUrl, '/updated.webp');
+});
+
+test('profile actions retain deletion behavior and cannot update a signed-out session', async () => {
+  const h = profileHarness();
+  await h.value.updateProfile({ name: 'Updated name' });
+  assert.equal((await h.value.removeAvatar()).ok, true);
+  assert.equal(h.deletes(), 1);
+  assert.equal(h.current().profile.avatarUrl, null);
+  assert.equal(h.current().profile.name, 'Updated name');
+  let finishUpdate;
+  const other = profileHarness({ update: () => new Promise(resolve => { finishUpdate = resolve; }) });
+  const pending = other.value.updateProfile({ name: 'New name' });
+  other.value.logout();
+  finishUpdate({ identityId: 'idn_1', name: 'New name', avatarUrl: '/new.webp' });
+  assert.equal((await pending).ok, false);
+  assert.equal(other.current().status, 'signed-out');
 });

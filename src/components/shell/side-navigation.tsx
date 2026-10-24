@@ -21,9 +21,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useLaunchpad } from '@/lib/launchpad';
 import { GlobalSearchDialog } from './global-search';
 import { API_NETWORK } from '@/lib/stellar/network';
-import { isActive, mobileDrawerItems, mobilePrimaryItems, navigationHref, navGroups, type NavItem } from './navigation';
+import { isActive, mobileDrawerItems, mobilePrimaryItems, navigationHref, navGroups, settingsItem, type NavItem } from './navigation';
 import { WalletButton } from './wallet-button';
 import { NetworkSwitcher } from './network-switcher';
 
@@ -147,10 +148,11 @@ export function SideNavigation({ mobileOnly = false }: { mobileOnly?: boolean })
 }
 
 function MobileDrawerContent({ onNavigate }: { onNavigate: () => void }) {
+  const { isSignedIn } = useLaunchpad();
   const pathname = usePathname();
   const network = useSearchParams().get('network') ?? API_NETWORK;
   const primary = mobileDrawerItems.filter(item => mobilePrimaryItems.some(tab => tab.href === item.href));
-  const secondary = mobileDrawerItems.filter(item => !mobilePrimaryItems.some(tab => tab.href === item.href));
+  const secondary = mobileDrawerItems.filter(item => (isSignedIn || item.href !== settingsItem.href) && !mobilePrimaryItems.some(tab => tab.href === item.href));
 
   return (
     <div className="flex h-full min-h-0 flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
@@ -229,6 +231,7 @@ function SidebarPanel({
   walletMenuSide: 'top' | 'right';
 }) {
   const pathname = usePathname();
+  const { isSignedIn } = useLaunchpad();
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -269,7 +272,7 @@ function SidebarPanel({
                 group.label === 'Account' && 'mt-auto pt-6',
               )}
             >
-              {group.items.map((item) => {
+              {group.items.filter(item => isSignedIn || item.href !== settingsItem.href).map((item) => {
                 const active = isActive(pathname, item);
                 const create = item.href === '/create';
                 return (

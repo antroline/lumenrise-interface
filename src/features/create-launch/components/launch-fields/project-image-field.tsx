@@ -1,8 +1,9 @@
 'use client';
 
-import { imageHint, validateImage } from '@/lib/client-rules';
+import { imageHint } from '@/lib/client-rules';
 import { getConfiguration } from '@/lib/api/config';
 import { useRef, useState } from 'react';
+import { ImageCropInput } from '@/components/image-crop-input';
 import { ImagePlus } from 'lucide-react';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
@@ -16,12 +17,8 @@ export function ProjectImageField({ value, onChange, error }: {
   const [fileError, setFileError] = useState('');
   const uploadVersion = useRef(0);
 
-  async function upload(file: File | undefined) {
-    if (!file) return;
+  function upload(file: File) {
     const version = ++uploadVersion.current;
-    const issue = await validateImage(file, 'tokenImage');
-    if (version !== uploadVersion.current) return;
-    if (issue) { setFileError(issue); return; }
     setFileError('');
     const reader = new FileReader();
     reader.onload = () => {
@@ -40,22 +37,23 @@ export function ProjectImageField({ value, onChange, error }: {
       <label
         htmlFor="launch-logo"
         className={cn(
-          'group relative grid size-18 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-xl border border-dashed transition-[background-color,border-color,box-shadow] focus-within:ring-3 focus-within:ring-ring/40 @min-[720px]/launch:aspect-square @min-[720px]/launch:size-auto @min-[720px]/launch:w-full @min-[720px]/launch:rounded-2xl',
+          'group relative grid size-18 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full border border-dashed transition-[background-color,border-color,box-shadow] focus-within:ring-3 focus-within:ring-ring/40 @min-[720px]/launch:aspect-square @min-[720px]/launch:size-auto @min-[720px]/launch:w-full @min-[720px]/launch:rounded-full',
           value ? 'border-transparent bg-secondary/60' : 'border-border bg-secondary/60 hover:border-foreground/30 hover:bg-secondary',
           (error || fileError) && 'border-bad/60',
         )}
       >
         {value ? <img src={value} alt="Project image preview" className="size-full object-cover" /> : <ImagePlus className="size-6 text-muted-foreground transition-colors group-hover:text-foreground @min-[720px]/launch:size-8" aria-hidden="true" />}
         <span className="sr-only">{value ? 'Change project image' : 'Upload project image'}</span>
-        <input
+        <ImageCropInput
+          kind="tokenImage"
+          onCropped={(file) => void upload(file)}
+          onError={setFileError}
           id="launch-logo"
-          type="file"
-          accept={getConfiguration().rules.images.mimeTypes.join(',')} disabled={!getConfiguration().features.imageUploads}
+          disabled={!getConfiguration().features.imageUploads}
           className="sr-only"
           aria-label="Project image"
           aria-invalid={!!error || !!fileError}
           aria-describedby={error || fileError ? 'launch-logo-error' : 'launch-logo-hint'}
-          onChange={(event) => upload(event.target.files?.[0])}
         />
       </label>
       <div className="flex min-w-0 flex-col gap-1.5">

@@ -29,7 +29,7 @@ function Figures({
   loading?: boolean;
 }) {
   return (
-    <dl className="mt-4 divide-y divide-neutral-200 border-t border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
+    <dl className="mt-4 divide-y divide-neutral-200 dark:divide-neutral-800">
       {items.map((item) => (
         <div key={item.label} className={figureRow}>
           <dt className={figureLabel}>
@@ -63,7 +63,7 @@ function Figures({
   );
 }
 
-/** Price history with a persistent graduation progress bar beneath it. */
+/** Price history followed by the launch timeline, graduation, and market overview. */
 export function LaunchHero({
   status,
   progress,
@@ -75,6 +75,7 @@ export function LaunchHero({
   stale,
   figures,
   priceChart,
+  marketStats,
   timeline,
   graduationPrice,
   loading = false,
@@ -89,6 +90,7 @@ export function LaunchHero({
   stale: boolean;
   figures: LaunchFigure[];
   priceChart: ReactNode;
+  marketStats?: ReactNode;
   timeline?: ReactNode;
   graduationPrice?: string;
   loading?: boolean;
@@ -109,35 +111,35 @@ export function LaunchHero({
       <div className="relative h-[400px] min-w-0 overflow-hidden border-neutral-200 bg-white p-4 sm:h-[360px] sm:rounded-xl sm:border dark:border-neutral-800 dark:bg-neutral-900">
         {priceChart}
       </div>
-      <div className="mt-4 bg-white p-4 text-neutral-900 sm:rounded-xl dark:bg-neutral-900 dark:text-neutral-50">
+      <div className="mt-4 border border-border bg-white p-4 text-neutral-900 sm:rounded-xl dark:bg-neutral-900 dark:text-neutral-50">
         {timeline}
-        <div className={timeline ? 'pt-5' : undefined}>
+        <section aria-labelledby="graduation-heading" className={timeline ? 'pt-5 sm:mt-5 sm:border-t sm:border-divider sm:pt-5' : undefined}>
           <div className="mb-2 flex items-center justify-between gap-3">
             <h2
               id="graduation-heading"
-              className="flex items-center gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400"
+              className="flex items-center gap-1.5 text-xs font-medium text-neutral-500 sm:text-base sm:font-semibold sm:text-neutral-900 dark:text-neutral-400 sm:dark:text-neutral-50"
             >
               <Flag aria-hidden="true" className="size-3.5" />
               <TradeTooltipText
                 content={`Progress toward the configured reserve target. Curve trading closes when the contract confirms graduation.${graduationPrice ? ` Estimated marginal price at the target: ${graduationPrice}. This is not a prediction of the future market price.` : ''}`}
               >
-                Graduation
+                Graduation Progress
               </TradeTooltipText>
             </h2>
             {loading ? (
               <Skeleton className="h-4 w-10 motion-reduce:animate-none" />
             ) : (
-              <span className="text-xs font-semibold tabular-nums">{percent}</span>
+              <span className="text-xs font-semibold tabular-nums sm:text-lg">{percent}</span>
             )}
           </div>
-          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 sm:mt-4">
             {loading ? (
               <div role="status" aria-label="Loading amount raised">
-                <Skeleton className="h-7 w-44 motion-reduce:animate-none sm:h-8 sm:w-56" />
+                <Skeleton className="h-7 w-44 motion-reduce:animate-none sm:h-10 sm:w-56" />
               </div>
             ) : (
               <p className="flex flex-wrap items-baseline gap-1.5 tabular-nums">
-                <span className="text-[22px] leading-tight font-semibold tracking-[-0.025em] sm:text-2xl">
+                <span className="text-[22px] leading-tight font-semibold tracking-[-0.025em] sm:text-4xl">
                   <TradeTooltipText
                     content={
                       raisedTitle
@@ -184,9 +186,10 @@ export function LaunchHero({
               />
             </>
           )}
-        </div>
-        <Figures items={figures} loading={loading} />
+          <Figures items={figures} loading={loading} />
+        </section>
       </div>
+      {marketStats}
     </section>
   );
 }

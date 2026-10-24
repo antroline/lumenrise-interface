@@ -3,6 +3,7 @@
 import { Pencil } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   formatAmount,
   isLaunchScheduled,
@@ -34,6 +35,18 @@ export type LaunchSummaryProps = {
 };
 
 type ChecklistItem = { label: string; value?: string };
+
+const summaryTerms: Record<string, { label: string; help: string }> = {
+  'Bonding curve': { label: 'Curve', help: '% of total supply allocated to the bonding curve.' },
+  'Creator Tax': { label: 'Creator Tax', help: '% charged on each buy and sell, paid to the creator.' },
+  'Creator Raise': { label: 'Creator Raise', help: 'Amount the creator receives upon graduation.' },
+  'Liquidity pool': { label: 'Pool', help: '% of total supply added to the liquidity pool at graduation.' },
+  Team: { label: 'Team', help: '% of total supply allocated to the team.' },
+  'Team cliff': { label: 'Cliff', help: 'Date until which team tokens remain locked.' },
+  'Team vesting': { label: 'Vesting', help: 'Number of months over which team tokens unlock monthly.' },
+  'Start mode': { label: 'Starts', help: 'When the bonding curve goes live.' },
+  'Start date': { label: 'Start date', help: 'When the bonding curve goes live.' },
+};
 
 const compactNumber = new Intl.NumberFormat('en-US', {
   notation: 'compact',
@@ -70,9 +83,11 @@ function stageChecklist(
         },
         { label: 'Bonding curve', value: rowValue(rows, 'Bonding curve') },
         { label: 'Creator Raise', value: rowValue(rows, 'Creator Raise') },
-        { label: 'Creator Tax', value: rowValue(rows, 'Creator Tax') },
-        { label: 'Graduation target', value: rowValue(rows, 'Graduation target') },
         { label: 'Liquidity pool', value: rowValue(rows, 'Liquidity pool') },
+        { label: 'Graduation target', value: rowValue(rows, 'Graduation target') },
+        ...(numberValue(draft.allocation.teamShare) > 0
+          ? [{ label: 'Team vesting', value: rowValue(rows, 'Team vesting') }]
+          : []),
         { label: 'Team', value: rowValue(rows, 'Team') },
         ...(numberValue(draft.allocation.teamShare) > 0
           ? [
@@ -84,9 +99,9 @@ function stageChecklist(
                     : `${formatAmount(draft.allocation.cliffMonths)} mo`
                   : undefined,
               },
-              { label: 'Team vesting', value: rowValue(rows, 'Team vesting') },
             ]
           : []),
+        { label: 'Creator Tax', value: rowValue(rows, 'Creator Tax') },
         {
           label: 'Start mode',
           value: isLaunchScheduled(draft.bonding) ? 'Scheduled' : 'Immediately',
@@ -201,7 +216,7 @@ function LaunchSummaryHeader({
                 key="logo"
                 layout={!reduced}
                 {...reveal}
-                className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-card"
+                className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-full border border-border bg-card"
               >
                 <img
                   src={draft.logo}
@@ -359,23 +374,32 @@ export function LaunchSummary({
         </div>
         {items.length ? (
           <dl className="mt-3 grid min-w-0 grid-cols-2 gap-x-3 gap-y-5 pb-1">
-            {items.map((item) => (
-              <div
-                key={item.label}
-                className={cn('min-w-0', (item.label === 'Start date' || (item.value?.length ?? 0) > 12) && 'col-span-2')}
-              >
-                <dt className="whitespace-nowrap text-meta text-muted-foreground">
-                  {item.label === 'Bonding curve' ? 'Curve' :
-                    item.label === 'Liquidity pool' ? 'Pool' :
-                    item.label === 'Team vesting' ? 'Vesting' :
-                    item.label === 'Team cliff' ? 'Cliff' :
-                    item.label === 'Start mode' ? 'Starts' : item.label}
-                </dt>
-                <dd className={cn('mt-0.5 whitespace-nowrap font-semibold leading-snug tabular-nums', item.label === 'Start date' ? 'text-sm' : 'text-mid')}>
-                  {item.value}
-                </dd>
-              </div>
-            ))}
+            {items.map((item) => {
+              const term = summaryTerms[item.label];
+              return (
+                <Tooltip key={item.label}>
+                  <TooltipTrigger
+                    render={<div tabIndex={0} />}
+                    className={cn(
+                      'min-w-0 cursor-help rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
+                      (item.label === 'Start date' || (item.value?.length ?? 0) > 12) && 'col-span-2',
+                    )}
+                  >
+                    <dt className="whitespace-nowrap text-meta text-muted-foreground">
+                      {term?.label ?? item.label}
+                    </dt>
+                    <dd className={cn('mt-0.5 whitespace-nowrap font-semibold leading-snug tabular-nums', item.label === 'Start date' ? 'text-sm' : 'text-mid')}>
+                      {item.value}
+                    </dd>
+                  </TooltipTrigger>
+                  {term && (
+                    <TooltipContent role="tooltip" className="max-w-64 whitespace-normal text-sm leading-relaxed">
+                      {term.help}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              );
+            })}
           </dl>
         ) : (
           <p className="mt-2 text-small leading-relaxed text-muted-foreground">

@@ -329,7 +329,7 @@ test('avatar update and removal call the user avatar endpoint', async () => {
   const methods = [];
   const { calls, client, auth } = harness((_url, init) => {
     methods.push(init.method);
-    return response({ body: successBody({}) });
+    return response({ body: successBody({ identityId: 'idn_1', name: 'Alice', avatarUrl: '/new.png' }) });
   });
   client.configureApi('http://localhost:5000');
   client.setApiUserId('42');
@@ -352,4 +352,46 @@ test('profile responses validate their shape', async () => {
   same(await auth.getProfile(), {
     identityId: 'idn_1', name: 'Alice', avatarUrl: null,
   });
+});
+
+
+test('profile updates send one authenticated multipart request with only supplied fields', async () => {
+  const file = new File([new Uint8Array(1024)], 'avatar.png', { type: 'image/png' });
+  for (const input of [{ name: '  New name  ' }, { avatar: file }, { name: '  New name  ', avatar: file }]) {
+    const { calls, client, auth } = harness(() => response({ body: successBody({ identityId: 'idn_1', name: 'New name', avatarUrl: '/updated.webp' }) }));
+    client.configureApi('http://localhost:5000');
+    client.setApiUserId('42');
+    same(await auth.updateProfile(input), { identityId: 'idn_1', name: 'New name', avatarUrl: '/updated.webp' });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, 'http://localhost:5000/v1/user/avatar');
+    const { init } = calls[0];
+    assert.equal(init.method, 'PUT');
+    assert.equal(init.headers['X-User-Id'], '42');
+    assert.equal(init.headers['Content-Type'], undefined);
+    assert.ok(init.body instanceof FormData);
+    assert.deepEqual([...init.body.keys()].sort(), Object.keys(input).sort());
+    if (input.name) assert.equal(init.body.get('name'), 'New name');
+    if (input.avatar) assert.equal(init.body.get('avatar').name, 'avatar.png');
+  }
+});
+
+test('profile updates validate trimmed names and require a changed field before making a request', async () => {
+  const { calls, client, auth } = harness(() => response({ body: successBody({ identityId: 'idn_1', name: 'A'.repeat(80), avatarUrl: null }) }));
+  client.configureApi('http://localhost:5000'); client.setApiUserId('42');
+  for (const input of [{}, { name: '' }, { name: '   ' }, { name: 'A'.repeat(81) }]) await assert.rejects(auth.updateProfile(input));
+  assert.equal(calls.length, 0);
+  await auth.updateProfile({ name: '  ' + 'A'.repeat(80) + '  ' });
+  assert.equal(calls[0].init.body.get('name').length, 80);
+});
+
+test('profile mutations normalize nullable names and reject invalid responses and API errors', async () => {
+  for (const result of [{ identityId: 'idn_1', name: null, avatarUrl: null }, { identityId: '', name: 'A', avatarUrl: null }, { identityId: 'idn_1', name: 7, avatarUrl: null }]) {
+    const { client, auth } = harness(() => response({ body: successBody(result) }));
+    client.configureApi('http://localhost:5000'); client.setApiUserId('42');
+    if (result.name === null) same(await auth.updateProfile({ name: 'A' }), { identityId: 'idn_1', name: '', avatarUrl: null });
+    else await assert.rejects(auth.updateProfile({ name: 'A' }), error => error.code === 'invalid-response');
+  }
+  const { client, auth } = harness(() => response({ status: 400, body: JSON.stringify({ status: 'error', message: 'That name is not available.' }) }));
+  client.configureApi('http://localhost:5000'); client.setApiUserId('42');
+  await assert.rejects(auth.updateProfile({ name: 'Alice' }), error => error.message === 'That name is not available.');
 });

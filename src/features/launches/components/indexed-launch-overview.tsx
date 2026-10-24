@@ -88,7 +88,7 @@ function TimelineSkeleton() {
       role="status"
       aria-label="Loading launch timeline"
       aria-busy="true"
-      className="relative grid grid-cols-3 before:absolute before:inset-x-[16.6667%] before:top-14 before:h-px before:bg-neutral-200 dark:before:bg-neutral-700"
+      className="relative grid grid-cols-3 before:absolute before:inset-x-[16.6667%] before:top-14 before:h-px before:bg-neutral-200 sm:before:top-9 dark:before:bg-neutral-700"
     >
       <span className="sr-only">Loading launch timeline…</span>
       {[0, 1, 2].map((step) => (
@@ -97,11 +97,11 @@ function TimelineSkeleton() {
           aria-hidden="true"
           className="relative flex min-w-0 flex-col items-center px-1"
         >
-          <div className="flex h-8 items-center">
+          <div className="flex h-8 items-center sm:h-5">
             <Skeleton className="h-4 w-16 max-w-full motion-reduce:animate-none" />
           </div>
-          <Skeleton className="mt-2 size-8 rounded-full motion-reduce:animate-none" />
-          <Skeleton className="mt-2 h-4 w-16 max-w-full motion-reduce:animate-none" />
+          <Skeleton className="mt-2 size-8 rounded-full motion-reduce:animate-none sm:mt-1 sm:size-6" />
+          <Skeleton className="mt-2 h-4 w-16 max-w-full motion-reduce:animate-none sm:mt-1.5" />
           <Skeleton className="mt-1 h-3 w-12 motion-reduce:animate-none" />
         </div>
       ))}
@@ -155,9 +155,11 @@ function RulesSkeleton() {
 const marketHelp: Record<string, string> = {
   FDV: 'Fully diluted value: total token supply multiplied by the current marginal price. This is not the amount raised.',
   Price: 'Current marginal price on the bonding curve, before trading fees.',
+  'Total Volume':
+    'Gross payment-asset volume from all verified buys and sells recorded by the API. This is not a complete on-chain volume index.',
   '24h Volume':
     'Gross payment-asset volume from recorded buys and sells in the last 24 hours.',
-  '24h trades':
+  '24h Trades':
     'Number of recorded buy and sell transactions in the last 24 hours.',
   Holders:
     'Known balances derived from processed trades. This is not a complete on-chain holder index and may be delayed.',
@@ -172,17 +174,17 @@ function FactRows({
   compact?: boolean;
 }) {
   return (
-    <dl className="flex flex-col text-[14px]">
+    <dl className={compact ? 'grid grid-cols-2 gap-x-5 gap-y-4 sm:grid-cols-3' : 'flex flex-col text-[14px]'}>
       {rows.map(([term, value]) => (
         <div
           key={term}
           className={
             compact
-              ? 'grid min-h-11 min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-4 border-t border-divider py-2.5 first:border-t-0'
+              ? 'flex min-w-0 flex-col gap-1'
               : 'grid min-w-0 gap-1 border-t border-divider py-4 first:border-t-0 first:pt-0 last:pb-0 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-6'
           }
         >
-          <dt className="text-muted-foreground">
+          <dt className={compact ? 'text-xs leading-5 text-muted-foreground' : 'text-muted-foreground'}>
             <TradeTooltipText content={compact ? marketHelp[term] : undefined}>
               {term}
             </TradeTooltipText>
@@ -190,7 +192,7 @@ function FactRows({
           <dd
             className={
               compact
-                ? 'min-w-0 break-words text-right font-medium tabular-nums'
+                ? 'min-w-0 break-words text-sm leading-5 font-semibold tabular-nums'
                 : 'min-w-0 break-words leading-relaxed'
             }
           >
@@ -467,6 +469,79 @@ export function IndexedLaunchOverview({
                   ? undefined
                   : `${detailAmount(graduationPrice.toString())} ${pair}`
               }
+              marketStats={
+                <section id="market-stats" aria-labelledby="market-overview-heading" className="mt-4 border border-border bg-white p-4 text-neutral-900 sm:rounded-xl dark:bg-neutral-900 dark:text-neutral-50">
+                  <h2 id="market-overview-heading" className="mb-4 text-base font-semibold tracking-tight">
+                    Market Overview
+                  </h2>
+                  {stale && (
+                    <p className="mb-2 text-xs text-muted-foreground">
+                      Indexed data may be outdated
+                    </p>
+                  )}
+                  <FactRows
+                    compact
+                    rows={[
+                      [
+                        'FDV',
+                        fdv === undefined
+                          ? loading
+                            ? pendingAmount
+                            : 'Unavailable'
+                          : `${compactAmount(fdv.toString())} ${pair}`,
+                      ],
+                      [
+                        'Price',
+                        price == null
+                          ? loading
+                            ? pendingAmount
+                            : 'Unavailable'
+                          : `${detailAmount(price)} ${pair}`,
+                      ],
+                      [
+                        '24h Volume',
+                        market.data?.volume24h.grossPairAmount == null
+                          ? 'Unavailable'
+                          : `${compactAmount(market.data.volume24h.grossPairAmount)} ${pair}`,
+                      ],
+                      [
+                        'Total Volume',
+                        market.data?.volumeTotal.grossPairAmount == null
+                          ? 'Unavailable'
+                          : `${compactAmount(market.data.volumeTotal.grossPairAmount)} ${pair}`,
+                      ],
+                      [
+                        '24h Trades',
+                        market.data?.volume24h.tradeCount?.toLocaleString(
+                          'en-US',
+                        ) ?? 'Unavailable',
+                      ],
+                      [
+                        'Holders',
+                        holders.query.data?.totalHolders.toLocaleString(
+                          'en-US',
+                        ) ?? 'Unavailable',
+                      ],
+                    ]}
+                  />
+                  <p className="sr-only">
+                    Known holders are derived from recorded trades and may be
+                    delayed. They are not a complete on-chain holder index.
+                  </p>
+                  {market.isError && (
+                    <p role="alert" className="mt-3 text-sm text-destructive">
+                      Market data unavailable.{' '}
+                      <button
+                        type="button"
+                        className="underline underline-offset-4"
+                        onClick={() => void market.refetch()}
+                      >
+                        Retry
+                      </button>
+                    </p>
+                  )}
+                </section>
+              }
               timeline={
                 timeline.length > 0 ? (
                   <LaunchTimeline steps={timeline} />
@@ -476,7 +551,7 @@ export function IndexedLaunchOverview({
               }
               loading={loading && !b}
             />
-            <div className="launch-sections flex min-w-0 flex-col bg-card px-4 text-card-foreground sm:rounded-2xl sm:px-5">
+            <div className="launch-sections flex min-w-0 flex-col border border-border bg-card px-4 text-card-foreground sm:rounded-2xl sm:px-5">
               <LaunchReveal>
                 <section
                   id="about"
@@ -522,75 +597,6 @@ export function IndexedLaunchOverview({
                   )}
                 </section>
               </LaunchReveal>
-
-              <LaunchSection
-                id="market-stats"
-                title="Market stats"
-                accordionVariant="plain"
-                collapsible
-                defaultOpen
-              >
-                {stale && (
-                  <p className="mb-2 text-xs text-muted-foreground">
-                    Indexed data may be outdated
-                  </p>
-                )}
-                <FactRows
-                  compact
-                  rows={[
-                    [
-                      'FDV',
-                      fdv === undefined
-                        ? loading
-                          ? pendingAmount
-                          : 'Unavailable'
-                        : `${compactAmount(fdv.toString())} ${pair}`,
-                    ],
-                    [
-                      'Price',
-                      price == null
-                        ? loading
-                          ? pendingAmount
-                          : 'Unavailable'
-                        : `${detailAmount(price)} ${pair}`,
-                    ],
-                    [
-                      '24h Volume',
-                      market.data?.volume24h.grossPairAmount == null
-                        ? 'Unavailable'
-                        : `${compactAmount(market.data.volume24h.grossPairAmount)} ${pair}`,
-                    ],
-                    [
-                      '24h trades',
-                      market.data?.volume24h.tradeCount?.toLocaleString(
-                        'en-US',
-                      ) ?? 'Unavailable',
-                    ],
-                    [
-                      'Holders',
-                      holders.query.data?.totalHolders.toLocaleString(
-                        'en-US',
-                      ) ?? 'Unavailable',
-                    ],
-                  ]}
-                />
-                <p className="sr-only">
-                  Known holders are derived from recorded trades and may be
-                  delayed. They are not a complete on-chain holder index.
-                </p>
-                {market.isError && (
-                  <p role="alert" className="mt-3 text-sm text-destructive">
-                    Market data unavailable.{' '}
-                    <button
-                      type="button"
-                      className="underline underline-offset-4"
-                      onClick={() => void market.refetch()}
-                    >
-                      Retry
-                    </button>
-                  </p>
-                )}
-              </LaunchSection>
 
               {owner && (
                 <LaunchSection id="creator" title="Team" collapsible accordionVariant="plain">
@@ -709,6 +715,7 @@ export function IndexedLaunchOverview({
               </LaunchSection>
             </div>
             <TradeActivity
+              className="border border-border"
               onHoldersActiveChange={setHoldersActive}
               trades={
                 <IndexedTrades

@@ -189,7 +189,12 @@ export async function getProfile(options?: {
   const result = asRecord(
     await apiRequest<unknown>('/user', { user: true, signal: options?.signal }),
   );
-  if (!result || typeof result.name !== 'string') {
+  return decodeUserProfile(result);
+}
+
+function decodeUserProfile(value: unknown): UserProfile {
+  const result = asRecord(value);
+  if (!result || (result.name !== null && typeof result.name !== 'string')) {
     invalid('The server returned an invalid profile response.');
   }
   if (typeof result.identityId !== 'string' || !result.identityId) {
@@ -197,26 +202,37 @@ export async function getProfile(options?: {
   }
   return {
     identityId: result.identityId,
-    name: result.name,
+    name: result.name ?? '',
     avatarUrl: readAvatarUrl(result.avatarUrl),
   };
 }
 
-/** PUT /user/avatar — replaces the profile photo (multipart, `avatar` only). */
-export async function uploadAvatar(
-  file: File,
+export type ProfileUpdateInput = { name?: string; avatar?: File };
+
+/** PUT /user/avatar — updates only the supplied profile fields in one multipart request. */
+export async function updateProfile(
+  input: ProfileUpdateInput,
   options?: { signal?: AbortSignal },
-): Promise<void> {
-  const issue = await validateImage(file, 'avatar');
-  if (issue) throw new Error(issue);
+): Promise<UserProfile> {
+  if (input.name === undefined && !input.avatar) throw new Error('Change your name or photo before saving.');
   const formData = new FormData();
-  formData.append('avatar', file);
-  await apiRequest<unknown>('/user/avatar', {
+  if (input.name !== undefined) formData.append('name', validateText(input.name, 1, 80, 'Name'));
+  if (input.avatar) {
+    const issue = await validateImage(input.avatar, 'avatar');
+    if (issue) throw new Error(issue);
+    formData.append('avatar', input.avatar);
+  }
+  return decodeUserProfile(await apiRequest<unknown>('/user/avatar', {
     method: 'PUT',
     formData,
     user: true,
     signal: options?.signal,
-  });
+  }));
+}
+
+/** Kept for callers that only replace the profile photo. */
+export async function uploadAvatar(file: File, options?: { signal?: AbortSignal }): Promise<void> {
+  await updateProfile({ avatar: file }, options);
 }
 
 /** DELETE /user/avatar — removes the profile photo. */
