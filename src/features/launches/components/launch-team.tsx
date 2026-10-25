@@ -69,6 +69,7 @@ function OwnerLaunchTeam({
   const [editor, setEditor] = useState<{ member: TeamMember | null } | null>(
     null,
   );
+  const [editorOpen, setEditorOpen] = useState(false);
   const controller = useRef<AbortController | null>(null);
   const saving = useRef(false);
   useEffect(() => {
@@ -128,7 +129,7 @@ function OwnerLaunchTeam({
     saving.current = true;
     try {
       await mutation.mutateAsync(change);
-      setEditor(null);
+      setEditorOpen(false);
     } finally {
       saving.current = false;
     }
@@ -137,6 +138,7 @@ function OwnerLaunchTeam({
   function edit(member: TeamMember | null) {
     mutation.reset();
     setEditor({ member });
+    setEditorOpen(true);
   }
 
   return (
@@ -223,9 +225,12 @@ function OwnerLaunchTeam({
         </p>
       )}
       <Dialog
-        open={editor !== null}
+        open={editorOpen}
         onOpenChange={(open) => {
-          if (!open && !mutation.isPending) setEditor(null);
+          if (!open && !mutation.isPending) setEditorOpen(false);
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open && !editorOpen) setEditor(null);
         }}
       >
         {editor && (
@@ -238,7 +243,7 @@ function OwnerLaunchTeam({
             busy={mutation.isPending}
             capacityFull={!query.data || query.isError || teamCapacity(query.data) >= Math.min(6, getConfiguration().rules.team.maxMembers)}
             onSave={save}
-            onCancel={() => setEditor(null)}
+            onCancel={() => setEditorOpen(false)}
           />
         )}
       </Dialog>

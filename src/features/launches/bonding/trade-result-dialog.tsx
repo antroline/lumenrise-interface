@@ -1,11 +1,10 @@
 'use client';
+
 import { API_NETWORK } from '@/lib/stellar/network';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { CircleCheck, CircleAlert, Wallet } from 'lucide-react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { Check, CircleAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { tradeTransition } from '@/features/launches/trading/trade-transition';
 import {
   Dialog,
   DialogHeader,
@@ -15,7 +14,10 @@ import {
 } from '@/components/ui/dialog';
 import { AppDialogContent } from '@/components/app-dialog';
 import { TransactionHash } from './transaction-hash';
+import styles from './trade-result-dialog.module.css';
+
 export type TradeConfirmation = { hash: string; side?: 'buy' | 'sell' };
+
 export function TradeResultDialog({
   confirmation,
   onClose,
@@ -45,9 +47,10 @@ export function TradeResultDialog({
   registrationNotice?: string;
   onCheckPending?: () => void;
 }) {
-  const reduced = useReducedMotion();
-  const transition = reduced ? { duration: 0 } : tradeTransition;
   const busy = working && !confirmation;
+  const pending = !busy && !confirmation && !!pendingHash;
+  const loading = busy || pending;
+  const failed = !busy && !confirmation && !pendingHash;
   const title = confirmation
     ? confirmation.side === 'buy'
       ? 'Buy confirmed'
@@ -55,96 +58,106 @@ export function TradeResultDialog({
         ? 'Sell confirmed'
         : 'Transaction confirmed'
     : busy
-      ? awaitingApproval ? 'Approve in your wallet' : side === 'sell' ? 'Selling tokens' : 'Buying tokens'
-      : pendingHash ? 'Confirmation pending' : 'Trade not completed';
+      ? awaitingApproval
+        ? 'Approve in your wallet'
+        : side === 'sell'
+          ? 'Completing sale transaction'
+          : 'Completing purchase transaction'
+      : pending
+        ? 'Confirmation pending'
+        : 'Trade not completed';
+  const description = confirmation
+    ? `Your transaction is confirmed on Stellar ${API_NETWORK === 'public' ? 'Mainnet' : 'Testnet'}.`
+    : busy
+      ? message || (awaitingApproval
+        ? 'Approve the transaction in your wallet to continue.'
+        : 'Waiting for the transaction to complete.')
+      : pending
+        ? 'Check this transaction before submitting another trade.'
+        : error || 'The trade could not be completed. Please try again.';
   const hash = confirmation?.hash ?? pendingHash;
-  const phase = confirmation ? 'success' : busy ? awaitingApproval ? 'approval' : 'processing' : pendingHash ? 'pending' : 'error';
+
   return (
     <Dialog
       open={open}
       // Blux approvals can live in a sibling iframe and must be able to receive focus.
       modal={!awaitingApproval}
       disablePointerDismissal={busy}
-      onOpenChange={(open) => {
-        if (!open && !busy) onClose();
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && !busy) onClose();
       }}
-      onOpenChangeComplete={(open) => {
-        if (!open) onClosed?.();
+      onOpenChangeComplete={(nextOpen) => {
+        if (!nextOpen) onClosed?.();
       }}
     >
-      <AppDialogContent showCloseButton={!busy}>
-        <motion.div
-          transition={transition}
-          className="flex min-h-[min(21.5rem,calc(100svh-4.5rem))] min-w-0 flex-col items-center justify-center gap-6 p-1 text-center sm:p-3"
-        >
-          <div className="relative grid size-20 shrink-0 place-items-center" aria-hidden="true">
-            <AnimatePresence initial={false}>
-              <motion.div
-                key={phase}
-                initial={reduced ? false : { opacity: 0, scale: 0.8, rotate: -12 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 1.1 }}
-                transition={transition}
-                className={cn('absolute inset-0 grid place-items-center rounded-full',
-                  confirmation ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground')}
-              >
-                {confirmation ? <CircleCheck className="size-9" />
-                  : awaitingApproval ? <Wallet className="size-9" />
-                    : busy ? <Spinner aria-hidden="true" className="size-9 motion-reduce:animate-none" />
-                      : <CircleAlert className="size-9" />}
-              </motion.div>
-            </AnimatePresence>
+      <AppDialogContent presentation="centered" showCloseButton={false} className={styles.popup}>
+        <div className={cn(
+          'flex min-w-0 flex-col items-center text-center',
+          busy ? 'min-h-40 justify-center gap-5' : 'gap-4 pt-4',
+        )}>
+          <div aria-hidden="true" className={cn(
+            'grid shrink-0 place-items-center rounded-full',
+            loading ? 'size-12 bg-secondary text-foreground'
+              : confirmation ? 'size-8 bg-primary text-primary-foreground'
+                : 'size-8 bg-bad-soft text-bad',
+          )}>
+            {loading ? <Spinner aria-hidden="true" role={undefined} aria-label={undefined} className="size-6 motion-reduce:animate-none" />
+              : confirmation ? <Check className="size-5" />
+                : <CircleAlert className="size-5" />}
           </div>
-          <DialogHeader className="w-full items-center gap-3 pr-0! text-center">
-            <DialogTitle aria-live="polite" aria-atomic="true" className="text-title font-semibold leading-snug">
-              <motion.span key={title} initial={reduced ? false : { opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={transition} className="block">
-                {title}
-              </motion.span>
+          <DialogHeader className="w-full items-center gap-2 pr-0! text-center">
+            <DialogTitle aria-live="polite" aria-atomic="true" className="text-balance text-lg font-semibold leading-snug tracking-tight">
+              <span>{title}</span>
             </DialogTitle>
-            <DialogDescription className="max-w-xs text-center leading-relaxed">
-              {confirmation ? `Your transaction is confirmed on Stellar ${API_NETWORK === 'public' ? 'Mainnet' : 'Testnet'}.`
-                : busy ? 'Follow the transaction progress here.'
-                  : pendingHash ? 'Check this transaction before submitting another trade.'
-                    : 'Review the message below before trying again.'}
+            <DialogDescription
+              role={busy ? 'status' : failed ? 'alert' : undefined}
+              aria-atomic="true"
+              className={cn('w-full break-words text-[13px] leading-5', confirmation && 'sr-only', failed && 'text-bad')}
+            >
+              {description}
             </DialogDescription>
           </DialogHeader>
-          {!confirmation && (busy ? message : error) && (
-            <motion.p
-              key={busy ? message : error}
-              initial={reduced ? false : { opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={transition}
-              role={busy ? 'status' : 'alert'}
-              aria-atomic="true"
-              className="w-full break-words text-sm leading-relaxed"
-            >
-              {busy ? message : error}
-            </motion.p>
+
+          {!busy && hash && (
+            <div className="flex w-full min-w-0 flex-col gap-3">
+              <p
+                title={hash}
+                aria-label={`Transaction hash: ${hash}`}
+                className="rounded-lg bg-secondary/60 px-3 py-2 text-xs text-muted-foreground tabular-nums"
+              >
+                <span dir="ltr" className="block truncate">
+                  {hash.length > 28 ? `${hash.slice(0, 12)}…${hash.slice(-12)}` : hash}
+                </span>
+              </p>
+              <TransactionHash hash={hash} label="See in explorer" compact />
+            </div>
+          )}
+          {trustHash && !confirmation && (
+            <TransactionHash hash={trustHash} label="View trustline transaction" compact />
           )}
           {confirmation && error && (
-            <p role="alert" className="text-sm text-muted-foreground">
+            <p role="alert" className="text-xs leading-5 text-muted-foreground">
               Your trade is confirmed, but balances could not refresh. Refresh the page to update them.
             </p>
           )}
-          {(hash || (trustHash && !confirmation)) && (
-            <motion.div layout={reduced ? false : 'position'} initial={reduced ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={transition}
-              className="flex min-w-0 flex-col items-center gap-2 [&_a]:text-small [&_a]:text-muted-foreground">
-              {hash && <TransactionHash hash={hash} label="View transaction" compact />}
-              {trustHash && !confirmation && <TransactionHash hash={trustHash} label="View trustline transaction" compact />}
-            </motion.div>
+          {registrationNotice && (
+            <p role="status" className="w-full break-words text-xs leading-5 text-muted-foreground">
+              {registrationNotice}
+            </p>
           )}
-          {registrationNotice && <p role="status" className="break-words text-sm text-muted-foreground">{registrationNotice}</p>}
           {!busy && (
-            <motion.div initial={reduced ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={transition} className="flex w-full flex-col items-center gap-2">
-              {pendingHash && !confirmation && onCheckPending && (
-                <Button className="w-full" onClick={onCheckPending}>Check submitted trade</Button>
-              )}
-              <DialogClose render={<Button variant={pendingHash && !confirmation ? 'outline' : 'default'} className="w-full" />}>
+            <div className="flex w-full items-center justify-end gap-2 pt-1">
+              <DialogClose render={<Button type="button" variant={pending ? 'ghost' : 'default'} className="h-11 min-w-20 px-4" />}>
                 {confirmation ? 'Done' : 'Close'}
               </DialogClose>
-            </motion.div>
+              {pending && onCheckPending && (
+                <Button type="button" className="h-11 min-w-0 flex-1 px-3" onClick={onCheckPending}>
+                  Check submitted trade
+                </Button>
+              )}
+            </div>
           )}
-        </motion.div>
+        </div>
       </AppDialogContent>
     </Dialog>
   );

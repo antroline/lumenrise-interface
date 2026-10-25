@@ -150,6 +150,11 @@ test('saving registered roles preserves identityId and refreshes the scoped list
   assert.equal(h.calls[0][4].network, 'public');
   assert.equal(h.invalidated.length, 2);
   assert.equal(JSON.stringify(h.invalidated[1].queryKey), JSON.stringify(['launch', 'public', 'blue-man', 'detail']));
+  nodes = elements(h.render());
+  const closing = nodes.find((node) => node.type === 'Dialog');
+  assert.equal(closing.props.open, false);
+  assert.ok(nodes.some((node) => node.type === 'MemberDialog'), 'Keep form content until the exit finishes');
+  closing.props.onOpenChangeComplete(false);
   assert.equal(elements(h.render()).some((node) => node.type === 'MemberDialog'), false);
 });
 
@@ -167,6 +172,23 @@ test('all mutation types use the selected network and are blocked after the acco
   assert.equal(h.calls.length, 2);
 });
 
+test('cancel preserves the exiting member form and a reopened editor ignores an old close completion', () => {
+  const h = ownerHarness();
+  let nodes = elements(h.render());
+  nodes.find(node => node.props?.['aria-label'] === 'Edit Ava').props.onClick();
+  nodes = elements(h.render());
+  nodes.find(node => node.type === 'MemberDialog').props.onCancel();
+  nodes = elements(h.render());
+  assert.equal(nodes.find(node => node.type === 'Dialog').props.open, false);
+  assert.ok(nodes.some(node => node.type === 'MemberDialog'));
+  nodes.find(node => node.props?.['aria-label'] === 'Edit Ava').props.onClick();
+  nodes = elements(h.render());
+  nodes.find(node => node.type === 'Dialog').props.onOpenChangeComplete(false);
+  nodes = elements(h.render());
+  assert.equal(nodes.find(node => node.type === 'Dialog').props.open, true);
+  assert.ok(nodes.some(node => node.type === 'MemberDialog'));
+});
+
 function formHarness(member = null, capacityFull = false) {
   const hooks = stateHooks(), saved = [];
   const ui = (names) => Object.fromEntries(names.map((name) => [name, name]));
@@ -176,6 +198,7 @@ function formHarness(member = null, capacityFull = false) {
     '@tanstack/react-query': { useQuery: () => ({ data: [registered], isFetching: false }) },
     'lucide-react': ui(['Check', 'LoaderCircle', 'Search']),
     '@/components/profile-avatar': ui(['ProfileAvatar']),
+    '@/components/image-crop-input': ui(['ImageCropInput']),
     '@/components/ui/button': ui(['Button']),
     '@/components/app-dialog': Object.fromEntries(['AppDialogContent', 'AppDialogHeader', 'AppDialogFooter'].map(name => [name, name])),
     '@/components/ui/dialog': ui(['DialogContent', 'DialogDescription', 'DialogFooter', 'DialogHeader', 'DialogTitle']),
@@ -216,7 +239,7 @@ test('registered editing keeps profile fields read-only and allows a missing X c
 test('external editing without a replacement image submits the existing required values and memberId', async () => {
   const h = formHarness(external);
   const nodes = elements(h.render());
-  assert.equal(nodes.find((node) => node.props?.id === 'team-image').props.required, false);
+  assert.notEqual(nodes.find((node) => node.props?.id === 'team-image').props.required, true);
   for (const id of ['team-name', 'team-x', 'team-role'])
     assert.equal(nodes.find((node) => node.props?.id === id).props.required, true);
   await nodes.find((node) => node.type === 'form').props.onSubmit({ preventDefault() {} });
@@ -233,12 +256,12 @@ test('adding an external member preserves typed fields and the chosen photo acro
   const image = new File(['photo'], 'avatar.webp', { type: 'image/webp' });
   for (const [id, value] of [['team-name', 'Ava'], ['team-role', 'Developer'], ['team-x', 'https://x.com/ava']])
     nodes.find((node) => node.props?.id === id).props.onChange({ target: { value } });
-  nodes.find((node) => node.props?.id === 'team-image').props.onChange({ target: { files: [image] } });
+  nodes.find((node) => node.props?.id === 'team-image').props.onCropped(image);
   nodes.find((node) => node.type === 'ToggleGroup').props.onValueChange(['registered']);
   nodes = elements(h.render());
   nodes.find((node) => node.type === 'ToggleGroup').props.onValueChange(['external']);
   nodes = elements(h.render());
-  assert.equal(nodes.find((node) => node.props?.id === 'team-image').props.required, false);
+  assert.notEqual(nodes.find((node) => node.props?.id === 'team-image').props.required, true);
   await nodes.find((node) => node.type === 'form').props.onSubmit({ preventDefault() {} });
   assert.equal(h.saved[0].kind, 'external');
   assert.equal(h.saved[0].input.name, 'Ava');
