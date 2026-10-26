@@ -17,7 +17,9 @@ export function ImageCropInput({ kind, onCropped, onError, ...props }: Omit<Comp
   onError: (message: string) => void;
 }) {
   const [source, setSource] = useState<{ file: File; url: string } | null>(null);
+  const [open, setOpen] = useState(false);
   const version = useRef(0);
+  const selectedVersion = version.current;
   useEffect(() => () => { version.current++; }, []);
   useEffect(() => () => { if (source) URL.revokeObjectURL(source.url); }, [source]);
 
@@ -29,6 +31,13 @@ export function ImageCropInput({ kind, onCropped, onError, ...props }: Omit<Comp
     if (issue) { onError(issue); return; }
     onError('');
     setSource({ file, url: URL.createObjectURL(file) });
+    setOpen(true);
+  }
+
+  function close() {
+    // Invalidate preparation/selection work without removing the exiting editor.
+    version.current++;
+    setOpen(false);
   }
 
   return <>
@@ -36,10 +45,13 @@ export function ImageCropInput({ kind, onCropped, onError, ...props }: Omit<Comp
       void select(event.target.files?.[0]);
       event.target.value = '';
     }} />
-    <Dialog open={!!source} onOpenChange={(open) => { if (!open) setSource(null); }}>
-      {source && <ImageCropEditor key={source.url} source={source} kind={kind} onCancel={() => setSource(null)} onConfirm={(file) => {
+    <Dialog open={open} onOpenChange={(next) => { if (!next) close(); }} onOpenChangeComplete={(next) => {
+      if (!next && !open) setSource(null);
+    }}>
+      {source && <ImageCropEditor key={source.url} source={source} kind={kind} onCancel={close} onConfirm={(file) => {
+        if (!open || selectedVersion !== version.current) return;
         onCropped(file);
-        setSource(null);
+        close();
       }} />}
     </Dialog>
   </>;
@@ -98,7 +110,7 @@ function ImageCropEditor({ source, kind, onCancel, onConfirm }: {
     } finally { if (mounted.current) setBusy(false); }
   }
 
-  return <AppDialogContent animateSize={false} onClick={(event) => event.stopPropagation()}>
+  return <AppDialogContent onClick={(event) => event.stopPropagation()}>
     <AppDialogHeader title="Crop your image" description="Drag to reposition, then zoom to frame your image." leading={<Crop className="size-5 shrink-0" aria-hidden="true" />} />
     <div className="flex flex-col gap-4">
       <div

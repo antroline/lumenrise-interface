@@ -91,7 +91,7 @@ export function LaunchTeamMemberDialog({ slug, network, sessionId, member, busy,
   }
 
   return (
-    <AppDialogContent showCloseButton={!busy} animateSize={false} overlayProps={{ className: 'backdrop-blur-none!' }}>
+    <AppDialogContent showCloseButton={!busy} overlayProps={{ className: 'backdrop-blur-none!' }}>
       <AppDialogHeader
         title={member ? 'Edit team member' : 'Add Team Member'}
         description={sendsInvitation ? 'They’ll appear on the team after accepting.' : !member && kind === 'external' ? 'External members are added immediately.' : undefined}

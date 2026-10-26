@@ -30,7 +30,7 @@ function load(filename, mocks = {}, globals = {}) {
     exports: module.exports,
     Error,
     ...globals,
-    require: (name) => name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule :
+    require: (name) => name.endsWith('.module.css') ? { default: { popup: 'trade-status-popup' } } : name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule :
       name in mocks
         ? mocks[name]
         : name.startsWith('.')
@@ -430,7 +430,7 @@ test('dialog supports loading, Blux focus, unresolved confirmation, failure and 
     'react/jsx-runtime': { jsx, jsxs: jsx },
     '@/components/app-dialog': Object.fromEntries(['AppDialogContent', 'AppDialogHeader', 'AppDialogFooter'].map(name => [name, name])),
     '@/components/ui/dialog': Object.fromEntries(names.map(name => [name, name])),
-    '@/components/ui/button': { Button: 'Button' },
+    '@/components/ui/button': { Button: 'Button', buttonVariants: () => '' },
     '@/components/ui/spinner': { Spinner: 'Spinner' },
     'motion/react': { motion: { div: 'div', span: 'span', p: 'p' }, AnimatePresence: 'AnimatePresence', useReducedMotion: () => reduced },
     '@/lib/utils': { cn: (...values) => values.filter(Boolean).join(' ') },
@@ -443,14 +443,29 @@ test('dialog supports loading, Blux focus, unresolved confirmation, failure and 
   assert.ok(elements(loading).some(node => node.props?.role === 'status' && node.props.children === 'Checking your wallet'));
   assert.ok(!elements(loading).some(node => node.type === 'DialogFooter'), 'Modal uses one surface without a separate footer');
   assert.ok(elements(loading).some(node => node.type === 'AppDialogContent'), 'Uses the shared launch modal frame');
-  assert.ok(elements(loading).some(node => node.props?.className?.includes('items-center justify-center')), 'Trade content keeps its centered presentation');
-  assert.ok(elements(loading).some(node => node.props?.className?.includes('min-h-[min(21.5rem')), 'Trade retains its square frame instead of collapsing around one status line');
+  assert.ok(elements(loading).some(node => node.props?.className?.includes('min-h-40 justify-center')), 'Processing stays compact and centered, like the reference');
+  assert.equal(elements(loading).find(node => node.type === 'AppDialogContent').props.showCloseButton, false);
+  assert.equal(elements(loading).find(node => node.type === 'AppDialogContent').props.presentation, 'centered', 'Compact feedback does not inherit the mobile sheet transition');
+  assert.notEqual(elements(loading).find(node => node.type === 'AppDialogContent').props.animateSize, false, 'Status changes use shared content sizing');
+  assert.ok(!elements(loading).some(node => node.type === 'Button' || node.type === 'DialogClose'), 'Processing does not offer an unsafe close or another trade');
   assert.equal(loading.props.modal, true);
   assert.equal(loading.props.disablePointerDismissal, true);
   loading.props.onOpenChange(false);
   assert.equal(closed, 0);
   const approval = TradeResultDialog({ ...props, working: true, awaitingApproval: true });
   assert.equal(approval.props.modal, false);
+  for (const phase of [
+    { working: true },
+    { working: true, awaitingApproval: true },
+    { working: true, trustHash: 'trustline-hash' },
+    { pendingHash: 'submitted-hash' },
+  ]) {
+    const nodes = elements(TradeResultDialog({ ...props, ...phase }));
+    const spinners = nodes.filter(node => node.type === 'Spinner');
+    assert.equal(spinners.length, 1, 'Every in-progress phase shows the same single loader');
+    assert.equal(spinners[0].props.className, 'size-6 motion-reduce:animate-none');
+    assert.ok(nodes.some(node => node.props?.className?.includes('size-12 bg-secondary text-foreground')), 'The loader keeps a consistent theme-aware circular background');
+  }
   const pending = TradeResultDialog({ ...props, pendingHash: 'original-hash', error: 'Still pending' });
   assert.ok(elements(pending).some(node => node.type === 'span' && node.props.children === 'Confirmation pending'));
   elements(pending).find(node => node.type === 'Button' && node.props.children === 'Check submitted trade').props.onClick();
@@ -466,7 +481,52 @@ test('dialog supports loading, Blux focus, unresolved confirmation, failure and 
   assert.ok(elements(refreshed).some(node => node.props?.role === 'alert' && node.props.children.includes('balances could not refresh')));
   reduced = true;
   const quiet = TradeResultDialog({ ...props, confirmation: { hash: 'confirmed-hash', side: 'buy' } });
+  assert.ok(!elements(quiet).some(node => node.type === 'Spinner'), 'Confirmed trades replace the loader with success');
+  assert.ok(!elements(failed).some(node => node.type === 'Spinner'), 'Failed trades do not imply ongoing processing');
   const animated = elements(quiet).filter(node => node.props?.initial !== undefined && node.props.transition);
-  assert.ok(animated.length > 0);
-  assert.ok(animated.every(node => node.props.initial === false && node.props.transition.duration === 0), 'Reduced motion removes spatial transitions');
+  assert.equal(animated.length, 0, 'Status content delegates motion to the reduced-motion-aware shared frame');
+});
+
+test('confirmed trades retain the hash and explorer action without project navigation', () => {
+  const jsx = (type, props) => ({ type, props });
+  const { TradeResultDialog } = load('trade-result-dialog.tsx', {
+    'react/jsx-runtime': { jsx, jsxs: jsx },
+    '@/components/app-dialog': { AppDialogContent: 'AppDialogContent' },
+    '@/components/ui/dialog': Object.fromEntries(
+      ['Dialog', 'DialogHeader', 'DialogTitle', 'DialogDescription', 'DialogClose'].map(name => [name, name]),
+    ),
+    '@/components/ui/button': { Button: 'Button', buttonVariants: () => '' },
+    '@/components/ui/spinner': { Spinner: 'Spinner' },
+    '@/lib/utils': { cn: (...classes) => classes.filter(Boolean).join(' ') },
+    './transaction-hash': { TransactionHash: 'TransactionHash' },
+  });
+  const hash = '1234567890abcdef'.repeat(4);
+  let closed = false;
+  const dialog = TradeResultDialog({
+    confirmation: { hash, side: 'sell' },
+    onClose() { closed = true; },
+  });
+  const nodes = elements(dialog);
+  assert.ok(nodes.some(node => node.props?.title === hash && node.props['aria-label'] === `Transaction hash: ${hash}`));
+  assert.ok(content(dialog).includes(`${hash.slice(0, 12)}…${hash.slice(-12)}`));
+  assert.ok(nodes.some(node => node.type === 'TransactionHash' && node.props.hash === hash && node.props.label === 'See in explorer'));
+  assert.ok(!content(dialog).includes('View project'));
+  assert.ok(nodes.some(node => node.type === 'DialogClose' && node.props.children === 'Done'));
+  dialog.props.onOpenChange(false);
+  assert.equal(closed, true);
+  assert.equal(tradeDialog(harness()).projectHref, undefined);
+});
+
+test('compact explorer actions use the selected network and do not dismiss or resubmit the trade', () => {
+  const jsx = (type, props) => ({ type, props });
+  const { TransactionHash } = load('transaction-hash.tsx', {
+    'react/jsx-runtime': { jsx, jsxs: jsx },
+    '@/components/ui/button': { buttonVariants: () => '' },
+    '@/lib/utils': { cn: (...classes) => classes.filter(Boolean).join(' ') },
+  });
+  const link = TransactionHash({ hash: 'real-hash', label: 'See in explorer', compact: true });
+  assert.equal(link.type, 'a');
+  assert.equal(link.props.href, `https://stellar.expert/explorer/${networkModule.API_NETWORK}/tx/real-hash`);
+  assert.equal(link.props.target, '_blank');
+  assert.equal(link.props.onClick, undefined);
 });
