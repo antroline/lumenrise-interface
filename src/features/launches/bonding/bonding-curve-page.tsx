@@ -12,10 +12,10 @@ import {
   decodeSnapshot,
   decodeTokens,
   errorMessage,
-  integer,
   trusts,
 } from './contract';
 import { TradeForm } from './trade-form';
+import { useWalletBalances } from './use-wallet-balances';
 import { ApiError } from '@/lib/api/client';
 import {
   useLaunchDetail,
@@ -178,27 +178,13 @@ export function BondingCurvePage({
   const owner = user?.address;
   const validWallet = !!owner && StrKey.isValidEd25519PublicKey(owner);
   const accountEnabled = isReady && liveEnabled && validWallet;
-  const walletRead = useReadContracts(
-    [
-      { address: params?.asset ?? '', fn: 'balance', args: [owner ?? ''] },
-      { address: params?.pair ?? '', fn: 'balance', args: [owner ?? ''] },
-      { address, fn: 'sellable_balance', args: [owner ?? ''] },
-    ],
-    { network: NETWORK },
-    {
-      enabled: isReady && liveEnabled && !!params && validWallet,
-      refetchInterval: 15_000,
-      retry: false,
-    },
-  );
-  const wallet = decodeRead(
-    network === API_NETWORK ? walletRead.data?.values : undefined,
-    (values) => ({
-      held: integer(values[0]),
-      pairHeld: integer(values[1]),
-      position: integer(values[2]),
-    }),
-  );
+  const wallet = useWalletBalances({
+    address,
+    owner,
+    asset: params?.asset ?? '',
+    pair: params?.pair ?? '',
+    enabled: accountEnabled && !!params,
+  });
   const account = useAccount(
     { address: owner, network: NETWORK },
     {
@@ -214,7 +200,7 @@ export function BondingCurvePage({
       reads.refetch(),
       ...(params ? [tokensRead.refetch()] : []),
       ...(validWallet && params
-        ? [walletRead.refetch(), account.refetch()]
+        ? [wallet.refetch(), account.refetch()]
         : []),
     ]);
   }
@@ -236,8 +222,7 @@ export function BondingCurvePage({
     accountEnabled &&
     !missingAccount &&
     !accountReadFailed &&
-    ((!account.isFetched && account.isLoading) ||
-      (!walletRead.isFetched && walletRead.isLoading));
+    !account.isFetched && account.isLoading;
   const hasWalletFeedback =
     !validWallet || missingAccount || accountReadFailed || missingTrustlines || loadingWallet;
   const walletFeedback =
@@ -276,7 +261,7 @@ export function BondingCurvePage({
         {loadingWallet && (
           <div
             role="status"
-            aria-label="Loading wallet balances"
+            aria-label="Loading wallet information"
             aria-busy="true"
             className="flex items-center gap-2 py-1"
           >
@@ -303,9 +288,8 @@ export function BondingCurvePage({
             locked={locked}
             setLocked={setLocked}
             refresh={refresh}
-            balances={
-              walletRead.error || wallet.error ? undefined : wallet.value
-            }
+            balances={network === API_NETWORK ? wallet.balances : undefined}
+            balanceStatus={network === API_NETWORK ? wallet.balanceStatus : undefined}
           />
         )
       : null;
@@ -326,9 +310,8 @@ export function BondingCurvePage({
             locked={locked}
             setLocked={setLocked}
             refresh={refresh}
-            balances={
-              walletRead.error || wallet.error ? undefined : wallet.value
-            }
+            balances={network === API_NETWORK ? wallet.balances : undefined}
+            balanceStatus={network === API_NETWORK ? wallet.balanceStatus : undefined}
           />
         )
       : null;
