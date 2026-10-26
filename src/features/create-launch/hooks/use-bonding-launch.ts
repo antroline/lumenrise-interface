@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useBlux, useWriteContract } from '@bluxcc/react';
 import { Keypair, scValToNative, StrKey } from '@stellar/stellar-sdk';
 import { LAUNCH_CONFIGURED } from '@/lib/stellar/network';
-import { recoverSubmittedTransaction, waitForTransaction, waitForTransactionResult } from '../../../lib/stellar/confirmation';
+import { CONFIRMATION_TIMEOUT_MS, recoverSubmittedTransaction, waitForTransaction, waitForTransactionResult } from '../../../lib/stellar/confirmation';
 import { ApiError } from '@/lib/api/client';
 import {
   fileFromDataUrl,
@@ -21,7 +21,6 @@ import type { LaunchOperation, LaunchOperationStep } from '../lib/launch-operati
 import {
   checkPending,
   describeError,
-  isLaunchRecord,
   isTransactionConfirmed,
   requireCreator,
   toUnits,
@@ -60,91 +59,6 @@ type BondingRecord = {
 
 function recordKey(owner: string, input: LaunchInput) {
   return `${storagePrefix()}${owner}:${encodeURIComponent(input.name)}:${input.code}:${toUnits(input.amount)}`;
-}
-
-function matchesInput(token: LaunchInput, input: LaunchInput) {
-  return (
-    token.name === input.name && token.code === input.code &&
-    toUnits(token.amount) === toUnits(input.amount)
-  );
-}
-
-function readImageRecord(value: unknown): LaunchImageRecord {
-  if (
-    value &&
-    typeof value === 'object' &&
-    'imageId' in value &&
-    typeof value.imageId === 'string' &&
-    'publicUrl' in value &&
-    typeof value.publicUrl === 'string' &&
-    'fingerprint' in value &&
-    typeof value.fingerprint === 'string'
-  )
-    return {
-      name: 'name' in value && typeof value.name === 'string' ? value.name : undefined,
-      slug: 'slug' in value && typeof value.slug === 'string' ? value.slug : undefined,
-      imageId: value.imageId,
-      publicUrl: value.publicUrl,
-      fingerprint: value.fingerprint,
-    };
-  throw new Error('The saved bonding-curve launch cannot be read.');
-}
-
-function readRecord(stored: string, owner: string): BondingRecord {
-  const value: unknown = JSON.parse(stored);
-  if (
-    !value ||
-    typeof value !== 'object' ||
-    !('token' in value) ||
-    !isLaunchRecord(value.token) ||
-    value.token.creator !== owner ||
-    ('factoryHash' in value && typeof value.factoryHash !== 'string') ||
-    ('curveAddress' in value && typeof value.curveAddress !== 'string')
-  )
-    throw new Error('The saved bonding-curve launch cannot be read.');
-  return {
-    token: value.token,
-    factoryHash:
-      'factoryHash' in value && typeof value.factoryHash === 'string'
-        ? value.factoryHash
-        : undefined,
-    curveAddress:
-      'curveAddress' in value && typeof value.curveAddress === 'string'
-        ? value.curveAddress
-        : undefined,
-    image:
-      'image' in value && value.image !== undefined
-        ? readImageRecord(value.image)
-        : undefined,
-  };
-}
-
-function loadRecord(owner: string, input: LaunchInput): BondingRecord | null {
-  const stored = localStorage.getItem(recordKey(owner, input));
-  if (stored) {
-    const record = readRecord(stored, owner);
-    if (!matchesInput(record.token, input))
-      throw new Error('The saved bonding-curve launch does not match this token.');
-    return record;
-  }
-
-  // Older versions kept one launch per wallet. Migrate only the matching token,
-  // preserving every transaction hash and the issuer key needed to resume it.
-  const legacyKey = `${storagePrefix()}${owner}`;
-  const legacy = localStorage.getItem(legacyKey);
-  if (!legacy) return null;
-  const record = readRecord(legacy, owner);
-  if (!matchesInput(record.token, input)) return null;
-  saveRecord(record);
-  localStorage.removeItem(legacyKey);
-  return record;
-}
-
-function saveRecord(record: BondingRecord) {
-  localStorage.setItem(
-    recordKey(record.token.creator, record.token),
-    JSON.stringify(record),
-  );
 }
 
 /**
@@ -188,7 +102,7 @@ function requireHash(result: unknown) {
 function curveAddress(value: unknown) {
   if (typeof value !== 'string' || !StrKey.isValidContract(value))
     throw new Error(
-      'The factory transaction has no valid curve address yet. Retry to check its result.',
+      'There was a problem reading the launch transaction result.',
     );
   return value;
 }
@@ -201,6 +115,13 @@ export function useBondingLaunch() {
   const [working, setWorking] = useState(false);
   const [operation, setOperation] = useState<LaunchOperation | null>(null);
   const running = useRef(false);
+  // Keep completed steps for retries on this page only. Reloading starts fresh.
+  const records = useRef(new Map<string, BondingRecord>());
+  const loadRecord = (owner: string, input: LaunchInput) =>
+    records.current.get(recordKey(owner, input)) ?? null;
+  const saveRecord = (record: BondingRecord) => {
+    records.current.set(recordKey(record.token.creator, record.token), record);
+  };
   const [nameConflict, setNameConflict] = useState<{ name: string; message: string } | null>(null);
 
   function report(
@@ -240,21 +161,17 @@ export function useBondingLaunch() {
    * the user at the token page; a still-pending index is not a launch failure
    * and never triggers another transaction.
    */
-  async function finish(address: string, image: LaunchImageRecord | undefined, hash?: string) {
+  async function finish(address: string, image: LaunchImageRecord | undefined, hash?: string, timeoutMs = CONFIRMATION_TIMEOUT_MS) {
     report(
       'index', 'Confirmed on Stellar. Preparing your project page.',
       'confirming', hash,
     );
-    let slug = image?.slug;
-    if (!slug && image) {
-      const info = await getLaunchImage(image.imageId);
-      slug = info.slug ?? undefined;
-    }
-    if (!slug) throw new Error('Your launch is confirmed on Stellar. The project page is still preparing — check again in a moment.');
-    const result = await waitForIndexedLaunch(slug, API_NETWORK);
+    const slug = image?.slug;
+    if (!slug) throw new Error('Your launch is confirmed, but the project page could not be loaded within 10 seconds.');
+    const result = await waitForIndexedLaunch(slug, API_NETWORK, timeoutMs);
     if (result !== 'ready')
       throw new Error(
-        'Your launch is confirmed on Stellar. The project page is still preparing — check again in a moment.',
+        'Your launch is confirmed, but the project page could not be loaded within 10 seconds.',
       );
     router.refresh();
     complete(address, slug, hash);
@@ -349,6 +266,7 @@ export function useBondingLaunch() {
         amount: draft.supply,
       });
       let saved = loadRecord(owner, input);
+      const resuming = !!saved;
       if (saved) {
         const transactionHashes = {
           setup: saved.token.setupHash,
@@ -364,6 +282,7 @@ export function useBondingLaunch() {
       }
       // Recover a submitted factory call before considering another transfer.
       if (saved?.factoryHash) {
+        const startedAt = Date.now();
         report(
           'curve', 'Checking your submitted launch transaction.',
           'confirming', saved.factoryHash,
@@ -374,15 +293,16 @@ export function useBondingLaunch() {
             result.returnValue ? scValToNative(result.returnValue) : null,
           );
           saveRecord({ ...saved, curveAddress: address });
-          await finish(address, saved.image, saved.factoryHash);
+          await finish(address, saved.image, saved.factoryHash, Math.max(0, CONFIRMATION_TIMEOUT_MS - (Date.now() - startedAt)));
           return;
         }
         if (result.status !== 'FAILED')
           throw new Error(
-            'The factory transaction is still pending. Retry to check its result.',
+            'There was a problem confirming the launch transaction.',
           );
         saved = { token: saved.token, image: saved.image };
         saveRecord(saved);
+        throw new Error('The launch transaction failed on-chain.');
       }
       const keypair = Keypair.random();
       const issuer = saved?.token.issuer ?? keypair.publicKey();
@@ -419,7 +339,7 @@ export function useBondingLaunch() {
       };
       if (token.stage === 'setupPending') {
         report('setup', 'Checking issuer setup.', 'confirming', token.setupHash);
-        if (!(await isTransactionConfirmed(token.setupHash))) {
+        if (!resuming || !(await waitForTransactionResult(token.setupHash, () => isTransactionConfirmed(token.setupHash)))) {
           if (!token.setupXdr)
             throw new Error('The saved issuer setup transaction is missing.');
           report(
@@ -470,7 +390,7 @@ export function useBondingLaunch() {
           'issue', 'Confirming token issuance.',
           'confirming', token.distributionHash,
         );
-        if (!(await isTransactionConfirmed(token.distributionHash)))
+        if (!(await waitForTransactionResult(token.distributionHash, () => isTransactionConfirmed(token.distributionHash!))))
           await submitIssuance(token.distributionXdr);
         const distributionHash = token.distributionHash;
         await waitForTransactionResult(distributionHash, async () =>
@@ -483,12 +403,15 @@ export function useBondingLaunch() {
           distributionXdr: undefined,
         });
       }
-      if (token.stage === 'sacPending') {
+      if (token.stage === 'sacPending' && token.sacSubmitted) {
         report(
           'deploy', 'Checking the token contract deployment.',
           'confirming', token.sacHash,
         );
-        saveToken(await checkPending(token));
+        const confirmedToken = await checkPending(token);
+        saveToken(confirmedToken);
+        if (confirmedToken.stage !== 'sacConfirmed')
+          throw new Error('The token contract deployment failed on-chain.');
       }
       if (token.stage === 'setupConfirmed') {
         report('deploy', 'Preparing the Stellar Asset Contract.');
@@ -503,6 +426,7 @@ export function useBondingLaunch() {
           stage: 'sacPending',
           sacHash: transactionHash(deployment),
           sacXdr: deployment.toXDR(),
+          sacSubmitted: false,
         });
       }
       if (token.stage === 'sacPending') {
@@ -516,16 +440,19 @@ export function useBondingLaunch() {
         const result = await recoverSubmittedTransaction(
           () => sendTransaction(sacXdr, { network: NETWORK }),
           (hash) => {
-            saveToken({ ...token, sacHash: hash });
+            saveToken({ ...token, sacHash: hash, sacSubmitted: true });
             report('deploy', 'Waiting for token contract confirmation.', 'confirming', hash);
           },
         );
-        saveToken({ ...token, sacHash: requireHash(result) });
+        saveToken({ ...token, sacHash: requireHash(result), sacSubmitted: true });
         report(
           'deploy', 'Waiting for token contract confirmation.',
           'confirming', token.sacHash,
         );
-        saveToken(await checkPending(token));
+        const confirmedToken = await checkPending(token);
+        saveToken(confirmedToken);
+        if (confirmedToken.stage !== 'sacConfirmed')
+          throw new Error('The token contract deployment failed on-chain.');
       }
       if (token.stage !== 'sacConfirmed')
         throw new Error(
@@ -568,9 +495,17 @@ export function useBondingLaunch() {
         'curve', 'Confirming your bonding curve on Stellar.',
         'confirming', result.hash,
       );
-      const address = curveAddress(await result.returnValue());
+      const startedAt = Date.now();
+      const confirmed = await waitForTransaction(result.hash);
+      if (confirmed.status !== 'SUCCESS') {
+        saveRecord({ token, image });
+        throw new Error('The launch transaction failed on-chain.');
+      }
+      const address = curveAddress(
+        confirmed.returnValue ? scValToNative(confirmed.returnValue) : null,
+      );
       saveRecord({ token, factoryHash: result.hash, curveAddress: address, image });
-      await finish(address, image, result.hash);
+      await finish(address, image, result.hash, Math.max(0, CONFIRMATION_TIMEOUT_MS - (Date.now() - startedAt)));
     } catch (cause) {
       const message = describeError(cause);
       setOperation((current) =>

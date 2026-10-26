@@ -28,10 +28,9 @@ export function TradeResultDialog({
   side,
   message,
   error,
-  pendingHash,
+  submittedHash,
   trustHash,
   registrationNotice,
-  onCheckPending,
 }: {
   confirmation?: TradeConfirmation;
   onClose: () => void;
@@ -42,15 +41,13 @@ export function TradeResultDialog({
   side?: 'buy' | 'sell';
   message?: string;
   error?: string;
-  pendingHash?: string | null;
+  submittedHash?: string;
   trustHash?: string;
   registrationNotice?: string;
-  onCheckPending?: () => void;
 }) {
   const busy = working && !confirmation;
-  const pending = !busy && !confirmation && !!pendingHash;
-  const loading = busy || pending;
-  const failed = !busy && !confirmation && !pendingHash;
+  const dismissible = !busy || !!submittedHash;
+  const failed = !busy && !confirmation;
   const title = confirmation
     ? confirmation.side === 'buy'
       ? 'Buy confirmed'
@@ -63,28 +60,24 @@ export function TradeResultDialog({
         : side === 'sell'
           ? 'Completing sale transaction'
           : 'Completing purchase transaction'
-      : pending
-        ? 'Confirmation pending'
-        : 'Trade not completed';
+      : 'Trade not completed';
   const description = confirmation
     ? `Your transaction is confirmed on Stellar ${API_NETWORK === 'public' ? 'Mainnet' : 'Testnet'}.`
     : busy
       ? message || (awaitingApproval
         ? 'Approve the transaction in your wallet to continue.'
         : 'Waiting for the transaction to complete.')
-      : pending
-        ? 'Check this transaction before submitting another trade.'
-        : error || 'The trade could not be completed. Please try again.';
-  const hash = confirmation?.hash ?? pendingHash;
+      : error || 'The trade could not be completed. Please try again.';
+  const hash = confirmation?.hash ?? submittedHash;
 
   return (
     <Dialog
       open={open}
       // Blux approvals can live in a sibling iframe and must be able to receive focus.
       modal={!awaitingApproval}
-      disablePointerDismissal={busy}
+      disablePointerDismissal={!dismissible}
       onOpenChange={(nextOpen) => {
-        if (!nextOpen && !busy) onClose();
+        if (!nextOpen && dismissible) onClose();
       }}
       onOpenChangeComplete={(nextOpen) => {
         if (!nextOpen) onClosed?.();
@@ -97,11 +90,11 @@ export function TradeResultDialog({
         )}>
           <div aria-hidden="true" className={cn(
             'grid shrink-0 place-items-center rounded-full',
-            loading ? 'size-12 bg-secondary text-foreground'
+            busy ? 'size-12 bg-secondary text-foreground'
               : confirmation ? 'size-8 bg-primary text-primary-foreground'
                 : 'size-8 bg-bad-soft text-bad',
           )}>
-            {loading ? <Spinner aria-hidden="true" role={undefined} aria-label={undefined} className="size-6 motion-reduce:animate-none" />
+            {busy ? <Spinner aria-hidden="true" role={undefined} aria-label={undefined} className="size-6 motion-reduce:animate-none" />
               : confirmation ? <Check className="size-5" />
                 : <CircleAlert className="size-5" />}
           </div>
@@ -145,16 +138,11 @@ export function TradeResultDialog({
               {registrationNotice}
             </p>
           )}
-          {!busy && (
+          {dismissible && (
             <div className="flex w-full items-center justify-end gap-2 pt-1">
-              <DialogClose render={<Button type="button" variant={pending ? 'ghost' : 'default'} className="h-11 min-w-20 px-4" />}>
+              <DialogClose render={<Button type="button" className="h-11 min-w-20 px-4" />}>
                 {confirmation ? 'Done' : 'Close'}
               </DialogClose>
-              {pending && onCheckPending && (
-                <Button type="button" className="h-11 min-w-0 flex-1 px-3" onClick={onCheckPending}>
-                  Check submitted trade
-                </Button>
-              )}
             </div>
           )}
         </div>

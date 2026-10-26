@@ -10,7 +10,6 @@ import { StrKey } from '@stellar/stellar-sdk';
 import {
   API_NETWORK,
   NETWORK,
-  soroban,
 } from '@/lib/stellar/clients';
 import { enqueueTrade } from '@/lib/api/launches/trade-queue';
 import { usePageVisible } from '@/features/launches/hooks/queries';
@@ -68,44 +67,10 @@ export function useTradeForm({
   function queueHash(hash: string) {
     if (user && !enqueueTrade(network, address, hash, user.address, slug))
       setRegistrationNotice(
-        'Your trade was submitted, but this browser cannot save its registration across reloads. Keep the transaction hash until it is recorded.',
+        'Your trade was submitted, but its activity could not be recorded.',
       );
   }
-  const pendingKey = user
-    ? `launchpad:pending-trade:${NETWORK}:${address}:${user.address}`
-    : undefined;
-  const [pendingHash, setPendingHash] = useState(() => {
-    if (!pendingKey) return null;
-    try {
-      return localStorage.getItem(pendingKey);
-    } catch {
-      return null;
-    }
-  });
-  useEffect(() => {
-    if (pendingHash && user)
-      enqueueTrade(network, address, pendingHash, user.address, slug);
-  }, [pendingHash, user, network, address, slug]);
-  function readPending() {
-    try {
-      return pendingKey
-        ? (localStorage.getItem(pendingKey) ?? pendingHash)
-        : pendingHash;
-    } catch {
-      return pendingHash;
-    }
-  }
-  function savePending(value: string | null) {
-    if (!pendingKey) return;
-    try {
-      if (value) localStorage.setItem(pendingKey, value);
-      else localStorage.removeItem(pendingKey);
-    } catch {
-      setRegistrationNotice(
-        'Browser storage is unavailable. Keep the transaction hash until its confirmation and registration are complete.',
-      );
-    }
-  }
+  const [submittedHash, setSubmittedHash] = useState<string>();
 
   const buying = side === 'buy';
   const pair = tokens.pair.isNative() ? 'XLM' : tokens.pairSymbol;
@@ -196,50 +161,6 @@ export function useTradeForm({
   // The buy budget already includes creator fees. Never add slippage to it.
   const limit = minimumReceived === undefined ? undefined : buying ? spendNow : minimumReceived;
 
-  async function recoverPending() {
-    if (!pendingKey || locked || running.current) return;
-    running.current = true;
-    setLocked(true);
-    setWorking(true);
-    setError('');
-    try {
-      const pending = readPending();
-      if (!pending) {
-        setPendingHash(null);
-        return;
-      }
-      setConfirmation(undefined);
-      setTrustHash(undefined);
-      setDialogOpen(true);
-      queueHash(pending);
-      setMessage('Checking your submitted trade…');
-      const result = await soroban.getTransaction(pending);
-      if (result.status === 'FAILED') {
-        savePending(null);
-        setPendingHash(null);
-        throw new Error(
-          'The submitted trade failed on-chain. You can request a new quote and retry.',
-        );
-      }
-      await confirmTransaction(pending);
-      setConfirmation({ hash: pending });
-      savePending(null);
-      setPendingHash(null);
-      setMessage('Your submitted trade is confirmed. Balances refreshed.');
-      await refresh();
-    } catch (cause) {
-      setError(
-        friendlyError(cause, 'Could not check the submitted trade. Try again.'),
-      );
-      setMessage('');
-    } finally {
-      setAwaitingApproval(false);
-      running.current = false;
-      setLocked(false);
-      setWorking(false);
-    }
-  }
-
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -247,7 +168,6 @@ export function useTradeForm({
       running.current ||
       locked ||
       !user ||
-      !pendingKey ||
       amount === undefined ||
       limit === undefined ||
       minimumReceived === undefined ||
@@ -263,6 +183,8 @@ export function useTradeForm({
     setError('');
     setConfirmation(undefined);
     setTrustHash(undefined);
+    setSubmittedHash(undefined);
+    setRegistrationNotice('');
     setDialogOpen(true);
     setMessage('Checking the current quote and your wallet…');
 
@@ -271,23 +193,6 @@ export function useTradeForm({
     try {
       if (!StrKey.isValidEd25519PublicKey(user.address))
         throw new Error('Trading requires a connected Stellar account.');
-      // Resolve a previous submission before creating another transaction. Persist
-      // immediately after submission so reloads cannot accidentally repeat a trade.
-      const pending = readPending();
-      if (pending) {
-        queueHash(pending);
-        setPendingHash(pending);
-        await confirmTransaction(pending);
-        setConfirmation({ hash: pending });
-        savePending(null);
-        setPendingHash(null);
-        setMessage(
-          'Your previous trade is confirmed. Balances refreshed; submit again for a new trade.',
-        );
-        await refresh();
-        return;
-      }
-
       const fresh = await readContracts(
         [
           {
@@ -376,8 +281,7 @@ export function useTradeForm({
         if (submittedHash === hash) return;
         submittedHash = hash;
         queueHash(hash);
-        setPendingHash(hash);
-        savePending(hash);
+        setSubmittedHash(hash);
         setAwaitingApproval(false);
         setMessage('Trade submitted. Waiting for confirmation…');
       };
@@ -394,16 +298,12 @@ export function useTradeForm({
       );
       recordSubmission(result.hash);
 
-      await result.returnValue();
-
       await confirmTransaction(result.hash);
       setConfirmation({ hash: result.hash, side });
-      savePending(null);
-      setPendingHash(null);
       setMessage(`${buying ? 'Buy' : 'Sell'} confirmed.`);
       setEntry('');
       setLimitEntry('');
-      await refresh();
+      void refresh().catch(() => setError('Balances could not refresh.'));
     } catch (cause) {
       setError(
         friendlyError(
@@ -412,19 +312,6 @@ export function useTradeForm({
         ),
       );
       setMessage('');
-      // A definitively failed trade can be retried. Keep unresolved hashes.
-      try {
-        const pending = submittedHash ?? readPending();
-        if (pending) {
-          const result = await soroban.getTransaction(pending);
-          if (result.status === 'FAILED') {
-            savePending(null);
-            setPendingHash(null);
-          }
-        }
-      } catch {
-        /* Keep the pending hash when RPC or storage is unavailable. */
-      }
     } finally {
       setAwaitingApproval(false);
       running.current = false;
@@ -462,7 +349,7 @@ export function useTradeForm({
     dialogOpen,
     awaitingApproval,
     dismissConfirmation: () => {
-      if (working && !confirmation) return;
+      if (working && !confirmation && !submittedHash) return;
       setDialogOpen(false);
     },
     finishDialogClose: () => {
@@ -471,10 +358,11 @@ export function useTradeForm({
       setConfirmation(undefined);
       setMessage('');
       setTrustHash(undefined);
+      setSubmittedHash(undefined);
     },
     trustHash,
     registrationNotice,
-    pendingHash,
+    submittedHash,
     buying,
     pair,
     permitted,
@@ -489,7 +377,6 @@ export function useTradeForm({
     sellable,
     unavailable,
     quoteRead,
-    recoverPending,
     submit,
   };
 }

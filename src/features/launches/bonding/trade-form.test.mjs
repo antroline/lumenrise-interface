@@ -119,7 +119,7 @@ function harness({
           writes++;
           if (writeGate) await writeGate;
           if (writeTimeout) throw new Error(`BLUX: Timed out waiting for transaction ${timeoutHash} to finalize.`);
-          return { hash: 'new-hash', returnValue: async () => null };
+          return { hash: 'new-hash', returnValue: async () => { throw new Error('Do not use the unbounded Blux result waiter'); } };
         },
       }),
       useReadContracts: (calls) => ({
@@ -178,6 +178,7 @@ function harness({
         events.push(`confirm:${hash}`);
         assert.ok(events.includes(`queue:${hash}`));
         if (confirmGate) await confirmGate;
+        if (writeTimeout) return load('../../../lib/stellar/confirmation.ts', mocks, globals).confirmTransaction(hash);
         if (confirmation !== 'success') throw new Error('Still pending');
       },
       ensureTradeTrustlines: async () => ({}),
@@ -185,7 +186,7 @@ function harness({
     },
   };
   const globals = {
-    setTimeout: resolve => resolve(),
+    setTimeout: (resolve, ms) => ms === 1000 ? resolve() : 0,
     clearTimeout,
     localStorage: {
       getItem: (key) => storage.get(key) ?? null,
@@ -237,7 +238,7 @@ function harness({
   };
 }
 for (const side of ['buy', 'sell'])
-  test(`${side} persists the server hash immediately after broadcast and confirms independently`, async () => {
+  test(`${side} confirms the submitted hash without saving pending state`, async () => {
     const h = harness({ side });
     await h.submit();
     assert.deepEqual(h.events, [
@@ -260,11 +261,11 @@ test('registration persistence failure never becomes a false on-chain failure or
   assert.ok(h.states.includes('Buy confirmed.'));
   assert.ok(h.events.includes('refresh'));
 });
-test('unresolved confirmation preserves the original on-chain hash', async () => {
+test('unresolved confirmation shows an error without saving pending state', async () => {
   const h = harness({ confirmation: 'pending' });
   await h.submit();
   assert.equal(h.writes(), 1);
-  assert.equal(h.storage.get(h.key), 'new-hash');
+  assert.equal(h.storage.has(h.key), false);
   assert.ok(!h.states.some(value => value?.hash === 'new-hash'), 'Unresolved trades must not open a success dialog');
 });
 
@@ -278,21 +279,22 @@ for (const side of ['buy', 'sell']) test(`${side} recovers a Blux timeout by che
   assert.equal(tradeDialog(h).confirmation.side, side);
 });
 
-test('unresolved Blux buy timeout retains the hash for later checks', async () => {
+test('unresolved Blux buy timeout shows an error without persisting or rechecking', async () => {
   const h = harness({ writeTimeout: true });
   await h.submit();
   assert.equal(h.writes(), 1);
-  assert.equal(h.storage.get(h.key), 'b'.repeat(64));
+  assert.equal(h.storage.has(h.key), false);
   const dialog = tradeDialog(h);
   assert.equal(dialog.confirmation, undefined);
-  assert.equal(dialog.pendingHash, 'b'.repeat(64));
+  assert.equal(dialog.submittedHash, 'b'.repeat(64));
   assert.equal(dialog.awaitingApproval, false);
 });
-test('recovering an old on-chain hash queues that hash and never buys or sells again', async () => {
+test('stale stored hashes never block or replace a new trade', async () => {
   const h = harness({ pending: 'old-hash' });
   await h.submit();
-  assert.equal(h.writes(), 0);
-  assert.deepEqual(h.events, ['queue:old-hash', 'confirm:old-hash', 'refresh']);
+  assert.equal(h.writes(), 1);
+  assert.deepEqual(h.events, ['broadcast', 'queue:new-hash', 'confirm:new-hash', 'refresh']);
+  assert.equal(elements(h.render()).some(node => content(node).includes('Check submitted trade')), false);
 });
 
 function elements(node) {
@@ -538,7 +540,7 @@ for (const side of ['buy', 'sell']) test(`${side} keeps one dialog open through 
   dialog = tradeDialog(h);
   assert.equal(dialog.open, true);
   assert.equal(dialog.awaitingApproval, false);
-  assert.equal(dialog.pendingHash, 'new-hash');
+  assert.equal(dialog.submittedHash, 'new-hash');
   assert.ok(dialog.message.includes('Waiting for confirmation'));
   assert.equal(dialog.confirmation, undefined);
   assert.equal(elements(h.render()).some(node => node.type === 'p' && Array.isArray(node.props.children) && node.props.children.includes('new-hash')), false);
@@ -569,23 +571,21 @@ test('wallet rejection remains visible in the dialog without fabricating a submi
   assert.equal(dialog.working, false);
   assert.equal(dialog.awaitingApproval, false);
   assert.equal(dialog.confirmation, undefined);
-  assert.equal(dialog.pendingHash, null);
+  assert.equal(dialog.submittedHash, undefined);
   assert.equal(dialog.error, 'The trade was cancelled in your wallet.');
 });
 
-test('unresolved confirmation allows checking the original hash without rebroadcast', async () => {
+test('unresolved confirmation ends with an error and no manual recheck', async () => {
   const h = harness({ confirmation: 'pending' });
   await h.submit();
   let dialog = tradeDialog(h);
   assert.equal(dialog.open, true);
   assert.equal(dialog.working, false);
-  assert.equal(dialog.pendingHash, 'new-hash');
+  assert.equal(dialog.submittedHash, 'new-hash');
   assert.equal(dialog.confirmation, undefined);
-  dialog.onCheckPending();
-  await new Promise(resolve => setImmediate(resolve));
-  dialog = tradeDialog(h);
-  assert.equal(dialog.open, true);
-  assert.equal(dialog.pendingHash, 'new-hash');
+  assert.ok(dialog.error);
+  assert.equal(dialog.onCheckPending, undefined);
+  assert.equal(h.storage.size, 0);
   assert.equal(h.writes(), 1);
 });
 
@@ -604,8 +604,8 @@ test('dialog supports loading, Blux focus, unresolved confirmation, failure and 
     '@/features/launches/trading/trade-transition': { tradeTransition: { duration: 0.24 } },
     './transaction-hash': { TransactionHash: 'TransactionHash' },
   });
-  let closed = 0, checks = 0;
-  const props = { open: true, side: 'buy', onClose: () => closed++, onCheckPending: () => checks++ };
+  let closed = 0;
+  const props = { open: true, side: 'buy', onClose: () => closed++ };
   const loading = TradeResultDialog({ ...props, working: true, message: 'Checking your wallet' });
   assert.ok(elements(loading).some(node => node.props?.role === 'status' && node.props.children === 'Checking your wallet'));
   assert.ok(!elements(loading).some(node => node.type === 'DialogFooter'), 'Modal uses one surface without a separate footer');
@@ -625,7 +625,7 @@ test('dialog supports loading, Blux focus, unresolved confirmation, failure and 
     { working: true },
     { working: true, awaitingApproval: true },
     { working: true, trustHash: 'trustline-hash' },
-    { pendingHash: 'submitted-hash' },
+    { working: true, submittedHash: 'submitted-hash' },
   ]) {
     const nodes = elements(TradeResultDialog({ ...props, ...phase }));
     const spinners = nodes.filter(node => node.type === 'Spinner');
@@ -633,10 +633,10 @@ test('dialog supports loading, Blux focus, unresolved confirmation, failure and 
     assert.equal(spinners[0].props.className, 'size-6 motion-reduce:animate-none');
     assert.ok(nodes.some(node => node.props?.className?.includes('size-12 bg-secondary text-foreground')), 'The loader keeps a consistent theme-aware circular background');
   }
-  const pending = TradeResultDialog({ ...props, pendingHash: 'original-hash', error: 'Still pending' });
-  assert.ok(elements(pending).some(node => node.type === 'span' && node.props.children === 'Confirmation pending'));
-  elements(pending).find(node => node.type === 'Button' && node.props.children === 'Check submitted trade').props.onClick();
-  assert.equal(checks, 1);
+  const pending = TradeResultDialog({ ...props, submittedHash: 'original-hash', error: 'There was a problem confirming the transaction within 10 seconds.' });
+  assert.ok(elements(pending).some(node => node.type === 'span' && node.props.children === 'Trade not completed'));
+  assert.equal(content(pending).includes('Check submitted trade'), false);
+  assert.ok(!elements(pending).some(node => node.type === 'Spinner'));
   assert.ok(elements(pending).some(node => node.type === 'TransactionHash' && node.props.compact === true));
   assert.ok(elements(pending).some(node => node.type === 'TransactionHash' && node.props.hash === 'original-hash'));
   const failed = TradeResultDialog({ ...props, error: 'Wallet cancelled' });

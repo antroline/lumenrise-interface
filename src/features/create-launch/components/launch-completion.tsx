@@ -394,7 +394,7 @@ export function LaunchCompletion({
               )}
               {!success && (
                 <Button size="lg" onClick={onRetry} disabled={working}>
-                  {idle ? 'Connect wallet to continue' : 'Check / retry'}
+                  {idle ? 'Connect wallet to continue' : 'Try again'}
                 </Button>
               )}
               {success && operation.slug && (

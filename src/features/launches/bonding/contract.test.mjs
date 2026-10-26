@@ -22,7 +22,7 @@ function loadSource(filename, mocks = {}, cache = new Map(), globals = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
   runInNewContext(output, {
-    module, exports: module.exports, Error, setTimeout: resolve => resolve(), ...globals,
+    module, exports: module.exports, Error, setTimeout: (resolve, ms) => ms === 1000 ? resolve() : 0, clearTimeout: () => {}, ...globals,
     require: name => name === '@/lib/stellar/network' ? networkModule : name in mocks ? mocks[name] : name.startsWith('.')
       ? loadSource(resolve(dirname(path), `${name}${name === './transaction-hash' ? '.tsx' : '.ts'}`), mocks, cache, globals) : require(name),
   }, { filename: path });
@@ -278,12 +278,11 @@ test('a transferred token balance without enough curve purchases cannot submit a
   assert.match(trade.states[5], /bought directly from this curve/);
 });
 
-test('an unresolved submitted trade preserves its hash and does not report success', async () => {
+test('an unresolved submitted trade stops with an error without persisting its hash', async () => {
   const trade = renderTrade('sell', '20000000', 'NOT_FOUND');
   await trade.submit();
-  assert.equal(trade.stored.size, 1);
-  assert.equal([...trade.stored.values()][0], 'trade-hash');
-  assert.match(trade.states[5], /still pending/);
+  assert.equal(trade.stored.size, 0);
+  assert.match(trade.states[5], /within 10 seconds/);
   assert.ok(!trade.calls.includes('refreshed'));
 });
 

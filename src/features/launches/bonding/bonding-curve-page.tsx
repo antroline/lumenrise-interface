@@ -22,7 +22,6 @@ import {
   usePageVisible,
 } from '@/features/launches/hooks/queries';
 import { useTradeQueue } from '@/features/launches/hooks/use-trade-queue';
-import { resumeTradeIdentity } from '@/lib/api/launches/trade-queue';
 import type { ApiNetwork } from '@/lib/api/launches/types';
 import { IndexedLaunchOverview } from '../components/indexed-launch-overview';
 import { BondingTechnicalDetails } from '../components/bonding-technical-details';
@@ -49,34 +48,12 @@ export function BondingCurvePage({
   const { user, isReady, isAuthenticated } = useBlux();
   const notify = useNotify();
   const lastTradingNotice = useRef<string | null>(null);
-  const { retryStatusCheck, loginPending } = useLaunchpad();
+  const { loginPending } = useLaunchpad();
   const indexed = useLaunchDetail(slug, network);
   const address = indexed.data?.contractId ?? '';
-  const { records: queued, recoveryError } = useTradeQueue(network, address, indexed.data?.slug ?? undefined);
+  useTradeQueue(network, address, indexed.data?.slug ?? undefined);
   const visible = usePageVisible();
   const liveEnabled = visible && !!address && network === API_NETWORK;
-  const queueFeedback = queued.some(
-    (trade) => trade.state === 'invalid' || trade.state === 'identity',
-  ) ? (
-    <p role="status" className="text-small text-muted-foreground">
-      {queued.some((t) => t.state === 'invalid')
-        ? 'A trade could not be recorded. Its transaction confirmation is unchanged.'
-        : 'Sign in again to finish recording your trades.'}
-      {queued.some((t) => t.state === 'identity') && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            retryStatusCheck();
-            if (user?.address)
-              resumeTradeIdentity(network, address, user.address);
-          }}
-        >
-          Retry account verification
-        </Button>
-      )}
-    </p>
-  ) : null;
   const indexedFeedback = (
     <>
       {indexed.isPending && <p role="status">Loading launch information…</p>}
@@ -99,13 +76,6 @@ export function BondingCurvePage({
       {network !== API_NETWORK && (
         <p className="text-small text-muted-foreground">
           Wallet trading is configured for {API_NETWORK === 'public' ? 'Mainnet' : 'Testnet'}.
-        </p>
-      )}
-      {queueFeedback}
-      {recoveryError && (
-        <p role="status" className="text-small text-muted-foreground">
-          Trade registration will be checked again. Keep your transaction hashes
-          until recorded.
         </p>
       )}
     </>

@@ -9,11 +9,7 @@
 import { ApiError } from '@/lib/api/client';
 import { getIndexedLaunch } from '@/lib/api/launches/public';
 import type { ApiNetwork } from '@/lib/api/launches/types';
-
-/** Bounded 5–15 second backoff between index checks. */
-const POLL_DELAYS_MS = [
-  5_000, 5_000, 8_000, 8_000, 12_000, 12_000, 15_000, 15_000, 15_000, 15_000,
-];
+import { ConfirmationTimeoutError, waitForTransactionResult } from '../../../lib/stellar/confirmation';
 
 function retryable(error: unknown): boolean {
   if (error instanceof ApiError) {
@@ -26,22 +22,24 @@ function retryable(error: unknown): boolean {
 
 /**
  * Polls the public launch endpoint until the contract is indexed ('ready') or
- * the attempt budget runs out ('pending'). Callers keep the transaction hash
- * and contract id either way so the check can run again later.
+ * the ten-second deadline runs out ('pending').
  */
 export async function waitForIndexedLaunch(
   slug: string,
   network: ApiNetwork,
+  timeoutMs?: number,
 ): Promise<'ready' | 'pending'> {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      await getIndexedLaunch(slug, { network });
-      return 'ready';
-    } catch (error) {
-      if (!retryable(error)) throw error;
-    }
-    const delay = POLL_DELAYS_MS[attempt];
-    if (delay === undefined) return 'pending';
-    await new Promise((resolve) => setTimeout(resolve, delay));
+  try {
+    return await waitForTransactionResult(slug, async () => {
+      try {
+        await getIndexedLaunch(slug, { network });
+        return 'ready' as const;
+      } catch (error) {
+        if (!retryable(error)) throw error;
+      }
+    }, timeoutMs);
+  } catch (error) {
+    if (error instanceof ConfirmationTimeoutError) return 'pending';
+    throw error;
   }
 }

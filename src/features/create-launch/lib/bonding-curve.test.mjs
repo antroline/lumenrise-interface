@@ -41,7 +41,7 @@ function loadSource(filename, mocks = { '@bluxcc/react': {} }, globals = {}, cac
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
   runInNewContext(output, {
-    module, exports: module.exports, URLSearchParams, Date, Error, setTimeout: resolve => resolve(),
+    module, exports: module.exports, URLSearchParams, Date, Error, setTimeout: (resolve, ms) => ms === 1000 ? resolve() : 0, clearTimeout: () => {},
     URL,
     require: (name) => name === '@/lib/api/config' ? configurationModule : name in mocks ? mocks[name] : name === '@/lib/stellar/clients' ? loadSource('../../../lib/stellar/clients.ts', mocks, globals, cache) : name === '@/lib/stellar/network' ? networkModule : name.startsWith('.')
       ? loadSource(resolve(dirname(path), `${name}.ts`), mocks, globals, cache)
@@ -206,7 +206,7 @@ test('rejects unsupported methods, local image references, and invalid contract 
   assert.equal(isBondingDraft({ method: 'bonding' }), false);
 });
 
-function harness({ network = networkModule, signedIn = true, rejectLogin = false, rejectSetup = false, setupError, rejectSac = false, rejectReturn = false, factoryStatus = 'NOT_FOUND', balance, returnWait, accountStatus = 'registered', imageStatus = 'pending', uploadFailures = [], indexResult = 'ready', sacTimeout = false, factoryTimeout = false, lookupStatuses, setupLookupDelay = 0 } = {}) {
+function harness({ network = networkModule, signedIn = true, rejectLogin = false, rejectSetup = false, setupError, rejectSac = false, rejectReturn = false, factoryStatus = 'SUCCESS', balance, returnWait, accountStatus = 'registered', imageStatus = 'pending', uploadFailures = [], indexResult = 'ready', sacTimeout = false, factoryTimeout = false, lookupStatuses, setupLookupDelay = 0 } = {}) {
   const storage = new Map();
   const messages = [];
   const calls = [];
@@ -221,6 +221,7 @@ function harness({ network = networkModule, signedIn = true, rejectLogin = false
   const timeoutHash = 'a'.repeat(64);
   const timeout = () => new Error(`BLUX: Timed out waiting for transaction ${timeoutHash} to finalize.`);
   const progress = [];
+  let records;
   const issuedTokens = new Map();
   let transactionCount = 0;
   let factoryCalls = 0;
@@ -236,6 +237,10 @@ function harness({ network = networkModule, signedIn = true, rejectLogin = false
     '@/lib/stellar/network': network,
     '@/lib/stellar/clients': { soroban: { getTransaction: async (hash) => {
       lookups.push(hash);
+      if (hash.startsWith('factory-')) {
+        await returnWait;
+        if (rejectReturn) { rejectReturn = false; throw new Error('Result temporarily unavailable'); }
+      }
       const status = lookupStatuses?.[Math.min(lookups.length - 1, lookupStatuses.length - 1)] ?? factoryStatus;
       return { status, returnValue: status === 'SUCCESS' ? nativeToScVal(curve) : undefined };
     } } },
@@ -257,7 +262,7 @@ function harness({ network = networkModule, signedIn = true, rejectLogin = false
             progress.push(structuredClone(current));
         }];
       },
-      useRef: (value) => ({ current: value }),
+      useRef: (value) => { if (value && typeof value.set === 'function') records = value; return { current: value }; },
     },
     'next/navigation': {
       useRouter: () => ({ refresh: () => refreshes.push('refresh') }),
@@ -352,7 +357,7 @@ function harness({ network = networkModule, signedIn = true, rejectLogin = false
     },
   }, { localStorage: store, sessionStorage: store });
   return {
-    flow: exports.useBondingLaunch(), indexedSlugs, storage, calls, sends, messages, progress, events, uploads, statusChecks, refreshes, lookups, lookupCounts,
+    flow: exports.useBondingLaunch(), reload: () => exports.useBondingLaunch(), records: () => records, indexedSlugs, storage, calls, sends, messages, progress, events, uploads, statusChecks, refreshes, lookups, lookupCounts,
     factoryCalls: () => factoryCalls,
     indexChecks: () => indexChecks,
     setIndexResult: (value) => { indexed = value; },
@@ -360,9 +365,7 @@ function harness({ network = networkModule, signedIn = true, rejectLogin = false
 }
 
 function savedRecords(h) {
-  return [...h.storage.entries()]
-    .filter(([key]) => key.startsWith('launchpad:testnet-bonding:'))
-    .map(([, value]) => JSON.parse(value));
+  return [...h.records().values()].map(value => structuredClone(value));
 }
 
 test('Mainnet launch uses its own USDC, signing network, API uploads and recovery records', async () => {
@@ -375,7 +378,7 @@ test('Mainnet launch uses its own USDC, signing network, API uploads and recover
   assert.equal(h.calls[0].options.network, Networks.PUBLIC);
   assert.ok(h.sends.every(send => send.options.network === Networks.PUBLIC));
   assert.equal(h.uploads[0].network, 'public');
-  assert.ok([...h.storage.keys()].some(key => key.startsWith('launchpad:public-bonding:')));
+  assert.ok([...h.records().keys()].some(key => key.startsWith('launchpad:public-bonding:')));
   assert.ok(![...h.storage.keys()].some(key => key.startsWith('launchpad:testnet-bonding:')));
 });
 
@@ -404,7 +407,7 @@ test('ten missing setup lookups stop the next launch transaction and preserve th
   assert.equal(h.sends.length, 1);
   assert.equal(h.factoryCalls(), 0);
   assert.equal(savedRecords(h)[0].token.stage, 'setupPending');
-  assert.match(h.progress.at(-1).message, /still pending/);
+  assert.match(h.progress.at(-1).message, /within 10 seconds/);
 });
 
 for (const stage of ['sac', 'factory']) test(`Mainnet ${stage} timeout recovers the submitted hash without signing twice`, async () => {
@@ -415,12 +418,12 @@ for (const stage of ['sac', 'factory']) test(`Mainnet ${stage} timeout recovers 
   assert.equal(h.factoryCalls(), 1);
   assert.equal(h.lookups.length, 3);
   assert.equal(h.progress.at(-1).status, 'success');
-  const record = JSON.parse([...h.storage.entries()].find(([key]) => key.startsWith('launchpad:public-bonding:'))[1]);
+  const record = savedRecords(h)[0];
   assert.equal(stage === 'sac' ? record.token.sacHash : record.factoryHash, 'a'.repeat(64));
 });
 
 test('an unresolved factory timeout preserves its hash and retry only checks that hash', async () => {
-  const h = harness({ factoryTimeout: true });
+  const h = harness({ factoryTimeout: true, factoryStatus: 'NOT_FOUND' });
   await h.flow.launch(draft());
   assert.equal(savedRecords(h)[0].factoryHash, 'a'.repeat(64));
   assert.equal(h.lookups.length, 10);
@@ -548,7 +551,7 @@ test('missing SAC deployment remains pending after ten checks without resetting 
     '@/lib/stellar/clients': { soroban: { getTransaction: async () => { lookups++; return { status: 'NOT_FOUND' }; } } },
   });
   const record = { stage: 'sacPending', sacHash: 'sac-hash', sacXdr: 'saved-deployment' };
-  await assert.rejects(checkPending(record), /still pending/);
+  await assert.rejects(checkPending(record), /within 10 seconds/);
   assert.equal(lookups, 10);
   assert.equal(record.stage, 'sacPending');
   assert.equal(record.sacHash, 'sac-hash');
@@ -678,7 +681,7 @@ test('a pending server index keeps the confirmed hash and retries without anothe
   const stalled = h.progress.at(-1);
   assert.equal(stalled.status, 'error');
   assert.equal(stalled.step, 'index');
-  assert.match(stalled.message, /still preparing/);
+  assert.match(stalled.message, /within 10 seconds/);
   assert.equal(stalled.transactionHashes.curve, 'factory-1');
   assert.equal(h.refreshes.length, 0);
   // Retrying only re-checks the index: no new signature, factory call, or upload.
@@ -695,12 +698,12 @@ test('a pending server index keeps the confirmed hash and retries without anothe
 });
 
 test('a submitted factory transaction is not duplicated when its result is unavailable', async () => {
-  const h = harness({ rejectReturn: true });
+  const h = harness({ factoryStatus: 'NOT_FOUND' });
   await h.flow.launch(draft());
   await h.flow.launch(draft());
   assert.equal(h.factoryCalls(), 1);
   assert.equal(h.uploads.length, 1);
-  assert.match(h.progress.at(-1).message, /still pending/);
+  assert.match(h.progress.at(-1).message, /within 10 seconds/);
   assert.equal(h.progress.at(-1).status, 'error');
   assert.equal(h.progress.at(-1).hash, 'factory-1');
   assert.equal(h.progress.some((event) => event.status === 'success'), false);
@@ -844,28 +847,22 @@ test('equivalent decimal supplies reuse the pending and completed token instead 
   assert.equal(h.sends.filter((send) => send.xdr.startsWith('setup:')).length, 1);
 });
 
-test('an unrelated legacy wallet record is preserved and migrates when its original token is resumed', async () => {
+test('refresh starts a fresh launch without restoring the previous token or hashes', async () => {
   const h = harness({ rejectSac: true });
   await h.flow.launch(draft());
   const previous = savedRecords(h)[0];
-  const legacyKey = `launchpad:testnet-bonding:${owner}`;
-  h.storage.clear();
-  h.storage.set(legacyKey, JSON.stringify(previous));
-  await h.flow.launch({ ...draft(), name: 'New project' });
+  assert.equal(h.storage.size, 0);
+  const fresh = h.reload();
+  assert.equal(savedRecords(h).length, 0);
+  await fresh.launch(draft());
   assert.equal(h.progress.at(-1).status, 'success');
-  assert.deepEqual(JSON.parse(h.storage.get(legacyKey)), previous);
-  await h.flow.launch(draft());
-  assert.equal(h.progress.at(-1).status, 'success');
-  assert.equal(h.storage.has(legacyKey), false);
-  const restored = savedRecords(h).find((record) => record.token.issuer === previous.token.issuer);
-  assert.equal(restored.token.setupHash, previous.token.setupHash);
-  assert.equal(restored.token.distributionHash, previous.token.distributionHash);
-  assert.equal(restored.image.publicUrl, previous.image.publicUrl);
-  assert.equal(h.sends.filter((send) => send.xdr.startsWith('setup:')).length, 2);
+  assert.notEqual(savedRecords(h)[0].token.issuer, previous.token.issuer);
+  assert.equal(h.sends.filter(send => send.xdr.startsWith('setup:')).length, 2);
+  assert.equal(h.storage.size, 0);
 });
 
 test('a different draft does not recover or overwrite another token factory transaction', async () => {
-  const h = harness({ rejectReturn: true });
+  const h = harness({ factoryStatus: 'NOT_FOUND' });
   await h.flow.launch(draft());
   const previous = savedRecords(h)[0];
   assert.equal(previous.factoryHash, 'factory-1');
@@ -875,18 +872,17 @@ test('a different draft does not recover or overwrite another token factory tran
   assert.deepEqual(savedRecords(h).find((record) => record.token.issuer === previous.token.issuer), previous);
   await h.flow.launch(draft());
   assert.equal(h.factoryCalls(), 2);
-  assert.match(h.progress.at(-1).message, /still pending/);
+  assert.match(h.progress.at(-1).message, /within 10 seconds/);
   assert.equal(h.progress.at(-1).hash, 'factory-1');
 });
 
-test('legacy migration keeps the temporary issuer key and resumes the same setup transaction', async () => {
+test('a retry on the same page reuses the issuer key and setup transaction without browser storage', async () => {
   const h = harness({ rejectSetup: true });
   await h.flow.launch(draft());
   const previous = savedRecords(h)[0];
   assert.equal(previous.token.stage, 'setupPending');
   assert.equal(typeof previous.token.issuerSecret, 'string');
-  h.storage.clear();
-  h.storage.set(`launchpad:testnet-bonding:${owner}`, JSON.stringify(previous));
+  assert.equal(h.storage.size, 0);
   await h.flow.launch(draft());
   assert.equal(h.progress.at(-1).status, 'success');
   assert.equal(savedRecords(h)[0].token.issuer, previous.token.issuer);
@@ -905,7 +901,7 @@ function indexingHarness(behavior) {
         return behavior(checks.length);
       },
     },
-  }, { setTimeout: (resolve) => { resolve(); return 0; } });
+  }, { setTimeout: (resolve, ms) => { if (ms === 1000) resolve(); return 0; }, clearTimeout() {} });
   return { indexing, checks };
 }
 
@@ -927,7 +923,7 @@ test('index polling is bounded and reports pending instead of failing the launch
   const h = indexingHarness(() => { throw httpError(404); });
   const result = await h.indexing.waitForIndexedLaunch(curve, 'testnet');
   assert.equal(result, 'pending');
-  assert.equal(h.checks.length, 11);
+  assert.equal(h.checks.length, 10);
 });
 
 test('index polling aborts on unexpected errors and treats network trouble as temporary', async () => {
@@ -966,16 +962,22 @@ test('a name conflict preserves the draft, exposes a name error and stops before
   assert.equal(h.factoryCalls(), 1);
 });
 
-test('legacy confirmed records without a slug stay in indexing recovery without contract-address API reads', async () => {
+test('stale or corrupt saved launch records cannot block a fresh launch', async () => {
   const h = harness();
-  await h.flow.launch(draft());
-  const [key, stored] = [...h.storage.entries()].find(([key]) => key.startsWith('launchpad:testnet-bonding:'));
-  const record = JSON.parse(stored);
-  delete record.image;
-  h.storage.set(key, JSON.stringify(record));
-  const checks = h.indexedSlugs.length;
+  h.storage.set(`launchpad:testnet-bonding:${owner}`, '{invalid saved launch');
   await h.flow.launch(draft());
   assert.equal(h.factoryCalls(), 1);
-  assert.equal(h.indexedSlugs.length, checks);
-  assert.match(h.progress.at(-1).message, /still preparing/);
+  assert.equal(h.progress.at(-1).status, 'success');
+  assert.equal(h.indexedSlugs.length, 1);
+});
+
+test('a failed factory transaction stops with an error without submitting another transaction', async () => {
+  const h = harness({ factoryStatus: 'FAILED' });
+  await h.flow.launch(draft());
+  assert.equal(h.factoryCalls(), 1);
+  assert.equal(h.progress.at(-1).status, 'error');
+  assert.match(h.progress.at(-1).message, /failed on-chain/);
+  assert.equal(savedRecords(h)[0].factoryHash, undefined);
+  assert.equal(h.indexChecks(), 0);
+  assert.equal(h.storage.size, 0);
 });

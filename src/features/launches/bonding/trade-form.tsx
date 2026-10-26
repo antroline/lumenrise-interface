@@ -42,7 +42,7 @@ export function TradeForm(props: TradeFormProps) {
     finishDialogClose,
     trustHash,
     registrationNotice,
-    pendingHash,
+    submittedHash,
     buying,
     pair,
     permitted,
@@ -57,7 +57,6 @@ export function TradeForm(props: TradeFormProps) {
     sellable,
     unavailable,
     quoteRead,
-    recoverPending,
     submit,
   } = useTradeForm(props);
 
@@ -238,20 +237,16 @@ export function TradeForm(props: TradeFormProps) {
         className="h-11 w-full rounded-lg text-sm font-semibold disabled:bg-secondary disabled:text-muted-foreground disabled:opacity-100"
         type={user ? 'submit' : 'button'}
         onClick={() => {
-          user
-            ? undefined
-            : () =>
-              void login(
-                props.slug ? `/projects/${encodeURIComponent(props.slug)}?network=${props.network ?? API_NETWORK}` : `/projects?network=${props.network ?? API_NETWORK}`,
-              )
-        }
-        }
+          if (!user)
+            void login(
+              props.slug ? `/projects/${encodeURIComponent(props.slug)}?network=${props.network ?? API_NETWORK}` : `/projects?network=${props.network ?? API_NETWORK}`,
+            );
+        }}
         disabled={
           !user
             ? loginPending
             : !isReady ||
             locked ||
-            !!pendingHash ||
             !permitted ||
             !quote ||
             !!quoteRead.error ||
@@ -383,23 +378,6 @@ export function TradeForm(props: TradeFormProps) {
         </FieldGroup>
       </TradeQuoteDetails>
 
-      <TradeFeedback>
-        {pendingHash && !dialogOpen && !working && (
-          <>
-            <p className="break-all text-xs">
-              A submitted trade needs confirmation: {pendingHash}
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={locked || !isReady}
-              onClick={() => void recoverPending()}
-            >
-              Check submitted trade
-            </Button>
-          </>
-        )}
-      </TradeFeedback>
       <TradeResultDialog
         open={dialogOpen}
         working={working}
@@ -407,10 +385,9 @@ export function TradeForm(props: TradeFormProps) {
         side={side}
         message={message}
         error={error}
-        pendingHash={pendingHash}
+        submittedHash={submittedHash}
         trustHash={trustHash}
         registrationNotice={registrationNotice}
-        onCheckPending={() => void recoverPending()}
         confirmation={confirmation}
         onClose={dismissConfirmation}
         onClosed={finishDialogClose}

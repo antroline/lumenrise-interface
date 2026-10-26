@@ -36,7 +36,7 @@ test('wallet approval displays all three steps inline without dismiss or retry c
   assert.match(html, /Create launch/);
   assert.match(html, /testnet\/tx\/setup-hash/);
   assert.match(html, /motion-reduce:animate-none/);
-  assert.doesNotMatch(html, /role="dialog"|Close|Back to review|Check \/ retry/);
+  assert.doesNotMatch(html, /role="dialog"|Close|Back to review|Try again/);
 });
 
 test('indexing failures retain completed signatures and expose recovery actions and the actual error', () => {
@@ -45,7 +45,7 @@ test('indexing failures retain completed signatures and expose recovery actions 
   assert.match(html, /The project page is still preparing/);
   assert.equal((html.match(/>Complete</g) ?? []).length, 3);
   assert.match(html, /Back to review/);
-  assert.match(html, /Check \/ retry/);
+  assert.match(html, /Try again/);
   assert.doesNotMatch(html, /animate-spin/);
 });
 
@@ -54,5 +54,5 @@ test('success retains the three completed steps and links to the confirmed launc
   assert.match(html, /Your launch is ready/);
   assert.match(html, /href="\/projects\/blue-man\?network=testnet"/);
   assert.equal((html.match(/>Complete</g) ?? []).length, 3);
-  assert.doesNotMatch(html, /animate-spin|Back to review|Check \/ retry/);
+  assert.doesNotMatch(html, /animate-spin|Back to review|Try again/);
 });

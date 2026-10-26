@@ -25,6 +25,7 @@ export type LaunchRecord = LaunchInput & {
   distributionXdr?: string;
   sacHash?: string;
   sacXdr?: string;
+  sacSubmitted?: boolean;
 };
 
 export function isLaunchRecord(value: unknown): value is LaunchRecord {
