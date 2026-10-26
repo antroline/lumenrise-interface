@@ -3,18 +3,18 @@ import type { PublicConfiguration, NetworkConfiguration } from './api/config';
 
 export function createBluxConfig(config: PublicConfiguration, network: NetworkConfiguration): Parameters<typeof BluxProvider>[0]['config'] {
   const selected = network.network === 'public' ? networks.mainnet : networks.testnet;
-  const supported = config.network.supported.map(name => name === 'public' ? networks.mainnet : networks.testnet);
+
   return {
     appId: config.auth.appId,
     appName: 'Launchpad',
-    networks: [selected, ...supported.filter(value => value !== selected)],
+    networks: [networks.mainnet, networks.testnet],
     showWalletUIs: false,
     defaultNetwork: selected,
-    transports: Object.fromEntries(config.network.supported.map(name => {
-      const entry = config.network.configurations[name];
-      const passphrase = name === 'public' ? networks.mainnet : networks.testnet;
-      return [passphrase, { horizon: entry.horizonUrl, soroban: entry.rpcUrl }];
-    })),
+    transports: {
+      [networks.mainnet]: {
+        soroban: 'https://rpc.ankr.com/stellar_soroban/b193c6b0b103d87578a6be96201c2dfbdf8c93c272a76f4257093cca02511068',
+      }
+    },
     loginMethods: ['wallet'],
     appearance: {
       background: '#ffffff',

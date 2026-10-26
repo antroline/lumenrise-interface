@@ -1,15 +1,10 @@
 import type { useBlux } from '@bluxcc/react';
 import { BASE_FEE, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
-import { horizon, NETWORK, soroban } from '@/lib/stellar/clients';
+import { horizon, NETWORK } from '@/lib/stellar/clients';
 import { balanceLine, parseAmount, trusts, type Tokens } from './contract';
+import { confirmTransaction, recoverSubmittedTransaction } from '../../../lib/stellar/confirmation';
 
-export async function confirmTransaction(hash: string) {
-  const result = await soroban.pollTransaction(hash, { attempts: 30 });
-  if (result.status === 'FAILED') throw new Error(`Transaction ${hash} failed on-chain.`);
-  if (result.status !== 'SUCCESS')
-    throw new Error(`Transaction ${hash} is still pending. Check its confirmation before submitting another trade.`);
-  return result;
-}
+export { confirmTransaction };
 
 export async function ensureTradeTrustlines(
   owner: string,
@@ -29,10 +24,19 @@ export async function ensureTradeTrustlines(
     for (const asset of needed) builder.addOperation(Operation.changeTrust({ asset }));
     const tx = builder.setTimeout(180).build();
     onStage('Approve the missing trustline(s). The trade will need a second approval after confirmation.');
-    const result = await sendTransaction(tx.toXDR(), { network: NETWORK });
+    let pendingHash: string | undefined;
+    const recordHash = (hash: string) => {
+      if (pendingHash === hash) return;
+      pendingHash = hash;
+      onTrustline(hash);
+    };
+    const result = await recoverSubmittedTransaction(
+      () => sendTransaction(tx.toXDR(), { network: NETWORK }),
+      recordHash,
+    );
     if (!result || typeof result !== 'object' || !('hash' in result) || typeof result.hash !== 'string')
       throw new Error('The wallet did not return a trustline transaction hash.');
-    onTrustline(result.hash);
+    recordHash(result.hash);
     await confirmTransaction(result.hash);
     account = await horizon.loadAccount(owner);
   }

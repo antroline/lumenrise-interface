@@ -16,6 +16,7 @@ import { enqueueTrade } from '@/lib/api/launches/trade-queue';
 import { usePageVisible } from '@/features/launches/hooks/queries';
 import {
   decodeQuote,
+  decodeState,
   defaultLimit,
   errorMessage,
   formatAmount,
@@ -28,6 +29,7 @@ import {
   ensureTradeTrustlines,
 } from './trade';
 import { buyAmountForBudget } from './buy-amount-for-budget';
+import { recoverSubmittedTransaction } from '../../../lib/stellar/confirmation';
 import { friendlyError } from './friendly-trade-error';
 import type { TradeConfirmation } from './trade-result-dialog';
 import type { TradeFormProps } from './trade-form-types';
@@ -44,7 +46,12 @@ export function useTradeForm({
   balances,
 }: TradeFormProps) {
   const { user, isReady, sendTransaction } = useBlux();
-  const { mutateAsync: writeContract } = useWriteContract();
+  const { mutateAsync: writeContract } = useWriteContract<{
+    gross: number,
+    creator_fee: number,
+    user_amount: number,
+    amount_received: number
+  }>();
   const [entry, setEntry] = useState('');
   const [debouncedEntry, setDebouncedEntry] = useState('');
   const [limitEntry, setLimitEntry] = useState('');
@@ -99,6 +106,7 @@ export function useTradeForm({
       );
     }
   }
+
   const buying = side === 'buy';
   const pair = tokens.pair.isNative() ? 'XLM' : tokens.pairSymbol;
   const permitted =
@@ -169,7 +177,7 @@ export function useTradeForm({
   } catch (cause) {
     quoteError = errorMessage(cause);
   }
-  // Token amount bought or sold. Buys submit the budget-sized token amount.
+  // Quoted token amount. A buy may accept fewer tokens within its slippage floor.
   const amount = buying ? (entryCurrent ? quoteAmount : undefined) : spendNow;
   let slippageBps: bigint | undefined;
   let limitError = '';
@@ -182,10 +190,11 @@ export function useTradeForm({
     if (slippageBps >= BigInt(10_000))
       limitError = 'Slippage must be between 0% and less than 100%.';
   }
-  const limit = quote && slippageBps !== undefined && !limitError
-    ? defaultLimit(quote.user_amount, buying, slippageBps)
+  const minimumReceived = quote && amount !== undefined && slippageBps !== undefined && !limitError
+    ? defaultLimit(buying ? amount : quote.user_amount, slippageBps)
     : undefined;
-  const minimumReceived = buying ? amount : limit;
+  // The buy budget already includes creator fees. Never add slippage to it.
+  const limit = minimumReceived === undefined ? undefined : buying ? spendNow : minimumReceived;
 
   async function recoverPending() {
     if (!pendingKey || locked || running.current) return;
@@ -233,6 +242,7 @@ export function useTradeForm({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
     if (
       running.current ||
       locked ||
@@ -240,11 +250,13 @@ export function useTradeForm({
       !pendingKey ||
       amount === undefined ||
       limit === undefined ||
+      minimumReceived === undefined ||
       limitError ||
       !quote ||
       !permitted
     )
       return;
+
     running.current = true;
     setLocked(true);
     setWorking(true);
@@ -253,7 +265,9 @@ export function useTradeForm({
     setTrustHash(undefined);
     setDialogOpen(true);
     setMessage('Checking the current quote and your wallet…');
+
     let submittedHash: string | undefined;
+
     try {
       if (!StrKey.isValidEd25519PublicKey(user.address))
         throw new Error('Trading requires a connected Stellar account.');
@@ -273,12 +287,13 @@ export function useTradeForm({
         await refresh();
         return;
       }
+
       const fresh = await readContracts(
         [
           {
             address,
-            fn: buying ? 'quote_buy' : 'quote_sell',
-            args: [amount.toString()],
+            fn: buying ? 'get_state' : 'quote_sell',
+            args: buying ? [] : [amount.toString()],
           },
           // Only read the spending asset before trustline setup. Reading the
           // receiving SAC balance fails for a first-time trader with no trustline.
@@ -293,18 +308,39 @@ export function useTradeForm({
         ],
         { network: NETWORK },
       );
-      const current = decodeQuote(fresh.values[0]);
+
+      let executionAmount = amount;
+      let current: ReturnType<typeof decodeQuote>;
+      if (buying) {
+        // The existing buy ABI takes a fixed token fill and a payment cap.
+        // Recalculate that fill at the current curve state, keeping the budget fixed.
+        executionAmount = buyAmountForBudget(
+          { ...snapshot, state: decodeState(fresh.values[0]) },
+          limit,
+        );
+        if (executionAmount <= BigInt(0) || executionAmount < minimumReceived)
+          throw new Error(
+            'The current buy would receive fewer than your minimum tokens. Refresh the quote.',
+          );
+        const freshQuote = await readContracts(
+          [{ address, fn: 'quote_buy', args: [executionAmount.toString()] }],
+          { network: NETWORK },
+        );
+        current = decodeQuote(freshQuote.values[0]);
+      } else {
+        current = decodeQuote(fresh.values[0]);
+      }
       if (buying && current.user_amount > limit)
         throw new Error(
-          'The price increased beyond your maximum payment. Refresh the quote.',
+          'The price increased beyond your payment budget. Refresh the quote.',
         );
       if (!buying && current.user_amount < limit)
         throw new Error(
           'The price decreased below your minimum receipt. Refresh the quote.',
         );
-      if (buying && integer(fresh.values[1]) < current.user_amount)
+      if (buying && integer(fresh.values[1]) < limit)
         throw new Error(
-          `You need ${formatAmount(current.user_amount)} ${tokens.pair.isNative() ? 'XLM' : tokens.pairSymbol} for this buy, plus XLM for fees and reserves.`,
+          `You need ${formatAmount(limit)} ${tokens.pair.isNative() ? 'XLM' : tokens.pairSymbol} for this buy, plus XLM for fees and reserves.`,
         );
       if (
         !buying &&
@@ -332,24 +368,34 @@ export function useTradeForm({
         wallet,
         tokens,
         buying,
-        buying ? amount : current.user_amount,
+        buying ? executionAmount : current.user_amount,
       );
       setAwaitingApproval(true);
       setMessage(`Approve the ${side} transaction in your wallet…`);
-      const result = await writeContract({
-        call: {
-          address,
-          fn: side,
-          args: [user.address, amount.toString(), limit.toString()],
-        },
-        options: { network: NETWORK },
-      });
-      setAwaitingApproval(false);
-      submittedHash = result.hash;
-      queueHash(result.hash);
-      setPendingHash(result.hash);
-      savePending(result.hash);
-      setMessage('Trade submitted. Waiting for confirmation…');
+      const recordSubmission = (hash: string) => {
+        if (submittedHash === hash) return;
+        submittedHash = hash;
+        queueHash(hash);
+        setPendingHash(hash);
+        savePending(hash);
+        setAwaitingApproval(false);
+        setMessage('Trade submitted. Waiting for confirmation…');
+      };
+      const result = await recoverSubmittedTransaction(
+        () => writeContract({
+          call: {
+            address,
+            fn: side,
+            args: [user.address, executionAmount.toString(), limit.toString()],
+          },
+          options: { network: NETWORK },
+        }),
+        recordSubmission,
+      );
+      recordSubmission(result.hash);
+
+      await result.returnValue();
+
       await confirmTransaction(result.hash);
       setConfirmation({ hash: result.hash, side });
       savePending(null);

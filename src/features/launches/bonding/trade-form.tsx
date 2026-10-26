@@ -60,7 +60,9 @@ export function TradeForm(props: TradeFormProps) {
     recoverPending,
     submit,
   } = useTradeForm(props);
+
   const paySymbol = buying ? pair : tokens.assetSymbol;
+
   const receiveSymbol = buying ? tokens.assetSymbol : pair;
   const available = buying ? balances?.pairHeld : sellable;
   const received = quote ? (buying ? amount : quote.user_amount) : undefined;
@@ -71,6 +73,7 @@ export function TradeForm(props: TradeFormProps) {
       : undefined;
   const price = quotedPrice ?? props.snapshot.price;
   const needed = buying ? limit : amount;
+
   const insufficient =
     !!user &&
     available !== undefined &&
@@ -234,26 +237,27 @@ export function TradeForm(props: TradeFormProps) {
       <Button
         className="h-11 w-full rounded-lg text-sm font-semibold disabled:bg-secondary disabled:text-muted-foreground disabled:opacity-100"
         type={user ? 'submit' : 'button'}
-        onClick={
+        onClick={() => {
           user
             ? undefined
             : () =>
-                void login(
-                  props.slug ? `/projects/${encodeURIComponent(props.slug)}?network=${props.network ?? API_NETWORK}` : `/projects?network=${props.network ?? API_NETWORK}`,
-                )
+              void login(
+                props.slug ? `/projects/${encodeURIComponent(props.slug)}?network=${props.network ?? API_NETWORK}` : `/projects?network=${props.network ?? API_NETWORK}`,
+              )
+        }
         }
         disabled={
           !user
             ? loginPending
             : !isReady ||
-              locked ||
-              !!pendingHash ||
-              !permitted ||
-              !quote ||
-              !!quoteRead.error ||
-              !!limitError ||
-              limit === undefined ||
-              insufficient
+            locked ||
+            !!pendingHash ||
+            !permitted ||
+            !quote ||
+            !!quoteRead.error ||
+            !!limitError ||
+            limit === undefined ||
+            insufficient
         }
       >
         {!user
@@ -282,8 +286,6 @@ export function TradeForm(props: TradeFormProps) {
             <Skeleton aria-hidden="true" className="h-3 w-16 motion-reduce:animate-none" />
             <span aria-hidden="true">{paySymbol}</span>
           </>
-        ) : balanceStatus === 'error' ? (
-          <span>{buying ? paySymbol : 'Sellable'} balance unavailable</span>
         ) : (
           <span className="break-all tabular-nums">
             {buying ? 'Balance: ' : 'Sellable: '}
@@ -317,7 +319,7 @@ export function TradeForm(props: TradeFormProps) {
             <TradeTooltipText
               content={
                 buying
-                  ? 'The token amount being purchased. Slippage limits the maximum payment for this buy.'
+                  ? 'The minimum tokens you accept after slippage. Your payment stays within the entered amount.'
                   : 'The minimum payment you accept after your slippage tolerance is applied.'
               }
             >
@@ -344,7 +346,7 @@ export function TradeForm(props: TradeFormProps) {
               htmlFor={`${side}-limit`}
               className="text-xs font-normal text-muted-foreground"
             >
-              <TradeTooltipText content="How much the execution quote may move before your trade is rejected. A buy limits maximum payment; a sell sets minimum proceeds. Blank uses 0.5%.">
+              <TradeTooltipText content="How much less you accept receiving if the price changes. Your payment amount does not increase. Blank uses 0.5%.">
                 Slippage
               </TradeTooltipText>
             </FieldLabel>
@@ -413,6 +415,6 @@ export function TradeForm(props: TradeFormProps) {
         onClose={dismissConfirmation}
         onClosed={finishDialogClose}
       />
-    </form>
+    </form >
   );
 }

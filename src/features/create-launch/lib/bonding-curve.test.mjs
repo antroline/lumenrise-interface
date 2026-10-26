@@ -41,9 +41,9 @@ function loadSource(filename, mocks = { '@bluxcc/react': {} }, globals = {}, cac
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
   runInNewContext(output, {
-    module, exports: module.exports, URLSearchParams, Date, Error,
+    module, exports: module.exports, URLSearchParams, Date, Error, setTimeout: resolve => resolve(),
     URL,
-    require: (name) => name === '@/lib/api/config' ? configurationModule : name in mocks ? mocks[name] : name === '@/lib/stellar/network' ? networkModule : name.startsWith('.')
+    require: (name) => name === '@/lib/api/config' ? configurationModule : name in mocks ? mocks[name] : name === '@/lib/stellar/clients' ? loadSource('../../../lib/stellar/clients.ts', mocks, globals, cache) : name === '@/lib/stellar/network' ? networkModule : name.startsWith('.')
       ? loadSource(resolve(dirname(path), `${name}.ts`), mocks, globals, cache)
       : require(name),
     ...globals,
@@ -206,7 +206,7 @@ test('rejects unsupported methods, local image references, and invalid contract 
   assert.equal(isBondingDraft({ method: 'bonding' }), false);
 });
 
-function harness({ network = networkModule, signedIn = true, rejectLogin = false, rejectSetup = false, setupError, rejectSac = false, rejectReturn = false, factoryStatus = 'NOT_FOUND', balance, returnWait, accountStatus = 'registered', imageStatus = 'pending', uploadFailures = [], indexResult = 'ready' } = {}) {
+function harness({ network = networkModule, signedIn = true, rejectLogin = false, rejectSetup = false, setupError, rejectSac = false, rejectReturn = false, factoryStatus = 'NOT_FOUND', balance, returnWait, accountStatus = 'registered', imageStatus = 'pending', uploadFailures = [], indexResult = 'ready', sacTimeout = false, factoryTimeout = false, lookupStatuses, setupLookupDelay = 0 } = {}) {
   const storage = new Map();
   const messages = [];
   const calls = [];
@@ -216,6 +216,10 @@ function harness({ network = networkModule, signedIn = true, rejectLogin = false
   const refreshes = [];
   const events = [];
   const confirmed = new Set();
+  const lookups = [];
+  const lookupCounts = new Map();
+  const timeoutHash = 'a'.repeat(64);
+  const timeout = () => new Error(`BLUX: Timed out waiting for transaction ${timeoutHash} to finalize.`);
   const progress = [];
   const issuedTokens = new Map();
   let transactionCount = 0;
@@ -228,7 +232,14 @@ function harness({ network = networkModule, signedIn = true, rejectLogin = false
     setItem: (key, value) => storage.set(key, value),
     removeItem: (key) => storage.delete(key),
   };
-  const runtimeMocks = { '@/lib/stellar/network': network };
+  const runtimeMocks = {
+    '@/lib/stellar/network': network,
+    '@/lib/stellar/clients': { soroban: { getTransaction: async (hash) => {
+      lookups.push(hash);
+      const status = lookupStatuses?.[Math.min(lookups.length - 1, lookupStatuses.length - 1)] ?? factoryStatus;
+      return { status, returnValue: status === 'SUCCESS' ? nativeToScVal(curve) : undefined };
+    } } },
+  };
   const state = loadSource('launch-state.ts', runtimeMocks);
   const transactions = loadSource('transactions.ts', runtimeMocks);
   const makeTransaction = (kind) => {
@@ -281,6 +292,7 @@ function harness({ network = networkModule, signedIn = true, rejectLogin = false
           if (xdr.startsWith('setup:') && setupError) throw setupError;
           if (xdr.startsWith('setup:') && rejectSetup) { rejectSetup = false; throw new Error('Rejected setup signature'); }
           if (xdr.startsWith('sac:') && rejectSac) { rejectSac = false; throw new Error('Rejected SAC signature'); }
+          if (xdr.startsWith('sac:') && sacTimeout) { confirmed.add(timeoutHash); throw timeout(); }
           confirmed.add(xdr);
           return { hash: xdr };
         },
@@ -289,6 +301,7 @@ function harness({ network = networkModule, signedIn = true, rejectLogin = false
         events.push('factory');
         factoryCalls++;
         calls.push(call);
+        if (factoryTimeout) throw timeout();
         return { hash: `factory-${factoryCalls}`, returnValue: async () => { await returnWait; if (rejectReturn) throw new Error('Result temporarily unavailable'); return curve; } };
       } }),
     },
@@ -310,7 +323,17 @@ function harness({ network = networkModule, signedIn = true, rejectLogin = false
     },
     '../lib/launch-state': {
       ...state,
-      isTransactionConfirmed: async (hash) => confirmed.has(hash),
+      isTransactionConfirmed: async (hash) => {
+        if (!confirmed.has(hash)) return false;
+        const count = (lookupCounts.get(hash) ?? 0) + 1;
+        lookupCounts.set(hash, count);
+        if (hash.startsWith('setup:') && count <= setupLookupDelay) {
+          assert.equal(factoryCalls, 0);
+          assert.equal(sends.some(send => send.xdr.startsWith('sac:')), false);
+          return false;
+        }
+        return true;
+      },
       checkPending: async (token) => confirmed.has(token.sacHash) ? { ...token, stage: 'sacConfirmed', sacXdr: undefined } : token,
     },
     '../lib/transactions': {
@@ -329,7 +352,7 @@ function harness({ network = networkModule, signedIn = true, rejectLogin = false
     },
   }, { localStorage: store, sessionStorage: store });
   return {
-    flow: exports.useBondingLaunch(), indexedSlugs, storage, calls, sends, messages, progress, events, uploads, statusChecks, refreshes,
+    flow: exports.useBondingLaunch(), indexedSlugs, storage, calls, sends, messages, progress, events, uploads, statusChecks, refreshes, lookups, lookupCounts,
     factoryCalls: () => factoryCalls,
     indexChecks: () => indexChecks,
     setIndexResult: (value) => { indexed = value; },
@@ -363,6 +386,49 @@ test('server launch availability still gates Mainnet before signing', async () =
   assert.equal(h.sends.length, 0);
   assert.equal(h.factoryCalls(), 0);
   assert.equal(h.uploads.length, 0);
+});
+
+test('launch waits through missing setup lookups before deployment and factory creation', async () => {
+  const h = harness({ setupLookupDelay: 3 });
+  await h.flow.launch(draft());
+  assert.equal(h.lookupCounts.get('setup:1'), 4);
+  assert.equal(h.sends.length, 2);
+  assert.equal(h.factoryCalls(), 1);
+  assert.equal(h.progress.at(-1).status, 'success');
+});
+
+test('ten missing setup lookups stop the next launch transaction and preserve the record', async () => {
+  const h = harness({ setupLookupDelay: 10 });
+  await h.flow.launch(draft());
+  assert.equal(h.lookupCounts.get('setup:1'), 10);
+  assert.equal(h.sends.length, 1);
+  assert.equal(h.factoryCalls(), 0);
+  assert.equal(savedRecords(h)[0].token.stage, 'setupPending');
+  assert.match(h.progress.at(-1).message, /still pending/);
+});
+
+for (const stage of ['sac', 'factory']) test(`Mainnet ${stage} timeout recovers the submitted hash without signing twice`, async () => {
+  const network = { ...networkModule, API_NETWORK: 'public', NETWORK: Networks.PUBLIC, HOME_DOMAIN: 'lumenrise.app' };
+  const h = harness({ network, sacTimeout: stage === 'sac', factoryTimeout: stage === 'factory', lookupStatuses: ['NOT_FOUND', 'NOT_FOUND', 'SUCCESS'] });
+  await h.flow.launch(draft());
+  assert.equal(h.sends.length, 2);
+  assert.equal(h.factoryCalls(), 1);
+  assert.equal(h.lookups.length, 3);
+  assert.equal(h.progress.at(-1).status, 'success');
+  const record = JSON.parse([...h.storage.entries()].find(([key]) => key.startsWith('launchpad:public-bonding:'))[1]);
+  assert.equal(stage === 'sac' ? record.token.sacHash : record.factoryHash, 'a'.repeat(64));
+});
+
+test('an unresolved factory timeout preserves its hash and retry only checks that hash', async () => {
+  const h = harness({ factoryTimeout: true });
+  await h.flow.launch(draft());
+  assert.equal(savedRecords(h)[0].factoryHash, 'a'.repeat(64));
+  assert.equal(h.lookups.length, 10);
+  assert.equal(h.progress.at(-1).status, 'error');
+  await h.flow.launch(draft());
+  assert.equal(h.lookups.length, 20);
+  assert.equal(h.factoryCalls(), 1);
+  assert.equal(h.sends.length, 2);
 });
 
 test('only bonding reaches the factory, with the uploaded image URL and explicit testnet', async () => {
@@ -462,6 +528,30 @@ test('transaction lookup preserves network errors and only treats an HTTP 404 as
       await assert.rejects(() => isTransactionConfirmed('pending-hash'), (cause) => cause === error);
     }
   }
+});
+
+test('pending SAC deployment waits for SUCCESS before advancing the launch stage', async () => {
+  let lookups = 0;
+  const { checkPending } = loadSource('launch-state.ts', {
+    '@/lib/stellar/clients': { soroban: { getTransaction: async () => ({ status: ++lookups < 4 ? 'NOT_FOUND' : 'SUCCESS' }) } },
+  });
+  const record = { stage: 'sacPending', sacHash: 'sac-hash', sacXdr: 'saved-deployment' };
+  const result = await checkPending(record);
+  assert.equal(lookups, 4);
+  assert.equal(result.stage, 'sacConfirmed');
+  assert.equal(result.sacXdr, undefined);
+});
+
+test('missing SAC deployment remains pending after ten checks without resetting for resubmission', async () => {
+  let lookups = 0;
+  const { checkPending } = loadSource('launch-state.ts', {
+    '@/lib/stellar/clients': { soroban: { getTransaction: async () => { lookups++; return { status: 'NOT_FOUND' }; } } },
+  });
+  const record = { stage: 'sacPending', sacHash: 'sac-hash', sacXdr: 'saved-deployment' };
+  await assert.rejects(checkPending(record), /still pending/);
+  assert.equal(lookups, 10);
+  assert.equal(record.stage, 'sacPending');
+  assert.equal(record.sacHash, 'sac-hash');
 });
 
 test('rejected SAC approval resumes the same issued token and reuses the uploaded image', async () => {

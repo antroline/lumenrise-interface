@@ -39,7 +39,9 @@ function useWalletValue(
       ? query.isError ? 'stale' : 'ready'
       : query.isError || query.isFetched ? 'error'
         : query.isLoading ? 'loading' : 'idle';
-  return { ...query, balanceStatus: status };
+
+  // @ts-ignore
+  return { ...query, balanceStatus: status, data: query.data || 0n };
 }
 
 export function useWalletBalances(options: WalletReadOptions) {

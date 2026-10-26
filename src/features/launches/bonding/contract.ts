@@ -126,9 +126,9 @@ export function assetFromSac(name: string, address: string, network: string): As
   return asset;
 }
 
-export function defaultLimit(receipt: bigint, buying: boolean, slippageBps = BigInt(50)) {
+export function defaultLimit(receipt: bigint, slippageBps = BigInt(50)) {
   const margin = (receipt * slippageBps + BigInt(9_999)) / BigInt(10_000);
-  return buying ? receipt + margin : receipt > margin ? receipt - margin : BigInt(0);
+  return receipt > margin ? receipt - margin : BigInt(0);
 }
 
 export function balanceLine(account: Horizon.AccountResponse, asset: Asset) {

@@ -215,6 +215,7 @@ export function BondingCurvePage({
     !!account.data &&
     !!tokens &&
     (!trusts(account.data, tokens.asset) || !trusts(account.data, tokens.pair));
+
   const missingAccount = accountEnabled && account.isSuccess && account.data === null;
   const accountReadFailed = accountEnabled && account.isError;
   // Polls and retries must not bring back the initial wallet-loading placeholder.
@@ -251,12 +252,6 @@ export function BondingCurvePage({
             </button>
           </p>
         )}
-        {missingTrustlines && (
-          <p className="text-muted-foreground">
-            Missing trustlines require a separate wallet approval. Keep XLM for
-            fees and reserves.
-          </p>
-        )}
 
         {loadingWallet && (
           <div
@@ -274,46 +269,46 @@ export function BondingCurvePage({
   const buyForm =
     snapshot && tokens
       ? (quoteHost: HTMLElement | null, active: boolean) => (
-          <TradeForm
-            key={`buy:${owner ?? 'disconnected'}`}
-            slug={indexed.data?.slug ?? undefined}
-            address={address}
-            network={network}
-            snapshot={snapshot}
-            tokens={tokens}
-            side="buy"
-            quoteHost={quoteHost}
-            active={active}
-            compact
-            locked={locked}
-            setLocked={setLocked}
-            refresh={refresh}
-            balances={network === API_NETWORK ? wallet.balances : undefined}
-            balanceStatus={network === API_NETWORK ? wallet.balanceStatus : undefined}
-          />
-        )
+        <TradeForm
+          key={`buy:${owner ?? 'disconnected'}`}
+          slug={indexed.data?.slug ?? undefined}
+          address={address}
+          network={network}
+          snapshot={snapshot}
+          tokens={tokens}
+          side="buy"
+          quoteHost={quoteHost}
+          active={active}
+          compact
+          locked={locked}
+          setLocked={setLocked}
+          refresh={refresh}
+          balances={network === API_NETWORK ? wallet.balances : undefined}
+          balanceStatus={network === API_NETWORK ? wallet.balanceStatus : undefined}
+        />
+      )
       : null;
   const sellForm =
     snapshot && tokens
       ? (quoteHost: HTMLElement | null, active: boolean) => (
-          <TradeForm
-            key={`sell:${owner ?? 'disconnected'}`}
-            slug={indexed.data?.slug ?? undefined}
-            address={address}
-            network={network}
-            snapshot={snapshot}
-            tokens={tokens}
-            side="sell"
-            quoteHost={quoteHost}
-            active={active}
-            compact
-            locked={locked}
-            setLocked={setLocked}
-            refresh={refresh}
-            balances={network === API_NETWORK ? wallet.balances : undefined}
-            balanceStatus={network === API_NETWORK ? wallet.balanceStatus : undefined}
-          />
-        )
+        <TradeForm
+          key={`sell:${owner ?? 'disconnected'}`}
+          slug={indexed.data?.slug ?? undefined}
+          address={address}
+          network={network}
+          snapshot={snapshot}
+          tokens={tokens}
+          side="sell"
+          quoteHost={quoteHost}
+          active={active}
+          compact
+          locked={locked}
+          setLocked={setLocked}
+          refresh={refresh}
+          balances={network === API_NETWORK ? wallet.balances : undefined}
+          balanceStatus={network === API_NETWORK ? wallet.balanceStatus : undefined}
+        />
+      )
       : null;
   const rawResponses = (
     <details className="min-w-0 border-t border-border pt-5">

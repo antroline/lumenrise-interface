@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useBlux, useWriteContract } from '@bluxcc/react';
 import { Keypair, scValToNative, StrKey } from '@stellar/stellar-sdk';
 import { LAUNCH_CONFIGURED } from '@/lib/stellar/network';
+import { recoverSubmittedTransaction, waitForTransaction, waitForTransactionResult } from '../../../lib/stellar/confirmation';
 import { ApiError } from '@/lib/api/client';
 import {
   fileFromDataUrl,
@@ -36,7 +37,6 @@ import {
   buildSetup,
   horizon,
   NETWORK,
-  soroban,
   submitIssuance,
   transactionHash,
 } from '../lib/transactions';
@@ -368,7 +368,7 @@ export function useBondingLaunch() {
           'curve', 'Checking your submitted launch transaction.',
           'confirming', saved.factoryHash,
         );
-        const result = await soroban.getTransaction(saved.factoryHash);
+        const result = await waitForTransaction(saved.factoryHash);
         if (result.status === 'SUCCESS') {
           const address = curveAddress(
             result.returnValue ? scValToNative(result.returnValue) : null,
@@ -426,19 +426,23 @@ export function useBondingLaunch() {
             'setup', 'Approve issuer funding and the token trustline in your wallet.',
             'approval',
           );
-          const result = await sendTransaction(token.setupXdr, {
-            network: NETWORK,
-          });
+          const setupXdr = token.setupXdr;
+          const result = await recoverSubmittedTransaction(
+            () => sendTransaction(setupXdr, { network: NETWORK }),
+            (hash) => {
+              saveToken({ ...token, setupHash: hash });
+              report('setup', 'Waiting for issuer setup confirmation.', 'confirming', hash);
+            },
+          );
           saveToken({ ...token, setupHash: requireHash(result) });
         }
         report(
           'setup', 'Waiting for issuer setup confirmation.',
           'confirming', token.setupHash,
         );
-        if (!(await isTransactionConfirmed(token.setupHash)))
-          throw new Error(
-            'Issuer setup is still pending. Retry to check its result.',
-          );
+        await waitForTransactionResult(token.setupHash, async () =>
+          await isTransactionConfirmed(token.setupHash) ? true : undefined,
+        );
         saveToken({ ...token, stage: 'issuerReady', setupXdr: undefined });
       }
       if (token.stage === 'issuerReady') {
@@ -468,6 +472,10 @@ export function useBondingLaunch() {
         );
         if (!(await isTransactionConfirmed(token.distributionHash)))
           await submitIssuance(token.distributionXdr);
+        const distributionHash = token.distributionHash;
+        await waitForTransactionResult(distributionHash, async () =>
+          await isTransactionConfirmed(distributionHash) ? true : undefined,
+        );
         saveToken({
           ...token,
           stage: 'setupConfirmed',
@@ -504,9 +512,14 @@ export function useBondingLaunch() {
           'deploy', 'Approve the token contract deployment in your wallet.',
           'approval',
         );
-        const result = await sendTransaction(token.sacXdr, {
-          network: NETWORK,
-        });
+        const sacXdr = token.sacXdr;
+        const result = await recoverSubmittedTransaction(
+          () => sendTransaction(sacXdr, { network: NETWORK }),
+          (hash) => {
+            saveToken({ ...token, sacHash: hash });
+            report('deploy', 'Waiting for token contract confirmation.', 'confirming', hash);
+          },
+        );
         saveToken({ ...token, sacHash: requireHash(result) });
         report(
           'deploy', 'Waiting for token contract confirmation.',
@@ -536,14 +549,20 @@ export function useBondingLaunch() {
         'curve', 'Approve curve creation and the full supply transfer in your wallet.',
         'approval',
       );
-      const result = await writeContract({
-        call: {
-          address: FACTORY_CONTRACT_ID,
-          fn: 'create_bonding_curve',
-          args: [params],
+      const result = await recoverSubmittedTransaction(
+        () => writeContract({
+          call: {
+            address: FACTORY_CONTRACT_ID,
+            fn: 'create_bonding_curve',
+            args: [params],
+          },
+          options: { network: NETWORK },
+        }),
+        (hash) => {
+          saveRecord({ token, factoryHash: hash, image });
+          report('curve', 'Confirming your bonding curve on Stellar.', 'confirming', hash);
         },
-        options: { network: NETWORK },
-      });
+      );
       saveRecord({ token, factoryHash: result.hash, image });
       report(
         'curve', 'Confirming your bonding curve on Stellar.',

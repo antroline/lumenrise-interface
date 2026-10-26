@@ -1,6 +1,7 @@
 import { projectNameError } from '../../../lib/launch-slug';
 import { StrKey } from '@stellar/stellar-sdk';
-import { horizon, soroban } from './transactions';
+import { horizon } from './transactions';
+import { waitForTransaction, waitForTransactionResult } from '../../../lib/stellar/confirmation';
 
 const MAX_AMOUNT = BigInt('9223372036854775807');
 const TOKEN_UNIT = BigInt(10_000_000);
@@ -126,10 +127,9 @@ export async function checkPending(
   record: LaunchRecord,
 ): Promise<LaunchRecord> {
   if (record.stage === 'setupPending') {
-    if (!(await isTransactionConfirmed(record.setupHash)))
-      throw new Error(
-        'Issue transaction is still pending. Check again shortly.',
-      );
+    await waitForTransactionResult(record.setupHash, async () =>
+      await isTransactionConfirmed(record.setupHash) ? true : undefined,
+    );
     return {
       ...record,
       setupXdr: undefined,
@@ -140,7 +140,7 @@ export async function checkPending(
     };
   }
   if (record.stage === 'sacPending' && record.sacHash) {
-    const result = await soroban.getTransaction(record.sacHash);
+    const result = await waitForTransaction(record.sacHash);
     if (result.status === 'SUCCESS')
       return { ...record, stage: 'sacConfirmed', sacXdr: undefined };
     if (result.status === 'FAILED')
@@ -150,8 +150,6 @@ export async function checkPending(
         sacHash: undefined,
         sacXdr: undefined,
       };
-    if (result.status === 'NOT_FOUND' && record.sacXdr) return record;
-    throw new Error('SAC deployment is still pending. Check again shortly.');
   }
   return record;
 }

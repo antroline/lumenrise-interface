@@ -56,6 +56,12 @@ function harness({
   loginPending = false,
   writeGate,
   confirmGate,
+  currentSold = 0n,
+  walletBalance = 100000000n,
+  currentPayment,
+  feeBps = 0n,
+  writeTimeout = false,
+  rpcStatuses = ['NOT_FOUND'],
 } = {}) {
   const events = [],
     states = [],
@@ -63,6 +69,22 @@ function harness({
     refs = [],
     storage = new Map(),
     key = `launchpad:pending-trade:${Networks.TESTNET}:${address}:${owner}`;
+  const requests = [];
+  const rpcLookups = [];
+  const timeoutHash = 'b'.repeat(64);
+  const snapshot = {
+    config: { buckets: { curve: 500000000000000n }, params: { curve: { virtual_base_reserve: 1000000000000000n, virtual_quote_reserve: 1000000000000n, creator_fee_bps: feeBps } } },
+    state: { busy, sold: 0n, quote_reserve: 0n, creator_fees: 0n, team_claimed: 0n, buyer_count: 0n, graduated: false },
+    status,
+    price: 10000000n,
+  };
+  function buyQuote(amount, sold = 0n) {
+    const { virtual_base_reserve: base, virtual_quote_reserve: reserve } = snapshot.config.params.curve;
+    const cost = value => (reserve * value + base - value - 1n) / (base - value);
+    const gross = cost(sold + amount) - cost(sold);
+    const fee = (gross * feeBps + 9999n) / 10000n;
+    return { gross, creator_fee: fee, user_amount: gross + fee };
+  }
   if (pending) storage.set(key, pending);
   let stateIndex = 0, refIndex = 0,
     writes = 0;
@@ -92,18 +114,24 @@ function harness({
       useWriteContract: () => ({
         mutateAsync: async (request) => {
           assert.equal(request.call.address, address);
+          requests.push(request);
           events.push('broadcast');
           writes++;
           if (writeGate) await writeGate;
-          return { hash: 'new-hash' };
+          if (writeTimeout) throw new Error(`BLUX: Timed out waiting for transaction ${timeoutHash} to finalize.`);
+          return { hash: 'new-hash', returnValue: async () => null };
         },
       }),
-      useReadContracts: () => ({
-        data: { values: [quote] },
+      useReadContracts: (calls) => ({
+        data: { values: [side === 'buy' ? buyQuote(BigInt(calls[0].args[0])) : quote] },
         isFetching: false,
       }),
-      readContracts: async () => ({
-        values: side === 'buy' ? [quote, '100000000'] : [quote, '100000000', '100000000'],
+      readContracts: async (calls) => ({
+        values: calls.map(call => call.fn === 'get_state'
+          ? { ...snapshot.state, sold: currentSold }
+          : call.fn === 'quote_buy'
+            ? { ...buyQuote(BigInt(call.args[0]), currentSold), ...(currentPayment === undefined ? {} : { user_amount: currentPayment }) }
+            : call.fn === 'quote_sell' ? quote : walletBalance),
       }),
     },
     '@/components/ui/button': mockUi('Button'),
@@ -140,7 +168,10 @@ function harness({
     '@/lib/stellar/clients': {
       API_NETWORK: 'testnet',
       NETWORK: Networks.TESTNET,
-      soroban: { getTransaction: async () => ({ status: 'NOT_FOUND' }) },
+      soroban: { getTransaction: async (hash) => {
+        rpcLookups.push(hash);
+        return { status: rpcStatuses[Math.min(rpcLookups.length - 1, rpcStatuses.length - 1)] };
+      } },
     },
     './trade': {
       confirmTransaction: async (hash) => {
@@ -154,7 +185,7 @@ function harness({
     },
   };
   const globals = {
-    setTimeout,
+    setTimeout: resolve => resolve(),
     clearTimeout,
     localStorage: {
       getItem: (key) => storage.get(key) ?? null,
@@ -176,7 +207,7 @@ function harness({
     slug: 'blue-man',
     network: 'testnet',
     side,
-    snapshot: { config: { buckets: { curve: 500000000000000n }, params: { curve: { virtual_base_reserve: 1000000000000000n, virtual_quote_reserve: 1000000000000n, creator_fee_bps: 0n } } }, state: { busy, sold: 0n }, status, price: 10000000n },
+    snapshot,
     balances,
     balanceStatus,
     tokens: {
@@ -196,6 +227,9 @@ function harness({
     render,
     events,
     states,
+    requests,
+    snapshot,
+    rpcLookups,
     storage,
     key,
     writes: () => writes,
@@ -232,6 +266,27 @@ test('unresolved confirmation preserves the original on-chain hash', async () =>
   assert.equal(h.writes(), 1);
   assert.equal(h.storage.get(h.key), 'new-hash');
   assert.ok(!h.states.some(value => value?.hash === 'new-hash'), 'Unresolved trades must not open a success dialog');
+});
+
+for (const side of ['buy', 'sell']) test(`${side} recovers a Blux timeout by checking the submitted hash`, async () => {
+  const h = harness({ side, writeTimeout: true, rpcStatuses: ['NOT_FOUND', 'NOT_FOUND', 'SUCCESS'] });
+  await h.submit();
+  assert.equal(h.writes(), 1);
+  assert.deepEqual(h.rpcLookups, Array(3).fill('b'.repeat(64)));
+  assert.equal(h.storage.has(h.key), false);
+  assert.equal(tradeDialog(h).confirmation.hash, 'b'.repeat(64));
+  assert.equal(tradeDialog(h).confirmation.side, side);
+});
+
+test('unresolved Blux buy timeout retains the hash for later checks', async () => {
+  const h = harness({ writeTimeout: true });
+  await h.submit();
+  assert.equal(h.writes(), 1);
+  assert.equal(h.storage.get(h.key), 'b'.repeat(64));
+  const dialog = tradeDialog(h);
+  assert.equal(dialog.confirmation, undefined);
+  assert.equal(dialog.pendingHash, 'b'.repeat(64));
+  assert.equal(dialog.awaitingApproval, false);
 });
 test('recovering an old on-chain hash queues that hash and never buys or sells again', async () => {
   const h = harness({ pending: 'old-hash' });
@@ -325,6 +380,65 @@ test('balance presets retain exact stroops on both sides', () => {
       assert.ok(h.states.includes(expected), side + ' ' + percent + '% must round down in raw units');
     }
   }
+});
+
+test('100% USDC buy caps payment at 1.11 and applies 1% slippage to tokens received', async () => {
+  const h = harness({ paymentAsset: new Asset('USDC', owner), entry: '1.11', slippage: '1', balances: { pairHeld: 11100000n }, walletBalance: 11100000n, feeBps: 100n });
+  const preset = elements(h.form).find(node => node.type === 'Button' && node.props.children === '100%');
+  preset.props.onClick();
+  assert.ok(h.states.includes('1.11'));
+  const action = elements(h.form).find(node => node.type === 'Button' && node.props.type === 'submit');
+  assert.equal(action.props.disabled, false);
+  assert.equal(action.props.children, 'Buy TOK');
+  const { buyAmountForBudget } = load('buy-amount-for-budget.ts');
+  const { formatAmount } = load('contract.ts');
+  const expected = buyAmountForBudget(h.snapshot, 11100000n);
+  const minimum = expected * 9900n / 10000n;
+  assert.match(content(h.form), new RegExp(formatAmount(minimum, 3).replace('.', '\\.')));
+  await h.submit();
+  assert.equal(h.writes(), 1);
+  assert.deepEqual(Array.from(h.requests[0].call.args), [owner, expected.toString(), '11100000']);
+});
+
+test('buy reduces the token fill within slippage when the curve price rises', async () => {
+  const h = harness({ slippage: '1', currentSold: 1000000000000n });
+  const { buyAmountForBudget } = load('buy-amount-for-budget.ts');
+  const original = buyAmountForBudget(h.snapshot, 10000000n);
+  const current = buyAmountForBudget({ ...h.snapshot, state: { ...h.snapshot.state, sold: 1000000000000n } }, 10000000n);
+  assert.ok(current < original && current >= original * 9900n / 10000n);
+  await h.submit();
+  assert.equal(h.writes(), 1);
+  assert.deepEqual(Array.from(h.requests[0].call.args), [owner, current.toString(), '10000000']);
+});
+
+test('buy rejects a token fill below the slippage minimum', async () => {
+  const h = harness({ slippage: '1', currentSold: 10000000000000n });
+  await h.submit();
+  assert.equal(h.writes(), 0);
+  assert.match(tradeDialog(h).error, /minimum tokens/);
+});
+
+test('zero slippage rejects any reduction in the quoted token amount', async () => {
+  const h = harness({ slippage: '0', currentSold: 1000000000n });
+  await h.submit();
+  assert.equal(h.writes(), 0);
+  assert.match(tradeDialog(h).error, /minimum tokens/);
+});
+
+test('buy rejects a fresh quote above the entered USDC budget', async () => {
+  const h = harness({ currentPayment: 10000001n });
+  await h.submit();
+  assert.equal(h.writes(), 0);
+  assert.match(tradeDialog(h).error, /budget/);
+});
+
+test('buy rejects an entered amount above the available USDC balance', async () => {
+  const h = harness({ paymentAsset: new Asset('USDC', owner), balances: { pairHeld: 9999999n }, walletBalance: 9999999n });
+  const action = elements(h.form).find(node => node.type === 'Button' && node.props.type === 'submit');
+  assert.equal(action.props.children, 'Insufficient USDC balance');
+  assert.equal(action.props.disabled, true);
+  await h.submit();
+  assert.equal(h.writes(), 0);
 });
 
 test('100% sell uses the lesser of held tokens and eligible curve purchases without losing stroops', () => {

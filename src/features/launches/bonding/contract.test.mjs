@@ -22,7 +22,7 @@ function loadSource(filename, mocks = {}, cache = new Map(), globals = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
   runInNewContext(output, {
-    module, exports: module.exports, Error, ...globals,
+    module, exports: module.exports, Error, setTimeout: resolve => resolve(), ...globals,
     require: name => name === '@/lib/stellar/network' ? networkModule : name in mocks ? mocks[name] : name.startsWith('.')
       ? loadSource(resolve(dirname(path), `${name}${name === './transaction-hash' ? '.tsx' : '.ts'}`), mocks, cache, globals) : require(name),
   }, { filename: path });
@@ -51,14 +51,11 @@ test('amounts preserve stroops above Number safe precision and reject invalid en
   assert.throws(() => domain.integer(9007199254740992));
 });
 
-test('slippage rounds payment caps up and receipt floors down by exact stroops', () => {
-  assert.equal(domain.defaultLimit(1000000000n, true), 1005000000n);
-  assert.equal(domain.defaultLimit(1000000000n, false), 995000000n);
-  assert.equal(domain.defaultLimit(1n, true), 2n);
-  assert.equal(domain.defaultLimit(1n, false), 0n);
-  assert.equal(domain.defaultLimit(1000000000n, true, 125n), 1012500000n);
-  assert.equal(domain.defaultLimit(1000000000n, false, 125n), 987500000n);
-  assert.equal(domain.defaultLimit(1000000000n, false, 0n), 1000000000n);
+test('slippage rounds minimum receipts down by exact stroops', () => {
+  assert.equal(domain.defaultLimit(1000000000n), 995000000n);
+  assert.equal(domain.defaultLimit(1n), 0n);
+  assert.equal(domain.defaultLimit(1000000000n, 125n), 987500000n);
+  assert.equal(domain.defaultLimit(1000000000n, 0n), 1000000000n);
 });
 
 test('SAC identity is resolved from the actual issuer and verified on the configured network', () => {
@@ -85,7 +82,7 @@ test('buy adds only the missing launch-token trustline and waits for confirmatio
   const tx = loadSource('trade.ts', { '@/lib/stellar/clients': {
     NETWORK: Networks.TESTNET,
     horizon: { loadAccount: async () => { calls.push('load'); return ++loads === 1 ? wallet() : wallet([line(asset)]); } },
-    soroban: { pollTransaction: async () => { calls.push('confirm'); return { status: 'SUCCESS' }; } },
+    soroban: { getTransaction: async () => { calls.push('confirm'); return { status: 'SUCCESS' }; } },
   } });
   const result = await tx.ensureTradeTrustlines(owner, tokens, true, async xdr => {
     const transaction = TransactionBuilder.fromXDR(xdr, Networks.TESTNET);
@@ -103,16 +100,35 @@ test('existing trustlines and native XLM never trigger wallet setup approval', a
   const tx = loadSource('trade.ts', { '@/lib/stellar/clients': {
     NETWORK: Networks.TESTNET,
     horizon: { loadAccount: async () => wallet([line(asset)]) },
-    soroban: { pollTransaction: async () => { throw new Error('Unexpected confirmation'); } },
+    soroban: { getTransaction: async () => { throw new Error('Unexpected confirmation'); } },
   } });
   await tx.ensureTradeTrustlines(owner, tokens, false, async () => { throw new Error('Unexpected wallet signature'); }, () => {}, () => {});
+});
+
+test('trustline setup waits through NOT_FOUND before reloading the wallet for the buy', async () => {
+  let lookups = 0, loads = 0, submissions = 0;
+  const tx = loadSource('trade.ts', { '@/lib/stellar/clients': {
+    NETWORK: Networks.PUBLIC,
+    horizon: { loadAccount: async () => { loads++; return loads === 1 ? wallet() : wallet([line(asset)]); } },
+    soroban: { getTransaction: async () => {
+      assert.equal(loads, 1, 'The next step must wait for trustline confirmation');
+      return { status: ++lookups < 4 ? 'NOT_FOUND' : 'SUCCESS' };
+    } },
+  } });
+  await tx.ensureTradeTrustlines(owner, tokens, true, async () => {
+    submissions++;
+    return { hash: 'trust-hash' };
+  }, () => {}, () => {});
+  assert.equal(submissions, 1);
+  assert.equal(lookups, 4);
+  assert.equal(loads, 2);
 });
 
 test('sell adds the actual pair-token trustline when needed', async () => {
   const tx = loadSource('trade.ts', { '@/lib/stellar/clients': {
     NETWORK: Networks.TESTNET,
     horizon: { loadAccount: async () => wallet([line(asset)]) },
-    soroban: { pollTransaction: async () => ({ status: 'SUCCESS' }) },
+    soroban: { getTransaction: async () => ({ status: 'SUCCESS' }) },
   } });
   await tx.ensureTradeTrustlines(owner, { asset, pair: usdc }, false, async xdr => {
     const transaction = TransactionBuilder.fromXDR(xdr, Networks.TESTNET);
@@ -129,7 +145,7 @@ test('pending or failed trustline transactions prevent continuing to the trade',
     const tx = loadSource('trade.ts', { '@/lib/stellar/clients': {
       NETWORK: Networks.TESTNET,
       horizon: { loadAccount: async () => { loads++; return wallet(); } },
-      soroban: { pollTransaction: async () => ({ status }) },
+      soroban: { getTransaction: async () => ({ status }) },
     } });
     await assert.rejects(tx.ensureTradeTrustlines(owner, tokens, true, async () => ({ hash: 'pending-hash' }), () => {}, () => {}));
     assert.equal(loads, 1);
@@ -162,7 +178,9 @@ function renderTrade(side, position = '20000000', confirmation = 'SUCCESS', miss
   ]);
   const buying = side === 'buy';
   const curve = asset.contractId(Networks.TESTNET);
-  const quote = { gross: '30000000', creator_fee: '300000', user_amount: buying ? '30300000' : '29700000' };
+  const quote = buying
+    ? { gross: '20000000', creator_fee: '0', user_amount: '20000000' }
+    : { gross: '30000000', creator_fee: '300000', user_amount: '29700000' };
   const primitives = Object.fromEntries(['Button', 'Input', 'Field', 'FieldDescription', 'FieldGroup', 'FieldLabel'].map(name => [name, () => null]));
   const mocks = {
     react: {
@@ -173,11 +191,15 @@ function renderTrade(side, position = '20000000', confirmation = 'SUCCESS', miss
       useBlux: () => ({ user: { address: owner }, isReady: true,
         sendTransaction: async () => { calls.push('trustline submitted'); return { hash: 'trustline-hash' }; } }),
       useReadContracts: () => ({ data: { values: [quote] } }),
-      useWriteContract: () => ({ mutateAsync: async request => { written = request; calls.push('trade submitted'); return { hash: 'trade-hash' }; } }),
+      useWriteContract: () => ({ mutateAsync: async request => { written = request; calls.push('trade submitted'); return { hash: 'trade-hash', returnValue: async () => null }; } }),
       readContracts: async requests => {
-        assert.equal(requests[0].fn, buying ? 'quote_buy' : 'quote_sell');
-        // Buys invert the cumulative curve cost in exact units before requesting a quote.
-        assert.equal(requests[0].args[0], buying ? '19999600007' : '20000000');
+        if (buying && requests[0].fn === 'quote_buy') {
+          assert.equal(requests.length, 1);
+          assert.equal(requests[0].args[0], '19999600007');
+          return { values: [quote] };
+        }
+        assert.equal(requests[0].fn, buying ? 'get_state' : 'quote_sell');
+        assert.deepEqual(Array.from(requests[0].args), buying ? [] : ['20000000']);
         // Model SAC behavior: balance() fails before the receiving trustline exists.
         for (const request of requests) {
           if (request.fn !== 'balance') continue;
@@ -188,7 +210,7 @@ function renderTrade(side, position = '20000000', confirmation = 'SUCCESS', miss
         }
         assert.equal(requests.length, buying ? 2 : 3);
         assert.equal(requests[1].address, (buying ? usdc : asset).contractId(Networks.TESTNET));
-        return { values: buying ? [quote, '100000000'] : [quote, '20000000', position] };
+        return { values: buying ? [{ sold: 0n, quote_reserve: 0n, creator_fees: 0n, team_claimed: 0n, buyer_count: 0n, graduated: false, busy: false }, '100000000'] : [quote, '20000000', position] };
       },
     },
     '@/lib/stellar/clients': {
@@ -196,8 +218,7 @@ function renderTrade(side, position = '20000000', confirmation = 'SUCCESS', miss
       NETWORK: Networks.TESTNET,
       horizon: { loadAccount: async () => { loads++; return currentWallet(); } },
       soroban: {
-        pollTransaction: async hash => { calls.push(`${hash} confirmed`); return { status: confirmation }; },
-        getTransaction: async () => ({ status: confirmation }),
+        getTransaction: async hash => { calls.push(`${hash} confirmed`); return { status: confirmation }; },
       },
     },
     '@/components/ui/button': primitives, '@/components/ui/field': primitives, '@/components/ui/input': primitives,
@@ -228,8 +249,8 @@ test('buy submits exact ABI arguments after trustline confirmation and refreshes
   const trade = renderTrade('buy');
   await trade.submit();
   assert.equal(trade.written.call.fn, 'buy');
-  // Exact budget-derived fill; the RPC quote remains authoritative for slippage.
-  assert.deepEqual(Array.from(trade.written.call.args), [owner, '19999600007', '30451500']);
+  // The exact USDC budget is the on-chain payment cap.
+  assert.deepEqual(Array.from(trade.written.call.args), [owner, '19999600007', '20000000']);
   assert.equal(trade.written.options.network, Networks.TESTNET);
   assert.deepEqual(trade.calls, ['trustline submitted', 'trustline-hash confirmed', 'trade submitted', 'trade-hash confirmed', 'refreshed']);
   assert.equal(trade.stored.size, 0);
