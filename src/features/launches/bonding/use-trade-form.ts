@@ -387,7 +387,7 @@ export function useTradeForm({
     }
   }
 
-  const sellable = balances
+  const sellable = balances?.held !== undefined && balances.position !== undefined
     ? balances.held < balances.position
       ? balances.held
       : balances.position

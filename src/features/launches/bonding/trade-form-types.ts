@@ -1,6 +1,8 @@
 import type { ApiNetwork } from '@/lib/api/launches/types';
 import type { Snapshot, Tokens } from './contract';
 
+export type BalanceStatus = 'idle' | 'loading' | 'ready' | 'stale' | 'error';
+
 export type TradeFormProps = {
   address: string;
   slug?: string;
@@ -14,5 +16,6 @@ export type TradeFormProps = {
   locked: boolean;
   setLocked: (value: boolean) => void;
   refresh: () => Promise<void>;
-  balances?: { held: bigint; pairHeld: bigint; position: bigint };
+  balances?: { held?: bigint; pairHeld?: bigint; position?: bigint };
+  balanceStatus?: Record<'held' | 'pairHeld' | 'position', BalanceStatus>;
 };

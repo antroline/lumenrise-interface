@@ -3,6 +3,7 @@ import { API_NETWORK } from '@/lib/stellar/network';
 import { useLaunchpad } from '@/lib/launchpad';
 import { TradeResultDialog } from './trade-result-dialog';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Field,
   FieldDescription,
@@ -19,7 +20,7 @@ import { Wallet } from 'lucide-react';
 import { formatAmount, UNIT } from './contract';
 import { friendlyError } from './friendly-trade-error';
 import { useTradeForm } from './use-trade-form';
-import type { TradeFormProps } from './trade-form-types';
+import type { BalanceStatus, TradeFormProps } from './trade-form-types';
 
 export function TradeForm(props: TradeFormProps) {
   const { tokens, side, locked, balances } = props;
@@ -75,6 +76,15 @@ export function TradeForm(props: TradeFormProps) {
     available !== undefined &&
     needed !== undefined &&
     needed > available;
+  const statusFor = (key: 'held' | 'pairHeld' | 'position'): BalanceStatus =>
+    props.balanceStatus?.[key] ?? (balances?.[key] !== undefined ? 'ready' : 'idle');
+  const sellableStatuses = [statusFor('held'), statusFor('position')];
+  const sellableStatus: BalanceStatus =
+    sellable !== undefined
+      ? sellableStatuses.includes('stale') ? 'stale' : 'ready'
+      : sellableStatuses.includes('error') ? 'error'
+        : sellableStatuses.includes('loading') ? 'loading' : 'idle';
+  const balanceStatus = buying ? statusFor('pairHeld') : sellableStatus;
 
   return (
     <form
@@ -257,27 +267,34 @@ export function TradeForm(props: TradeFormProps) {
               : `${buying ? 'Buy' : 'Sell'} ${tokens.assetSymbol}`}
       </Button>
 
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 py-1 text-[11px] text-muted-foreground">
+      <div
+        role="status"
+        className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 py-1 text-[11px] text-muted-foreground"
+      >
         <Wallet aria-hidden="true" className="size-3.5 shrink-0" />
         {!user ? (
           <span>Connect wallet to view balances</span>
-        ) : !balances ? (
-          <span>Wallet balances unavailable</span>
-        ) : (
+        ) : balanceStatus === 'loading' ? (
           <>
-            <span className="break-all tabular-nums">
-              {formatAmount(balances.held, 3)} {tokens.assetSymbol}
+            <span className="sr-only">
+              Loading {buying ? paySymbol : 'sellable'} balance
             </span>
-            <span aria-hidden="true">·</span>
-            <span className="break-all tabular-nums">
-              {formatAmount(balances.pairHeld, 3)} {pair}
-            </span>
-            {!buying && sellable !== undefined && (
-              <span className="w-full pl-5 tabular-nums">
-                Sellable: {formatAmount(sellable, 3)} {tokens.assetSymbol}
-              </span>
-            )}
+            <Skeleton aria-hidden="true" className="h-3 w-16 motion-reduce:animate-none" />
+            <span aria-hidden="true">{paySymbol}</span>
           </>
+        ) : balanceStatus === 'error' ? (
+          <span>{buying ? paySymbol : 'Sellable'} balance unavailable</span>
+        ) : (
+          <span className="break-all tabular-nums">
+            {buying ? 'Balance: ' : 'Sellable: '}
+            {available === undefined ? '—' : formatAmount(available, 3)} {paySymbol}
+            {balanceStatus === 'stale' && ' (outdated)'}
+          </span>
+        )}
+        {!!user && balanceStatus === 'stale' && (
+          <span className="w-full pl-5">
+            Balance refresh failed. Showing the last available value.
+          </span>
         )}
       </div>
 

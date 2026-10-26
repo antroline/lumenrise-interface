@@ -118,6 +118,12 @@ for (const state of ['loaded', 'initial', 'error', 'refresh', 'wallet-ready', 'w
       '@/components/ui/skeleton': { Skeleton: 'Skeleton' },
       '@/features/launches/trading/trade-disclosure': { TradeDisclosure: 'TradeDisclosure' },
       './trade-form': { TradeForm: 'TradeForm' },
+      './use-wallet-balances': {
+        useWalletBalances: (options) => {
+          observers.push(options);
+          return { balances: {}, balanceStatus: {}, refetch() {} };
+        },
+      },
       './contract': {
         decodeSnapshot() {
           assert.fail('Cached Testnet values must not be decoded on Public');
@@ -162,20 +168,20 @@ for (const state of ['loaded', 'initial', 'error', 'refresh', 'wallet-ready', 'w
     if (state === 'wallet-missing') {
       assert.ok(feedback.includes('activate this wallet with XLM'));
       assert.ok(!feedback.includes('"role":"alert"'));
-      assert.ok(!feedback.includes('Loading wallet balances'));
+      assert.ok(!feedback.includes('Loading wallet information'));
     }
-    if (state === 'wallet-pending' || state === 'wallet-balances-pending') {
-      assert.ok(feedback.includes('Loading wallet balances'));
+    if (state === 'wallet-pending') {
+      assert.ok(feedback.includes('Loading wallet information'));
       assert.ok(!feedback.includes('activate this wallet'));
     }
     if (state === 'wallet-read-error' || state === 'wallet-refresh-error') {
       assert.ok(feedback.includes('Wallet information is temporarily unavailable'));
       assert.ok(feedback.includes('Retry'));
       assert.ok(!feedback.includes('activate this wallet'));
-      assert.ok(!feedback.includes('Loading wallet balances'));
+      assert.ok(!feedback.includes('Loading wallet information'));
     }
     if (state === 'wallet-disabled-null' || state === 'wallet-no-result') assert.equal(result.props.walletFeedback, null);
-    if (['wallet-account-retrying', 'wallet-balances-retrying', 'wallet-balances-idle', 'wallet-background-refresh'].includes(state)) {
+    if (['wallet-account-retrying', 'wallet-balances-pending', 'wallet-balances-retrying', 'wallet-balances-idle', 'wallet-background-refresh'].includes(state)) {
       assert.equal(result.props.walletFeedback, null, 'Only the initial active fetch may show a wallet skeleton');
     }
   });

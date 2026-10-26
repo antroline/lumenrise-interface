@@ -46,6 +46,8 @@ function harness({
   confirmation = 'success',
   storageBlocked = false,
   balances,
+  balanceStatus,
+  paymentAsset = Asset.native(),
   status = 'Open',
   busy = false,
   entry = '1',
@@ -105,6 +107,7 @@ function harness({
       }),
     },
     '@/components/ui/button': mockUi('Button'),
+    '@/components/ui/skeleton': mockUi('Skeleton'),
     '@/components/ui/input': mockUi('Input'),
     '@/components/form-controls': { FieldSurface: 'FieldSurface', FormInput: 'Input' },
     '@/components/ui/input-group': { InputGroup: 'InputGroup', InputGroupAddon: 'InputGroupAddon', InputGroupInput: 'InputGroupInput' },
@@ -175,11 +178,12 @@ function harness({
     side,
     snapshot: { config: { buckets: { curve: 500000000000000n }, params: { curve: { virtual_base_reserve: 1000000000000000n, virtual_quote_reserve: 1000000000000n, creator_fee_bps: 0n } } }, state: { busy, sold: 0n }, status, price: 10000000n },
     balances,
+    balanceStatus,
     tokens: {
       asset: Asset.native(),
-      pair: Asset.native(),
+      pair: paymentAsset,
       assetSymbol: 'TOK',
-      pairSymbol: 'XLM',
+      pairSymbol: paymentAsset.getCode(),
     },
     locked: false,
     setLocked() {},
@@ -237,6 +241,7 @@ test('recovering an old on-chain hash queues that hash and never buys or sells a
 });
 
 function elements(node) {
+  if (Array.isArray(node)) return node.flatMap(elements);
   if (!node || typeof node !== 'object') return [];
   return [node, ...[node.props?.children].flat().flatMap(elements)];
 }
@@ -244,8 +249,56 @@ function elements(node) {
 function content(node) {
   if (Array.isArray(node)) return node.map(content).join('');
   if (node && typeof node === 'object') return content(node.props?.children);
-  return node == null ? '' : String(node);
+  return node == null || typeof node === 'boolean' ? '' : String(node);
 }
+
+function walletContent(form) {
+  return content(elements(form).find(node => node.props?.role === 'status'));
+}
+
+test('initial wallet reads show accessible skeletons without unavailable messages or retry controls', () => {
+  const h = harness({ balanceStatus: { held: 'loading', pairHeld: 'loading', position: 'loading' } });
+  assert.equal(elements(h.form).filter(node => node.type === 'Skeleton').length, 1);
+  assert.doesNotMatch(walletContent(h.form), /TOK/);
+  assert.match(content(h.form), /Loading XLM balance/);
+  assert.doesNotMatch(content(h.form), /balance unavailable|Retry|Try again/);
+});
+
+test('buy shows only USDC and keeps presets available when the project token has no trustline', () => {
+  const h = harness({ paymentAsset: new Asset('USDC', owner), balances: { pairHeld: 123456789n }, balanceStatus: { held: 'error', pairHeld: 'ready', position: 'error' } });
+  assert.equal(walletContent(h.form), 'Balance: 12.346 USDC');
+  assert.equal(elements(h.form).find(node => node.type === 'Button' && node.props.children === '100%').props.disabled, false);
+});
+
+test('sell shows only its unavailable sellable balance and disables sell presets', () => {
+  const h = harness({ side: 'sell', balances: { held: 20000000n, pairHeld: 30000000n }, balanceStatus: { held: 'ready', pairHeld: 'ready', position: 'error' } });
+  assert.equal(walletContent(h.form), 'Sellable balance unavailable');
+  assert.equal(elements(h.form).find(node => node.type === 'Button' && node.props.children === '100%').props.disabled, true);
+});
+
+test('failed refreshes keep values visible with an outdated label and no new retry button', () => {
+  const h = harness({ side: 'sell', balances: { held: 20000000n, pairHeld: 30000000n, position: 10000000n }, balanceStatus: { held: 'ready', pairHeld: 'stale', position: 'stale' } });
+  assert.match(walletContent(h.form), /Sellable: 1 TOK \(outdated\)/);
+  assert.doesNotMatch(walletContent(h.form), /XLM/);
+  assert.match(content(h.form), /Balance refresh failed/);
+  assert.doesNotMatch(content(h.form), /balance unavailable|Retry|Try again/);
+});
+
+test('zero wallet balances remain valid displayed amounts', () => {
+  const h = harness({ side: 'sell', balances: { held: 0n, pairHeld: 0n, position: 0n } });
+  assert.equal(walletContent(h.form), 'Sellable: 0 TOK');
+  assert.doesNotMatch(content(h.form), /unavailable|outdated/);
+});
+
+test('sell shows eligible tokens only, excluding extra held tokens and payment asset errors', () => {
+  const h = harness({ side: 'sell', balances: { held: 20000000n, position: 10000000n }, balanceStatus: { held: 'ready', pairHeld: 'error', position: 'ready' } });
+  assert.equal(walletContent(h.form), 'Sellable: 1 TOK');
+});
+
+test('an unrelated stale token balance does not mark the buy balance as outdated', () => {
+  const h = harness({ balances: { held: 20000000n, pairHeld: 30000000n }, balanceStatus: { held: 'stale', pairHeld: 'ready', position: 'error' } });
+  assert.equal(walletContent(h.form), 'Balance: 3 XLM');
+});
 
 for (const side of ['buy', 'sell']) test(`${side} shows the current token price before an amount or wallet connection`, () => {
   const h = harness({ side, entry: '', connected: false });

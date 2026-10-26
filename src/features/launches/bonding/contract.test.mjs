@@ -201,6 +201,8 @@ function renderTrade(side, position = '20000000', confirmation = 'SUCCESS', miss
       },
     },
     '@/components/ui/button': primitives, '@/components/ui/field': primitives, '@/components/ui/input': primitives,
+    '@/components/ui/skeleton': { Skeleton: 'Skeleton' },
+    '@/components/form-controls': { FieldSurface: 'FieldSurface', FormInput: 'Input' },
     '@/components/ui/input-group': { InputGroup: () => null, InputGroupAddon: () => null, InputGroupInput: () => null },
     '@/features/launches/trading/trade-quote-details': { TradeQuoteDetails: 'TradeQuoteDetails' },
     '@/features/launches/trading/trade-tooltip': { TradeTooltipText: 'TradeTooltipText' },
