@@ -11,6 +11,10 @@ export function createBluxConfig(config: PublicConfiguration, network: NetworkCo
     showWalletUIs: false,
     defaultNetwork: selected,
     transports: {
+      [networks.testnet]: {
+        horizon: 'https://horizon-testnet.stellar.org',
+        soroban: 'https://rpc.ankr.com/stellar_testnet_soroban/b193c6b0b103d87578a6be96201c2dfbdf8c93c272a76f4257093cca02511068',
+      },
       [networks.mainnet]: {
         horizon: 'https://horizon.stellar.org',
         soroban: 'https://rpc.ankr.com/stellar_soroban/b193c6b0b103d87578a6be96201c2dfbdf8c93c272a76f4257093cca02511068',
