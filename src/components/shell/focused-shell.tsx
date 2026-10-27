@@ -13,7 +13,7 @@ import { SideNavigation } from './side-navigation';
 /** A task-focused desktop frame with the shared site header on mobile. */
 export function FocusedShell({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="relative isolate min-h-screen bg-card lg:bg-page">
+    <div className="relative isolate min-h-[calc(100svh-var(--network-banner-height,0px))] bg-card lg:bg-page">
       <SideNavigation mobileOnly />
       <header className="mx-auto hidden h-16 w-full max-w-[88rem] items-center gap-3 px-4 pt-[env(safe-area-inset-top)] sm:gap-5 sm:px-5 lg:flex lg:px-6">
         <Link

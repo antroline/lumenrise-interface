@@ -1,9 +1,22 @@
 'use client';
 
-import { useEffect, useState, type ComponentProps, type ReactNode } from 'react';
+import {
+  useEffect,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { ArrowRight, ArrowUpRight, Icon, PanelLeftClose, PanelLeftOpen, Search, X } from 'lucide-react';
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Icon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+  X,
+} from 'lucide-react';
 import { LogoHorizontal, LogoSymbol } from '@/components/logo';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -24,7 +37,15 @@ import { cn } from '@/lib/utils';
 import { useLaunchpad } from '@/lib/launchpad';
 import { GlobalSearchDialog } from './global-search';
 import { API_NETWORK } from '@/lib/stellar/network';
-import { isActive, mobileDrawerItems, mobilePrimaryItems, navigationHref, navGroups, settingsItem, type NavItem } from './navigation';
+import {
+  isActive,
+  mobileDrawerItems,
+  mobilePrimaryItems,
+  navigationHref,
+  navGroups,
+  settingsItem,
+  type NavItem,
+} from './navigation';
 import { WalletButton } from './wallet-button';
 import { NetworkSwitcher } from './network-switcher';
 
@@ -33,11 +54,17 @@ const sideNavId = 'side-navigation';
 const rowClass =
   'relative flex h-10 w-full items-center overflow-hidden rounded-lg text-sm font-medium whitespace-nowrap text-neutral-500 transition-colors duration-150 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-inset focus-visible:outline-none motion-reduce:transition-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 dark:focus-visible:ring-neutral-500';
 
-const fadeClass = 'transition-opacity duration-200 motion-reduce:transition-none';
+const fadeClass =
+  'transition-opacity duration-200 motion-reduce:transition-none';
 
-const iconButtonClass = 'shrink-0 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-neutral-400 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 dark:focus-visible:ring-neutral-500';
+const iconButtonClass =
+  'shrink-0 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-neutral-400 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 dark:focus-visible:ring-neutral-500';
 
-export function SideNavigation({ mobileOnly = false }: { mobileOnly?: boolean }) {
+export function SideNavigation({
+  mobileOnly = false,
+}: {
+  mobileOnly?: boolean;
+}) {
   const [expanded, setExpanded] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -53,54 +80,59 @@ export function SideNavigation({ mobileOnly = false }: { mobileOnly?: boolean })
 
   return (
     <>
-      {!mobileOnly && <div
-        id={sideNavId}
-        className={cn(
-          'sticky top-0 z-30 hidden h-svh shrink-0 overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:block',
-          expanded ? 'w-62' : 'w-16',
-        )}
-      >
-        <SidebarPanel
-          collapsed={!expanded}
-          onSearch={() => setSearchOpen(true)}
-          walletMenuSide="right"
-          header={
-            <>
-              {expanded && <HomeLink />}
-              <RailItem
-                label="Expand navigation"
-                collapsed={!expanded}
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setExpanded((current) => !current)}
-                    aria-label={
-                      expanded ? 'Collapse navigation' : 'Expand navigation'
-                    }
-                    aria-expanded={expanded}
-                    aria-controls={sideNavId}
-                    className={cn(iconButtonClass, 'group/toggle relative ml-auto')}
-                  />
-                }
-              >
-                {expanded ? (
-                  <PanelLeftClose className="size-[18px]" />
-                ) : (
-                  <>
-                    <span className="grid place-items-center transition-opacity duration-150 group-hover/toggle:opacity-0 group-focus-visible/toggle:opacity-0">
-                      <LogoSymbol size={24} />
-                    </span>
-                    <PanelLeftOpen className="absolute size-[18px] opacity-0 transition-opacity duration-150 group-hover/toggle:opacity-100 group-focus-visible/toggle:opacity-100" />
-                  </>
-                )}
-              </RailItem>
-            </>
-          }
-        />
-      </div>}
+      {!mobileOnly && (
+        <div
+          id={sideNavId}
+          className={cn(
+            'sticky top-[var(--network-banner-height,0px)] z-30 hidden h-[calc(100svh-var(--network-banner-height,0px))] shrink-0 overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:block',
+            expanded ? 'w-62' : 'w-16',
+          )}
+        >
+          <SidebarPanel
+            collapsed={!expanded}
+            onSearch={() => setSearchOpen(true)}
+            walletMenuSide="right"
+            header={
+              <>
+                {expanded && <HomeLink />}
+                <RailItem
+                  label="Expand navigation"
+                  collapsed={!expanded}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setExpanded((current) => !current)}
+                      aria-label={
+                        expanded ? 'Collapse navigation' : 'Expand navigation'
+                      }
+                      aria-expanded={expanded}
+                      aria-controls={sideNavId}
+                      className={cn(
+                        iconButtonClass,
+                        'group/toggle relative ml-auto',
+                      )}
+                    />
+                  }
+                >
+                  {expanded ? (
+                    <PanelLeftClose className="size-[18px]" />
+                  ) : (
+                    <>
+                      <span className="grid place-items-center transition-opacity duration-150 group-hover/toggle:opacity-0 group-focus-visible/toggle:opacity-0">
+                        <LogoSymbol size={24} />
+                      </span>
+                      <PanelLeftOpen className="absolute size-[18px] opacity-0 transition-opacity duration-150 group-hover/toggle:opacity-100 group-focus-visible/toggle:opacity-100" />
+                    </>
+                  )}
+                </RailItem>
+              </>
+            }
+          />
+        </div>
+      )}
 
-      <div className="sticky top-0 z-30 border-b border-sidebar-border bg-sidebar px-4 pt-[env(safe-area-inset-top)] lg:hidden">
+      <div className="sticky top-[var(--network-banner-height,0px)] z-30 border-b border-sidebar-border bg-sidebar px-4 pt-[env(safe-area-inset-top)] lg:hidden">
         <div className="grid h-14 grid-cols-[1fr_auto_1fr] items-center">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger
@@ -112,7 +144,9 @@ export function SideNavigation({ mobileOnly = false }: { mobileOnly?: boolean })
                   className={cn(iconButtonClass, 'size-11 justify-self-start')}
                 >
                   <Icon
-                    iconNode={[['path', { d: 'M5 8h14M5 16h8', key: 'menu-lines' }]]}
+                    iconNode={[
+                      ['path', { d: 'M5 8h14M5 16h8', key: 'menu-lines' }],
+                    ]}
                     aria-hidden="true"
                     className="size-5"
                   />
@@ -151,22 +185,38 @@ function MobileDrawerContent({ onNavigate }: { onNavigate: () => void }) {
   const { isSignedIn } = useLaunchpad();
   const pathname = usePathname();
   const network = useSearchParams().get('network') ?? API_NETWORK;
-  const primary = mobileDrawerItems.filter(item => mobilePrimaryItems.some(tab => tab.href === item.href));
-  const secondary = mobileDrawerItems.filter(item => (isSignedIn || item.href !== settingsItem.href) && !mobilePrimaryItems.some(tab => tab.href === item.href));
+  const primary = mobileDrawerItems.filter((item) =>
+    mobilePrimaryItems.some((tab) => tab.href === item.href),
+  );
+  const secondary = mobileDrawerItems.filter(
+    (item) =>
+      (isSignedIn || item.href !== settingsItem.href) &&
+      !mobilePrimaryItems.some((tab) => tab.href === item.href),
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <div className="flex h-20 shrink-0 items-center justify-between gap-3 border-b border-sidebar-border px-5 sm:px-8">
         <HomeLink height={30} onClick={onNavigate} className="h-11 px-0" />
-        <SheetClose render={
-          <Button variant="secondary" size="icon" aria-label="Close navigation" className="size-11 rounded-xl">
-            <X className="size-5" />
-          </Button>
-        } />
+        <SheetClose
+          render={
+            <Button
+              variant="secondary"
+              size="icon"
+              aria-label="Close navigation"
+              className="size-11 rounded-xl"
+            >
+              <X className="size-5" />
+            </Button>
+          }
+        />
       </div>
-      <nav aria-label="More navigation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-8">
+      <nav
+        aria-label="More navigation"
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-8"
+      >
         <div className="mx-auto flex min-h-full w-full max-w-lg flex-col gap-2">
-          {primary.map(item => {
+          {primary.map((item) => {
             const active = isActive(pathname, item);
             const create = item.href === '/create';
             return (
@@ -185,12 +235,18 @@ function MobileDrawerContent({ onNavigate }: { onNavigate: () => void }) {
               >
                 <item.icon aria-hidden="true" className="size-6 shrink-0" />
                 <span className="min-w-0 flex-1">{item.label}</span>
-                <ArrowRight aria-hidden="true" className={cn('size-5 shrink-0', !create && !active && 'text-muted-foreground')} />
+                <ArrowRight
+                  aria-hidden="true"
+                  className={cn(
+                    'size-5 shrink-0',
+                    !create && !active && 'text-muted-foreground',
+                  )}
+                />
               </Link>
             );
           })}
           <div className="mt-auto flex flex-col gap-1 pt-6">
-            {secondary.map(item => (
+            {secondary.map((item) => (
               <Link
                 key={item.href}
                 href={navigationHref(item.href, API_NETWORK)}
@@ -200,7 +256,12 @@ function MobileDrawerContent({ onNavigate }: { onNavigate: () => void }) {
               >
                 <item.icon aria-hidden="true" className="size-5 shrink-0" />
                 <span className="min-w-0 flex-1">{item.label}</span>
-                {item.href.startsWith('https:') && <ArrowUpRight aria-hidden="true" className="size-4 shrink-0" />}
+                {item.href.startsWith('https:') && (
+                  <ArrowUpRight
+                    aria-hidden="true"
+                    className="size-4 shrink-0"
+                  />
+                )}
               </Link>
             ))}
             <ThemeToggle showLabel />
@@ -210,7 +271,12 @@ function MobileDrawerContent({ onNavigate }: { onNavigate: () => void }) {
       <div className="shrink-0 border-t border-sidebar-border px-5 py-5 sm:px-8">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-3 [&>button]:min-h-11 [&>button]:min-w-11">
           <NetworkSwitcher />
-          <WalletButton menuSide="top" onNavigate={onNavigate} showNetwork={false} className="w-full min-w-0" />
+          <WalletButton
+            menuSide="top"
+            onNavigate={onNavigate}
+            showNetwork={false}
+            className="w-full min-w-0"
+          />
         </div>
       </div>
     </div>
@@ -246,15 +312,24 @@ function SidebarPanel({
               type="button"
               onClick={onSearch}
               aria-keyshortcuts="/ Control+K Meta+K"
-              className={cn(rowClass, 'shrink-0 bg-neutral-100 hover:bg-neutral-200/70 dark:bg-neutral-800 dark:hover:bg-neutral-700')}
+              className={cn(
+                rowClass,
+                'shrink-0 bg-neutral-100 hover:bg-neutral-200/70 dark:bg-neutral-800 dark:hover:bg-neutral-700',
+              )}
             />
           }
         >
           <RowIcon icon={Search} />
-          <span className={cn(fadeClass, collapsed && 'opacity-0')}>Search</span>
+          <span className={cn(fadeClass, collapsed && 'opacity-0')}>
+            Search
+          </span>
           <Kbd
             aria-hidden="true"
-            className={cn('mr-2.5 ml-auto border-neutral-200 text-neutral-500 dark:border-neutral-700 dark:text-neutral-400', fadeClass, collapsed && 'opacity-0')}
+            className={cn(
+              'mr-2.5 ml-auto border-neutral-200 text-neutral-500 dark:border-neutral-700 dark:text-neutral-400',
+              fadeClass,
+              collapsed && 'opacity-0',
+            )}
           >
             /
           </Kbd>
@@ -272,53 +347,63 @@ function SidebarPanel({
                 group.label === 'Account' && 'mt-auto pt-6',
               )}
             >
-              {group.items.filter(item => isSignedIn || item.href !== settingsItem.href).map((item) => {
-                const active = isActive(pathname, item);
-                const create = item.href === '/create';
-                return (
-                  <RailItem
-                    key={item.href}
-                    label={item.label}
-                    collapsed={collapsed}
-                    render={
-                      <Link
-                        href={navigationHref(item.href, API_NETWORK)}
-                        onClick={onNavigate}
-                        aria-current={active ? 'page' : undefined}
-                        className={cn(
-                          create
-                            ? buttonVariants({ className: 'relative h-10 w-full justify-start gap-0 overflow-hidden px-0 motion-reduce:transition-none' })
-                            : rowClass,
-                          active && !create &&
-                            'bg-sidebar-accent font-semibold text-sidebar-foreground before:absolute before:inset-y-2.5 before:left-0 before:w-[3px] before:rounded-full before:bg-lime hover:bg-sidebar-accent',
-                        )}
-                      />
-                    }
-                  >
-                    <RowIcon icon={item.icon} />
-                    <span className={cn(fadeClass, collapsed && 'opacity-0')}>
-                      {item.label}
-                    </span>
-                    {item.href.startsWith('https:') && (
-                      <ArrowUpRight
-                        aria-hidden="true"
-                        className={cn('mr-2.5 ml-auto size-3.5 shrink-0', fadeClass, collapsed && 'opacity-0')}
-                      />
-                    )}
-                    {item.count && (
-                      <span
-                        className={cn(
-                          'mr-2.5 ml-auto font-mono text-caption text-neutral-500 dark:text-neutral-400',
-                          fadeClass,
-                          collapsed && 'opacity-0',
-                        )}
-                      >
-                        {item.count}
+              {group.items
+                .filter((item) => isSignedIn || item.href !== settingsItem.href)
+                .map((item) => {
+                  const active = isActive(pathname, item);
+                  const create = item.href === '/create';
+                  return (
+                    <RailItem
+                      key={item.href}
+                      label={item.label}
+                      collapsed={collapsed}
+                      render={
+                        <Link
+                          href={navigationHref(item.href, API_NETWORK)}
+                          onClick={onNavigate}
+                          aria-current={active ? 'page' : undefined}
+                          className={cn(
+                            create
+                              ? buttonVariants({
+                                  className:
+                                    'relative h-10 w-full justify-start gap-0 overflow-hidden px-0 motion-reduce:transition-none',
+                                })
+                              : rowClass,
+                            active &&
+                              !create &&
+                              'bg-sidebar-accent font-semibold text-sidebar-foreground before:absolute before:inset-y-2.5 before:left-0 before:w-[3px] before:rounded-full before:bg-lime hover:bg-sidebar-accent',
+                          )}
+                        />
+                      }
+                    >
+                      <RowIcon icon={item.icon} />
+                      <span className={cn(fadeClass, collapsed && 'opacity-0')}>
+                        {item.label}
                       </span>
-                    )}
-                  </RailItem>
-                );
-              })}
+                      {item.href.startsWith('https:') && (
+                        <ArrowUpRight
+                          aria-hidden="true"
+                          className={cn(
+                            'mr-2.5 ml-auto size-3.5 shrink-0',
+                            fadeClass,
+                            collapsed && 'opacity-0',
+                          )}
+                        />
+                      )}
+                      {item.count && (
+                        <span
+                          className={cn(
+                            'mr-2.5 ml-auto font-mono text-caption text-neutral-500 dark:text-neutral-400',
+                            fadeClass,
+                            collapsed && 'opacity-0',
+                          )}
+                        >
+                          {item.count}
+                        </span>
+                      )}
+                    </RailItem>
+                  );
+                })}
             </div>
           ))}
         </nav>
@@ -326,7 +411,9 @@ function SidebarPanel({
 
       <div className="flex shrink-0 flex-col gap-3 border-t border-sidebar-border p-3">
         <NetworkSwitcher compact={collapsed} />
-        <div className={cn('flex gap-2', collapsed ? 'flex-col' : 'items-center')}>
+        <div
+          className={cn('flex gap-2', collapsed ? 'flex-col' : 'items-center')}
+        >
           <div className="shrink-0 [&>button]:text-neutral-500 [&>button]:hover:bg-neutral-100 [&>button]:hover:text-neutral-900 [&>button]:focus-visible:ring-neutral-400 dark:[&>button]:text-neutral-400 dark:[&>button]:hover:bg-neutral-800 dark:[&>button]:hover:text-neutral-100 dark:[&>button]:focus-visible:ring-neutral-500">
             <ThemeToggle />
           </div>
@@ -366,7 +453,10 @@ function RailItem({
 
 function RowIcon({ icon: Icon }: { icon: NavItem['icon'] }) {
   return (
-    <span className="grid size-10 shrink-0 place-items-center" aria-hidden="true">
+    <span
+      className="grid size-10 shrink-0 place-items-center"
+      aria-hidden="true"
+    >
       <Icon className="size-[18px]" />
     </span>
   );
@@ -386,7 +476,10 @@ function HomeLink({
       href={navigationHref('/', API_NETWORK)}
       aria-label="LumenRise home"
       onClick={onClick}
-      className={cn('flex h-10 shrink-0 items-center rounded-lg px-1.5 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none dark:focus-visible:ring-neutral-500', className)}
+      className={cn(
+        'flex h-10 shrink-0 items-center rounded-lg px-1.5 focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:outline-none dark:focus-visible:ring-neutral-500',
+        className,
+      )}
     >
       <LogoHorizontal height={height} variant="lime" className="max-w-none" />
     </Link>

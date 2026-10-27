@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import type { ReactNode } from 'react'
 import { AppShell } from '@/components/app-shell'
+import { NetworkBanner } from '@/components/shell/network-banner'
 import { Providers } from '@/components/providers'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import './globals.css'
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <Providers apiBaseUrl={process.env.LUMENRISE_API_URL ?? ''}>
           <TooltipProvider>
+            <NetworkBanner />
             <AppShell>{children}</AppShell>
           </TooltipProvider>
         </Providers>
