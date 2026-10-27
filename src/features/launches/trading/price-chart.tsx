@@ -5,9 +5,27 @@ import type { ReactNode } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { ChartRange } from '@/lib/api/launches/market';
 
+export function ChartTimeframeSelector({ range, onRangeChange }: {
+  range: ChartRange;
+  onRangeChange: (range: ChartRange) => void;
+}) {
+  const available = getChartRanges();
+  return (
+    <ToggleGroup aria-label="Chart timeframe" value={[range]} onValueChange={values => {
+      const next = values[0];
+      if (available.includes(next as ChartRange)) onRangeChange(next as ChartRange);
+    }} className="max-w-full rounded-lg">
+      {available.map(option => (
+        <ToggleGroupItem key={option} value={option} className="h-9 min-w-8 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground data-pressed:bg-card data-pressed:text-foreground data-pressed:shadow-sm motion-reduce:transition-none sm:h-8">
+          {option}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  );
+}
+
 export function PriceChart({
   ticker,
-  price,
   quoteSymbol = 'USD',
   history,
   embedded = false,
@@ -20,58 +38,29 @@ export function PriceChart({
     range: ChartRange;
     onRangeChange: (range: ChartRange) => void;
     content: ReactNode;
+    inlineControls?: boolean;
   };
 }) {
-  const available = getChartRanges();
   return (
     <section
       aria-label="Price analysis"
       className={
         embedded
-          ? 'price-history flex h-full min-w-0 flex-col bg-transparent text-neutral-900 dark:text-neutral-50'
-          : 'price-history flex min-w-0 flex-col rounded-2xl border border-neutral-200 bg-white p-4 text-neutral-900 sm:p-5 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-50'
+          ? 'price-history flex h-full min-w-0 flex-col bg-transparent text-foreground'
+          : 'price-history flex min-w-0 flex-col rounded-2xl border border-border bg-card p-4 text-foreground sm:p-5'
       }
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex min-w-0 flex-col gap-1">
-          <h2 className="text-title font-semibold">Price history</h2>
-          <div className="flex flex-wrap items-baseline gap-2.5 text-small text-neutral-500 dark:text-neutral-400">
-            <span className="break-all">
-              {ticker} / {quoteSymbol}
-            </span>
-          </div>
-          <p className="mt-1 break-all text-2xl leading-tight font-semibold tracking-tight tabular-nums">
-            <span className="sr-only">Current token price: </span>
-            {price}
-          </p>
-        </div>
-        <ToggleGroup
-          aria-label="Chart timeframe"
-          value={[history.range]}
-          onValueChange={(values) => {
-            const [next] = values;
-            if (available.includes(next as ChartRange)) {
-              history.onRangeChange(next as ChartRange);
-            }
-          }}
-          className="w-full flex-wrap sm:w-fit data-[variant=default]:bg-neutral-100 dark:data-[variant=default]:bg-neutral-800"
-        >
-          {available.map((option) => (
-            <ToggleGroupItem
-              key={option}
-              value={option}
-              className="min-h-11 flex-1 px-2.5 text-meta text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900 data-pressed:bg-white data-pressed:text-neutral-900 motion-reduce:transition-none sm:min-h-8 sm:flex-none dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-50 dark:data-pressed:bg-neutral-700 dark:data-pressed:text-white"
-            >
-              {option}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      </div>
+      {!history.inlineControls && <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pb-1">
+        <p className="min-w-0 break-all text-base font-semibold tracking-tight">
+          {ticker} <span className="mx-1 font-normal text-muted-foreground/60">/</span> <span className="font-medium text-muted-foreground">{quoteSymbol}</span>
+        </p>
+        {!history.inlineControls && <ChartTimeframeSelector range={history.range} onRangeChange={history.onRangeChange} />}
+      </div>}
       <div
         className={
           embedded
-            ? 'mt-4 flex min-h-0 min-w-0 flex-1 flex-col'
-            : 'mt-4 min-w-0'
+            ? 'flex min-h-0 min-w-0 flex-1 flex-col'
+            : 'min-w-0'
         }
       >
         {history.content}

@@ -7,6 +7,12 @@ export function formatPriceAxis(value: number, compact = false) {
   return compact && label.length > 10 ? value.toExponential(2) : label;
 }
 
+/** Axis ticks need enough digits to distinguish nearby prices on flat markets. */
+export function formatTradingPriceAxis(value: number) {
+  const label = value.toLocaleString('en-US', { maximumSignificantDigits: 12 });
+  return label.length > 16 ? value.toExponential(10) : label;
+}
+
 /** Preserve every indexed digit in the tooltip, independently of SVG precision. */
 export function formatExactPrice(raw: string, scale: number) {
   const digits = raw.padStart(scale + 1, '0');

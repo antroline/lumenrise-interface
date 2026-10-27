@@ -11,6 +11,13 @@ const helpers = {};
 new Function('exports', compiled)(helpers);
 const { formatPriceAxis, formatExactPrice, priceDomain, formatPriceTime } = helpers;
 
+test('trading axis distinguishes nearby prices without changing their scale', () => {
+  assert.notEqual(helpers.formatTradingPriceAxis(0.00090140001), helpers.formatTradingPriceAxis(0.00090140002));
+  assert.equal(helpers.formatTradingPriceAxis(0.0009014), '0.0009014');
+  assert.equal(helpers.formatTradingPriceAxis(0), '0');
+  assert.notEqual(helpers.formatTradingPriceAxis(1e-24), '0');
+});
+
 test('small price labels stay nonzero and use decimal notation', () => {
   assert.equal(formatPriceAxis(0.0000022), '0.0000022');
   assert.equal(formatPriceAxis(1e-24), '0.000000000000000000000001');

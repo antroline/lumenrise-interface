@@ -857,6 +857,12 @@ test('price history preserves observed data and range wiring, with loading/insuf
   const singlePointPlot = render()[1].find(node => node?.type === 'PriceHistoryPlot');
   assert.equal(singlePointPlot.props.points.length, 1);
   assert.equal(singlePointPlot.props.points[0].price, h.display.chartPoints(query.data)[0].price);
+  const ohlc = singlePointPlot.props.points[0].candle;
+  assert.equal(ohlc.open, h.display.chartNumber(candle.open, chart.priceScale));
+  assert.equal(ohlc.high, h.display.chartNumber(candle.high, chart.priceScale));
+  assert.equal(ohlc.low, h.display.chartNumber(candle.low, chart.priceScale));
+  assert.equal(ohlc.close, h.display.chartNumber(candle.latestPrice, chart.priceScale));
+  assert.match(ohlc.exact, /^O .+ · H .+ · L .+ · C /);
   const earlier = { ...candle, timestamp: '2026-10-11T13:00:00Z' };
   query = { ...query, data: { ...query.data, items: [candle, earlier] } };
   const plot = render()[1].find(node => node?.type === 'PriceHistoryPlot');
