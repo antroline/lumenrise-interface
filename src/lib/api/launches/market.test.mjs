@@ -1013,7 +1013,7 @@ test('launch decoder preserves optional project links without requiring them on 
   assert.equal(h.api.decodeLaunch(launch).metadata.website, undefined);
 });
 
-const listResponse = (launches = [{ ...launch, category: 'bonding-curve', volume24h: market.volume24h }], page = 1, limit = 20, extra = {}) => ({
+const listResponse = (launches = [{ ...launch, category: 'bonding-curve', volume24h: market.volume24h, volumeTotal: market.volumeTotal }], page = 1, limit = 20, extra = {}) => ({
   launches, page, limit, total: 41, sort: 'newest', direction: 'desc', dateMeaning: 'contract_creation',
   statsAsOf: DATE, statsSince: '2026-10-11T12:00:00Z', statsCoverage: 'verified_client_submitted_trades', ...extra,
 });
@@ -1025,6 +1025,7 @@ test('launch-list sends all combined filters on every page and decodes inline am
     const params = new URL(h.calls.at(-1).url).searchParams;
     for (const [key, value] of Object.entries({ network: 'testnet', owner: OWNER, ...filters, page: String(page), limit: '20' })) assert.equal(params.get(key), value);
     assert.equal(result.launches[0].volume24h.grossPairAmount, '12345678901234567');
+    assert.equal(result.launches[0].volumeTotal.grossPairAmount, market.volumeTotal.grossPairAmount);
     assert.equal(result.statsCoverage, 'verified_client_submitted_trades');
     assert.equal(result.dateMeaning, 'contract_creation');
     assert.equal(result.launches[0].createdAt, null);
@@ -1032,6 +1033,16 @@ test('launch-list sends all combined filters on every page and decodes inline am
   assert.equal(h.calls.length, 3, 'No market fan-out');
   assert.equal(h.api.decodeLaunch(launch).volume24h, undefined, 'Detail has no list-only statistics');
 });
+test('list total volume preserves zero, handles older responses and rejects malformed amounts', async () => {
+  for (const volumeTotal of [undefined, { ...market.volumeTotal, grossPairAmount: '0' }]) {
+    const h = harness(() => ({ result: listResponse([{ ...launch, category: 'bonding-curve', volume24h: market.volume24h, volumeTotal }]) }));
+    const result = await h.api.getLaunchList('testnet', 1, 20);
+    assert.equal(result.launches[0].volumeTotal?.grossPairAmount, volumeTotal?.grossPairAmount);
+  }
+  const h = harness(() => ({ result: listResponse([{ ...launch, category: 'bonding-curve', volume24h: market.volume24h, volumeTotal: { ...market.volumeTotal, grossPairAmount: 123 } }]) }));
+  await assert.rejects(h.api.getLaunchList('testnet', 1, 20), error => error.code === 'invalid-response');
+});
+
 test('every effective request parameter isolates the list cache, including page size', () => {
   const h = harness(), key = (network = 'testnet', page = 1, limit = 20, owner = '', filters = {}) => JSON.stringify(h.api.launchListKey(network, page, limit, owner, filters));
   const baseline = key();

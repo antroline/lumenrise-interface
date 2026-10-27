@@ -1,5 +1,4 @@
 import { TableRow, TableCell } from '@/components/ui/table';
-import { Blockie } from '@/components/blockie';
 import { displayAmount } from '@/lib/api/launches/display';
 import type { getTrades } from '@/lib/api/launches/market';
 import { TradeTooltipText } from './trade-tooltip';
@@ -46,20 +45,10 @@ export function IndexedTradeRow({
         )}
       </TableCell>
       <TableCell className="tabular-nums">
-        {displayAmount(trade.assetAmount)}
+        {displayAmount(trade.assetAmount, 3)}
       </TableCell>
       <TableCell className="tabular-nums">
         {displayAmount(trade.executionPrice)}
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <Blockie seed={trade.trader} size={16} className="rounded-full" />
-          <span className="text-muted-foreground">
-            <TradeTooltipText content={trade.trader}>
-              {trade.trader.slice(0, 6)}…{trade.trader.slice(-4)}
-            </TradeTooltipText>
-          </span>
-        </div>
       </TableCell>
     </TableRow>
   );
