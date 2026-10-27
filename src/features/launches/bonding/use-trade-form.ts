@@ -299,7 +299,7 @@ export function useTradeForm({
       recordSubmission(result.hash);
 
       await confirmTransaction(result.hash);
-      setConfirmation({ hash: result.hash, side });
+      setConfirmation({ hash: result.hash, side, token: { symbol: tokens.assetSymbol, amount: executionAmount } });
       setMessage(`${buying ? 'Buy' : 'Sell'} confirmed.`);
       setEntry('');
       setLimitEntry('');

@@ -6,10 +6,8 @@ import { DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/c
 import { cn } from '@/lib/utils';
 import styles from './app-dialog.module.css';
 
-/** Application modal frame, extracted from the three-signature launch dialog.
- * Keep CommandDialog on the UI primitive so global search stays independent.
- */
-export function AppDialogContent({ className, overlayProps, children, animateSize = true, presentation = 'responsive', ...props }: ComponentProps<typeof DialogContent> & { animateSize?: boolean; presentation?: 'responsive' | 'centered' }) {
+/** Shared frame for application dialogs, including global search. */
+export function AppDialogContent({ className, overlayProps, children, animateSize = true, ...props }: ComponentProps<typeof DialogContent> & { animateSize?: boolean }) {
   const reduced = useReducedMotion();
 
   // The portal mounts on open; a callback ref observes each mount, including reopenings.
@@ -76,7 +74,7 @@ export function AppDialogContent({ className, overlayProps, children, animateSiz
     <DialogContent
       // Nested wallet approvals release focus to Blux, but must still shield the form below.
       overlayProps={{ ...overlayProps, forceRender: true, className: cn(styles.overlay, 'touch-none', overlayProps?.className) }}
-      data-presentation={presentation}
+      data-presentation="responsive"
       className={cn(styles.popup, 'flex max-h-[calc(100svh-2rem)] flex-col overflow-hidden rounded-2xl p-5 sm:max-w-sm', className)}
       {...props}
     >

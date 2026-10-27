@@ -6,10 +6,12 @@ export function TransactionHash({
   hash,
   label,
   compact = false,
+  className,
 }: {
   hash: string;
   label: string;
   compact?: boolean;
+  className?: string;
 }) {
   const href = `https://stellar.expert/explorer/${API_NETWORK}/tx/${hash}`;
   if (compact) {
@@ -18,10 +20,10 @@ export function TransactionHash({
         href={href}
         target="_blank"
         rel="noreferrer"
-        title={hash}
         className={cn(
           buttonVariants({ variant: 'outline' }),
           'h-11 w-full min-w-0 gap-2 rounded-lg border-foreground/25 bg-transparent px-3 text-xs font-medium',
+          className,
         )}
       >
         <Globe aria-hidden="true" className="size-4" />
@@ -31,7 +33,7 @@ export function TransactionHash({
   }
   return (
     <a
-      className="break-all text-sm underline underline-offset-4"
+      className={cn('break-all text-sm underline underline-offset-4', className)}
       target="_blank"
       rel="noreferrer"
       title={hash}

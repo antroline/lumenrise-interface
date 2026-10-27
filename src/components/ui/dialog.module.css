@@ -20,7 +20,17 @@
 
 .overlay {
   opacity: 1;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
   transition: opacity 200ms ease-out;
+}
+
+/* Firefox keeps the dimmed backdrop without the blur compositing cost. */
+@supports (-moz-appearance: none) {
+  .overlay {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 .overlay[data-starting-style],

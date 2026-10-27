@@ -246,6 +246,7 @@ export function BondingCurvePage({
           network={network}
           snapshot={snapshot}
           tokens={tokens}
+          tokenLogo={indexed.data?.metadata.logo}
           side="buy"
           quoteHost={quoteHost}
           active={active}
@@ -268,6 +269,7 @@ export function BondingCurvePage({
           network={network}
           snapshot={snapshot}
           tokens={tokens}
+          tokenLogo={indexed.data?.metadata.logo}
           side="sell"
           quoteHost={quoteHost}
           active={active}

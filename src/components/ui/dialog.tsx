@@ -33,7 +33,7 @@ function DialogOverlay({
       data-slot="dialog-overlay"
       className={cn(
         styles.overlay,
-        "fixed inset-0 isolate z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs",
+        "fixed inset-0 isolate z-50 bg-black/40 touch-none",
         className
       )}
       {...props}

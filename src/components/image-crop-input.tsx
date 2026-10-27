@@ -115,7 +115,7 @@ function ImageCropEditor({ source, kind, onCancel, onConfirm }: {
     <div className="flex flex-col gap-4">
       <div
         role="group" tabIndex={0} aria-label="Image crop. Drag or use arrow keys to reposition."
-        className="relative mx-auto aspect-square w-full max-w-64 touch-none cursor-grab overflow-hidden rounded-full bg-secondary outline-none ring-1 ring-border focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+        className="relative mx-auto aspect-square w-full max-w-64 touch-none cursor-grab select-none overflow-hidden rounded-full bg-secondary outline-none ring-1 ring-border focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
         onKeyDown={(event) => {
           const delta = event.shiftKey ? 0.1 : 0.02;
           if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
@@ -125,6 +125,9 @@ function ImageCropEditor({ source, kind, onCancel, onConfirm }: {
         }}
         onPointerDown={(event) => {
           if (!side) return;
+          // Dragging the crop must not start the browser's text-selection gesture.
+          event.preventDefault();
+          event.currentTarget.focus({ preventScroll: true });
           event.currentTarget.setPointerCapture(event.pointerId);
           drag.current = { x: event.clientX, y: event.clientY, left: position.x, top: position.y };
         }}

@@ -9,6 +9,7 @@ export type TradeFormProps = {
   network?: ApiNetwork;
   snapshot: Snapshot;
   tokens: Tokens;
+  tokenLogo?: string;
   side: 'buy' | 'sell';
   compact?: boolean;
   quoteHost?: HTMLElement | null;

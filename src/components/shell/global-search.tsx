@@ -96,7 +96,7 @@ export function GlobalSearchDialog({
       onOpenChange={onOpenChange}
       title="Search LumenRise"
       description="Find a page or project"
-      className="top-4 max-h-[calc(100dvh-2rem)] max-w-[calc(100%-1.5rem)] gap-0 bg-card sm:top-[min(12dvh,6rem)] sm:max-h-[calc(100dvh-8rem)] sm:max-w-xl motion-reduce:animate-none motion-reduce:duration-0"
+      className="gap-0"
     >
       <Command
         className="h-auto min-h-0 bg-card p-0 text-card-foreground [&_[data-slot=command-input-wrapper]]:p-0 [&_[data-slot=input-group]]:h-13! [&_[data-slot=input-group]]:rounded-none! [&_[data-slot=input-group]]:border-0 [&_[data-slot=input-group]]:bg-transparent [&_[data-slot=input-group-addon]]:pl-3.5! [&_[data-slot=input-group-addon]>svg]:opacity-100"
@@ -182,4 +182,3 @@ export function GlobalSearchDialog({
     </CommandDialog>
   );
 }
-
