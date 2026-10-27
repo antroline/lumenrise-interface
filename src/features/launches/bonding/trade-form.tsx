@@ -389,6 +389,8 @@ export function TradeForm(props: TradeFormProps) {
         trustHash={trustHash}
         registrationNotice={registrationNotice}
         confirmation={confirmation}
+        tokenLogo={props.tokenLogo}
+        tokenSeed={props.address}
         onClose={dismissConfirmation}
         onClosed={finishDialogClose}
       />

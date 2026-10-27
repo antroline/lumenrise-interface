@@ -2,11 +2,11 @@
 
 import * as React from "react"
 import { Command as CommandPrimitive } from "cmdk"
+import { AppDialogContent } from "@/components/app-dialog"
 import { cn } from "@/lib/utils"
 
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -49,9 +49,9 @@ function CommandDialog({
 }) {
   return (
     <Dialog {...props}>
-      <DialogContent
+      <AppDialogContent
         className={cn(
-          "top-1/3 flex max-h-[calc(66dvh-1rem)] translate-y-0 flex-col overflow-hidden rounded-xl! p-0",
+          "gap-0",
           className
         )}
         showCloseButton={showCloseButton}
@@ -61,7 +61,7 @@ function CommandDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         {children}
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   )
 }

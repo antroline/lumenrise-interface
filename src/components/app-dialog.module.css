@@ -1,6 +1,6 @@
 .viewport {
-  /* Reserve scrollbar space so wrapping cannot feed back into height measurement. */
-  scrollbar-gutter: stable;
+  /* Reserve balanced scrollbar space to preserve centering and stable wrapping. */
+  scrollbar-gutter: stable both-edges;
   overflow-anchor: none;
   overscroll-behavior-y: contain;
   scroll-padding-block: 1.25rem;
@@ -11,13 +11,18 @@
   overflow-y: hidden;
 }
 
+/* A pressed footer control must not extend the scrollable content by one pixel. */
+.viewport :is(button, a):active {
+  translate: none;
+}
+
 /* Keep one dialog tree across breakpoints so forms and pending trades stay mounted. */
 @media (width < 40rem), (pointer: coarse) and (height < 30rem) {
   .overlay {
     width: 100vw;
   }
 
-  .popup:not([data-presentation='centered']) {
+  .popup {
     inset: auto 0 0;
     width: 100vw;
     max-width: 100vw;
@@ -32,12 +37,12 @@
     transition-duration: 220ms;
   }
 
-  .popup:not([data-presentation='centered'])[data-starting-style],
-  .popup:not([data-presentation='centered'])[data-ending-style] {
+  .popup[data-starting-style],
+  .popup[data-ending-style] {
     transform: translateY(100%);
   }
 
-  .popup:not([data-presentation='centered'])[data-ending-style] {
+  .popup[data-ending-style] {
     transition-duration: 160ms;
   }
 
