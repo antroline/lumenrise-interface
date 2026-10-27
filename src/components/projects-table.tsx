@@ -30,7 +30,7 @@ type ProjectTableSorting = {
   direction: SortDirection;
   /** Hide the direction indicator while the list uses its default order. */
   explicit: boolean;
-  link: (column: ProjectColumn) => { href: string; direction: SortDirection };
+  link: (column: ProjectColumn) => { href: string; direction: SortDirection } | undefined;
 };
 
 const phaseStatus: Record<
