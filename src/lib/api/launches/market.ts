@@ -71,6 +71,7 @@ export type LaunchListItem = LaunchResult & {
   category: 'bonding-curve';
   amountScale: number;
   volume24h: MarketResult['volume24h'];
+  volumeTotal?: MarketResult['volumeTotal'];
 };
 export type LaunchList = {
   launches: LaunchListItem[];
@@ -458,6 +459,7 @@ export async function getLaunchList(
       ...decodeLaunch(item),
       category: item.category,
       amountScale: scale(item.amountScale),
+      volumeTotal: item.volumeTotal == null ? undefined : decodeMarketVolume(item.volumeTotal),
       volume24h: {
         grossPairAmount: raw(vol.grossPairAmount),
         assetAmount: raw(vol.assetAmount),

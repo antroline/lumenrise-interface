@@ -138,7 +138,6 @@ export function IndexedTrades({
                 `Value · ${pair} ≈`,
                 ticker,
                 `Price · ${pair}`,
-                'Trader',
               ].map((label) => (
                 <TableHead
                   key={label}
@@ -169,7 +168,7 @@ export function IndexedTrades({
             ))}
             {!filtered.length && (
               <TableRow>
-                <TableCell colSpan={6}>
+                <TableCell colSpan={5}>
                   <Empty>
                     <EmptyHeader>
                       <EmptyMedia>

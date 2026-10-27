@@ -205,6 +205,7 @@ const launch = (id, extras = {}) => ({
   metadata: { name: id, symbol: id },
   bonding: null,
   volume24h: { grossPairAmount: '9007199254740993', tradeCount: 2 },
+  volumeTotal: { grossPairAmount: '18014398509481986', tradeCount: 4 },
   ...extras,
 });
 test('loading, empty, 400 and 503 are distinct and actionable', () => {
@@ -308,15 +309,26 @@ test('monetary sorts require a contract, display inline volume exactly and retai
   });
   assert.equal(
     h.find('ProjectsTable').props.rows[0].figure,
-    '9007199254740993 USDC',
+    '18014398509481986 USDC',
   );
-  assert.equal(h.find('ProjectsTable').props.figureLabel, 'Volume · 24h');
-  const reverseVolume = new URL(
-    h.find('ProjectsTable').props.sorting.link('figure').href,
-    'http://local',
-  ).searchParams;
-  assert.equal(reverseVolume.get('sort'), 'topVolume');
-  assert.equal(reverseVolume.get('direction'), 'asc');
+  assert.equal(h.find('ProjectsTable').props.figureLabel, 'Total volume');
+  assert.equal(h.find('ProjectsTable').props.sorting.link('figure'), undefined);
+  assert.equal(h.find('ProjectsTable').props.sorting.column, undefined);
+});
+
+test('total volume is independent of sort and reserve, with zero and missing values distinct', () => {
+  for (const sort of ['newest', 'trending', 'almostGraduated']) {
+    const h = harness(status({ launches: [
+      launch('total'),
+      launch('zero', { volumeTotal: { grossPairAmount: '0' } }),
+      launch('missing', { volumeTotal: undefined }),
+    ], total: 3 }), { sort });
+    const table = h.find('ProjectsTable');
+    assert.equal(table.props.figureLabel, 'Total volume');
+    assert.deepEqual(Array.from(table.props.rows, row => row.figure), ['18014398509481986 USDC', '0 USDC', '—']);
+    assert.match(table.props.rows[0].figureTitle, /no lower time bound/);
+    assert.equal(h.find('MobileProjectList').props.figureLabel, 'Total volume');
+  }
 });
 
 test('shared Apply preloads the existing query cache and preserves all URL filters', async () => {

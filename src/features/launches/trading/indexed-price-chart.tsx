@@ -19,14 +19,14 @@ import {
   getChart,
   type ChartRange,
 } from '@/lib/api/launches/market';
-import { chartPoints, chartWindow } from '@/lib/api/launches/display';
+import { chartNumber, chartPoints, chartWindow } from '@/lib/api/launches/display';
 import {
   launchKey,
   publicQueryOptions,
   usePageVisible,
 } from '@/features/launches/hooks/queries';
 import type { ApiNetwork } from '@/lib/api/launches/types';
-import { PriceChart } from './price-chart';
+import { ChartTimeframeSelector, PriceChart } from './price-chart';
 
 export function IndexedPriceChart({
   slug,
@@ -49,6 +49,7 @@ export function IndexedPriceChart({
   const supportedRanges = getChartRanges();
   const defaultRange = supportedRanges.find(range => range === rules.defaultLegacyRange) ?? supportedRanges[0];
   const [range, setRange] = useState<ChartRange>(defaultRange ?? '1D');
+  const [chartType, setChartType] = useState<'area' | 'candles'>('area');
   const visible = usePageVisible() && active;
   const client = useQueryClient();
   const query = useQuery({
@@ -71,8 +72,19 @@ export function IndexedPriceChart({
   }, [client, slug, network, range, visible]);
   let points: ReturnType<typeof chartPoints> = [],
     precisionError = '';
+  let candles = new Map<number, { open: number; high: number; low: number; close: number; exact: string }>();
   try {
-    if (query.data) points = chartPoints(query.data);
+    if (query.data) {
+      points = chartPoints(query.data);
+      const { priceScale } = query.data;
+      candles = new Map(query.data.items.map(candle => [Date.parse(candle.timestamp), {
+        open: chartNumber(candle.open, priceScale),
+        high: chartNumber(candle.high, priceScale),
+        low: chartNumber(candle.low, priceScale),
+        close: chartNumber(candle.close ?? candle.latestPrice, priceScale),
+        exact: `O ${formatExactPrice(candle.open, priceScale)} · H ${formatExactPrice(candle.high, priceScale)} · L ${formatExactPrice(candle.low, priceScale)} · C ${formatExactPrice(candle.close ?? candle.latestPrice, priceScale)}`,
+      }]));
+    }
   } catch (error) {
     precisionError =
       error instanceof Error
@@ -112,7 +124,11 @@ export function IndexedPriceChart({
   ) : (
     <>
       <PriceHistoryPlot
-        points={points.map(point => ({ ...point, exactPrice: exactPrices.get(point.time) ?? String(point.price) }))}
+        timeframeControl={<ChartTimeframeSelector range={range} onRangeChange={setRange} />}
+        chartType={chartType}
+        onChartTypeChange={setChartType}
+        rangeKey={range}
+        points={points.map(point => ({ ...point, candle: candles.get(point.time), exactPrice: exactPrices.get(point.time) ?? String(point.price) }))}
         timeDomain={timeDomain}
         ticker={ticker}
         pair={pair}
@@ -128,6 +144,7 @@ export function IndexedPriceChart({
         price={price}
         quoteSymbol={pair}
         history={{
+          inlineControls: !!points.length && !precisionError,
           range,
           onRangeChange: setRange,
           content: (

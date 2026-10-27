@@ -21,7 +21,7 @@ function MiniGraduationProgress({ row }: { row: ProjectTableRow }) {
 export function MobileProjectList({
   rows,
   showProgress = false,
-  figureLabel = 'Pool balance',
+  figureLabel = 'Total volume',
 }: {
   rows: (ProjectTableRow & { href: string })[];
   showProgress?: boolean;

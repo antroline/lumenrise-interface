@@ -78,6 +78,8 @@ const inactiveClass =
   'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50';
 const statsHelp =
   'Rolling 24-hour statistics cover verified client-submitted trades recorded by the backend; they may not include all on-chain activity.';
+const totalVolumeHelp =
+  'Total volume includes all verified client-submitted buys and sells recorded by the backend, with no lower time bound; it may not include all on-chain activity.';
 
 function directoryDate(iso: string | null) {
   if (!iso) return { short: '—', full: 'Contract creation date unknown' };
@@ -222,10 +224,7 @@ export function PublicProjects({
     const b = l.bonding,
       label = pairLabel(l.pair, network),
       date = directoryDate(l.createdAt);
-    const amount =
-      sort === 'topVolume'
-        ? l.volume24h.grossPairAmount
-        : b?.state.quoteReserve;
+    const amount = l.volumeTotal?.grossPairAmount;
     const website = safeExternalUrl(l.metadata.website),
       xUrl = safeExternalUrl(l.metadata.xAccount);
     const xAccount =
@@ -273,7 +272,7 @@ export function PublicProjects({
             ' ' +
             label +
             ' · ' +
-            (sort === 'topVolume' ? statsHelp : 'indexed curve reserve'),
+            totalVolumeHelp,
       figureContext: '',
       participants: b?.state.buyerCount ?? null,
       date: date.short,
@@ -284,11 +283,9 @@ export function PublicProjects({
   const sortColumns: Partial<Record<DirectorySort, ProjectColumn>> = {
     newest: 'date',
     almostGraduated: 'phase',
-    topVolume: 'figure',
     name: 'name',
     category: 'category',
     phase: 'phase',
-    figure: 'figure',
     participants: 'participants',
   };
   const selectedColumn = sortColumns[sort];
@@ -297,6 +294,7 @@ export function PublicProjects({
     direction: selectedDirection,
     explicit: true,
     link: (column: ProjectColumn) => {
+      if (column === 'figure') return undefined;
       const next: SortDirection =
         column === selectedColumn
           ? selectedDirection === 'asc'
@@ -314,7 +312,7 @@ export function PublicProjects({
       };
     },
   };
-  const figureLabel = sort === 'topVolume' ? 'Volume · 24h' : 'Pool balance';
+  const figureLabel = 'Total volume';
   const filtered = !!(
     search ||
     owner ||
@@ -477,7 +475,7 @@ export function PublicProjects({
                 figureLabel={figureLabel}
                 dateLabel="Created"
                 sorting={sorting}
-                caption={`Projects on page ${currentPage}, filtered and ordered by the backend. ${sortLabels[sort]}, ${selectedDirection}. ${statsHelp}`}
+                caption={`Projects on page ${currentPage}, filtered and ordered by the backend. ${sortLabels[sort]}, ${selectedDirection}. ${totalVolumeHelp} ${statsHelp}`}
               />
             </div>
           </>

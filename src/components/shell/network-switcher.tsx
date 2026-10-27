@@ -13,7 +13,7 @@ import { getConfiguration } from '@/lib/api/config';
 import { API_NETWORK } from '@/lib/stellar/network';
 import { cn } from '@/lib/utils';
 
-export function NetworkSwitcher({ compact = false }: { compact?: boolean }) {
+export function NetworkSwitcher({ compact = false, className }: { compact?: boolean; className?: string }) {
   const isMainnet = API_NETWORK === 'public';
   const label = isMainnet ? 'Mainnet' : 'Testnet';
   const nextNetwork = isMainnet ? 'testnet' : 'public';
@@ -25,7 +25,7 @@ export function NetworkSwitcher({ compact = false }: { compact?: boolean }) {
   return (
     <Button
       variant="secondary"
-      className={cn('group/network h-11 w-full justify-start gap-2.5 px-3', compact && 'size-10 justify-center px-0')}
+      className={cn('group/network h-11 w-full justify-start gap-2.5 px-3', compact && 'size-10 flex-col justify-center gap-0.5 px-0', className)}
       disabled={!canSwitch}
       aria-label={`Current network: ${label}. Switch to ${nextLabel}`}
       title={canSwitch ? `Switch to ${nextLabel}` : `Current network: ${label}. Switching unavailable`}
@@ -35,9 +35,10 @@ export function NetworkSwitcher({ compact = false }: { compact?: boolean }) {
         window.location.assign('/projects?network=' + nextNetwork);
       }}
     >
-      <span className={cn('flex size-7 shrink-0 items-center justify-center rounded-full', isMainnet ? 'bg-ok-soft text-ok' : 'bg-warn-soft text-warn')}>
-        <Globe className="size-4" aria-hidden="true" />
+      <span className={cn('flex shrink-0 items-center justify-center', compact ? 'size-4' : 'size-7 rounded-full', isMainnet ? 'text-ok' : 'text-warn', !compact && (isMainnet ? 'bg-ok-soft' : 'bg-warn-soft'))}>
+        <Globe className={compact ? 'size-3.5' : 'size-4'} aria-hidden="true" />
       </span>
+      {compact && <span className="text-[10px] leading-none font-semibold">{isMainnet ? 'Main' : 'Test'}</span>}
       {!compact && (
         <>
           <span className="flex-1 text-left">{label}</span>
