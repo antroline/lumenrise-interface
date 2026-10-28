@@ -1,9 +1,7 @@
 'use client';
 
-import { getConfiguration } from '@/lib/api/config';
-import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { PriceHistoryPlot } from './price-history-plot';
+import { useState } from 'react';
+import { PriceHistoryPlot, type PriceHistoryPoint } from './price-history-plot';
 import { formatExactPrice } from './price-history-format';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -13,20 +11,16 @@ import {
   EmptyTitle,
   EmptyDescription,
 } from '@/components/ui/empty';
-import {
-  chartTimeframes,
-  getChartRanges,
-  getChart,
-  type ChartRange,
-} from '@/lib/api/launches/market';
-import { chartNumber, chartPoints, chartWindow } from '@/lib/api/launches/display';
-import {
-  launchKey,
-  publicQueryOptions,
-  usePageVisible,
-} from '@/features/launches/hooks/queries';
+import type { ChartRange } from '@/lib/api/launches/market';
+import { chartNumber, pairLabel } from '@/lib/api/launches/display';
 import type { ApiNetwork } from '@/lib/api/launches/types';
 import { ChartTimeframeSelector, PriceChart } from './price-chart';
+import {
+  displayWindow,
+  earlierBoundary,
+  type CandleTimeframe,
+} from './candle-history';
+import { useCandleHistory } from './use-candle-history';
 
 export function IndexedPriceChart({
   slug,
@@ -45,131 +39,213 @@ export function IndexedPriceChart({
   active?: boolean;
   embedded?: boolean;
 }) {
-  const rules = getConfiguration().rules.chart;
-  const supportedRanges = getChartRanges();
-  const defaultRange = supportedRanges.find(range => range === rules.defaultLegacyRange) ?? supportedRanges[0];
-  const [range, setRange] = useState<ChartRange>(defaultRange ?? '1D');
+  // A keyed chart-local session prevents even one render of another market's candles.
+  return (
+    <ChartSession
+      key={`${network}:${slug}`}
+      {...{ slug, network, ticker, pair, price, active, embedded }}
+    />
+  );
+}
+
+function ChartSession({
+  slug,
+  network,
+  ticker,
+  pair,
+  price,
+  active,
+  embedded,
+}: {
+  slug: string;
+  network: ApiNetwork;
+  ticker: string;
+  pair: string;
+  price: string;
+  active: boolean;
+  embedded: boolean;
+}) {
+  const [range, setRange] = useState<ChartRange>('1D');
+  const [custom, setCustom] = useState(false);
+  const [timeframe, setTimeframe] = useState<CandleTimeframe>('15m');
   const [chartType, setChartType] = useState<'area' | 'candles'>('area');
-  const visible = usePageVisible() && active;
-  const client = useQueryClient();
-  const query = useQuery({
-    ...publicQueryOptions,
-    queryKey: [
-      ...launchKey(network, slug),
-      'chart',
-      range,
-      chartTimeframes[range],
-      { limit: rules.defaultLimit, window: range, to: 'server-now' },
-    ],
-    queryFn: ({ signal }) => getChart(slug, network, range, signal),
-    enabled: visible && !!slug && supportedRanges.includes(range),
-  });
-  useEffect(() => {
-    if (!visible)
-      void client.cancelQueries({
-        queryKey: [...launchKey(network, slug), 'chart', range],
-      });
-  }, [client, slug, network, range, visible]);
-  let points: ReturnType<typeof chartPoints> = [],
+  const [window, setWindow] = useState(() => displayWindow('1D', Date.now()));
+  const [requestedLower, setRequestedLower] = useState(window?.[0]);
+  const [viewKey, setViewKey] = useState(0);
+  const [following, setFollowing] = useState(true);
+  const history = useCandleHistory(
+    slug,
+    network,
+    timeframe,
+    requestedLower,
+    active && !!slug,
+  );
+  const displayedHistory = history.result
+    ? history
+    : (history.previous ?? history);
+  const selectRange = (next: ChartRange) => {
+    setRange(next);
+    setCustom(false);
+    setFollowing(true);
+    const bounds = displayWindow(next, Date.now());
+    setWindow(bounds);
+    setRequestedLower(bounds?.[0]);
+    setViewKey((value) => value + 1);
+  };
+  const controls = (
+    <ChartTimeframeSelector
+      range={custom ? null : range}
+      onRangeChange={selectRange}
+      timeframe={timeframe}
+      onTimeframeChange={(next) => {
+        setTimeframe(next);
+        setRequestedLower(window?.[0]);
+      }}
+    />
+  );
+  let points: PriceHistoryPoint[] = [],
     precisionError = '';
-  let candles = new Map<number, { open: number; high: number; low: number; close: number; exact: string }>();
   try {
-    if (query.data) {
-      points = chartPoints(query.data);
-      const { priceScale } = query.data;
-      candles = new Map(query.data.items.map(candle => [Date.parse(candle.timestamp), {
-        open: chartNumber(candle.open, priceScale),
-        high: chartNumber(candle.high, priceScale),
-        low: chartNumber(candle.low, priceScale),
-        close: chartNumber(candle.close ?? candle.latestPrice, priceScale),
-        exact: `O ${formatExactPrice(candle.open, priceScale)} · H ${formatExactPrice(candle.high, priceScale)} · L ${formatExactPrice(candle.low, priceScale)} · C ${formatExactPrice(candle.close ?? candle.latestPrice, priceScale)}`,
-      }]));
+    if (displayedHistory.result) {
+      const scale = displayedHistory.result.priceScale;
+      points = displayedHistory.items.map((candle) => ({
+        time: Date.parse(candle.timestamp),
+        price: chartNumber(candle.close ?? candle.latestPrice, scale),
+        exactPrice: formatExactPrice(candle.close ?? candle.latestPrice, scale),
+        candle: {
+          open: chartNumber(candle.open, scale),
+          high: chartNumber(candle.high, scale),
+          low: chartNumber(candle.low, scale),
+          close: chartNumber(candle.close ?? candle.latestPrice, scale),
+          exact: `O ${formatExactPrice(candle.open, scale)} · H ${formatExactPrice(candle.high, scale)} · L ${formatExactPrice(candle.low, scale)} · C ${formatExactPrice(candle.close ?? candle.latestPrice, scale)}`,
+          status: `${candle.complete ? 'Completed' : 'Open'}${candle.partial ? ' · Partial opening history' : ''}`,
+          endsAt: candle.endsAt,
+        },
+      }));
     }
-  } catch (error) {
+  } catch (cause) {
     precisionError =
-      error instanceof Error
-        ? error.message
+      cause instanceof Error
+        ? cause.message
         : 'These prices cannot be plotted accurately.';
   }
-  const timeDomain = query.data ? chartWindow(query.data) : undefined;
-  const exactPrices = new Map(query.data?.items.map(candle => [
-    Date.parse(candle.timestamp),
-    formatExactPrice(candle.close ?? candle.latestPrice, query.data.priceScale),
-  ]));
-  const content = !supportedRanges.length ? <p role="status" className="p-4 text-small text-muted-foreground">Price history is not configured for the supported chart ranges.</p> : query.isPending ? (
-    <Skeleton className={embedded ? 'h-full min-h-0 w-full' : 'h-60 w-full'} />
-  ) : query.isError && !query.data ? (
-    <Empty className={embedded ? 'h-full min-h-0 p-3' : undefined}>
-      <EmptyHeader>
-        <EmptyTitle>Could not load price history</EmptyTitle>
-        <EmptyDescription>{query.error.message}</EmptyDescription>
-      </EmptyHeader>
-      <Button variant="outline" onClick={() => void query.refetch()}>
-        Retry
-      </Button>
-    </Empty>
-  ) : precisionError || points.length === 0 ? (
-    <Empty className={embedded ? 'h-full min-h-0 p-3' : 'min-h-60'}>
-      <EmptyHeader>
-        <EmptyTitle>
-          {precisionError
-            ? 'Price chart unavailable'
-            : 'Price history not available yet'}
-        </EmptyTitle>
-        <EmptyDescription>
-          {precisionError || 'Recorded prices will appear here when available.'}
-        </EmptyDescription>
-      </EmptyHeader>
-    </Empty>
-  ) : (
-    <>
+  // Resolve the server's pair asset on the selected network; no dollar conversion is implied.
+  const quote = displayedHistory.result
+    ? pairLabel(displayedHistory.result.pair, network)
+    : pair;
+  const timeDomain: [number, number] | undefined =
+    window && displayedHistory.result
+      ? following && !custom
+        ? displayWindow(range, Date.parse(displayedHistory.result.asOf))
+        : window
+      : undefined;
+  const content =
+    history.loading && !points.length ? (
+      <Skeleton
+        className={embedded ? 'h-full min-h-0 w-full' : 'h-60 w-full'}
+      />
+    ) : precisionError || !points.length ? (
+      <Empty className={embedded ? 'h-full min-h-0 p-3' : 'min-h-60'}>
+        <EmptyHeader>
+          <EmptyTitle>
+            {precisionError || history.error
+              ? 'Price chart unavailable'
+              : 'Price history not available yet'}
+          </EmptyTitle>
+          <EmptyDescription>
+            {precisionError ||
+              history.error ||
+              'Recorded prices will appear here when available.'}
+          </EmptyDescription>
+        </EmptyHeader>
+        {history.error && (
+          <Button variant="outline" onClick={history.retry}>
+            Retry
+          </Button>
+        )}
+      </Empty>
+    ) : (
       <PriceHistoryPlot
-        timeframeControl={<ChartTimeframeSelector range={range} onRangeChange={setRange} />}
+        timeframeControl={controls}
         chartType={chartType}
         onChartTypeChange={setChartType}
-        rangeKey={range}
-        points={points.map(point => ({ ...point, candle: candles.get(point.time), exactPrice: exactPrices.get(point.time) ?? String(point.price) }))}
+        rangeKey={`${viewKey}:${displayedHistory.timeframe ?? timeframe}`}
+        points={points}
         timeDomain={timeDomain}
         ticker={ticker}
-        pair={pair}
+        pair={quote}
         embedded={embedded}
-      />
-    </>
-  );
-  return (
-    <>
-      <PriceChart
-        embedded={embedded}
-        ticker={ticker}
-        price={price}
-        quoteSymbol={pair}
-        history={{
-          inlineControls: !!points.length && !precisionError,
-          range,
-          onRangeChange: setRange,
-          content: (
-            <div
-              className={
-                embedded ? 'flex h-full min-h-0 flex-1 flex-col' : 'min-h-60'
-              }
-            >
-              {content}
-              {query.isError && query.data && (
-                <p role="alert" className="text-small text-destructive">
-                  Could not refresh price history.{' '}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void query.refetch()}
-                  >
-                    Retry
-                  </Button>
-                </p>
-              )}
-            </div>
-          ),
+        following={following}
+        onFollowingChange={setFollowing}
+        preset={!custom}
+        onManualRange={(bounds) => {
+          setCustom(true);
+          setWindow(bounds);
         }}
+        onNeedHistory={(time, bars) => {
+          if (history.result)
+            history.loadEarlier(earlierBoundary(time, timeframe, bars));
+        }}
+        dailyChange={displayedHistory.daily}
       />
-    </>
+    );
+  const historyStatus = [
+    !history.older && range === 'ALL' && !custom && history.exhausted
+      ? 'All available history loaded'
+      : '',
+    history.limited ? 'History limit reached; use coarser candles.' : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  return (
+    <PriceChart
+      embedded={embedded}
+      ticker={ticker}
+      price={price}
+      quoteSymbol={quote}
+      history={{
+        inlineControls: !!points.length && !precisionError,
+        range,
+        onRangeChange: selectRange,
+        controls,
+        dailyChange: displayedHistory.daily,
+        content: (
+          <div
+            aria-busy={history.loading}
+            className={
+              embedded ? 'flex h-full min-h-0 flex-1 flex-col' : 'min-h-60'
+            }
+          >
+            {content}
+            {/* {(historyStatus || (range === 'ALL' && !custom)) && (
+              <p
+                className="min-h-4 shrink-0 text-xs text-muted-foreground"
+                title={
+                  history.result
+                    ? `Server snapshot: ${history.result.asOf}. Last price observation: ${history.result.lastObservationAt ?? 'unavailable'}.${history.limited ? ' Chart memory limit: 100,000 candles. Choose a coarser timeframe or shorter range.' : ''}`
+                    : undefined
+                }
+              >
+                {historyStatus}
+              </p>
+            )} */}
+            {history.error && points.length > 0 && (
+              <p
+                role="alert"
+                aria-label={`Could not refresh price history. ${history.error}`}
+                className="flex shrink-0 items-center justify-between gap-2 text-xs text-destructive"
+              >
+                <span className="min-w-0 truncate" title={history.error}>
+                  Could not refresh price history.
+                </span>
+                <Button variant="outline" size="sm" onClick={history.retry}>
+                  Retry
+                </Button>
+              </p>
+            )}
+          </div>
+        ),
+      }}
+    />
   );
 }

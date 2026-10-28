@@ -821,60 +821,48 @@ test('holder UI distinguishes loading, empty, failures and populated balances wi
   assert.ok(failedPage.some((node) => node?.type === 'Button' && node.props.children === 'Retry'));
 });
 
-test('price history preserves observed data and range wiring, with loading/insufficient/error/retry states', () => {
+test('price history keeps daily change independent of candle hover and renders loading/error states', () => {
   const h = harness();
   const jsx = (type, props) => ({ type, props });
-  let selected = '1D', options;
-  let query = { isPending: true, isError: false, refetch() {} };
+  let history = { items: [], daily: null, loading: true, error: '', retry() {}, loadEarlier() {} };
   const { IndexedPriceChart } = load('../../../features/launches/trading/indexed-price-chart.tsx', {
-    require: name => name.endsWith('/api/config') ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
-      : name === 'react' ? { useState: initial => [typeof initial === 'string' ? selected : initial, value => { selected = value; }], useEffect() {}, useRef: () => ({ current: null }) }
-      : name === '@tanstack/react-query' ? { useQuery: value => { options = value; return query; }, useQueryClient: () => ({}) }
-      : name === '@/lib/api/launches/market' ? h.api
+    require: name => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
+      : name === 'react' ? { useState: initial => [typeof initial === 'function' ? initial() : initial, () => {}] }
       : name === '@/lib/api/launches/display' ? h.display
+      : name === './candle-history' ? { displayWindow: (range, now) => [Date.parse(h.api.chartFrom(range, now)), now] }
+      : name === './use-candle-history' ? { useCandleHistory: () => history }
       : name === './price-history-format' ? load('../../../features/launches/trading/price-history-format.ts', {})
-      : name === '@/features/launches/hooks/queries' ? { launchKey: (network, id) => ['launch', network, id], publicQueryOptions: {}, usePageVisible: () => true }
-      : Object.fromEntries(['PriceHistoryPlot', 'PriceChart', 'Skeleton', 'Button', 'Empty', 'EmptyHeader', 'EmptyTitle', 'EmptyDescription'].map(key => [key, key])),
+      : Object.fromEntries(['PriceHistoryPlot', 'PriceChart', 'ChartTimeframeSelector', 'Skeleton', 'Button', 'Empty', 'EmptyHeader', 'EmptyTitle', 'EmptyDescription'].map(key => [key, key])),
   });
   function nodes(value) {
     if (Array.isArray(value)) return value.flatMap(nodes);
     if (!value || typeof value !== 'object') return [value];
     return [value, ...nodes(value.props?.children)];
   }
-  const render = (slug = SLUG, network = 'testnet') => {
-    const tree = nodes(IndexedPriceChart({ slug, network, ticker: 'TOK', pair: 'XLM', price: '2 XLM' }));
-    const wrapper = tree.find(node => node?.type === 'PriceChart');
-    assert.equal(wrapper.props.quoteSymbol, 'XLM');
+  const render = () => {
+    const session = IndexedPriceChart({ slug: SLUG, network: 'testnet', ticker: 'TOK', pair: 'USDC', price: '2 USDC' });
+    const wrapper = session.type(session.props);
     return [wrapper, nodes(wrapper.props.history.content)];
   };
   assert.ok(render()[1].some(node => node?.type === 'Skeleton'));
-  query = { ...query, isPending: false, isError: true, error: new Error('Temporarily unavailable') };
-  assert.ok(render()[1].includes('Could not load price history'));
+  history = { ...history, loading: false, error: 'Temporarily unavailable' };
+  assert.ok(render()[1].includes('Price chart unavailable'));
   assert.ok(render()[1].some(node => node?.type === 'Button' && node.props.children === 'Retry'));
-  query = { ...query, isError: false, data: { ...chart, items: [], from: null } };
+  history = { ...history, error: '', result: chart };
   assert.ok(render()[1].includes('Price history not available yet'));
-  query = { ...query, data: { ...chart, items: [candle], from: '2026-10-11T12:00:00Z' } };
-  const singlePointPlot = render()[1].find(node => node?.type === 'PriceHistoryPlot');
-  assert.equal(singlePointPlot.props.points.length, 1);
-  assert.equal(singlePointPlot.props.points[0].price, h.display.chartPoints(query.data)[0].price);
-  const ohlc = singlePointPlot.props.points[0].candle;
-  assert.equal(ohlc.open, h.display.chartNumber(candle.open, chart.priceScale));
-  assert.equal(ohlc.high, h.display.chartNumber(candle.high, chart.priceScale));
-  assert.equal(ohlc.low, h.display.chartNumber(candle.low, chart.priceScale));
-  assert.equal(ohlc.close, h.display.chartNumber(candle.latestPrice, chart.priceScale));
-  assert.match(ohlc.exact, /^O .+ · H .+ · L .+ · C /);
-  const earlier = { ...candle, timestamp: '2026-10-11T13:00:00Z' };
-  query = { ...query, data: { ...query.data, items: [candle, earlier] } };
+  history = { ...history, items: [candle], daily: '+12.34%' };
   const plot = render()[1].find(node => node?.type === 'PriceHistoryPlot');
-  same(plot.props.points.map(point => ({ time: point.time, price: point.price })), JSON.parse(JSON.stringify(h.display.chartPoints(query.data))));
-  assert.ok(plot.props.points.every(point => typeof point.exactPrice === 'string'));
-  same(plot.props.timeDomain, Array.from(h.display.chartWindow(query.data)));
-  for (const range of ['1D', '1W', '1M', '3M', 'ALL']) {
-    render()[0].props.history.onRangeChange(range);
-    render(OTHER_SLUG, 'public');
-    same(options.queryKey.slice(0, 6), ['launch', 'public', OTHER_SLUG, 'chart', range, h.api.chartTimeframes[range]]);
-  }
-  query = { ...query, isError: true };
+  assert.equal(plot.props.points[0].candle.close, h.display.chartNumber(candle.latestPrice, chart.priceScale));
+  assert.equal(plot.props.dailyChange, '+12.34%');
+  assert.equal(plot.props.pair, 'USDC');
+  assert.match(plot.props.points[0].candle.status, /Open/);
+  assert.match(plot.props.points[0].candle.exact, /^O .+ · H .+ · L .+ · C /);
+  const selector = plot.props.timeframeControl;
+  assert.equal(selector.props.range, '1D');
+  assert.equal(selector.props.timeframe, '15m');
+  assert.equal(typeof selector.props.onRangeChange, 'function');
+  assert.equal(typeof selector.props.onTimeframeChange, 'function');
+  history = { ...history, error: 'Refresh unavailable' };
   assert.ok(render()[1].some(node => node?.props?.role === 'alert'));
 });
 
