@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Flag, type LucideIcon } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -95,6 +95,22 @@ export function LaunchHero({
   graduationPrice?: string;
   loading?: boolean;
 }) {
+  const chartPanel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const panel = chartPanel.current;
+    const tradeCard = panel?.closest('.launch-details')?.querySelector('aside[aria-label="Trade"] > section');
+    if (!panel || !tradeCard) return;
+    // Observe only the independent trade card, so resizing the chart cannot feed back.
+    const observer = new ResizeObserver(([entry]) => {
+      const height = entry.borderBoxSize[0]?.blockSize;
+      if (height && height > 0) panel.style.setProperty('--chart-panel-height', `${height}px`);
+    });
+    observer.observe(tradeCard);
+    return () => {
+      observer.disconnect();
+      panel.style.removeProperty('--chart-panel-height');
+    };
+  }, []);
   const filled = Math.max(0, Math.min(progress ?? 0, 100));
   const percent =
     progress === null
@@ -108,7 +124,7 @@ export function LaunchHero({
       aria-busy={loading || undefined}
       className="min-w-0 scroll-mt-24 outline-none"
     >
-      <div className="relative h-[400px] min-w-0 overflow-hidden border-neutral-200 bg-white p-4 sm:h-[360px] sm:rounded-xl sm:border dark:border-neutral-800 dark:bg-neutral-900">
+      <div ref={chartPanel} className="relative h-[400px] min-w-0 overflow-hidden border-neutral-200 bg-white p-4 sm:h-[360px] sm:rounded-xl sm:border lg:h-[var(--chart-panel-height,360px)] dark:border-neutral-800 dark:bg-neutral-900">
         {priceChart}
       </div>
       <div className="mt-4 border border-border bg-white p-4 text-neutral-900 sm:rounded-xl dark:bg-neutral-900 dark:text-neutral-50">
