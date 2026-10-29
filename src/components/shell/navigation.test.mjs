@@ -100,3 +100,11 @@ test('active matching respects path boundaries', () => {
     assert.equal(isActive(pathname, projectBrowseItems[0]), false, pathname);
   }
 });
+
+test('canonical networks retain query parameters and hashes on internal links', () => {
+  for (const id of ['stellar-mainnet', 'stellar-testnet', 'base-mainnet', 'base-sepolia']) {
+    assert.equal(navigation.navigationHref('/projects?q=token#results', id), `/projects?q=token&network=${id}#results`);
+    assert.equal(navigation.navigationHref('/create?network=public', id), `/create?network=${id}`);
+    assert.equal(navigation.navigationHref('//example.com', id), '//example.com');
+  }
+});

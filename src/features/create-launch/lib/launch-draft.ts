@@ -1,3 +1,4 @@
+import { getConfiguration } from '../../../lib/api/config';
 import { validProjectLink } from '../../../lib/client-rules';
 export type SaleMethod = 'bonding' | 'fixed' | 'auction';
 export type LaunchMethod = SaleMethod;
@@ -150,11 +151,11 @@ export function validPositive(value: string) {
 }
 
 export function validSupply(value: string) {
-  if (!/^\d+(?:\.\d{1,7})?$/.test(value.trim())) return false;
+  const base = 'chain' in getConfiguration(), decimals = base ? 18 : 7;
+  if (!new RegExp('^\\d+(?:\\.\\d{1,' + decimals + '})?$').test(value.trim())) return false;
   const [whole, fraction = ''] = value.trim().split('.');
-  const units =
-    BigInt(whole) * BigInt(10_000_000) + BigInt(fraction.padEnd(7, '0'));
-  return units > BigInt(0) && units <= BigInt('9223372036854775807');
+  const units = BigInt(whole) * BigInt(10) ** BigInt(decimals) + BigInt(fraction.padEnd(decimals, '0') || '0');
+  return units > BigInt(0) && units <= (base ? (BigInt(1) << BigInt(128)) - BigInt(1) : BigInt('9223372036854775807'));
 }
 
 export function validPercent(value: string, allowZero = true) {
@@ -180,16 +181,17 @@ export function formatAmount(value: string) {
 
 export function formatSupplyShare(supply: string, percent: string) {
   if (!validSupply(supply) || !validPercent(percent)) return '—';
+  const decimals = 'chain' in getConfiguration() ? 18 : 7, unit = BigInt(10) ** BigInt(decimals);
   const [whole, fraction = ''] = supply.trim().split('.');
   const units =
-    BigInt(whole) * BigInt(10_000_000) + BigInt(fraction.padEnd(7, '0'));
+    BigInt(whole) * unit + BigInt(fraction.padEnd(decimals, '0'));
   const [percentWhole, percentFraction = ''] = percent.trim().split('.');
   const basisPoints =
     BigInt(percentWhole) * BigInt(100) + BigInt(percentFraction.padEnd(2, '0'));
   const allocated = (units * basisPoints) / BigInt(10_000);
-  const allocatedWhole = allocated / BigInt(10_000_000);
-  const allocatedFraction = String(allocated % BigInt(10_000_000))
-    .padStart(7, '0')
+  const allocatedWhole = allocated / unit;
+  const allocatedFraction = String(allocated % unit)
+    .padStart(decimals, '0')
     .replace(/0+$/, '');
   return allocatedFraction
     ? `${allocatedWhole.toLocaleString('en-US')}.${allocatedFraction}`

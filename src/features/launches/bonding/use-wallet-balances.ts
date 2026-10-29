@@ -31,7 +31,7 @@ function useWalletValue(
       return integer(result.values[0]);
     },
     enabled: options.enabled,
-    refetchInterval: 15_000,
+    refetchInterval: 3_000,
     retry: false,
   });
   const status: BalanceStatus =
@@ -40,8 +40,7 @@ function useWalletValue(
       : query.isError || query.isFetched ? 'error'
         : query.isLoading ? 'loading' : 'idle';
 
-  // @ts-ignore
-  return { ...query, balanceStatus: status, data: query.data || 0n };
+  return { ...query, balanceStatus: status };
 }
 
 export function useWalletBalances(options: WalletReadOptions) {

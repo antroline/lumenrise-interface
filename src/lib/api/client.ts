@@ -1,9 +1,8 @@
 /**
  * Shared HTTP client for the LumenRise API.
  *
- * The API identifies users through the `X-User-Id` header, which carries the
- * numeric user id issued by the authentication provider after sign-in. There
- * are no bearer tokens, JWTs, or refresh flows for this API.
+ * Stellar retains Blux identification. Base additionally requires a current
+ * Privy bearer token matching the full DID in X-User-Id.
  *
  * All responses use the envelope `{ status: "success" | "error", message, result }`.
  */
@@ -13,6 +12,7 @@ export type ApiErrorCode =
   | 'network'
   | 'timeout'
   | 'invalid-response'
+  | 'unavailable'
   | 'unauthenticated';
 
 export class ApiError extends Error {
@@ -49,12 +49,47 @@ const UPLOAD_TIMEOUT_MS = 30_000;
 let apiBaseUrl = '';
 let currentUserId: string | null = null;
 let selectedNetwork: string | undefined;
+/** Shared read context. Stellar transaction configuration remains independent. */
+export let API_NETWORK: 'testnet' | 'public';
 let supportedNetworks: readonly string[] = [];
+let chainApiAvailable = true;
+export type ApiChain = 'stellar' | 'base';
+export type ApiContext = { chain: ApiChain; network: 'testnet' | 'public' };
+let selectedChain: ApiChain = 'stellar';
+let baseAuthentication: { userId: string; getAccessToken: () => Promise<string | null>; onExpired: () => void } | null = null;
+let contextRevision = 0;
 const retryDeadlines = new Map<string, number>();
+
+export function getApiChain(): ApiChain { return selectedChain; }
+export function getApiNetwork(): 'testnet' | 'public' {
+  if (selectedNetwork !== 'testnet' && selectedNetwork !== 'public') throw new Error('API network is not configured.');
+  return selectedNetwork;
+}
+export function getApiContext(): ApiContext { return { chain: selectedChain, network: getApiNetwork() }; }
+export function configureApiContext(context: ApiContext, supported: readonly string[] = ['testnet', 'public']) {
+  if (context.chain !== selectedChain || context.network !== selectedNetwork) {
+    contextRevision++;
+    currentUserId = null;
+    baseAuthentication = null;
+  }
+  selectedChain = context.chain;
+  configureApiNetwork(context.network, supported);
+  chainApiAvailable = true;
+}
+export function setBaseAuthentication(value: typeof baseAuthentication) {
+  if (value && !/^did:privy:[A-Za-z0-9_-]+$/.test(value.userId)) throw new Error('Invalid Privy identity.');
+  baseAuthentication = value;
+}
+
+/** Retained for callers that explicitly gate unavailable services. */
+export function setChainApiAvailable(available: boolean) {
+  chainApiAvailable = available;
+}
 
 export function configureApiNetwork(network: string, supported: readonly string[]) {
   if (!supported.includes(network)) throw new Error('Unsupported API network.');
   selectedNetwork = network;
+  if (network === 'testnet' || network === 'public') API_NETWORK = network;
   supportedNetworks = supported;
 }
 
@@ -64,7 +99,9 @@ export function configureApiNetwork(network: string, supported: readonly string[
  * to same-origin requests.
  */
 export function configureApi(baseUrl: string) {
-  apiBaseUrl = baseUrl.trim().replace(/\/+$/, '');
+  const next = baseUrl.trim().replace(/\/+$/, '');
+  if (next !== apiBaseUrl) contextRevision++;
+  apiBaseUrl = next;
 }
 
 export function getApiBaseUrl() {
@@ -73,7 +110,7 @@ export function getApiBaseUrl() {
 
 /** Called by the app providers whenever the signed-in user changes or signs out. */
 export function setApiUserId(userId: string | null) {
-  currentUserId = userId && /^\d+$/.test(userId) ? userId : null;
+  currentUserId = userId && (selectedChain === 'base' ? /^did:privy:[A-Za-z0-9_-]+$/ : /^\d+$/).test(userId) ? userId : null;
 }
 
 export function getApiUserId() {
@@ -136,6 +173,8 @@ export type ApiRequestOptions = {
   /** Some mutations only complete on a specific success status (trade recording: 200). */
   expectedStatus?: number;
   network?: 'testnet' | 'public';
+  /** Durable work must retain its originating chain and environment. */
+  context?: ApiContext;
 };
 
 function parseEnvelope(text: string): ApiEnvelope {
@@ -162,22 +201,39 @@ export async function apiRequest<T>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<T> {
+  if (!/^\/(?!\/)/.test(path) || path.includes('#') || path.includes('\\'))
+    throw new ApiError('Invalid API path.', 'invalid-response');
+  const revision = contextRevision;
+  const chain = options.context?.chain ?? selectedChain;
+  if (chain !== selectedChain) throw new ApiError('Reload to change request chain.', 'unavailable');
   const headers: Record<string, string> = {};
-  if (path !== '/config') {
+  headers['X-Chain'] = chain;
+  if (path !== '/config' || chain === 'base') {
+    if (!chainApiAvailable)
+      throw new ApiError('Services for the selected network are not available yet.', 'unavailable');
     const queryNetwork = new URLSearchParams(path.split('?')[1]).get('network');
-    if (queryNetwork && options.network && queryNetwork !== options.network)
-      throw new ApiError('Conflicting Stellar networks.', 'invalid-response');
-    const network = options.network ?? queryNetwork ?? selectedNetwork;
+    const explicit = options.context?.network ?? options.network;
+    const bodyNetwork = options.formData?.get('network') ??
+      (options.json && typeof options.json === 'object' && 'network' in options.json ? options.json.network : undefined);
+    const network = explicit ?? queryNetwork ?? selectedNetwork;
+    if ((queryNetwork && network !== queryNetwork) || (bodyNetwork != null && bodyNetwork !== network) ||
+        (options.context && options.network && options.context.network !== options.network) ||
+        (chain === 'base' && selectedNetwork && network !== selectedNetwork))
+      throw new ApiError('Conflicting request networks.', 'invalid-response');
     if (network) {
       if (selectedNetwork && !supportedNetworks.includes(network))
-        throw new ApiError('Unsupported Stellar network.', 'invalid-response');
-      headers['X-Stellar-Network'] = network;
+        throw new ApiError('Unsupported API network.', 'invalid-response');
+      headers[chain === 'base' ? 'X-Network' : 'X-Stellar-Network'] = network;
     }
   }
   if (options.json !== undefined) headers['Content-Type'] = 'application/json';
   // FormData bodies intentionally set no Content-Type: the browser adds the
   // multipart boundary itself.
-  if (options.user) {
+  const protectedRequest = options.user || (chain === 'base' && /^\/auth\/(?:resolve|register)(?:\?|$)/.test(path));
+  const authentication = baseAuthentication;
+  if (chain === 'base' && !/^\/(?:config(?:\?|$)|auth\/(?:resolve|register|status|session)(?:\?|$)|user(?:\/avatar)?(?:\?|$)|launches(?:\/|\?|$))/.test(path))
+    throw new ApiError('This feature is available on Stellar only.', 'unavailable');
+  if (protectedRequest) {
     const userId = getApiUserId();
     if (!userId) {
       throw new ApiError(
@@ -186,9 +242,11 @@ export async function apiRequest<T>(
       );
     }
     headers['X-User-Id'] = userId;
+    if (chain === 'base' && (!authentication || authentication.userId !== userId))
+      throw new ApiError('Sign in to Base again.', 'unauthenticated');
   }
 
-  const retryKey = JSON.stringify([options.method ?? 'GET', path.split('?')[0], headers['X-Stellar-Network'], currentUserId]);
+  const retryKey = JSON.stringify([chain, options.method ?? 'GET', path.split('?')[0], headers['X-Network'] ?? headers['X-Stellar-Network'], currentUserId]);
   const remaining = (retryDeadlines.get(retryKey) ?? 0) - Date.now();
   if (remaining > 0) throw new ApiError('Please wait before trying this request again.', 'http', { status: 429, retryAfterMs: remaining });
   retryDeadlines.delete(retryKey);
@@ -215,20 +273,43 @@ export async function apiRequest<T>(
   let response: Response;
   let responseText: string;
   try {
-    response = await fetch(apiUrl(path), {
-      method: options.method ?? 'GET',
-      headers,
-      body:
-        options.formData ??
-        (options.json !== undefined ? JSON.stringify(options.json) : undefined),
-      signal: controller.signal,
-      ...(path === '/config' ? { cache: 'no-store' as const } : {}),
-    });
+    const requestUrl = apiUrl(path);
+    const send = async () => {
+      if (protectedRequest && chain === 'base' && authentication) {
+        const token = await authentication.getAccessToken();
+        if (authentication !== baseAuthentication || authentication.userId !== getApiUserId())
+          throw new DOMException('Account changed.', 'AbortError');
+        if (!token) {
+          authentication.onExpired();
+          throw new ApiError('Sign in to Base again.', 'unauthenticated');
+        }
+        headers.Authorization = `Bearer ${token}`;
+      }
+      if (revision !== contextRevision) throw new DOMException('Request context changed.', 'AbortError');
+      return fetch(requestUrl, {
+        method: options.method ?? 'GET',
+        headers,
+        body:
+          options.formData ??
+          (options.json !== undefined ? JSON.stringify(options.json) : undefined),
+        signal: controller.signal,
+        ...(chain === 'base' && protectedRequest ? { redirect: 'error' as const } : {}),
+        ...(path === '/config' ? { cache: 'no-store' as const } : {}),
+      });
+    };
+    response = await send();
+    if (response.status === 401 && chain === 'base' && protectedRequest) {
+      response = await send();
+    }
     responseText = await response.text();
+    if (revision !== contextRevision || (chain === 'base' && protectedRequest && authentication !== baseAuthentication))
+      throw new DOMException('Request context changed.', 'AbortError');
+    if (response.status === 401 && chain === 'base' && protectedRequest) authentication?.onExpired();
   } catch (error) {
     if (timedOut) {
       throw new ApiError('The request timed out. Try again.', 'timeout');
     }
+    if (error instanceof ApiError || (error instanceof Error && error.name === 'AbortError')) throw error;
     if (options.signal?.aborted || controller.signal.aborted) {
       throw error instanceof Error ? error : new Error('Request aborted');
     }

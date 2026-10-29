@@ -6,6 +6,7 @@ import { Suspense, type ReactNode } from 'react'
 import { LaunchPageSkeleton } from '@/features/launches/components/launch-page-skeleton'
 import { ConfigurationProvider } from './configuration-provider'
 import { AppLoading } from './app-loading'
+import { useNetwork } from '@/lib/networks/context'
 
 function ClientAppLoading() {
   const pathname = usePathname()
@@ -30,6 +31,17 @@ const ClientApp = dynamic(() => import('./client-app'), {
   loading: ClientAppLoading,
 })
 
+const BaseProvider = dynamic(() => import('@/features/base/components/base-provider'), {
+  ssr: false,
+  loading: AppLoading,
+})
+
+function NetworkApplication({ children, apiBaseUrl }: { children: ReactNode; apiBaseUrl: string }) {
+  const { activeNetwork } = useNetwork()
+  if (activeNetwork.blockchain === 'base') return <BaseProvider>{children}</BaseProvider>
+  return <ClientApp apiBaseUrl={apiBaseUrl}>{children}</ClientApp>
+}
+
 export function Providers({
   children,
   apiBaseUrl,
@@ -40,7 +52,7 @@ export function Providers({
   return (
     <Suspense fallback={<AppLoading />}>
       <ConfigurationProvider apiBaseUrl={apiBaseUrl}>
-        <ClientApp apiBaseUrl={apiBaseUrl}>{children}</ClientApp>
+        <NetworkApplication apiBaseUrl={apiBaseUrl}>{children}</NetworkApplication>
       </ConfigurationProvider>
     </Suspense>
   )

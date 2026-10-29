@@ -1,3 +1,5 @@
+import { getConfiguration } from '../../../lib/api/config';
+import { parseBaseAmount, MAX_BASE_AMOUNT } from '../../../lib/base/amount';
 import { numberValue, validPercent, validSupply, type LaunchDraft } from './launch-draft';
 
 export function calculateLaunch(totalSupply: number, creatorPayout: number, creatorTaxBps: number, teamBps: number) {
@@ -62,6 +64,7 @@ function units(value: string) {
 
 /** Preview uses the supplied formula; deployment retains exact seven-decimal amounts. */
 export function calculateDraftLaunch(draft: LaunchDraft) {
+  if ('chain' in getConfiguration()) return calculateBaseDraftPreview(draft);
   if (!validSupply(draft.supply)) throw new Error('Enter a valid total supply with up to 7 decimal places.');
   if (!/^\d+(?:\.\d{1,7})?$/.test(draft.bonding.creatorPayout.trim()))
     throw new Error('Enter a creator raise of $0 or at least $0.50, with up to 7 decimal places.');
@@ -92,7 +95,7 @@ export function calculateDraftLaunch(draft: LaunchDraft) {
   if (Math.abs(deployedStartPrice / result.startPrice - 1) > 1 / 10_000 ||
     Math.abs(deployedGraduationPrice / result.graduationPrice - 1) > 1 / 10_000)
     throw new Error('Inputs exceed supported deployment precision. Increase total supply.');
-  return { ...result, tokenUnits: { curve: inventory.toString(), team: team.toString(), pool: pool.toString() }, contract: {
+  return { ...result, assetDecimals: 7, tokenUnits: { curve: inventory.toString(), team: team.toString(), pool: pool.toString() }, contract: {
     virtual_base_reserve: base.toString(), virtual_quote_reserve: quote.toString(), graduation_target: target.toString(),
   } };
 }
@@ -122,8 +125,52 @@ export function formatLaunchPrice(value: number) {
   return new Intl.NumberFormat('en-US', { maximumSignificantDigits: 7 }).format(value);
 }
 
-export function formatLaunchUnits(value: string) {
-  const amount = BigInt(value);
-  const fraction = (amount % UNIT).toString().padStart(7, '0').replace(/0+$/, '');
-  return `${(amount / UNIT).toLocaleString('en-US')}${fraction ? `.${fraction}` : ''}`;
+export function formatLaunchUnits(value: string, decimals = 7) {
+  const amount = BigInt(value), unit = BigInt(10) ** BigInt(decimals);
+  const fraction = (amount % unit).toString().padStart(decimals, '0').replace(/0+$/, '');
+  return `${(amount / unit).toLocaleString('en-US')}${fraction ? `.${fraction}` : ''}`;
+}
+
+/** Draft-only projections. Exact arithmetic uses a dimensionless USD scale, never guessed pair base units. */
+function calculateBaseDraftPreview(draft: LaunchDraft) {
+  const unit = BigInt(10) ** BigInt(18), bpsUnit = BigInt(10000);
+  const supply = parseBaseAmount(draft.supply, 18);
+  if (supply > MAX_BASE_AMOUNT) throw new Error('Supply exceeds uint128.');
+  const payout = /^0(?:\.0+)?$/.test(draft.bonding.creatorPayout.trim()) ? BigInt(0) : parseBaseAmount(draft.bonding.creatorPayout, 18);
+  const percent = (text: string) => {
+    if (!/^\d{1,3}(?:\.\d{1,2})?$/.test(text.trim())) throw new Error('Use a percentage with up to 2 decimal places.');
+    const [whole, fraction = ''] = text.trim().split('.');
+    return BigInt(whole) * BigInt(100) + BigInt(fraction.padEnd(2, '0'));
+  };
+  const taxBps = percent(draft.bonding.creatorFee), teamBps = percent(draft.allocation.teamShare);
+  if (taxBps > BigInt(1000) || teamBps >= bpsUnit) throw new Error('Invalid creator tax or team allocation.');
+  const payoutBps = payout * bpsUnit / (BigInt(5000) * unit) > BigInt(1000) ? BigInt(1000) : payout * bpsUnit / (BigInt(5000) * unit);
+  if (payout > BigInt(0) && payoutBps === BigInt(0)) throw new Error('Creator raise must be zero or at least $0.50.');
+  const target = payout === BigInt(0) ? BigInt(5000) * unit : ceilDivide(payout * bpsUnit, payoutBps);
+  // Creation verifies the factory fee and converts these exact economics using live pair decimals.
+  const platformBps = BigInt(100), remainingShare = bpsUnit - payoutBps - platformBps;
+  const ratio = BigInt('3162277660168379331'); // floor(sqrt(10) * 10^18)
+  const denominator = bpsUnit * ratio + remainingShare * unit;
+  const poolBps = ((bpsUnit - teamBps) * remainingShare * unit + denominator / BigInt(2)) / denominator;
+  const curveBps = bpsUnit - teamBps - poolBps;
+  const inventory = supply * curveBps / bpsUnit, team = supply * teamBps / bpsUnit, pool = supply - inventory - team;
+  const numerator = remainingShare * inventory, divisor = bpsUnit * pool;
+  if (poolBps <= BigInt(0) || inventory <= BigInt(0) || pool <= BigInt(0) || numerator <= divisor) throw new Error('Supply or team allocation leaves too little usable liquidity.');
+  const base = ceilDivide(inventory * numerator, numerator - divisor), quote = ceilDivide(target * (base - inventory), inventory);
+  if (base > MAX_BASE_AMOUNT) throw new Error('Curve reserve exceeds uint128.');
+  const startPrice = ceilDivide(quote * unit, base), graduationPrice = ceilDivide(quote * base * unit, (base - inventory) ** BigInt(2));
+  const revenue = target * platformBps / bpsUnit, poolQuote = target - payout - revenue;
+  // Finite rendering projections only. No projection is ever used for encoding, comparisons, or signing.
+  const project = (raw: bigint) => Number(raw) / 1e18;
+  return {
+    baseExact: { graduationTarget: target, virtualQuoteReserve: quote },
+    assetDecimals: 18, totalSupply: project(supply), creatorPayout: project(payout), creatorPayoutBps: Number(payoutBps), creatorTaxBps: Number(taxBps), teamBps: Number(teamBps), platformFeeBps: 100,
+    graduationTarget: project(target), allocations: { team_bps: Number(teamBps), curve_bps: Number(curveBps), pool_bps: Number(poolBps) },
+    teamTokens: project(team), curveTokens: project(inventory), poolTokens: project(pool), poolQuote: project(poolQuote), platformRevenue: project(revenue),
+    virtualBaseReserve: project(base), virtualQuoteReserve: project(quote), startPrice: project(startPrice), graduationPrice: project(graduationPrice),
+    poolPrice: project(ceilDivide(poolQuote * unit, pool)), targetPriceMultiplier: 10, actualPriceMultiplier: Number(graduationPrice * unit / startPrice) / 1e18,
+    buyOnlyCreatorTaxEstimate: project(target * taxBps / bpsUnit), buyOnlyBuyerSpendEstimate: project(target * (bpsUnit + taxBps) / bpsUnit),
+    tokenUnits: { curve: inventory.toString(), team: team.toString(), pool: pool.toString() },
+    contract: { virtual_base_reserve: base.toString(), virtual_quote_reserve: 'Unavailable until pair decimals are verified', graduation_target: 'Unavailable until pair decimals are verified' },
+  };
 }

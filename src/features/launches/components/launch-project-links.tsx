@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { safeExternalUrl } from '../lib/external-url';
 import { launchFocus } from './launch-panel';
 import { TradeTooltip } from '../trading/trade-tooltip';
+import { explorerUrl, explorerName } from '@/lib/chain-address';
 
 export type LaunchLinks = { website?: string; x?: string; github?: string };
 
@@ -111,13 +112,13 @@ export function LaunchProjectLinks({
           <span className="text-xs text-muted-foreground">Contract</span>
           <div className="flex min-w-0 items-center gap-1">
             <TradeTooltip
-              content={`Launch contract: ${address}. Open on Stellar Expert.`}
+              content={`Launch contract: ${address}. Open on ${explorerName()}.`}
             >
               <a
-                href={`https://stellar.expert/explorer/${network}/contract/${address}`}
+                href={explorerUrl(address, network)}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`View launch contract ${address} on Stellar Expert`}
+                aria-label={`View launch contract ${address} on ${explorerName()}`}
                 className={cn(
                   'inline-flex min-w-0 items-center gap-1.5 text-xs transition-colors hover:text-foreground',
                   launchFocus,
@@ -174,12 +175,12 @@ export function ExplorerLink({
   label: string;
 }) {
   return (
-    <TradeTooltip content={`View ${label} on Stellar Expert`}>
+    <TradeTooltip content={`View ${label} on ${explorerName()}`}>
       <a
-        href={`https://stellar.expert/explorer/${network}/${address.startsWith('C') ? 'contract' : 'account'}/${address}`}
+        href={explorerUrl(address, network)}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label={`View ${label} on Stellar Expert`}
+        aria-label={`View ${label} on ${explorerName()}`}
         className={iconButton}
       >
         <ExternalLink className="size-4" aria-hidden="true" />

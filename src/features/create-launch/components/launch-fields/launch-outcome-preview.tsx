@@ -125,7 +125,7 @@ export function LaunchOutcomePreview({ draft }: { draft: LaunchDraft }) {
                   </span>
                   <span className="min-w-0 break-all text-right font-semibold tabular-nums">
                     {share.units
-                      ? `${formatLaunchUnits(share.units)} ${symbol}`
+                      ? `${formatLaunchUnits(share.units, c?.assetDecimals)} ${symbol}`
                       : '—'}
                   </span>
                 </span>

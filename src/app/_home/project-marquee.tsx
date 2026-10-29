@@ -1,5 +1,7 @@
 'use client';
 
+import { routeNetwork } from '@/lib/chain-address';
+
 import Link from 'next/link';
 import { useState } from 'react';
 import { ArrowRight, Pause, Play } from 'lucide-react';
@@ -60,7 +62,7 @@ export function ProjectMarquee({
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="marquee-heading" className="text-h2 font-semibold">On the curve</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Bonding curve launches on Stellar. Open one to read its terms.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Bonding curve launches on the selected network. Open one to read its terms.</p>
         </div>
         <div className="flex items-center gap-2">
           {loops && (
@@ -75,7 +77,7 @@ export function ProjectMarquee({
               {paused ? <Play /> : <Pause />}
             </Button>
           )}
-          <Button variant="outline" size="sm" render={<Link href={`/projects?network=${network}`} />} nativeButton={false}>
+          <Button variant="outline" size="sm" render={<Link href={`/projects?network=${routeNetwork(network)}`} />} nativeButton={false}>
             All projects <ArrowRight data-icon="inline-end" />
           </Button>
         </div>

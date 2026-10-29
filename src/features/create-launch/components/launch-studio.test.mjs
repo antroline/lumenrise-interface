@@ -1,4 +1,4 @@
-import { networkModule } from '../../../configuration-fixture.mjs';
+import { apiContextModule, chainAddressModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
@@ -6,7 +6,7 @@ import test from 'node:test';
 import ts from 'typescript';
 
 const source = ts.transpileModule(
-  readFileSync(new URL('./launch-studio.tsx', import.meta.url), 'utf8'),
+  readFileSync(new URL('./launch-studio.tsx', import.meta.url), 'utf8') + '\nexport { LaunchStudioContent, StellarLaunchStudio };',
   { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } },
 ).outputText;
 
@@ -34,6 +34,7 @@ function studioHarness(status, accountReady = true) {
     'react/jsx-runtime': { jsx, jsxs: jsx },
     'motion/react': { AnimatePresence: 'AnimatePresence' },
     '@/lib/launchpad': { useLaunchpad: () => ({ notify() {}, accountReady }) },
+    '../hooks/use-base-bonding-launch': { useBaseBondingLaunch: () => ({ operation: status ? { status } : null, working: status === 'running', launch() { launches++; } }) },
     '../hooks/use-bonding-launch': {
       useBondingLaunch: () => ({ operation: status ? { status } : null, working: status === 'running', launch() { launches++; } }),
     },
@@ -50,7 +51,10 @@ function studioHarness(status, accountReady = true) {
   runInNewContext(source, {
     module, exports: module.exports,
     require(name) {
-      if (name === '@/lib/stellar/network') return networkModule;
+      if (name === '@/lib/api/client') return { ...apiContextModule, ApiError: typeof ApiError === 'function' ? ApiError : Error };
+        if (name === '@/lib/chain-address') return chainAddressModule;
+      if (name === '@/lib/base/deployment') return { BASE_WRITE_BLOCK_REASON: 'Deployment verification required', requireBaseWrites() { throw new Error('Blocked'); } };
+        if (name === '@/lib/stellar/network') return networkModule;
       assert.ok(name in mocks, `Unexpected import: ${name}`);
       return mocks[name];
     },
@@ -60,8 +64,8 @@ function studioHarness(status, accountReady = true) {
     return module.exports.LaunchStudio().props.children;
   }
   const first = render();
-  first.type(first.props);
-  return { first, render, cleanup: () => cleanup, launches: () => launches, content() { cursor = 1; return first.type(first.props); } };
+  const content = first.type(first.props); content.type(content.props);
+  return { first, render, cleanup: () => cleanup, launches: () => launches, content() { cursor = 1; const content = first.type(first.props); return content.type(content.props); } };
 }
 
 test('completed launch stays visible until exit, then returning creates a fresh studio session', () => {

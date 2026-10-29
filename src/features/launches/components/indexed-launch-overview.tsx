@@ -1,6 +1,10 @@
 'use client';
 
+import { assetScale, pairScale } from '@/lib/api/launches/display';
+
 import { useEffect, useState, type ReactNode } from 'react';
+import { getApiChain } from '@/lib/api/client';
+import { routeNetwork } from '@/lib/chain-address';
 import { Coins, Clock3 } from 'lucide-react';
 import { TradeMotion } from '../trading/trade-motion';
 import { IndexedPriceChart } from '../trading/indexed-price-chart';
@@ -45,10 +49,9 @@ import { TradeTooltipText } from '../trading/trade-tooltip';
 import { LaunchTokenomics, type VestingPlan } from './launch-tokenomics';
 import { LaunchDescription } from './launch-description';
 
-const UNIT = BigInt(10_000_000);
 
 /** Headline amounts round to cents; exact values stay in titles and the contract details. */
-const headline = (raw: string) => detailAmount(roundAmount(raw, 2));
+const headline = (raw: string, scale: number | null) => scale === null ? '—' : detailAmount(roundAmount(raw, 2, scale), scale);
 
 function shortDate(seconds: bigint) {
   return new Date(Number(seconds) * 1000).toLocaleDateString('en-US', {
@@ -185,7 +188,7 @@ function FactRows({
           }
         >
           <dt className={compact ? 'text-xs leading-5 text-muted-foreground' : 'text-muted-foreground'}>
-            <TradeTooltipText content={compact ? marketHelp[term] : undefined}>
+            <TradeTooltipText content={compact ? term === 'Holders' && getApiChain() === 'base' ? 'Known balances derived from indexed trades and token transfers. Indexing may be delayed or replayed after a reorganization.' : marketHelp[term] : undefined}>
               {term}
             </TradeTooltipText>
           </dt>
@@ -258,12 +261,14 @@ export function IndexedLaunchOverview({
   const pendingAmount = (
     <Skeleton className="ml-auto h-4 w-20 motion-reduce:animate-none" />
   );
-  const networkName = `Stellar ${network === 'public' ? 'Mainnet' : 'Testnet'}`;
+  const networkName = `${getApiChain() === 'base' ? 'Base' : 'Stellar'} ${network === 'public' ? 'Mainnet' : 'Testnet'}`;
 
+  const assetDecimals = assetScale(launch), pairDecimals = pairScale(launch);
+  const priceDecimals = snapshot ? 7 : market.data?.priceScale ?? pairDecimals;
   const supply = b ? BigInt(b.totalSupply) : undefined;
   const fdv =
-    price != null && supply !== undefined
-      ? (BigInt(price) * supply) / UNIT
+    price != null && supply !== undefined && assetDecimals !== null
+      ? (BigInt(price) * supply) / (BigInt(10) ** BigInt(assetDecimals))
       : undefined;
   const share = (amount: string) =>
     b ? allocationShare(amount, b.totalSupply) : '—';
@@ -272,8 +277,9 @@ export function IndexedLaunchOverview({
       ? Number((BigInt(amount) * BigInt(10_000)) / supply)
       : 0;
 
-  const curveInput: CurveModelInput | undefined = b
+  const curveInput: CurveModelInput | undefined = b && assetDecimals !== null
     ? {
+        assetDecimals,
         base: BigInt(b.curve.virtualBaseReserve),
         quote: BigInt(b.curve.virtualQuoteReserve),
         capacity: BigInt(b.buckets.curve),
@@ -284,7 +290,7 @@ export function IndexedLaunchOverview({
   const model = curveInput ? curveModel(curveInput) : null;
   const graduationPrice =
     curveInput && model?.graduation != null
-      ? modelPrice(curveInput.base, curveInput.quote, model.graduation)
+      ? modelPrice(curveInput.base, curveInput.quote, model.graduation, curveInput.assetDecimals)
       : undefined;
 
   const figures: LaunchFigure[] = [
@@ -293,10 +299,10 @@ export function IndexedLaunchOverview({
       label: 'Tokens sold',
       help: 'Net tokens sold on the curve after sell-backs, compared with the public curve allocation.',
       value: b
-        ? `${compactAmount(b.state.sold)} / ${compactAmount(b.buckets.curve)} ${ticker}`
+        ? `${compactAmount(b.state.sold, assetDecimals)} / ${compactAmount(b.buckets.curve, assetDecimals)} ${ticker}`
         : 'Unavailable',
       title: b
-        ? `${detailAmount(b.state.sold)} of ${detailAmount(b.buckets.curve)} ${ticker}, net of sell-backs`
+        ? `${detailAmount(b.state.sold, assetDecimals)} of ${detailAmount(b.buckets.curve, assetDecimals)} ${ticker}, net of sell-backs`
         : undefined,
     },
     {
@@ -332,7 +338,7 @@ export function IndexedLaunchOverview({
           }
         : {
             kind: 'schedule',
-            summary: `Vests to the creator with ${cliffText}, then ${b.vesting.schedule.toLowerCase()} unlocks over ${durationLabel(b.vesting.durationSeconds)}. ${detailAmount(b.state.teamClaimed)} ${ticker} claimed so far.`,
+            summary: `Vests to the creator with ${cliffText}, then ${b.vesting.schedule.toLowerCase()} unlocks over ${durationLabel(b.vesting.durationSeconds)}. ${detailAmount(b.state.teamClaimed, assetDecimals)} ${ticker} claimed so far.`,
             cliffShare: Number(cliff) / Number(cliff + duration),
             start: shortDate(start),
             cliffEnd: shortDate(start + cliff),
@@ -356,7 +362,7 @@ export function IndexedLaunchOverview({
         },
         {
           label: 'Graduation',
-          value: `${compactAmount(b.curve.graduationTarget)} ${pair}`,
+          value: `${compactAmount(b.curve.graduationTarget, pairDecimals)} ${pair}`,
           caption: 'Reserve target',
           detail:
             b.status === 'Graduated'
@@ -405,7 +411,7 @@ export function IndexedLaunchOverview({
         className="launch-details mx-auto w-full max-w-[1320px] pb-24 lg:pb-16 selection:bg-lime selection:text-ink dark:bg-neutral-950 dark:text-neutral-50 dark:[--muted:var(--color-neutral-800)]! dark:[--surface:var(--color-neutral-800)]! dark:[--input:var(--color-neutral-800)]! [&_section]:shadow-none [&_[data-slot=card]]:shadow-none"
       >
         <div className="mb-4 px-4 sm:px-0 md:hidden">
-          <BackLink href={`/projects?network=${network}`}>Projects</BackLink>
+          <BackLink href={`/projects?network=${routeNetwork(network)}`}>Projects</BackLink>
         </div>
         <div className="mb-4 flex flex-col gap-2 px-4 text-small empty:hidden sm:px-0">
           {feedback}
@@ -451,23 +457,23 @@ export function IndexedLaunchOverview({
                   network={network}
                   ticker={ticker}
                   pair={pair}
-                  price={price == null ? '—' : `${detailAmount(price)} ${pair}`}
+                  price={price == null ? '—' : `${detailAmount(price, priceDecimals)} ${pair}`}
                 />
               }
               status={status}
               progress={progress}
-              raised={b ? headline(b.state.quoteReserve) : '—'}
+              raised={b ? headline(b.state.quoteReserve, pairDecimals) : '—'}
               raisedTitle={
-                b ? `${detailAmount(b.state.quoteReserve)} ${pair}` : undefined
+                b ? `${detailAmount(b.state.quoteReserve, pairDecimals)} ${pair}` : undefined
               }
-              target={b ? headline(b.curve.graduationTarget) : '—'}
+              target={b ? headline(b.curve.graduationTarget, pairDecimals) : '—'}
               pair={pair}
               stale={stale}
               figures={figures}
               graduationPrice={
                 graduationPrice === undefined
                   ? undefined
-                  : `${detailAmount(graduationPrice.toString())} ${pair}`
+                  : `${detailAmount(graduationPrice.toString(), pairDecimals)} ${pair}`
               }
               marketStats={
                 <section id="market-stats" aria-labelledby="market-overview-heading" className="mt-4 border border-border bg-white p-4 text-neutral-900 sm:rounded-xl dark:bg-neutral-900 dark:text-neutral-50">
@@ -488,7 +494,7 @@ export function IndexedLaunchOverview({
                           ? loading
                             ? pendingAmount
                             : 'Unavailable'
-                          : `${compactAmount(fdv.toString())} ${pair}`,
+                          : `${compactAmount(fdv.toString(), priceDecimals)} ${pair}`,
                       ],
                       [
                         'Price',
@@ -496,19 +502,19 @@ export function IndexedLaunchOverview({
                           ? loading
                             ? pendingAmount
                             : 'Unavailable'
-                          : `${detailAmount(price)} ${pair}`,
+                          : `${detailAmount(price, pairDecimals)} ${pair}`,
                       ],
                       [
                         '24h Volume',
                         market.data?.volume24h.grossPairAmount == null
                           ? 'Unavailable'
-                          : `${compactAmount(market.data.volume24h.grossPairAmount)} ${pair}`,
+                          : `${compactAmount(market.data.volume24h.grossPairAmount, pairDecimals)} ${pair}`,
                       ],
                       [
                         'Total Volume',
                         market.data?.volumeTotal.grossPairAmount == null
                           ? 'Unavailable'
-                          : `${compactAmount(market.data.volumeTotal.grossPairAmount)} ${pair}`,
+                          : `${compactAmount(market.data.volumeTotal.grossPairAmount, pairDecimals)} ${pair}`,
                       ],
                       [
                         '24h Trades',
@@ -525,8 +531,9 @@ export function IndexedLaunchOverview({
                     ]}
                   />
                   <p className="sr-only">
-                    Known holders are derived from recorded trades and may be
-                    delayed. They are not a complete on-chain holder index.
+                    {holders.query.data?.coverage === 'indexed_trades_and_transfers'
+                      ? 'Known holders cover indexed trades and transfers; indexing may be delayed or replayed.'
+                      : 'Known holders are derived from recorded trades and may be delayed. They are not a complete on-chain holder index.'}
                   </p>
                   {market.isError && (
                     <p role="alert" className="mt-3 text-sm text-destructive">
@@ -618,7 +625,7 @@ export function IndexedLaunchOverview({
                   title="Tokenomics"
                   meta={
                     b
-                      ? `${compactAmount(b.totalSupply)} ${ticker} total supply`
+                      ? `${compactAmount(b.totalSupply, assetDecimals)} ${ticker} ${getApiChain() === 'base' ? 'creator deposit' : 'total supply'}`
                       : undefined
                   }
                 >
@@ -632,16 +639,16 @@ export function IndexedLaunchOverview({
                         name: 'Bonding curve',
                         bps: bps(b.buckets.curve),
                         share: share(b.buckets.curve),
-                        tokens: `${compactAmount(b.buckets.curve)} ${ticker}`,
-                        tokensTitle: `${detailAmount(b.buckets.curve)} ${ticker}`,
+                        tokens: `${compactAmount(b.buckets.curve, assetDecimals)} ${ticker}`,
+                        tokensTitle: `${detailAmount(b.buckets.curve, assetDecimals)} ${ticker}`,
                         detail: 'Sold to the public through curve trading.',
                       },
                       {
                         name: 'Liquidity pool',
                         bps: bps(b.buckets.pool),
                         share: share(b.buckets.pool),
-                        tokens: `${compactAmount(b.buckets.pool)} ${ticker}`,
-                        tokensTitle: `${detailAmount(b.buckets.pool)} ${ticker}`,
+                        tokens: `${compactAmount(b.buckets.pool, assetDecimals)} ${ticker}`,
+                        tokensTitle: `${detailAmount(b.buckets.pool, assetDecimals)} ${ticker}`,
                         detail:
                           'Earmarked for a pool; pool creation is not implemented.',
                       },
@@ -649,8 +656,8 @@ export function IndexedLaunchOverview({
                         name: 'Team',
                         bps: bps(b.buckets.team),
                         share: share(b.buckets.team),
-                        tokens: `${compactAmount(b.buckets.team)} ${ticker}`,
-                        tokensTitle: `${detailAmount(b.buckets.team)} ${ticker}`,
+                        tokens: `${compactAmount(b.buckets.team, assetDecimals)} ${ticker}`,
+                        tokensTitle: `${detailAmount(b.buckets.team, assetDecimals)} ${ticker}`,
                         detail:
                           BigInt(b.buckets.team) === BigInt(0)
                             ? 'No team allocation.'
@@ -683,7 +690,7 @@ export function IndexedLaunchOverview({
                         ['Payment asset', pair],
                         [
                           'Allocation',
-                          `${detailAmount(b.buckets.curve)} ${ticker} are sold first come, first served, with no per-wallet limit.`,
+                          `${detailAmount(b.buckets.curve, assetDecimals)} ${ticker} are sold first come, first served, with no per-wallet limit.`,
                         ],
                         [
                           'Fees',

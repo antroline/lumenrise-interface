@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { useBlux } from '@bluxcc/react';
 import { settingsItem } from './navigation';
 import { NetworkMenuItems } from './network-switcher';
+import type { WalletControlProps } from '@/lib/wallet-control';
 
 export function WalletButton({
   compact = false,
@@ -26,14 +27,7 @@ export function WalletButton({
   className,
   onNavigate,
   showNetwork = true,
-}: {
-  /** Icon-only trigger for narrow containers such as a collapsed sidebar. */
-  compact?: boolean;
-  menuSide?: 'bottom' | 'top' | 'right';
-  className?: string;
-  onNavigate?: () => void;
-  showNetwork?: boolean;
-}) {
+}: WalletControlProps) {
   const { isSignedIn, address, account, login, logout, loginPending, loginPhase, notify } =
     useLaunchpad();
 

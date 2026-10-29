@@ -1,5 +1,6 @@
 import { getConfiguration } from '../../../lib/api/config';
 import type { LaunchListFilters, LaunchSort } from '@/lib/api/launches/market';
+import { routeNetwork } from '@/lib/chain-address';
 
 export const directorySorts = [
   'trending',
@@ -89,7 +90,7 @@ export function directoryHref(
 ) {
   const next = { ...current, ...changes, page: changes.page ?? getConfiguration().rules.launches.minPage };
   const q = new URLSearchParams({
-    network: next.network,
+    network: routeNetwork(next.network),
     category: next.category,
     sort: next.sort,
     direction: next.direction,

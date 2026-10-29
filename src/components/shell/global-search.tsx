@@ -1,8 +1,8 @@
 'use client';
 
-import { API_NETWORK } from '@/lib/stellar/network';
-import { getConfiguration } from '@/lib/api/config';
-import { useEffect, useState } from 'react';
+import { useNetwork } from '@/lib/networks/context';
+import { ConfigurationContext } from '@/lib/configuration';
+import { useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowDown, ArrowUp, CornerDownLeft, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/command';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Kbd } from '@/components/ui/kbd';
-import { searchPages } from './navigation';
+import { navigationHref, searchPages } from './navigation';
 
 const resultClassName =
   'h-12 min-w-0 cursor-pointer gap-2.5 px-2.5 py-1.5 text-ui sm:h-11 data-[selected=true]:bg-muted data-[selected=true]:text-foreground motion-reduce:transition-none';
@@ -66,6 +66,8 @@ export function GlobalSearchDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
+  const { activeNetwork } = useNetwork();
+  const config = useContext(ConfigurationContext);
   const [query, setQuery] = useState('');
 
   useEffect(() => {
@@ -87,7 +89,7 @@ export function GlobalSearchDialog({
 
   const navigate = (href: string) => {
     onOpenChange(false);
-    router.push(href);
+    router.push(navigationHref(href, activeNetwork.id));
   };
 
   return (
@@ -105,7 +107,7 @@ export function GlobalSearchDialog({
         }
       >
         <div className="relative shrink-0 border-b border-border pr-14">
-          <CommandInput maxLength={getConfiguration().rules.launches.searchMaxLength}
+          <CommandInput maxLength={config?.rules.launches.searchMaxLength}
             autoFocus
             value={query}
             onValueChange={setQuery}
@@ -159,7 +161,7 @@ export function GlobalSearchDialog({
               value={`Search projects ${query}`}
               onSelect={() => {
                 const params = new URLSearchParams();
-                params.set('network', API_NETWORK);
+                params.set('network', activeNetwork.id);
                 if (query.trim()) params.set('q', query.trim());
                 navigate(`/projects${params.size ? `?${params}` : ''}`);
               }}

@@ -1,3 +1,4 @@
+import { baseMetadataError } from '../../../lib/base/metadata';
 import { projectNameError } from '../../../lib/launch-slug';
 import { getConfiguration } from '../../../lib/api/config';
 import {
@@ -102,6 +103,11 @@ export function validateLaunchStep(
       errors['launch-description'] = 'Briefly describe the project.';
     else if (draft.description.length > 3000)
       errors['launch-description'] = 'Use up to 3000 characters.';
+    if ('chain' in getConfiguration()) {
+      for (const [field, key] of [['name', 'project-name'], ['symbol', 'launch-symbol'], ['description', 'launch-description']] as const) {
+        const error = baseMetadataError(draft[field], field); if (error) errors[key] = error;
+      }
+    }
     if (!validOptionalUrl(draft.xAccount, getConfiguration().rules.projectLinks.xAccountRequired))
       errors['launch-x'] =
         `Enter a valid ${getConfiguration().rules.projectLinks.protocols.join(' or ')} link of up to ${getConfiguration().rules.projectLinks.maxLength} characters.`;
@@ -116,14 +122,14 @@ export function validateLaunchStep(
   if (step === 'token' || step === 'supply') {
     if (!validSupply(draft.supply))
       errors['launch-supply'] =
-        'Enter a positive supply within Stellar’s limit, with up to 7 decimal places.';
+        'chain' in getConfiguration() ? 'Enter a positive supply within uint128, with up to 18 decimal places.' : 'Enter a positive supply within Stellar’s limit, with up to 7 decimal places.';
   }
 
   if (step === 'token' || step === 'allocation') {
     if (draft.method === 'bonding') {
       const payout = numberValue(draft.bonding.creatorPayout);
-      if (!/^\d+(?:\.\d{1,7})?$/.test(draft.bonding.creatorPayout.trim()) || !Number.isFinite(payout) || (payout > 0 && payout < 0.5))
-        errors['creator-payout'] = 'Enter $0 or at least $0.50, with up to 7 decimal places.';
+      if (!new RegExp('^\\d+(?:\\.\\d{1,' + ('chain' in getConfiguration() ? 18 : 7) + '})?$').test(draft.bonding.creatorPayout.trim()) || !Number.isFinite(payout) || (payout > 0 && payout < 0.5))
+        errors['creator-payout'] = 'chain' in getConfiguration() ? 'Enter $0 or at least $0.50, with up to 18 decimal places for this draft.' : 'Enter $0 or at least $0.50, with up to 7 decimal places.';
       if (!validPercent(draft.bonding.creatorFee) || numberValue(draft.bonding.creatorFee) > 10)
         errors['creator-fee'] = 'Enter 0–10%, with up to 2 decimal places.';
       if (!validPercent(draft.allocation.teamShare) || numberValue(draft.allocation.teamShare) >= 100)

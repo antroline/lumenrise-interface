@@ -745,7 +745,7 @@ test('holders lifecycle scopes pages, blocks duplicate loads, resets on refresh 
   }
   let result = render();
   same(options.queryKey, ['launch', 'testnet', SLUG, 'holders', 20]);
-  assert.equal(options.refetchInterval, 60_000);
+  assert.equal(options.refetchInterval, 3_000);
   await Promise.all([result.loadMore(), result.loadMore()]);
   result = render();
   assert.equal(h.calls.length, 1);
@@ -827,6 +827,7 @@ test('price history keeps daily change independent of candle hover and renders l
   let history = { items: [], daily: null, loading: true, error: '', retry() {}, loadEarlier() {} };
   const { IndexedPriceChart } = load('../../../features/launches/trading/indexed-price-chart.tsx', {
     require: name => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
+      : name === '@/lib/api/client' ? { getApiChain: () => 'stellar' }
       : name === 'react' ? { useState: initial => [typeof initial === 'function' ? initial() : initial, () => {}] }
       : name === '@/lib/api/launches/display' ? h.display
       : name === './candle-history' ? { displayWindow: (range, now) => [Date.parse(h.api.chartFrom(range, now)), now] }
@@ -1112,4 +1113,55 @@ test('legacy queued hashes wait for an API slug and then register against the re
   await drain(h);
   assert.ok(h.calls[0].url.includes('/launches/blue-man/trades?'));
   assert.equal(h.queue.readTradeQueue().length, 0);
+});
+
+test('Base pair labels recognize the supplied testnet USDC address case-insensitively', () => {
+  const module = { exports: {} };
+  runInNewContext(ts.transpileModule(readFileSync(resolve(directory, 'display.ts'), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText, { module, exports: module.exports, require: name => {
+    if (name === '../config') return { getConfiguration: () => ({ chain: 'base' }) };
+    if (name === '../client') return { getApiChain: () => 'base' };
+    return {};
+  } });
+  const pair = '0x1670503bC03d1d5a0cA14a07c005cf48E2d27f15';
+  assert.equal(module.exports.pairLabel(pair, 'testnet'), 'USDC');
+  assert.equal(module.exports.pairLabel(pair.toLowerCase(), 'testnet'), 'USDC');
+  assert.notEqual(module.exports.pairLabel(pair, 'public'), 'USDC');
+  assert.notEqual(module.exports.pairLabel('0x' + '1'.repeat(40), 'testnet'), 'USDC');
+});
+
+test('three-second polling is limited to project detail, market and trades', () => {
+  const options = [];
+  const hooks = { useEffect() {}, useState: initial => [typeof initial === 'function' ? initial() : initial, () => {}] };
+  const query = { useQuery: value => { options.push(value); return {}; }, useQueryClient: () => ({}),
+    useInfiniteQuery: value => { options.push(value); return {}; } };
+  function evaluate(path, dependencies) {
+    const module = { exports: {} };
+    runInNewContext(ts.transpileModule(readFileSync(path, 'utf8'), { compilerOptions: {
+      module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020,
+    } }).outputText, { module, exports: module.exports, require: name => {
+      if (name === 'react') return hooks;
+      if (name === '@tanstack/react-query') return query;
+      return dependencies[name] ?? {};
+    } });
+    return module.exports;
+  }
+  const queries = evaluate(resolve(sourceRoot, 'features/launches/hooks/queries.ts'), {
+    '../../../lib/api/config': configurationModule,
+    '../../../lib/api/client': { getApiChain: () => 'stellar' },
+    '../../../lib/api/launches/market': { launchListKey: () => ['launch-list'] },
+  });
+  assert.equal(queries.publicQueryOptions.refetchInterval, 60_000);
+  queries.useCreatorLaunches(OWNER, 'testnet');
+  assert.equal(options.at(-1).refetchInterval, 60_000);
+  queries.useLaunchDetail(SLUG, 'testnet');
+  assert.equal(options.at(-1).refetchInterval, 3_000);
+  queries.useMarket(SLUG, 'testnet');
+  assert.equal(options.at(-1).refetchInterval, 3_000);
+  const trades = evaluate(resolve(sourceRoot, 'features/launches/trading/use-indexed-trades.ts'), {
+    '@/features/launches/hooks/queries': queries,
+  });
+  trades.useIndexedTrades(SLUG, 'testnet');
+  assert.equal(options.at(-1).refetchInterval, 3_000);
 });

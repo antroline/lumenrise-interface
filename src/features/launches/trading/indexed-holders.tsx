@@ -26,6 +26,11 @@ export function IndexedHolders({
   const error = pageError ?? (query.isError ? query.error : undefined);
   return (
     <section className="flex min-w-0 flex-col gap-3" aria-label="Known holders">
+      {query.data && <p className="text-xs text-muted-foreground">
+        {query.data.coverage === 'indexed_trades_and_transfers'
+          ? 'Balances cover indexed trades and token transfers. Indexing may be delayed or replayed after a reorganization.'
+          : 'Balances cover recorded trade participants, not all on-chain holders.'}
+      </p>}
       {query.isPending ? (
         <div
           role="status"

@@ -1,5 +1,7 @@
 'use client';
 
+import { pairScale } from '@/lib/api/launches/display';
+
 import Link from 'next/link';
 import { ArrowUpRight, Globe } from 'lucide-react';
 import { GithubIcon, XLogoIcon } from '@/components/brand-icons';
@@ -47,8 +49,9 @@ export function BondingProjectCard({ launch, href, status, className }: {
   const owner = launch.team?.find((member) => member.kind === 'owner' && member.address === launch.owner);
   const description = launch.metadata.description.trim();
   const targetAvailable = BigInt(b.curve.graduationTarget) > BigInt(0);
-  const amountLabel = (raw: string) => BigInt(raw) > BigInt(0) && BigInt(raw) < BigInt(100000)
-    ? displayAmount(raw) : compactAmount(raw);
+  const scale = pairScale(launch);
+  const amountLabel = (raw: string) => scale !== null && BigInt(raw) > BigInt(0) && BigInt(raw) < BigInt(10) ** BigInt(scale) / BigInt(100)
+    ? displayAmount(raw, undefined, scale) : compactAmount(raw, scale);
   const links = [
     { label: 'X', href: safeExternalUrl(launch.metadata.xAccount), Icon: XLogoIcon },
     { label: 'Website', href: safeExternalUrl(launch.metadata.website), Icon: Globe },
@@ -77,9 +80,9 @@ export function BondingProjectCard({ launch, href, status, className }: {
 
       <div className="mt-3">
         <p className="text-xs font-medium text-muted-foreground">Curve reserve · {pair}</p>
-        <p className="mt-0.5 break-words text-3xl leading-none font-semibold tracking-tight tabular-nums" title={displayAmount(b.state.quoteReserve) + ' ' + pair}>{amountLabel(b.state.quoteReserve)}</p>
+        <p className="mt-0.5 break-words text-3xl leading-none font-semibold tracking-tight tabular-nums" title={displayAmount(b.state.quoteReserve, undefined, scale) + ' ' + pair}>{amountLabel(b.state.quoteReserve)}</p>
         <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 text-xs tabular-nums">
-          <p className="text-muted-foreground" title={targetAvailable ? displayAmount(b.curve.graduationTarget) + ' ' + pair + ' graduation target' : undefined}>{targetAvailable ? 'Graduation · ' + amountLabel(b.curve.graduationTarget) + ' ' + pair : 'Target unavailable'}</p>
+          <p className="text-muted-foreground" title={targetAvailable ? displayAmount(b.curve.graduationTarget, undefined, scale) + ' ' + pair + ' graduation target' : undefined}>{targetAvailable ? 'Graduation · ' + amountLabel(b.curve.graduationTarget) + ' ' + pair : 'Target unavailable'}</p>
           {targetAvailable && <p className="font-semibold">{progressLabel}</p>}
         </div>
         {targetAvailable && <div role="progressbar" aria-label="Graduation progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value * 100} aria-valuetext={progressLabel} className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary">

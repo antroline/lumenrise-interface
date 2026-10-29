@@ -18,12 +18,28 @@ import { TradeTooltipText } from '@/features/launches/trading/trade-tooltip';
 import { TradeFeedback } from '@/features/launches/trading/trade-feedback';
 import { Wallet } from 'lucide-react';
 import { formatAmount, UNIT } from './contract';
+import { formatBaseAmount, baseExecutionPrice } from '@/lib/base/amount';
 import { friendlyError } from './friendly-trade-error';
 import { useTradeForm } from './use-trade-form';
 import type { BalanceStatus, TradeFormProps } from './trade-form-types';
 
 export function TradeForm(props: TradeFormProps) {
-  const { tokens, side, locked, balances } = props;
+  return <TradeFormView {...props} model={useTradeForm(props)} />;
+}
+export type TradeFormModel = Omit<ReturnType<typeof useTradeForm>, 'user' | 'quoteRead' | 'quote'> & {
+  user: { address: string } | undefined;
+  quote: (NonNullable<ReturnType<typeof useTradeForm>['quote']> & { amount_received?: bigint }) | undefined;
+  quoteRead: { isFetching: boolean; error: unknown };
+};
+export type TradeViewProps = Pick<TradeFormProps, 'slug' | 'address' | 'network' | 'side' | 'locked' | 'balances' | 'balanceStatus' | 'quoteHost' | 'active' | 'tokenLogo'> & {
+  tokens: Pick<TradeFormProps['tokens'], 'assetSymbol'>;
+  snapshot: { price: bigint | undefined };
+};
+export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; scales?: { asset: number; pair: number } }) {
+  const { tokens, side, locked, balances, scales } = props;
+  const formatInput = (value: bigint) => scales ? formatBaseAmount(value, side === 'buy' ? scales.pair : scales.asset) : formatAmount(value);
+  const formatOutput = (value: bigint, precision?: Parameters<typeof formatAmount>[1]) => scales ? formatBaseAmount(value, side === 'buy' ? scales.asset : scales.pair, precision) : formatAmount(value, precision);
+  const formatPair = (value: bigint, precision?: Parameters<typeof formatAmount>[1]) => scales ? formatBaseAmount(value, scales.pair, precision) : formatAmount(value, precision);
   const { login, loginPending } = useLaunchpad();
   const {
     user,
@@ -58,17 +74,18 @@ export function TradeForm(props: TradeFormProps) {
     unavailable,
     quoteRead,
     submit,
-  } = useTradeForm(props);
+  } = props.model;
 
   const paySymbol = buying ? pair : tokens.assetSymbol;
 
   const receiveSymbol = buying ? tokens.assetSymbol : pair;
   const available = buying ? balances?.pairHeld : sellable;
-  const received = quote ? (buying ? amount : quote.user_amount) : undefined;
+  const received = quote ? (scales ? quote.amount_received : buying ? amount : quote.user_amount) : undefined;
   const quoteLoading = quoteRead.isFetching && entry.trim().length > 0;
+  const assetQuoted = scales && buying ? quote?.amount_received : amount;
   const quotedPrice =
-    quote && amount !== undefined && amount > BigInt(0)
-      ? (quote.user_amount * UNIT) / amount
+    quote && amount !== undefined && assetQuoted !== undefined && assetQuoted > BigInt(0)
+      ? scales ? baseExecutionPrice(quote.gross, assetQuoted, scales.asset) : (quote.user_amount * UNIT) / amount
       : undefined;
   const price = quotedPrice ?? props.snapshot.price;
   const needed = buying ? limit : amount;
@@ -115,7 +132,7 @@ export function TradeForm(props: TradeFormProps) {
             onClick={() => {
               if (available !== undefined)
                 setEntry(
-                  formatAmount((available * BigInt(percent)) / BigInt(100)),
+                  formatInput((available * BigInt(percent)) / BigInt(100)),
                 );
             }}
           >
@@ -134,7 +151,10 @@ export function TradeForm(props: TradeFormProps) {
               htmlFor={`${side}-amount`}
               className="text-[11px] font-medium text-muted-foreground"
             >
-              Amount · {paySymbol}
+              <span className="inline-flex items-center gap-1.5">
+                Amount · {paySymbol}
+                {scales && buying && pair === 'USDC' && <img src="/tokens/usdc.svg" alt="" aria-hidden="true" className="size-4 shrink-0" />}
+              </span>
             </FieldLabel>
             <span className="text-[10px] text-muted-foreground">
               <TradeTooltipText content="Estimated tokens or payment asset you receive for this amount, based on the current contract quote. The final amount is subject to slippage.">
@@ -181,9 +201,12 @@ export function TradeForm(props: TradeFormProps) {
                 <>
                   {received !== undefined && <span aria-hidden="true">≈ </span>}
                   <TradeValue>
-                    {received === undefined ? '—' : formatAmount(received, 3)}
+                    {received === undefined ? '—' : formatOutput(received, 3)}
                   </TradeValue>{' '}
-                  <span>{receiveSymbol}</span>
+                  <span className="inline-flex items-center gap-1">
+                    {scales && !buying && pair === 'USDC' && <img src="/tokens/usdc.svg" alt="" aria-hidden="true" className="size-4 shrink-0" />}
+                    {receiveSymbol}
+                  </span>
                 </>
               )}
             </output>
@@ -202,7 +225,7 @@ export function TradeForm(props: TradeFormProps) {
             content={
               quotedPrice === undefined
                 ? 'Current contract price per token, before creator and network fees.'
-                : 'Average price per token for this quote, including the creator fee. Network fees are separate.'
+                : scales ? 'Average execution price before creator fees. Network gas is separate.' : 'Average price per token for this quote, including the creator fee. Network fees are separate.'
             }
           >
             {quotedPrice === undefined ? 'Current price' : 'Quoted price'}
@@ -210,7 +233,7 @@ export function TradeForm(props: TradeFormProps) {
         </dt>
         <dd className="min-w-0 break-words text-right font-medium tabular-nums">
           <TradeValue>
-            {`1 ${tokens.assetSymbol} ≈ ${formatAmount(price)} ${pair}`}
+            {`1 ${tokens.assetSymbol} ≈ ${price === undefined ? '—' : formatPair(price)} ${pair}`}
           </TradeValue>
         </dd>
       </dl>
@@ -283,8 +306,7 @@ export function TradeForm(props: TradeFormProps) {
           </>
         ) : (
           <span className="break-all tabular-nums">
-            {buying ? 'Balance: ' : 'Sellable: '}
-            {available === undefined ? '—' : formatAmount(available, 3)} {paySymbol}
+            {available === undefined ? `${buying ? paySymbol : 'Sellable'} balance unavailable` : <>{buying ? 'Balance: ' : 'Sellable: '}{scales ? formatBaseAmount(available, buying ? scales.pair : scales.asset, 3) : formatAmount(available, 3)} {paySymbol}</>}
             {balanceStatus === 'stale' && ' (outdated)'}
           </span>
         )}
@@ -307,7 +329,7 @@ export function TradeForm(props: TradeFormProps) {
           </dt>
           <dd className="break-words text-right font-medium">
             <TradeValue>
-              {quote ? `${formatAmount(quote.creator_fee, 3)} ${pair}` : '—'}
+              {quote ? `${formatPair(quote.creator_fee, 3)} ${pair}` : '—'}
             </TradeValue>
           </dd>
           <dt className="text-muted-foreground">
@@ -326,7 +348,7 @@ export function TradeForm(props: TradeFormProps) {
               {quote
                 ? minimumReceived === undefined || limitError
                   ? 'Invalid amount'
-                  : `${formatAmount(minimumReceived, 3)} ${receiveSymbol}`
+                  : `${formatOutput(minimumReceived, 3)} ${receiveSymbol}`
                 : '—'}
             </TradeValue>
           </dd>

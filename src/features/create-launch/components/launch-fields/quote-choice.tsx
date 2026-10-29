@@ -12,6 +12,7 @@ import {
 import type { QuoteToken } from '../../lib/launch-draft';
 import { cn } from '@/lib/utils';
 import { fieldSurfaceClassName as launchFieldSurfaceClassName } from '@/components/form-controls';
+import { getApiChain } from '@/lib/api/client';
 import { QuoteIcon } from './quote-icon';
 
 export function QuoteChoice({
@@ -23,6 +24,8 @@ export function QuoteChoice({
   onChange: (value: QuoteToken) => void;
   usdcOnly?: boolean;
 }) {
+  const isBase = getApiChain() === 'base';
+  const choices: readonly QuoteToken[] = isBase ? ['USDC'] : ['USDC', 'XLM'];
   return (
     <Field className="min-w-0 gap-2">
       <FieldLabel htmlFor="launch-quote" className="sr-only">
@@ -31,7 +34,7 @@ export function QuoteChoice({
       <Select
         value={value}
         onValueChange={(choice) => {
-          if (choice === 'USDC' || (choice === 'XLM' && !usdcOnly))
+          if (choice === 'USDC' || (choice === 'XLM' && !usdcOnly && !isBase))
             onChange(choice);
         }}
       >
@@ -57,7 +60,7 @@ export function QuoteChoice({
         </SelectTrigger>
         <SelectContent alignItemWithTrigger={false} align="start">
           <SelectGroup>
-            {(['USDC', 'XLM'] as const).map((quote) => (
+            {choices.map((quote) => (
               <SelectItem
                 key={quote}
                 value={quote}

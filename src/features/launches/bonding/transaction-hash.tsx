@@ -1,4 +1,5 @@
-import { API_NETWORK } from '@/lib/stellar/network';
+import { getApiNetwork } from '@/lib/api/client';
+import { explorerUrl } from '@/lib/chain-address';
 import { Globe } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -13,7 +14,7 @@ export function TransactionHash({
   compact?: boolean;
   className?: string;
 }) {
-  const href = `https://stellar.expert/explorer/${API_NETWORK}/tx/${hash}`;
+  const href = explorerUrl(hash, getApiNetwork(), true);
   if (compact) {
     return (
       <a

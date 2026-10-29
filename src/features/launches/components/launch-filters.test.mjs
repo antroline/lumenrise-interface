@@ -1,4 +1,4 @@
-import { configurationModule, networkModule } from '../../../configuration-fixture.mjs';
+import { apiContextModule, chainAddressModule, configurationModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -21,7 +21,7 @@ runInNewContext(
       },
     },
   ).outputText,
-  { exports: directory, URLSearchParams, require: () => configurationModule },
+  { exports: directory, URLSearchParams, require: name => name === '@/lib/chain-address' ? chainAddressModule : configurationModule },
 );
 const XLM = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
 const USDC = 'CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA';
@@ -63,6 +63,8 @@ function harness(request = defaults, apply = async () => {}) {
       Error,
       require: (name) => {
         if (name === '@/lib/api/config') return configurationModule;
+        if (name === '@/lib/api/client') return { ...apiContextModule, ApiError: typeof ApiError === 'function' ? ApiError : Error };
+        if (name === '@/lib/chain-address') return chainAddressModule;
         if (name === '@/lib/stellar/network') return networkModule;
         if (name === '@/lib/stellar/payment-assets') return paymentAssets;
         if (name === 'react')
@@ -84,7 +86,7 @@ function harness(request = defaults, apply = async () => {}) {
           return { jsx, jsxs: jsx, Fragment: 'Fragment' };
         if (name === '@stellar/stellar-sdk') return require(name);
         if (name.endsWith('/directory')) return directory;
-        if (name.endsWith('/display')) return { pairLabel: () => 'PAIR' };
+        if (name.endsWith('/display')) return { pairScale: () => 7, assetScale: () => 7, pairLabel: () => 'PAIR' };
         return new Proxy({}, { get: (_, key) => key });
       },
     },

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAccount, useBlux, useReadContracts } from '@bluxcc/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { StrKey } from '@stellar/stellar-sdk';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,8 +17,12 @@ import {
 } from './contract';
 import { TradeForm } from './trade-form';
 import { useWalletBalances } from './use-wallet-balances';
-import { ApiError } from '@/lib/api/client';
+import { ApiError, getApiChain, getApiNetwork } from '@/lib/api/client';
+import { BASE_MAINNET_BLOCK_REASON } from '@/lib/base/deployment';
+import { BaseTradeForm } from '@/features/base';
+import { useConfiguration } from '@/lib/configuration';
 import {
+  launchKey,
   useLaunchDetail,
   usePageVisible,
 } from '@/features/launches/hooks/queries';
@@ -38,7 +43,29 @@ function decodeRead<T>(
   }
 }
 
-export function BondingCurvePage({
+export function BondingCurvePage(props: { slug: string; network?: ApiNetwork }) {
+  return getApiChain() === 'base' ? <IndexedBondingCurvePage {...props} /> : <StellarBondingCurvePage {...props} />;
+}
+
+function IndexedBondingCurvePage({ slug, network = getApiNetwork() }: { slug: string; network?: ApiNetwork }) {
+  const indexed = useLaunchDetail(slug, network);
+  const configuration = useConfiguration();
+  const [locked, setLocked] = useState(false);
+  const address = indexed.data?.contractId ?? '';
+  useTradeQueue(network, address, indexed.data?.slug ?? undefined);
+  if (indexed.isPending && !indexed.data) return <LaunchPageSkeleton />;
+  return <IndexedLaunchOverview
+    address={address} network={network} launch={indexed.data} loading={indexed.isPending}
+    feedback={indexed.isError ? <p role="alert">{indexed.error.message} <Button variant="outline" onClick={() => void indexed.refetch()}>Retry</Button></p> : null}
+    buy={network === 'testnet' && configuration.auth.appId && indexed.data ? (quoteHost, active) => <BaseTradeForm launch={indexed.data!} side="buy" locked={locked} setLocked={setLocked} quoteHost={quoteHost} active={active} /> : null}
+    sell={network === 'testnet' && configuration.auth.appId && indexed.data ? (quoteHost, active) => <BaseTradeForm launch={indexed.data!} side="sell" locked={locked} setLocked={setLocked} quoteHost={quoteHost} active={active} /> : null}
+    walletFeedback={network === 'public' ? <p>{BASE_MAINNET_BLOCK_REASON}</p> : !configuration.auth.appId ? <p>Base sign-in is not configured by the server. Public browsing remains available.</p> : null}
+  >
+    <BondingTechnicalDetails address={address} network={network} launch={indexed.data} loading={indexed.isPending} />
+  </IndexedLaunchOverview>;
+}
+
+function StellarBondingCurvePage({
   slug,
   network = API_NETWORK,
 }: {
@@ -47,6 +74,7 @@ export function BondingCurvePage({
 }) {
   const { user, isReady, isAuthenticated } = useBlux();
   const notify = useNotify();
+  const client = useQueryClient();
   const lastTradingNotice = useRef<string | null>(null);
   const { loginPending } = useLaunchpad();
   const indexed = useLaunchDetail(slug, network);
@@ -99,7 +127,7 @@ export function BondingCurvePage({
       'graduation_preview',
     ].map((fn) => ({ address, fn, args: [] })),
     { network: NETWORK },
-    { enabled: isReady && liveEnabled, refetchInterval: 15_000, retry: false },
+    { enabled: isReady && liveEnabled, refetchInterval: 3_000, retry: false },
   );
   const decoded = decodeRead(
     network === API_NETWORK ? reads.data?.values : undefined,
@@ -125,7 +153,7 @@ export function BondingCurvePage({
     { network: NETWORK },
     {
       enabled: isReady && liveEnabled && !!params,
-      refetchInterval: 15_000,
+      refetchInterval: 3_000,
       retry: false,
     },
   );
@@ -159,7 +187,7 @@ export function BondingCurvePage({
     { address: owner, network: NETWORK },
     {
       enabled: accountEnabled,
-      refetchInterval: 15_000,
+      refetchInterval: 3_000,
       retry: false,
     },
   );
@@ -167,6 +195,9 @@ export function BondingCurvePage({
   async function refresh() {
     if (!mounted.current || !liveEnabled) return;
     await Promise.allSettled([
+      client.invalidateQueries({ queryKey: ['blux', 'readContracts', NETWORK] }),
+      client.invalidateQueries({ queryKey: launchKey(network, slug) }),
+      client.invalidateQueries({ queryKey: ['launch-list', { chain: 'stellar', network }] }),
       reads.refetch(),
       ...(params ? [tokensRead.refetch()] : []),
       ...(validWallet && params

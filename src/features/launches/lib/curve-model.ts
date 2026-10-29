@@ -1,6 +1,6 @@
-import { UNIT } from '../bonding/contract';
 
 export type CurveModelInput = {
+  assetDecimals?: number;
   base: bigint;
   quote: bigint;
   capacity: bigint;
@@ -11,9 +11,9 @@ const ceil = (numerator: bigint, denominator: bigint) =>
   (numerator + denominator - BigInt(1)) / denominator;
 
 /** Visualization only. Matches launchpad-types cumulative_cost/current_price; never used for transactions. */
-export function modelPrice(base: bigint, quote: bigint, sold: bigint) {
+export function modelPrice(base: bigint, quote: bigint, sold: bigint, assetDecimals = 7) {
   const remaining = base - sold;
-  return ceil(quote * base * UNIT, remaining * remaining);
+  return ceil(quote * base * (BigInt(10) ** BigInt(assetDecimals)), remaining * remaining);
 }
 export function modelReserves(base: bigint, quote: bigint, sold: bigint) {
   return ceil(quote * sold, base - sold);
@@ -52,13 +52,13 @@ export function curveModel(input: CurveModelInput) {
       : capacity;
   const points = Array.from({ length: 81 }, (_, index) => {
     const quantity = (end * BigInt(index)) / BigInt(80);
-    return { sold: quantity, price: modelPrice(base, quote, quantity) };
+    return { sold: quantity, price: modelPrice(base, quote, quantity, input.assetDecimals) };
   });
   return {
     points,
     end,
     graduation,
-    currentModelPrice: modelPrice(base, quote, sold),
+    currentModelPrice: modelPrice(base, quote, sold, input.assetDecimals),
   };
 }
 

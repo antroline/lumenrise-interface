@@ -39,6 +39,10 @@ export type LaunchpadContextValue = {
   updateProfile: (input: ProfileUpdateInput) => Promise<AccountActionResult>
   updateAvatar: (file: File) => Promise<AccountActionResult>
   removeAvatar: () => Promise<AccountActionResult>
+  /** Base reuses registration to synchronize provider-verified linked wallets. */
+  syncWallets?: () => Promise<AccountActionResult>
+  /** Base EOA execution capability; a linked smart address is insufficient. */
+  baseSigningSupported?: boolean
 }
 
 export const LaunchpadContext = createContext<LaunchpadContextValue | null>(null)

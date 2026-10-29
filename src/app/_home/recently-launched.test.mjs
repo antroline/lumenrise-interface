@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 import ts from 'typescript';
+import { chainAddressModule } from '../../configuration-fixture.mjs';
 
 const jsx = (type, props, key) => ({ type, props, key });
 function load(file, mocks = {}, globals = {}) {
@@ -11,7 +12,7 @@ function load(file, mocks = {}, globals = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, {
     exports,
-    require: (name) => mocks[name] ?? new Proxy({}, { get: (_, key) => key === '__esModule' ? false : String(key) }),
+    require: (name) => name === '@/lib/chain-address' ? chainAddressModule : mocks[name] ?? new Proxy({}, { get: (_, key) => key === '__esModule' ? false : String(key) }),
     ...globals,
   });
   return exports;
@@ -26,7 +27,7 @@ function render(overrides = {}, clock = now) {
     react: { useState: () => [clock, () => {}], useEffect: () => {} },
     '@/lib/api/launches/display': {
       ...display, displayAmount: (raw) => (BigInt(raw) / 10_000_000n).toString(),
-      pairLabel: () => 'USDC',
+      pairScale: () => 7, assetScale: () => 7, pairLabel: () => 'USDC',
     },
     '@/lib/connections': { shortAddress: (address) => `${address.slice(0, 4)}…${address.slice(-4)}` },
     '@/features/launches/lib/external-url': external,

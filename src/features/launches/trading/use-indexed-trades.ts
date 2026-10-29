@@ -17,6 +17,7 @@ export function useIndexedTrades(slug: string, network: ApiNetwork) {
     client = useQueryClient();
   const query = useInfiniteQuery({
     ...publicQueryOptions,
+    refetchInterval: 3_000,
     queryKey: [...launchKey(network, slug), 'trades', side],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam, signal }) =>
@@ -42,6 +43,8 @@ export function useIndexedTrades(slug: string, network: ApiNetwork) {
       });
   }, [visible, client, slug, network, side]);
   const trades = query.data?.pages.flatMap((page) => page.items) ?? [];
+  const scale = query.data?.pages[0]?.amountScale;
+  const threshold = scale === undefined ? undefined : BigInt(1000) * BigInt(10) ** BigInt(scale);
   const asOf = Math.max(filterAsOf, query.dataUpdatedAt);
   const cutoff =
     period === 'hour'
@@ -53,10 +56,10 @@ export function useIndexedTrades(slug: string, network: ApiNetwork) {
     const amount = BigInt(trade.assetAmount);
     return (
       Date.parse(trade.tradedAt) >= cutoff &&
-      (size === 'all' ||
+      (size === 'all' || threshold !== undefined &&
         (size === 'small'
-          ? amount < BigInt(10_000_000_000)
-          : amount >= BigInt(10_000_000_000)))
+          ? amount < threshold
+          : amount >= threshold))
     );
   });
   return {

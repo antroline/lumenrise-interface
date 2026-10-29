@@ -3,7 +3,7 @@
 import { getConfiguration } from '../../../lib/api/config';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ApiError } from '../../../lib/api/client';
+import { ApiError, getApiChain } from '../../../lib/api/client';
 import {
   getLaunchDetail,
   getLaunchList,
@@ -13,7 +13,7 @@ import {
 import type { ApiNetwork } from '../../../lib/api/launches/types';
 
 export const launchKey = (network: ApiNetwork, slug: string) =>
-  ['launch', network, slug] as const;
+  ['launch', getApiChain(), network, slug] as const;
 export const publicQueryOptions = {
   staleTime: 30_000,
   gcTime: 5 * 60_000,
@@ -44,6 +44,7 @@ export function useLaunchDetail(slug: string, network: ApiNetwork) {
   const client = useQueryClient();
   const query = useQuery({
     ...publicQueryOptions,
+    refetchInterval: 3_000,
     queryKey: [...launchKey(network, slug), 'detail'],
     queryFn: ({ signal }) => getLaunchDetail(slug, network, signal),
     enabled: visible && !!slug,
@@ -83,6 +84,7 @@ export function useMarket(slug: string, network: ApiNetwork) {
   const client = useQueryClient();
   const query = useQuery({
     ...publicQueryOptions,
+    refetchInterval: 3_000,
     queryKey: [...launchKey(network, slug), 'market'],
     queryFn: ({ signal }) => getMarket(slug, network, signal),
     enabled: visible && !!slug,

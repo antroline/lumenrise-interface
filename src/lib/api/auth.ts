@@ -8,7 +8,7 @@ import { validateText, validateImage } from '../client-rules';
  * pair for verification; subsequent requests retain that userId in X-User-Id.
  */
 
-import { ApiError, apiRequest, getApiUserId } from './client';
+import { ApiError, apiRequest, getApiUserId, getApiChain } from './client';
 
 export type RegistrationStatus =
   | { registered: false; userId: string }
@@ -45,6 +45,10 @@ function invalid(message: string): never {
 }
 
 function readUserId(value: unknown): string {
+  if (getApiChain() === 'base') {
+    if (typeof value === 'string' && /^did:privy:[A-Za-z0-9_-]+$/.test(value) && value === getApiUserId()) return value;
+    return invalid('The server returned a mismatched Privy identity.');
+  }
   if (typeof value === 'string' && /^\d+$/.test(value)) return value;
   if (typeof value === 'number' && Number.isSafeInteger(value) && value > 0) {
     return String(value);
@@ -190,6 +194,13 @@ export async function getProfile(options?: {
     await apiRequest<unknown>('/user', { user: true, signal: options?.signal }),
   );
   return decodeUserProfile(result);
+}
+
+/** Shared authenticated session identity. No wallet data is inferred here. */
+export async function getSession(options?: { signal?: AbortSignal }): Promise<{ identityId: string; userId: string }> {
+  const result = asRecord(await apiRequest<unknown>('/auth/session', { user: true, signal: options?.signal }));
+  if (!result || typeof result.identityId !== 'string' || !result.identityId) invalid('The server returned an invalid session.');
+  return { identityId: result.identityId, userId: readUserId(result.userId) };
 }
 
 function decodeUserProfile(value: unknown): UserProfile {

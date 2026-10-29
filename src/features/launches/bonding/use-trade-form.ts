@@ -124,7 +124,7 @@ export function useTradeForm({
         permitted &&
         quoteAmount !== undefined &&
         quoteAmount > BigInt(0),
-      refetchInterval: 15_000,
+      refetchInterval: 3_000,
       retry: false,
     },
   );

@@ -1,4 +1,4 @@
-import { configurationModule, networkModule } from '../../../configuration-fixture.mjs';
+import { apiContextModule, chainAddressModule, configurationModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -26,7 +26,7 @@ function load(filename, mocks) {
   }).outputText;
   runInNewContext(output, {
     module, exports: module.exports, URL, AbortController, Error, setTimeout, clearTimeout,
-    require: (name) => name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name === '@/lib/configuration' || name === '@/lib/blux-config' ? {} : name === '@/lib/client-rules' ? {imageHint: () => 'Server image rules'} : name in mocks ? mocks[name] : require(name),
+    require: (name) => name === '@/lib/api/config' ? configurationModule : name === '@/lib/api/client' ? { ...apiContextModule, ...mocks[name] } : name === '@/lib/chain-address' ? chainAddressModule : name === '@/lib/stellar/network' ? networkModule : name === '@/lib/configuration' || name === '@/lib/blux-config' ? {} : name === '@/lib/client-rules' ? {imageHint: () => 'Server image rules'} : name in mocks ? mocks[name] : require(name),
   });
   return module.exports;
 }
@@ -118,7 +118,7 @@ test('owner sees an obvious add action; members are keyed by memberId and query 
   const nodes = elements(h.render());
   assert.ok(nodes.some((node) => node.type === 'Button' && node.props.children?.includes?.('Add Team Member')));
   assert.deepEqual(nodes.filter((node) => node.type === 'li').map((node) => node.key), ['membership-9', 'external-5']);
-  assert.equal(JSON.stringify(h.observers[0].queryKey), JSON.stringify(['launch-team', 'public', 'blue-man', '42']));
+  assert.equal(JSON.stringify(h.observers[0].queryKey), JSON.stringify(['launch-team', 'stellar', 'public', 'blue-man', '42']));
   assert.ok(!nodes.some((node) => node.type === 'a' && node.props.href === null));
 });
 
@@ -149,7 +149,7 @@ test('saving registered roles preserves identityId and refreshes the scoped list
   assert.equal(h.calls[0][3], 'Designer');
   assert.equal(h.calls[0][4].network, 'public');
   assert.equal(h.invalidated.length, 2);
-  assert.equal(JSON.stringify(h.invalidated[1].queryKey), JSON.stringify(['launch', 'public', 'blue-man', 'detail']));
+  assert.equal(JSON.stringify(h.invalidated[1].queryKey), JSON.stringify(['launch', 'stellar', 'public', 'blue-man', 'detail']));
   nodes = elements(h.render());
   const closing = nodes.find((node) => node.type === 'Dialog');
   assert.equal(closing.props.open, false);
@@ -288,7 +288,7 @@ test('owner capacity includes pending invitations, excludes canceled, and leaves
 test('owner refreshes the team after a 409 without treating the failed save as success', async () => {
   const h = ownerHarness(); h.render();
   await h.mutation().onError(new ApiError(409));
-  assert.equal(JSON.stringify(h.invalidated), JSON.stringify([{ queryKey: ['launch-team', 'public', 'blue-man', '42'] }]));
+  assert.equal(JSON.stringify(h.invalidated), JSON.stringify([{ queryKey: ['launch-team', 'stellar', 'public', 'blue-man', '42'] }]));
   await h.mutation().onError(new ApiError(403));
   assert.equal(h.invalidated.length, 1);
 });
@@ -369,8 +369,8 @@ test('invitation responses use the invitation network, refresh launch and team, 
     assert.equal(h.calls[0][2].network, invitation.network);
     await options.onSuccess(undefined, { invitation, status });
     assert.equal(h.invalidated.length, 3);
-    assert.equal(JSON.stringify(h.invalidated[1].queryKey), JSON.stringify(['launch', 'public', 'blue-man']));
-    assert.equal(JSON.stringify(h.invalidated[2].queryKey), JSON.stringify(['launch-team', 'public', 'blue-man']));
+    assert.equal(JSON.stringify(h.invalidated[1].queryKey), JSON.stringify(['launch', 'stellar', 'public', 'blue-man']));
+    assert.equal(JSON.stringify(h.invalidated[2].queryKey), JSON.stringify(['launch-team', 'stellar', 'public', 'blue-man']));
     h.changeUser('99');
     await assert.rejects(() => options.mutationFn({ invitation, status }), /account changed/);
     assert.equal(h.calls.length, 1);

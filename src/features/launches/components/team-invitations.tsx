@@ -4,10 +4,11 @@ import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { ApiError, getApiUserId } from '@/lib/api/client';
+import { ApiError, getApiUserId, getApiChain } from '@/lib/api/client';
+import { routeNetwork } from '@/lib/chain-address';
 import { getTeamInvitations, invitationErrorMessage, respondToTeamInvitation, type TeamInvitation } from '@/lib/api/launches/team';
 import { useLaunchpad } from '@/lib/launchpad';
-import { API_NETWORK } from '@/lib/stellar/network';
+import { API_NETWORK } from '@/lib/api/client';
 
 export function TeamInvitations() {
   const { account } = useLaunchpad();
@@ -24,7 +25,7 @@ function PendingInvitations({ sessionId }: { sessionId: string }) {
     controller.current = current;
     return () => current.abort();
   }, []);
-  const queryKey = ['team-invitations', API_NETWORK, sessionId];
+  const queryKey = ['team-invitations', getApiChain(), API_NETWORK, sessionId];
   const query = useQuery({
     queryKey,
     queryFn: ({ signal }) => getTeamInvitations({ network: API_NETWORK, signal }),
@@ -48,8 +49,8 @@ function PendingInvitations({ sessionId }: { sessionId: string }) {
     onSuccess: async (_, { invitation }) => {
       await Promise.all([
         client.invalidateQueries({ queryKey }),
-        client.invalidateQueries({ queryKey: ['launch', invitation.network, invitation.slug] }),
-        client.invalidateQueries({ queryKey: ['launch-team', invitation.network, invitation.slug] }),
+        client.invalidateQueries({ queryKey: ['launch', getApiChain(), invitation.network, invitation.slug] }),
+        client.invalidateQueries({ queryKey: ['launch-team', getApiChain(), invitation.network, invitation.slug] }),
       ]);
     },
     onError: async (error) => {
@@ -66,7 +67,7 @@ function PendingInvitations({ sessionId }: { sessionId: string }) {
     {invitations?.length ? <ul aria-label="Pending team invitations" aria-busy={mutation.isPending} className="flex flex-col gap-3">
       {invitations.map((invitation) => <li key={`${invitation.network}:${invitation.memberId}`} className="flex min-w-0 flex-wrap items-center gap-3 border-t py-3">
         <div className="min-w-0 flex-1 basis-48">
-          {invitation.slug ? <Link href={`/projects/${encodeURIComponent(invitation.slug)}?network=${invitation.network}`} className="block truncate text-ui font-medium underline underline-offset-4">{invitation.slug}</Link> : <p className="text-small text-muted-foreground">Project page unavailable</p>}
+          {invitation.slug ? <Link href={`/projects/${encodeURIComponent(invitation.slug)}?network=${routeNetwork(invitation.network)}`} className="block truncate text-ui font-medium underline underline-offset-4">{invitation.slug}</Link> : <p className="text-small text-muted-foreground">Project page unavailable</p>}
           <p className="break-words text-small text-muted-foreground">{invitation.role} · {invitation.network === 'public' ? 'Mainnet' : 'Testnet'}</p>
         </div>
         <div className="flex gap-2">

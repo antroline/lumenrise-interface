@@ -1,4 +1,6 @@
-import { API_NETWORK } from '@/lib/stellar/network';
+import { routeNetwork } from '@/lib/chain-address';
+
+import { API_NETWORK } from '@/lib/api/client';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, ArrowUpRight } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -32,7 +34,7 @@ export function LaunchNavigation({ step, canGoBack, method, ready, working, acco
         </Button>
       )}
       {step === 'review' && launchSlug ? (
-        <Link href={`/projects/${launchSlug}?network=${API_NETWORK}`} className={cn(buttonVariants({ size: 'lg' }), 'h-auto min-h-control-lg min-w-0 flex-1 whitespace-normal py-2 text-center sm:ml-auto sm:max-w-80')}>
+        <Link href={`/projects/${launchSlug}?network=${routeNetwork(API_NETWORK)}`} className={cn(buttonVariants({ size: 'lg' }), 'h-auto min-h-control-lg min-w-0 flex-1 whitespace-normal py-2 text-center sm:ml-auto sm:max-w-80')}>
           View launch <ArrowUpRight data-icon="inline-end" />
         </Link>
       ) : step === 'review' ? (

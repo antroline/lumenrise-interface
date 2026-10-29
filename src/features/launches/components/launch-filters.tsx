@@ -2,7 +2,8 @@
 
 import { getConfiguration } from '@/lib/api/config';
 import { useState } from 'react';
-import { Asset, StrKey } from '@stellar/stellar-sdk';
+import { Asset } from '@stellar/stellar-sdk';
+import { isContractAddress } from '@/lib/chain-address';
 import {
   ArrowDown,
   ArrowUp,
@@ -74,10 +75,12 @@ const categories: {
 ];
 const chipClass = 'pointer-coarse:min-h-11';
 function paymentAssets(network: DirectoryRequest['network']) {
+  const config = getConfiguration();
+  if ('chain' in config) return [];
   return [
     {
       value: Asset.native().contractId(
-        getConfiguration().network.configurations[network].networkPassphrase,
+        config.network.configurations[network].networkPassphrase,
       ),
       label: 'XLM',
     },
@@ -131,7 +134,7 @@ export function LaunchFilters({
   function changeNetwork(value: string) {
     if (value !== 'testnet' && value !== 'public') return;
     const nativePair =
-      draft.pair === assets[0].value ? paymentAssets(value)[0].value : '';
+      assets[0] && draft.pair === assets[0].value ? paymentAssets(value)[0]?.value ?? '' : '';
     setState((current) => ({
       ...current,
       custom: false,
@@ -174,7 +177,7 @@ export function LaunchFilters({
       page: 1,
     };
     if (
-      (next.pair && !StrKey.isValidContract(next.pair)) ||
+      (next.pair && !isContractAddress(next.pair)) ||
       (monetarySort(next.sort) && !next.pair) ||
       (state.custom && !next.pair)
     ) {
@@ -487,7 +490,7 @@ export function LaunchFilters({
                           }
                         />
                         <p className="text-xs text-muted-foreground">
-                          {draft.pair && StrKey.isValidContract(draft.pair)
+                          {draft.pair && isContractAddress(draft.pair)
                             ? pairLabel(draft.pair, draft.network)
                             : 'Use a contract address from the selected network.'}
                         </p>

@@ -1,5 +1,5 @@
 import { StrKey } from '@stellar/stellar-sdk';
-import { ApiError, apiRequest } from './client';
+import { ApiError, apiRequest, getApiChain, getApiNetwork } from './client';
 import type { ApiNetwork } from './launches/types';
 
 export type NetworkConfiguration = {
@@ -35,6 +35,18 @@ export type PublicConfiguration = {
     chart: Limits & { timeframes: string[]; defaultTimeframes: string[]; maxTimeframes: number; kinds: string[]; timezone: string; allowFutureTo: boolean; requireFromBeforeTo: boolean; legacyRanges: string[]; defaultLegacyRange: string; rangeExclusiveParameters: string[] };
   };
 };
+export type BasePublicConfiguration = Omit<PublicConfiguration, 'network'> & {
+  chain: 'base';
+  network: {
+    default: ApiNetwork;
+    header: 'X-Network';
+    supported: ApiNetwork[];
+    configurations: Record<ApiNetwork, {
+      network: ApiNetwork; chainId: 8453 | 84532; factoryContractId: string; launchConfigured: boolean;
+    }>;
+  };
+};
+export type ApplicationConfiguration = PublicConfiguration | BasePublicConfiguration;
 
 function invalid(field: string): never {
   throw new ApiError(`Server configuration is missing or invalid (${field}).`, 'invalid-response');
@@ -63,17 +75,28 @@ function httpUrl(value: unknown, field: string, allowEmpty = false) {
   } catch { invalid(field); }
 }
 
-export function decodeConfiguration(value: unknown): PublicConfiguration {
+export function decodeConfiguration(value: unknown, selectedChain?: 'stellar' | 'base'): ApplicationConfiguration {
+  const envelope = object(value, 'config');
+  if (selectedChain === 'base' && envelope.chain !== 'base') return decodeConfiguration(envelope.base, 'base');
+  if (selectedChain === 'stellar' && envelope.chain === 'base') invalid('chain');
   const config = object(value, 'config');
   if (config.version !== 1) invalid('version');
   const auth = fields(config.auth, 'auth', '', 'appId');
-  if (!String(auth.appId).trim()) invalid('auth.appId');
+  const base = config.chain === 'base';
+  if (!base && !String(auth.appId).trim()) invalid('auth.appId');
   const network = fields(config.network, 'network', '', 'default header', '', 'supported');
-  if (network.header !== 'X-Stellar-Network') invalid('network.header');
+  if (network.header !== (base ? 'X-Network' : 'X-Stellar-Network')) invalid('network.header');
   const supported = network.supported as string[];
   if (!supported.length || new Set(supported).size !== supported.length || supported.some(n => n !== 'testnet' && n !== 'public') || !supported.includes(String(network.default))) invalid('network.supported');
   const configurations = object(network.configurations, 'network.configurations');
   for (const name of ['testnet', 'public']) {
+    if (base) {
+      const entry = fields(configurations[name], `network.${name}`, 'chainId', 'network factoryContractId', 'launchConfigured');
+      if (entry.network !== name || entry.chainId !== (name === 'testnet' ? 84532 : 8453) ||
+          (entry.factoryContractId !== '' && !/^0x[a-fA-F0-9]{40}$/.test(String(entry.factoryContractId))) ||
+          (entry.launchConfigured && !entry.factoryContractId)) invalid(`network.${name}`);
+      continue;
+    }
     const entry = fields(configurations[name], `network.${name}`, '', 'network rpcUrl horizonUrl networkPassphrase factoryContractId homeDomain', 'launchConfigured');
     if (entry.network !== name || !String(entry.networkPassphrase).trim()) invalid(`network.${name}`);
     httpUrl(entry.horizonUrl, `network.${name}.horizonUrl`);
@@ -105,32 +128,58 @@ export function decodeConfiguration(value: unknown): PublicConfiguration {
   for (const [key, list] of [['defaultCategory', 'categories'], ['defaultSort', 'sorts'], ['defaultDirection', 'directions']])
     if (!(launches[list] as string[]).includes(String(launches[key]))) invalid(`rules.launches.${key}`);
   if (Number(launches.minPage) < 1 || Number(launches.maxPage) < Number(launches.minPage)) invalid('rules.launches.pages');
-  return value as PublicConfiguration;
+  if (base) {
+    for (const key of ['amountScale', 'priceScale']) if (key in launches && launches[key] !== null) invalid('rules.launches.' + key);
+    if (rules.base !== undefined) {
+      const units = fields(rules.base, 'rules.base', 'maxTokenDecimals', 'amountUnit priceUnit decimalsSource totalSupplyMeaning', 'reputationRequired buyPaymentIncludesFee sellMinimumAfterFee sellRightsFollowTransfers', 'tradeEvents');
+      if (units.maxTokenDecimals !== 18 || units.amountUnit !== 'token_base_units' || units.priceUnit !== 'pair_base_units_per_whole_asset' ||
+        units.decimalsSource !== 'launch.assetDecimals_and_pairDecimals' || units.totalSupplyMeaning !== 'creator_deposit' ||
+        units.reputationRequired !== false || units.buyPaymentIncludesFee !== true || units.sellMinimumAfterFee !== true || units.sellRightsFollowTransfers !== false ||
+        (units.tradeEvents as string[]).join(',') !== 'Bought,Sold') invalid('rules.base');
+    }
+    const features = object(config.features, 'features');
+    if (features.githubConnection !== false || features.xConnection !== false) invalid('features');
+  }
+  return value as ApplicationConfiguration;
 }
 
-let loaded: PublicConfiguration | undefined;
-let pending: Promise<PublicConfiguration> | undefined;
-/** One request per document; failed reads are evicted so Retry really retries. */
-export function loadConfiguration(): Promise<PublicConfiguration> {
-  if (loaded) return Promise.resolve(loaded);
-  if (!pending) pending = apiRequest<unknown>('/config')
-    .then(decodeConfiguration)
-    .then(config => { loaded = config; return config; })
-    .finally(() => { pending = undefined; });
-  return pending;
+const loaded = new Map<string, ApplicationConfiguration>();
+const pending = new Map<string, Promise<ApplicationConfiguration>>();
+function configurationKey() {
+  return getApiChain() === 'base' ? `base:${getApiNetwork()}` : 'stellar';
 }
-export function getConfiguration(): PublicConfiguration {
-  if (!loaded) throw new Error('Server configuration has not loaded.');
-  return loaded;
+/** One request per document; failed reads are evicted so Retry really retries. */
+export function loadConfiguration(): Promise<ApplicationConfiguration> {
+  const key = configurationKey();
+  const cached = loaded.get(key);
+  if (cached) return Promise.resolve(cached);
+  let request = pending.get(key);
+  if (!request) {
+    const chain = getApiChain();
+    request = apiRequest<unknown>('/config')
+    .then(value => decodeConfiguration(value, chain))
+    .then(config => {
+      if (('chain' in config ? config.chain : 'stellar') !== chain) invalid('chain');
+      loaded.set(key, config); return config;
+    })
+    .finally(() => { pending.delete(key); });
+    pending.set(key, request);
+  }
+  return request;
+}
+export function getConfiguration(): ApplicationConfiguration {
+  const config = loaded.get(configurationKey());
+  if (!config) throw new Error('Server configuration has not loaded.');
+  return config;
 }
 
 export function retryConfiguration() {
-  loaded = undefined;
-  pending = undefined;
+  loaded.delete(configurationKey());
+  pending.delete(configurationKey());
   return loadConfiguration();
 }
 
-export function selectNetwork(config: PublicConfiguration, requested: string | null): ApiNetwork {
+export function selectNetwork(config: ApplicationConfiguration, requested: string | null): ApiNetwork {
   const network = requested === 'mainnet' ? 'public' : requested ?? config.network.default;
   if (!config.network.supported.some(value => value === network)) invalid('selected network');
   return network as ApiNetwork;

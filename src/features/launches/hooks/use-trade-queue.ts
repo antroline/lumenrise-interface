@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLaunchpad } from '@/lib/launchpad';
+import { getApiChain } from '@/lib/api/client';
+import { sameAddress } from '@/lib/chain-address';
 import { launchKey, usePageVisible } from './queries';
 import { flushTradeQueue, QUEUE_EVENT, readTradeQueue } from '../../../lib/api/launches/trade-queue';
 import type { ApiNetwork } from '../../../lib/api/launches/types';
@@ -22,9 +24,10 @@ export function useTradeQueue(network: ApiNetwork, contractId: string, slug?: st
       setRecords(
         readTradeQueue().filter(
           (t) =>
+            (t.chain ?? 'stellar') === getApiChain() &&
             t.network === network &&
-            t.contractId === contractId &&
-            t.traderAddress === address &&
+            sameAddress(t.contractId, contractId) &&
+            sameAddress(t.traderAddress, address) &&
             (t.userId === null || t.userId === userId),
         ),
       );
@@ -41,11 +44,16 @@ export function useTradeQueue(network: ApiNetwork, contractId: string, slug?: st
           traderAddress: address,
           signal: controller.signal,
           onRecorded: () => {
+            if (getApiChain() === 'base') {
+              const chainId = network === 'testnet' ? 84532 : 8453;
+              void client.invalidateQueries({ queryKey: ['readContract', { chainId }] });
+              void client.invalidateQueries({ queryKey: ['balance', { chainId }] });
+            }
             void client.invalidateQueries({
               queryKey: launchKey(network, slug ?? ''),
             });
             void client.invalidateQueries({
-              queryKey: ['launch-list', { network }],
+              queryKey: ['launch-list', { chain: getApiChain(), network }],
             });
           },
         });

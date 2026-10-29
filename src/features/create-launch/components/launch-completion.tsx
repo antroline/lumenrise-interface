@@ -1,5 +1,6 @@
 'use client';
-import { API_NETWORK } from '@/lib/stellar/network';
+import { getApiChain, getApiNetwork } from '@/lib/api/client';
+import { explorerUrl, routeNetwork } from '@/lib/chain-address';
 
 import { forwardRef, useEffect, useRef, type ReactNode } from 'react';
 import { AnimatePresence, motion, useIsPresent } from 'motion/react';
@@ -100,7 +101,7 @@ function SignatureStatus({ label, index, title, hash }: { label: SignatureLabel;
         <span className="block text-sm font-semibold sm:hidden">{title}</span>
         <span className="block text-xs font-normal text-muted-foreground">{message}</span>
       </span>
-      {hash && <Link href={`https://stellar.expert/explorer/${API_NETWORK}/tx/${hash}`} target="_blank" rel="noopener noreferrer" aria-label={`View transaction for ${title}`} className="-mr-1 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring sm:hidden"><ArrowUpRight className="size-4" aria-hidden="true" /></Link>}
+      {hash && <Link href={explorerUrl(hash, getApiNetwork(), true)} target="_blank" rel="noopener noreferrer" aria-label={`View transaction for ${title}`} className="-mr-1 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring sm:hidden"><ArrowUpRight className="size-4" aria-hidden="true" /></Link>}
     </span>
   </CompletionChange>;
 }
@@ -151,6 +152,13 @@ export function LaunchCompletion({
   onRetry: () => void;
   onBack: () => void;
 }) {
+  const base = getApiChain() === 'base';
+  const networkName = base ? 'Base Sepolia' : 'Stellar';
+  const steps = base ? [
+    { id: 'setup', title: 'Create token', detail: 'Deploy your fixed-supply token to your wallet.' },
+    { id: 'deploy', title: 'Approve token deposit', detail: 'Allow the factory to deposit the reviewed full supply.' },
+    { id: 'curve', title: 'Create launch', detail: 'Create the curve and deposit the reviewed token supply.' },
+  ] as const : signatureSteps;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const reduced = useLaunchReducedMotion();
   const failed = operation?.status === 'error';
@@ -159,7 +167,7 @@ export function LaunchCompletion({
   const idle = !operation && !working;
   const running = !failed && !success && !idle;
   const currentIndex = operation ? operationOrder.indexOf(operation.step) : -1;
-  const activeSignature = signatureSteps.find(
+  const activeSignature = steps.find(
     (step) => step.id === operation?.step,
   );
 
@@ -182,7 +190,7 @@ export function LaunchCompletion({
         : 'Bringing your launch to life';
 
   const status = success
-    ? 'Confirmed on Stellar. Your project page is ready.'
+    ? `Confirmed on ${networkName}. Your project page is ready.`
     : failed
       ? operation.message
       : idle
@@ -192,7 +200,7 @@ export function LaunchCompletion({
           : operation?.step === 'index'
             ? 'Your launch is confirmed. Preparing your project page…'
             : operation?.phase === 'confirming'
-              ? 'Confirming your transaction on Stellar…'
+              ? `Confirming your transaction on ${networkName}…`
               : 'Preparing your launch. Your wallet will ask for approval when needed.';
 
   const { message: displayedStatus, onEntered: onStatusEntered } = useCompletionMessage(status, approval || failed || success || idle, reduced ? 0 : 440);
@@ -315,7 +323,7 @@ export function LaunchCompletion({
           className="mt-5 grid gap-2 sm:mt-8 sm:grid-cols-3 sm:gap-3"
           aria-label="Wallet signatures"
         >
-          {signatureSteps.map((step, index) => {
+          {steps.map((step, index) => {
             const active = operation?.step === step.id && !success;
             const done =
               success || operationOrder.indexOf(step.id) < currentIndex;
@@ -364,7 +372,7 @@ export function LaunchCompletion({
                 >
                   {hash && (
                     <Link
-                      href={`https://stellar.expert/explorer/${API_NETWORK}/tx/${hash}`}
+                      href={explorerUrl(hash, getApiNetwork(), true)}
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={`View transaction for ${step.title}`}
@@ -399,7 +407,7 @@ export function LaunchCompletion({
               )}
               {success && operation.slug && (
                 <Link
-                  href={`/projects/${operation.slug}?network=${API_NETWORK}`}
+                  href={`/projects/${operation.slug}?network=${routeNetwork(getApiNetwork())}`}
                   className={buttonVariants({ size: 'lg' })}
                 >
                   View launch <ArrowUpRight data-icon="inline-end" />

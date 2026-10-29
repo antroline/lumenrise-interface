@@ -14,13 +14,13 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui
 import { FieldSurface, FormInput } from '@/components/form-controls'
 import { getConfiguration } from '@/lib/api/config'
 import { imageHint } from '@/lib/client-rules'
-import { API_NETWORK } from '@/lib/stellar/network'
+import { API_NETWORK, getApiChain } from '@/lib/api/client'
 import { useLaunchpad } from '@/lib/launchpad'
 import { TeamInvitations } from '@/features/launches/components/team-invitations'
 
 export default function SettingsPage() {
   const { accountReady, address, logout } = useLaunchpad()
-  if (!accountReady) return <AuthGate destination="/settings" description="Connect your Stellar wallet to manage your profile and account settings." />
+  if (!accountReady) return <AuthGate destination="/settings" description={`Connect your ${getApiChain() === 'base' ? 'Base' : 'Stellar'} wallet to manage your profile and account settings.`} />
   return <SettingsContent key={address} address={address} logout={logout} />
 }
 
@@ -39,11 +39,11 @@ function SettingsContent({ address, logout }: { address?: string; logout: () => 
         {profile && <ProfileCard name={profile.name} avatarUrl={profile.avatarUrl} seed={address || profile.identityId} />}
         {profile && <SettingsCard id="team-invitations" title="Team invitations" description="Accept an invitation to appear on a launch’s team, or decline it."><TeamInvitations /></SettingsCard>}
         <SettingsCard id="security" title="Security" description="Manage your browser session.">
-          <div className="flex flex-col gap-4"><p className="text-small leading-relaxed text-muted-foreground">Disconnect your current Blux session on this device.</p><Button variant="outline" className="min-h-11 w-full" onClick={logout}><LogOut data-icon="inline-start" />Log out</Button></div>
+          <div className="flex flex-col gap-4"><p className="text-small leading-relaxed text-muted-foreground">Disconnect your current {getApiChain() === 'base' ? 'Privy' : 'Blux'} session on this device.</p><Button variant="outline" className="min-h-11 w-full" onClick={logout}><LogOut data-icon="inline-start" />Log out</Button></div>
         </SettingsCard>
       </div>
       <aside aria-label="Connected wallet" className="flex min-w-0 flex-col gap-5">
-        <SettingsCard id="wallets" title="Connected wallet" description="The Stellar wallet connected to this account.">
+        <SettingsCard id="wallets" title="Connected wallet" description={`The ${getApiChain() === 'base' ? 'Base' : 'Stellar'} wallet connected to this account.`}>
           <div className="flex min-w-0 flex-col items-start gap-4">
             <div className="flex w-full items-center gap-2"><span className="mr-auto grid size-9 shrink-0 place-items-center rounded-lg bg-secondary"><Wallet className="size-4" aria-hidden="true" /></span><Badge variant="lime">Primary</Badge><Badge variant="net">{API_NETWORK === 'public' ? 'MAINNET' : 'TESTNET'}</Badge></div>
             <p className="min-w-0 break-all font-mono text-small leading-relaxed text-muted-foreground" aria-label="Connected wallet address">{address}</p>

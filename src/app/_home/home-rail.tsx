@@ -1,12 +1,14 @@
 'use client';
 
+import { routeNetwork } from '@/lib/chain-address';
+
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Wallet } from 'lucide-react';
 import { TokenLogo } from '@/components/token-logo';
 import { Button } from '@/components/ui/button';
 import { useCreatorLaunches } from '@/features/launches/hooks/queries';
-import { compactAmount, pairLabel } from '@/lib/api/launches/display';
+import { pairScale, compactAmount, pairLabel } from '@/lib/api/launches/display';
 import type { ApiNetwork } from '@/lib/api/launches/types';
 import { useLaunchpad } from '@/lib/launchpad';
 import { cn } from '@/lib/utils';
@@ -78,7 +80,9 @@ function OpenCurves({ network }: { network: ApiNetwork }) {
   const tallest = Math.max(1, ...counts);
   const reserves = new Map<string, bigint>();
   for (const launch of open) {
-    const pair = pairLabel(launch.pair, network);
+    const scale = pairScale(launch);
+    if (scale === null) continue;
+    const pair = launch.pair + ':' + scale;
     reserves.set(pair, (reserves.get(pair) ?? BigInt(0)) + BigInt(launch.bonding.state.quoteReserve));
   }
   const finished = graduated.length + failed.length;
@@ -122,7 +126,7 @@ function OpenCurves({ network }: { network: ApiNetwork }) {
                 {reserves.size
                   ? [...reserves].map(([pair, amount]) => (
                       <span key={pair} className="block whitespace-nowrap">
-                        {compactAmount(amount.toString())} {pair}
+                        {compactAmount(amount.toString(), Number(pair.split(':')[1]))} {pairLabel(pair.split(':')[0], network)}
                       </span>
                     ))
                   : '—'}
@@ -226,7 +230,7 @@ function YourLaunches({ network }: { network: ApiNetwork }) {
           </ul>
           {mine.length > 3 && (
             <Link
-              href={`/projects?owner=${owner}&network=${network}`}
+              href={`/projects?owner=${owner}&network=${routeNetwork(network)}`}
               className="mt-2 inline-flex min-h-9 items-center gap-1.5 text-[13px] font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
             >
               All of yours

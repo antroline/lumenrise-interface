@@ -1,10 +1,13 @@
-import { ApiError, getApiBaseUrl, getApiUserId } from '../client';
-import { recordTrade } from './market';
+import { ApiError, getApiBaseUrl, getApiUserId, getApiChain, type ApiChain } from '../client';
+import { getConfiguration } from '../config';
+import { getLaunchList, recordTrade } from './market';
 import type { ApiNetwork } from './types';
 
 const PREFIX = 'lumenrise:trade-registration:';
 export const QUEUE_EVENT = 'lumenrise:trade-registration-changed';
 export type QueuedTrade = {
+  /** Legacy records without a chain belong to Stellar only. */
+  chain?: ApiChain;
   network: ApiNetwork;
   contractId: string;
   slug?: string;
@@ -18,9 +21,11 @@ export type QueuedTrade = {
 };
 const inFlight = new Set<string>();
 const volatile = new Map<string, QueuedTrade>();
+const sameAddress = (left: string, right: string, chain: ApiChain) =>
+  chain === 'base' ? left.toLowerCase() === right.toLowerCase() : left === right;
 export const tradeQueueKey = (
-  trade: Pick<QueuedTrade, 'network' | 'contractId' | 'transactionHash'>,
-) => `${PREFIX}${trade.network}:${trade.contractId}:${trade.transactionHash}`;
+  trade: Pick<QueuedTrade, 'chain' | 'network' | 'contractId' | 'transactionHash'>,
+) => `${PREFIX}${trade.chain === 'base' ? 'base:' : ''}${trade.network}:${trade.contractId}:${trade.transactionHash}`;
 function changed() {
   if (typeof window !== 'undefined')
     window.dispatchEvent(new Event(QUEUE_EVENT));
@@ -48,6 +53,7 @@ export function readTradeQueue(): QueuedTrade[] {
         if (!value || typeof value !== 'object') continue;
         const t = value as Partial<QueuedTrade>;
         if (
+          (t.chain === undefined || t.chain === 'stellar' || t.chain === 'base') &&
           (t.network === 'testnet' || t.network === 'public') &&
           typeof t.contractId === 'string' &&
           typeof t.transactionHash === 'string' &&
@@ -63,6 +69,7 @@ export function readTradeQueue(): QueuedTrade[] {
             t.state === 'invalid')
         ) {
           const record = {
+            chain: t.chain,
             network: t.network,
             contractId: t.contractId,
             slug: typeof t.slug === 'string' ? t.slug : undefined,
@@ -92,9 +99,11 @@ export function enqueueTrade(
   transactionHash: string,
   traderAddress: string,
   slug?: string,
+  context?: { chain: ApiChain; userId: string; apiBaseUrl: string },
 ): boolean {
   const existing = readTradeQueue().find(
     (t) =>
+      (t.chain ?? 'stellar') === (context?.chain ?? getApiChain()) &&
       t.network === network &&
       t.contractId === contractId &&
       t.transactionHash === transactionHash,
@@ -102,13 +111,14 @@ export function enqueueTrade(
   const persisted = existing
     ? save({ ...existing, slug: slug ?? existing.slug })
     : save({
+        chain: context?.chain ?? getApiChain(),
         network,
         contractId,
         slug,
         transactionHash,
         traderAddress,
-        userId: getApiUserId(),
-        apiBaseUrl: getApiBaseUrl(),
+        userId: context?.userId ?? getApiUserId(),
+        apiBaseUrl: context?.apiBaseUrl ?? getApiBaseUrl(),
         attempts: 0,
         nextAttemptAt: 0,
         state: 'pending',
@@ -123,9 +133,10 @@ export function resumeTradeIdentity(
 ) {
   for (const trade of readTradeQueue()) {
     if (
+      (trade.chain ?? 'stellar') === getApiChain() &&
       trade.network === network &&
-      trade.contractId === contractId &&
-      trade.traderAddress === traderAddress &&
+      sameAddress(trade.contractId, contractId, getApiChain()) &&
+      sameAddress(trade.traderAddress, traderAddress, getApiChain()) &&
       trade.state === 'identity'
     )
       save({ ...trade, state: 'pending', nextAttemptAt: 0 });
@@ -156,15 +167,17 @@ export async function flushTradeQueue(options: {
   onRecorded: () => void;
 }) {
   const userId = getApiUserId();
+  const chain = getApiChain();
   const slug = options.slug;
   if (!userId || !options.traderAddress || !slug || options.signal.aborted) return;
   // Sequential draining bounds network traffic even after many pending trades.
   for (const original of readTradeQueue()) {
-    if (options.signal.aborted || getApiUserId() !== userId) break;
+    if (options.signal.aborted || getApiUserId() !== userId || getApiChain() !== chain) break;
     if (
+      (original.chain ?? 'stellar') !== chain ||
       original.network !== options.network ||
-      original.contractId !== options.contractId ||
-      original.traderAddress !== options.traderAddress ||
+      !sameAddress(original.contractId, options.contractId, chain) ||
+      !sameAddress(original.traderAddress, options.traderAddress, chain) ||
       (original.userId !== null && original.userId !== userId) ||
       original.apiBaseUrl !== getApiBaseUrl()
     )
@@ -178,19 +191,29 @@ export async function flushTradeQueue(options: {
         trade.state !== 'pending' ||
         trade.nextAttemptAt > Date.now() ||
         options.signal.aborted ||
-        getApiUserId() !== userId
+        getApiUserId() !== userId || getApiChain() !== chain
       )
         return;
       inFlight.add(key);
       const bound = { ...trade, userId };
       save(bound);
       try {
-        await recordTrade(
-          slug,
-          trade.network,
-          trade.transactionHash,
-          options.signal,
-        );
+        const report = (target: string) => recordTrade(target, trade.network, trade.transactionHash, options.signal, { chain, network: trade.network });
+        try { await report(trade.slug ?? slug); }
+        catch (error) {
+          if (chain !== 'base' || !(error instanceof ApiError) || error.status !== 404) throw error;
+          // A repaired slug can only be recovered by matching the persisted contract in the original namespace.
+          let currentSlug: string | null = null;
+          for (let page = 1; !options.signal.aborted; page++) {
+            if (getApiUserId() !== userId || getApiChain() !== chain || getApiBaseUrl() !== bound.apiBaseUrl) throw error;
+            const result = await getLaunchList(trade.network, page, getConfiguration().rules.launches.defaultLimit, undefined, options.signal);
+            currentSlug = result.launches.find(launch => sameAddress(launch.contractId, trade.contractId, chain))?.slug ?? null;
+            if (currentSlug || page * result.limit >= result.total) break;
+          }
+          if (!currentSlug) throw error;
+          bound.slug = currentSlug; save(bound);
+          await report(currentSlug);
+        }
         remove(bound);
         options.onRecorded();
       } catch (error) {

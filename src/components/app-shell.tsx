@@ -7,6 +7,9 @@ import { Breadcrumbs } from './shell/breadcrumbs';
 import { FocusedShell } from './shell/focused-shell';
 import { SideNavigation } from './shell/side-navigation';
 import { MobileBottomNavigation } from './shell/mobile-bottom-navigation';
+import { useNetwork } from '@/lib/networks/context';
+import { BaseUnavailable } from '@/features/base/components/base-unavailable';
+import { NetworkMismatch } from './network-mismatch';
 
 /** Routes that render as a focused flow without the site navigation. */
 const bareRoutes = new Set(['/onboarding', '/register']);
@@ -22,13 +25,16 @@ function isFullWidth(pathname: string) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { activeNetwork, requestedNetworkId } = useNetwork();
+  const isBase = activeNetwork.blockchain === 'base';
   const isLaunchDetails = /^\/(?:projects|launch(?:es)?)\/[^/]+$/.test(pathname);
 
   if (bareRoutes.has(pathname) || (process.env.NODE_ENV === 'development' && pathname === '/design-lab')) return children;
   if (pathname === '/create') return <FocusedShell title="Create a launch">{children}</FocusedShell>;
+  const stellarOnly = isBase && /^\/(?:reputation|missions|developers|cli|polic(?:y|ies))(?:\/|$)/.test(pathname);
 
   return (
-    <div className={cn('relative isolate min-h-[calc(100svh-var(--network-banner-height,0px))] bg-page pb-[calc(5.5rem+max(0.75rem,env(safe-area-inset-bottom)))] lg:flex lg:pb-0', pathname === '/projects' && 'bg-neutral-100 dark:bg-page', isLaunchDetails && 'dark:bg-black')}>
+    <div className={cn('relative isolate min-h-svh bg-page pb-[calc(5.5rem+max(0.75rem,env(safe-area-inset-bottom)))] lg:flex lg:pb-0', pathname === '/projects' && 'bg-neutral-100 dark:bg-page', isLaunchDetails && 'dark:bg-black')}>
       <SideNavigation />
 
       <div className={cn('min-w-0 flex-1', isLaunchDetails && 'dark:bg-neutral-950')}>
@@ -41,8 +47,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             isLaunchDetails && 'max-sm:px-0',
           )}
         >
-          <Breadcrumbs />
-          {children}
+          {!isBase && !requestedNetworkId && <Breadcrumbs />}
+          {requestedNetworkId ? <NetworkMismatch /> : stellarOnly ? <BaseUnavailable /> : children}
         </main>
       </div>
       <MobileBottomNavigation />

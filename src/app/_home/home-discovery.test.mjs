@@ -1,3 +1,4 @@
+import { apiContextModule, chainAddressModule } from '../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
@@ -70,7 +71,7 @@ test('home links use the server slug, retain the network and avoid unresolved co
   const module = { exports: {} };
   runInNewContext(ts.transpileModule(readFileSync(new URL('./use-home-launches.ts', import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-  }).outputText, { module, exports: module.exports, require: () => ({}) });
+  }).outputText, { module, exports: module.exports, require: name => name === '@/lib/chain-address' ? chainAddressModule : name === '@/lib/api/client' ? apiContextModule : ({}) });
   const { launchHref } = module.exports;
   for (const network of ['testnet', 'public']) {
     assert.equal(launchHref({ contractId: 'contract', slug: 'blue-man', metadata: { name: 'Display name' } }, network), '/projects/blue-man?network=' + network);

@@ -246,3 +246,17 @@ test('disabled registration is availability, not a fabricated service-health res
   await assert.rejects(h.load('lib/api/auth.ts').registerAccount({ name: 'Name' }), /not configured/);
   assert.equal(h.calls.length, 1);
 });
+
+test('Base availability blocks Stellar endpoints before fetch, even with an explicit Stellar network', async () => {
+  const h = harness();
+  h.client.setChainApiAvailable(false);
+  await assert.rejects(h.client.apiRequest('/launches'), /not available/);
+  await assert.rejects(h.client.apiRequest('/launches?network=public', { network: 'public' }), /not available/);
+  assert.equal(h.calls.length, 0);
+  await h.api.loadConfiguration();
+  assert.equal(h.calls.length, 1);
+  h.client.setChainApiAvailable(true);
+  await h.client.apiRequest('/launches', { network: 'testnet' });
+  assert.equal(h.calls.length, 2);
+  assert.equal(h.calls.at(-1).init.headers['X-Stellar-Network'], 'testnet');
+});
