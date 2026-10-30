@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import type { ReactNode } from 'react'
 import { AppShell } from '@/components/app-shell'
-import { NetworkBanner } from '@/components/shell/network-banner'
 import { Providers } from '@/components/providers'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { ConfirmationRecovery } from '@/features/launches/hooks/use-trade-queue'
 import './globals.css'
 
 const bricolage = localFont({
@@ -46,8 +46,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="max-lg:min-w-0">
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <Providers apiBaseUrl={process.env.LUMENRISE_API_URL ?? ''}>
+          <ConfirmationRecovery />
           <TooltipProvider>
-            <NetworkBanner />
             <AppShell>{children}</AppShell>
           </TooltipProvider>
         </Providers>

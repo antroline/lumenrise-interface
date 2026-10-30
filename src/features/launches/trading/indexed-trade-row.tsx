@@ -5,9 +5,13 @@ import { TradeTooltipText } from './trade-tooltip';
 export function IndexedTradeRow({
   trade,
   asOf,
+  amountScale = 7,
+  priceScale = 7,
 }: {
   trade: Awaited<ReturnType<typeof getTrades>>['items'][number];
   asOf: number;
+  amountScale?: number;
+  priceScale?: number;
 }) {
   return (
     <TableRow className="rounded-2xl">
@@ -39,16 +43,17 @@ export function IndexedTradeRow({
         {displayAmount(
           (
             (BigInt(trade.assetAmount) * BigInt(trade.executionPrice)) /
-            BigInt(10_000_000)
+            (BigInt(10) ** BigInt(amountScale))
           ).toString(),
           3,
+          priceScale,
         )}
       </TableCell>
       <TableCell className="tabular-nums">
-        {displayAmount(trade.assetAmount, 3)}
+        {displayAmount(trade.assetAmount, 3, amountScale)}
       </TableCell>
       <TableCell className="tabular-nums">
-        {displayAmount(trade.executionPrice)}
+        {displayAmount(trade.executionPrice, undefined, priceScale)}
       </TableCell>
     </TableRow>
   );

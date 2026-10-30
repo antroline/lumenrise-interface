@@ -30,7 +30,7 @@ function load(filename, mocks = {}, globals = {}) {
     exports: module.exports,
     Error,
     ...globals,
-    require: (name) => name.endsWith('.module.css') ? { __esModule: true, default: { status: 'trade-status-popup', failed: 'trade-failed-popup' } } : name === '@/components/token-logo' ? { TokenLogo: 'TokenLogo' } : name === '@/lib/stellar/amount' ? load('../../../lib/stellar/amount.ts') : name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule :
+    require: (name) => name.endsWith('.module.css') ? { __esModule: true, default: { status: 'trade-status-popup', failed: 'trade-failed-popup' } } : name === '@/components/token-logo' ? { TokenLogo: 'TokenLogo' } : name === '@/lib/stellar/amount' ? load('../../../lib/stellar/amount.ts') : name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name === '@/lib/base/amount' ? load('../../../lib/base/amount.ts') : name === '@/lib/api/client' ? { getApiNetwork: () => networkModule.API_NETWORK, getApiUserId: () => '42', getApiBaseUrl: () => 'http://api.test' } : name === '@/lib/chain-address' ? { explorerUrl: (hash, network) => `https://stellar.expert/explorer/${network}/tx/${hash}` } :
       name in mocks
         ? mocks[name]
         : name.startsWith('.')
@@ -155,7 +155,8 @@ function harness({
       ]),
     ),
     '@/features/launches/hooks/queries': { usePageVisible: () => true },
-    '@/lib/api/launches/trade-queue': {
+    '@/lib/api/client': { getApiUserId: () => '42', getApiBaseUrl: () => 'http://api.test' },
+    '@/lib/api/launches/trade-queue': { releaseTradeReceipt() {},
       enqueueTrade(network, id, hash, trader, slug) {
         assert.equal(slug, 'blue-man');
         events.push(`queue:${hash}`);
@@ -200,10 +201,10 @@ function harness({
       },
     },
   };
-  const { TradeForm } = load('trade-form.tsx', mocks, globals);
+  const { TradeForm, TradeFormView } = load('trade-form.tsx', mocks, globals);
   const render = () => {
     stateIndex = refIndex = 0;
-    return TradeForm({
+    const view = TradeForm({
     address,
     slug: 'blue-man',
     network: 'testnet',
@@ -221,6 +222,7 @@ function harness({
     setLocked() {},
     refresh: async () => events.push('refresh'),
     });
+    return TradeFormView(view.props);
   };
   const form = render();
   return {

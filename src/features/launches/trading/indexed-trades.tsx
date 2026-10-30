@@ -163,6 +163,8 @@ export function IndexedTrades({
               <IndexedTradeRow
                 key={`${trade.trader}:${trade.tradedAt}:${index}`}
                 trade={trade}
+                  amountScale={query.data?.pages[0]?.amountScale}
+                  priceScale={query.data?.pages[0]?.priceScale}
                 asOf={asOf}
               />
             ))}

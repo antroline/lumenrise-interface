@@ -11,7 +11,8 @@ import {
   API_NETWORK,
   NETWORK,
 } from '@/lib/stellar/clients';
-import { enqueueTrade } from '@/lib/api/launches/trade-queue';
+import { enqueueTrade, releaseTradeReceipt } from '@/lib/api/launches/trade-queue';
+import { getApiUserId, getApiBaseUrl } from '@/lib/api/client';
 import { usePageVisible } from '@/features/launches/hooks/queries';
 import {
   decodeQuote,
@@ -64,12 +65,6 @@ export function useTradeForm({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [awaitingApproval, setAwaitingApproval] = useState(false);
   const visible = usePageVisible();
-  function queueHash(hash: string) {
-    if (user && !enqueueTrade(network, address, hash, user.address, slug))
-      setRegistrationNotice(
-        'Your trade was submitted, but its activity could not be recorded.',
-      );
-  }
   const [submittedHash, setSubmittedHash] = useState<string>();
 
   const buying = side === 'buy';
@@ -124,7 +119,7 @@ export function useTradeForm({
         permitted &&
         quoteAmount !== undefined &&
         quoteAmount > BigInt(0),
-      refetchInterval: 15_000,
+      refetchInterval: 3_000,
       retry: false,
     },
   );
@@ -189,8 +184,11 @@ export function useTradeForm({
     setMessage('Checking the current quote and your wallet…');
 
     let submittedHash: string | undefined;
+    const originalUserId = getApiUserId();
+    const originalApiBaseUrl = getApiBaseUrl();
 
     try {
+      if (!originalUserId) throw new Error('Finish signing in to your LumenRise account before trading.');
       if (!StrKey.isValidEd25519PublicKey(user.address))
         throw new Error('Trading requires a connected Stellar account.');
       const fresh = await readContracts(
@@ -280,7 +278,9 @@ export function useTradeForm({
       const recordSubmission = (hash: string) => {
         if (submittedHash === hash) return;
         submittedHash = hash;
-        queueHash(hash);
+        if (!originalUserId || !enqueueTrade(network, address, hash, user.address, slug,
+          { chain: 'stellar', userId: originalUserId, apiBaseUrl: originalApiBaseUrl, awaitingReceipt: true }))
+          setRegistrationNotice('Your trade was submitted, but activity recovery could not be saved. Keep its hash.');
         setSubmittedHash(hash);
         setAwaitingApproval(false);
         setMessage('Trade submitted. Waiting for confirmation…');
@@ -313,6 +313,10 @@ export function useTradeForm({
       );
       setMessage('');
     } finally {
+      // After an interrupted receipt check, the server can verify this same hash
+      // and return 202 until finality. This never resubmits the wallet transaction.
+      if (submittedHash && originalUserId) releaseTradeReceipt(network, submittedHash,
+        { chain: 'stellar', userId: originalUserId, apiBaseUrl: originalApiBaseUrl });
       setAwaitingApproval(false);
       running.current = false;
       setLocked(false);

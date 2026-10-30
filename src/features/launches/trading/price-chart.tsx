@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ChartRange } from '@/lib/api/launches/market';
+import { getConfiguration } from '@/lib/api/config';
 
 export function ChartTimeframeSelector({ range, onRangeChange, timeframe, onTimeframeChange }: {
   range: ChartRange | null;
@@ -13,6 +14,7 @@ export function ChartTimeframeSelector({ range, onRangeChange, timeframe, onTime
   onTimeframeChange: (timeframe: CandleTimeframe) => void;
 }) {
   const available: ChartRange[] = ['1D', '1W', '1M', '3M', 'ALL'];
+  const intervals = candleTimeframes.filter(option => getConfiguration().rules.chart.timeframes.includes(option));
   const labels = { '1D': 'Last day', '1W': 'Last week', '1M': 'Last month', '3M': 'Last 3 months', ALL: 'All available history' };
   const itemClass = 'h-9 min-w-7 rounded-md px-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground data-pressed:bg-foreground! data-pressed:text-background! data-pressed:shadow-none motion-reduce:transition-none sm:h-8 sm:px-2';
   return (
@@ -29,13 +31,13 @@ export function ChartTimeframeSelector({ range, onRangeChange, timeframe, onTime
       ))}
     </ToggleGroup>
     </div>
-    <Select items={candleTimeframes.map(option => ({ value: option, label: option }))} value={timeframe} onValueChange={value => {
-      const next = candleTimeframes.find(option => option === value);
+    <Select items={intervals.map(option => ({ value: option, label: option }))} value={timeframe} onValueChange={value => {
+      const next = intervals.find(option => option === value);
       if (next) onTimeframeChange(next);
     }}>
       <SelectTrigger aria-label="Candle timeframe" size="sm" className="h-9! shrink-0 gap-1.5 rounded-lg! border-border/60 bg-transparent px-2 text-xs! text-foreground sm:h-8!"><span className="sr-only">Interval</span><SelectValue /></SelectTrigger>
       <SelectContent><SelectGroup>
-        {candleTimeframes.map(option => <SelectItem key={option} value={option}>{option}{option === '1M' ? ' · Month' : option === '1m' ? ' · Minute' : ''}</SelectItem>)}
+        {intervals.map(option => <SelectItem key={option} value={option}>{option}{option === '1M' ? ' · Month' : option === '1m' ? ' · Minute' : ''}</SelectItem>)}
       </SelectGroup></SelectContent>
     </Select>
     </div>

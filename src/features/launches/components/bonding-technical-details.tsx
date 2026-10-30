@@ -13,6 +13,7 @@ import type { LaunchResult } from '@/lib/api/launches/market';
 import type { ApiNetwork } from '@/lib/api/launches/types';
 import type { Snapshot, Tokens } from '../bonding/contract';
 import { indexedContract } from '../lib/bonding-details';
+import { explorerUrl, explorerName } from '@/lib/chain-address';
 
 function Address({ value, network }: { value: string; network: ApiNetwork }) {
   const [message, setMessage] = useState('');
@@ -43,10 +44,10 @@ function Address({ value, network }: { value: string; network: ApiNetwork }) {
         </Button>
         <a
           className={buttonVariants({ size: 'icon-sm', variant: 'ghost' })}
-          href={`https://stellar.expert/explorer/${network}/${value.startsWith('C') ? 'contract' : 'account'}/${value}`}
+          href={explorerUrl(value, network)}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={`View ${value} on Stellar Expert`}
+          aria-label={`View ${value} on ${explorerName()}`}
         >
           <ExternalLink />
         </a>

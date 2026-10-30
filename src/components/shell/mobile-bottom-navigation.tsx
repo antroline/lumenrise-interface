@@ -1,27 +1,18 @@
 'use client';
 
-import { Suspense } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
-import { API_NETWORK } from '@/lib/stellar/network';
+import { usePathname } from 'next/navigation';
+import { useNetwork } from '@/lib/networks/context';
 import { cn } from '@/lib/utils';
 import { isActive, mobilePrimaryItems, navigationHref } from './navigation';
 
 export function MobileBottomNavigation() {
   const pathname = usePathname();
-  return (
-    <Suspense fallback={<BottomNavigationItems pathname={pathname} />}>
-      <NetworkBottomNavigation pathname={pathname} />
-    </Suspense>
-  );
+  const { activeNetwork } = useNetwork();
+  return <BottomNavigationItems pathname={pathname} network={activeNetwork.id} />;
 }
 
-function NetworkBottomNavigation({ pathname }: { pathname: string }) {
-  const params = useSearchParams();
-  return <BottomNavigationItems pathname={pathname} network={params.get('network') ?? API_NETWORK} />;
-}
-
-function BottomNavigationItems({ pathname, network = API_NETWORK }: { pathname: string; network?: string | null }) {
+function BottomNavigationItems({ pathname, network }: { pathname: string; network: string }) {
   return (
     <nav
       aria-label="Mobile primary"

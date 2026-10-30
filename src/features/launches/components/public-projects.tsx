@@ -1,12 +1,14 @@
 'use client';
+
+import { pairScale } from '@/lib/api/launches/display';
 import { getConfiguration } from '@/lib/api/config';
-import { API_NETWORK } from '@/lib/stellar/network';
+import { API_NETWORK, getApiChain } from '@/lib/api/client';
+import { isContractAddress, routeNetwork } from '@/lib/chain-address';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { StrKey } from '@stellar/stellar-sdk';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import {
   ProjectsTable,
@@ -123,6 +125,9 @@ export function PublicProjects({
   showMobileProgress?: boolean;
 }) {
   const rules = getConfiguration().rules.launches;
+  const baseCoverage = 'Statistics cover indexed contract events and verified receipts, not guaranteed complete chain-wide activity. Recent values may change during reorganization recovery.';
+  const statisticsHelp = getApiChain() === 'base' ? baseCoverage : statsHelp;
+  const totalHelp = getApiChain() === 'base' ? baseCoverage : totalVolumeHelp;
   const page = Number.isSafeInteger(requestedPage) ? Math.max(rules.minPage, Math.min(rules.maxPage, requestedPage)) : rules.minPage;
   const limit = requestedLimit !== undefined && Number.isSafeInteger(requestedLimit) && requestedLimit >= rules.minLimit && requestedLimit <= rules.maxLimit ? requestedLimit : rules.defaultLimit;
   const visible = usePageVisible();
@@ -147,7 +152,7 @@ export function PublicProjects({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [applyingFilters, setApplyingFilters] = useState(false);
   const navigationPending = useResultsPending();
-  const needsPair = monetarySort(sort) && !StrKey.isValidContract(pair);
+  const needsPair = monetarySort(sort) && !isContractAddress(pair);
   const query = useQuery({
     ...publicQueryOptions,
     queryKey,
@@ -234,10 +239,11 @@ export function PublicProjects({
       )
         ? xUrl
         : undefined;
+    const scale = pairScale(l);
     const format = (raw: string) =>
-      BigInt(raw) > BigInt(0) && BigInt(raw) < BigInt(100000)
-        ? displayAmount(raw)
-        : compactAmount(raw);
+      scale !== null && BigInt(raw) > BigInt(0) && BigInt(raw) < BigInt(10) ** BigInt(scale) / BigInt(100)
+        ? displayAmount(raw, undefined, scale)
+        : compactAmount(raw, scale);
     return {
       id: `${network}:${l.contractId}`,
       name: l.metadata.name,
@@ -245,7 +251,7 @@ export function PublicProjects({
       logo: l.metadata.logo,
       website,
       xAccount,
-      href: l.slug ? `/projects/${encodeURIComponent(l.slug)}?network=${network}` : `/projects?network=${network}`,
+      href: l.slug ? `/projects/${encodeURIComponent(l.slug)}?network=${routeNetwork(network)}` : `/projects?network=${routeNetwork(network)}`,
       category: 'Bonding Curve',
       phase: b ? phases[b.status] : 'unavailable',
       graduation: b
@@ -254,7 +260,7 @@ export function PublicProjects({
               BigInt(b.curve.graduationTarget) > BigInt(0)
                 ? format(b.curve.graduationTarget) + ' ' + label
                 : '—',
-            targetTitle: displayAmount(b.curve.graduationTarget) + ' ' + label,
+            targetTitle: displayAmount(b.curve.graduationTarget, undefined, scale) + ' ' + label,
             progressBps: b.progressBps,
             stale: b.stateStale,
             graduated: b.status === 'Graduated' || b.state.graduated,
@@ -268,11 +274,11 @@ export function PublicProjects({
       figureTitle:
         amount === undefined
           ? 'Metric unavailable'
-          : displayAmount(amount) +
+          : displayAmount(amount, undefined, scale) +
             ' ' +
             label +
             ' · ' +
-            totalVolumeHelp,
+            totalHelp,
       figureContext: '',
       participants: b?.state.buyerCount ?? null,
       date: date.short,
@@ -403,7 +409,7 @@ export function PublicProjects({
                 scroll={false}
                 title={
                   item === 'trending' || item === 'topVolume'
-                    ? statsHelp
+                    ? statisticsHelp
                     : item === 'newest'
                       ? 'Verified contract-creation time'
                       : 'Open, ungraduated curves ranked by reserve / target'
@@ -475,7 +481,7 @@ export function PublicProjects({
                 figureLabel={figureLabel}
                 dateLabel="Created"
                 sorting={sorting}
-                caption={`Projects on page ${currentPage}, filtered and ordered by the backend. ${sortLabels[sort]}, ${selectedDirection}. ${totalVolumeHelp} ${statsHelp}`}
+                caption={`Projects on page ${currentPage}, filtered and ordered by the backend. ${sortLabels[sort]}, ${selectedDirection}. ${totalHelp} ${statisticsHelp}`}
               />
             </div>
           </>

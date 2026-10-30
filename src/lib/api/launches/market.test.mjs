@@ -144,6 +144,7 @@ function load(filename, globals, cache = new Map()) {
       Error,
       JSON,
       Event,
+      CustomEvent,
       setTimeout,
       clearTimeout,
       console,
@@ -424,7 +425,7 @@ test('queue survives reload, retains several hashes and deduplicates resubmissio
   assert.equal(refreshes, 2);
   assert.equal(reloaded.queue.readTradeQueue().length, 0);
 });
-for (const status of [202, 503, 404])
+for (const status of [202, 503])
   test(`${status} retains the same hash and respects Retry-After`, async () => {
     const h = harness(() => ({ status, retryAfter: '120' }));
     h.queue.enqueueTrade('testnet', ID, 'hash', OWNER);
@@ -441,7 +442,8 @@ test('network failures retain hash with capped backoff', async () => {
   h.queue.enqueueTrade('testnet', ID, 'hash', OWNER);
   await drain(h);
   assert.equal(h.queue.readTradeQueue()[0].state, 'pending');
-  assert.equal(h.queue.retryDelay(new Error('Offline'), 100), 300000);
+  assert.ok(h.queue.retryDelay(new Error('Offline'), 100) >= 240000);
+  assert.ok(h.queue.retryDelay(new Error('Offline'), 100) <= 300000);
 });
 test('Retry-After HTTP dates are honored and a non-200 success cannot drain the hash', async () => {
   const h = harness(() => ({
@@ -456,7 +458,7 @@ test('Retry-After HTTP dates are honored and a non-200 success cannot drain the 
   await drain(other);
   assert.equal(other.queue.readTradeQueue().length, 1);
 });
-for (const status of [400, 401, 403])
+for (const status of [400, 401, 403, 404, 409, 422])
   test(`${status} stops automatic retry without deleting the durable hash`, async () => {
     const h = harness(() => ({ status }));
     h.queue.enqueueTrade('testnet', ID, 'hash', OWNER);
@@ -465,13 +467,13 @@ for (const status of [400, 401, 403])
     assert.equal(h.calls.length, 1);
     assert.equal(
       h.queue.readTradeQueue()[0].state,
-      status === 400 ? 'invalid' : 'identity',
+      status === 401 ? 'identity' : 'invalid',
     );
     const reload = h.reload();
     await drain(reload);
     assert.equal(reload.calls.length, 0);
   });
-test('missing identity preserves hashes, then recovers with the matching current identity', async () => {
+test('unbound legacy hashes cannot be replayed under a newly signed-in identity', async () => {
   const h = harness();
   h.client.setApiUserId(null);
   h.queue.enqueueTrade('testnet', ID, 'hash', OWNER);
@@ -479,8 +481,8 @@ test('missing identity preserves hashes, then recovers with the matching current
   assert.equal(h.calls.length, 0);
   h.client.setApiUserId('42');
   await drain(h);
-  assert.equal(h.calls.length, 1);
-  assert.equal(h.queue.readTradeQueue().length, 0);
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.queue.readTradeQueue().length, 1);
 });
 test('queue never sends a hash for another wallet, user, network, launch or API origin', async () => {
   const h = harness();
@@ -745,7 +747,7 @@ test('holders lifecycle scopes pages, blocks duplicate loads, resets on refresh 
   }
   let result = render();
   same(options.queryKey, ['launch', 'testnet', SLUG, 'holders', 20]);
-  assert.equal(options.refetchInterval, 60_000);
+  assert.equal(options.refetchInterval, 3_000);
   await Promise.all([result.loadMore(), result.loadMore()]);
   result = render();
   assert.equal(h.calls.length, 1);
@@ -827,6 +829,7 @@ test('price history keeps daily change independent of candle hover and renders l
   let history = { items: [], daily: null, loading: true, error: '', retry() {}, loadEarlier() {} };
   const { IndexedPriceChart } = load('../../../features/launches/trading/indexed-price-chart.tsx', {
     require: name => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
+      : name === '@/lib/api/client' ? { getApiChain: () => 'stellar' }
       : name === 'react' ? { useState: initial => [typeof initial === 'function' ? initial() : initial, () => {}] }
       : name === '@/lib/api/launches/display' ? h.display
       : name === './candle-history' ? { displayWindow: (range, now) => [Date.parse(h.api.chartFrom(range, now)), now] }
@@ -1112,4 +1115,175 @@ test('legacy queued hashes wait for an API slug and then register against the re
   await drain(h);
   assert.ok(h.calls[0].url.includes('/launches/blue-man/trades?'));
   assert.equal(h.queue.readTradeQueue().length, 0);
+});
+
+test('Base pair labels recognize the supplied testnet USDC address case-insensitively', () => {
+  const module = { exports: {} };
+  runInNewContext(ts.transpileModule(readFileSync(resolve(directory, 'display.ts'), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText, { module, exports: module.exports, require: name => {
+    if (name === '../config') return { getConfiguration: () => ({ chain: 'base' }) };
+    if (name === '../client') return { getApiChain: () => 'base' };
+    return {};
+  } });
+  const pair = '0x1670503bC03d1d5a0cA14a07c005cf48E2d27f15';
+  assert.equal(module.exports.pairLabel(pair, 'testnet'), 'USDC');
+  assert.equal(module.exports.pairLabel(pair.toLowerCase(), 'testnet'), 'USDC');
+  assert.notEqual(module.exports.pairLabel(pair, 'public'), 'USDC');
+  assert.notEqual(module.exports.pairLabel('0x' + '1'.repeat(40), 'testnet'), 'USDC');
+});
+
+test('three-second polling is limited to project detail, market and trades', () => {
+  const options = [];
+  const hooks = { useEffect() {}, useState: initial => [typeof initial === 'function' ? initial() : initial, () => {}] };
+  const query = { useQuery: value => { options.push(value); return {}; }, useQueryClient: () => ({}),
+    useInfiniteQuery: value => { options.push(value); return {}; } };
+  function evaluate(path, dependencies) {
+    const module = { exports: {} };
+    runInNewContext(ts.transpileModule(readFileSync(path, 'utf8'), { compilerOptions: {
+      module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020,
+    } }).outputText, { module, exports: module.exports, require: name => {
+      if (name === 'react') return hooks;
+      if (name === '@tanstack/react-query') return query;
+      return dependencies[name] ?? {};
+    } });
+    return module.exports;
+  }
+  const queries = evaluate(resolve(sourceRoot, 'features/launches/hooks/queries.ts'), {
+    '../../../lib/api/config': configurationModule,
+    '../../../lib/api/client': { getApiChain: () => 'stellar' },
+    '../../../lib/api/launches/market': { launchListKey: () => ['launch-list'] },
+  });
+  assert.equal(queries.publicQueryOptions.refetchInterval, 60_000);
+  queries.useCreatorLaunches(OWNER, 'testnet');
+  assert.equal(options.at(-1).refetchInterval, 60_000);
+  queries.useLaunchDetail(SLUG, 'testnet');
+  assert.equal(options.at(-1).refetchInterval, 3_000);
+  queries.useMarket(SLUG, 'testnet');
+  assert.equal(options.at(-1).refetchInterval, 3_000);
+  const trades = evaluate(resolve(sourceRoot, 'features/launches/trading/use-indexed-trades.ts'), {
+    '@/features/launches/hooks/queries': queries,
+  });
+  trades.useIndexedTrades(SLUG, 'testnet');
+  assert.equal(options.at(-1).refetchInterval, 3_000);
+});
+
+for (const chain of ['stellar', 'base']) {
+  function confirmationHarness(handler, store) {
+    const h = harness(handler, store);
+    h.client.configureApiContext({ chain, network: 'testnet' });
+    const userId = chain === 'base' ? 'did:privy:original' : '42';
+    h.client.setApiUserId(userId);
+    let tokens = 0;
+    if (chain === 'base') h.client.setBaseAuthentication({ userId, getAccessToken: async () => `fresh-${++tokens}`, onExpired() {} });
+    const hash = (chain === 'base' ? '0x' : '') + 'a'.repeat(64);
+    const input = { chain, network: 'testnet', contractId: ID, transactionHash: hash, traderAddress: OWNER, userId, apiBaseUrl: h.client.getApiBaseUrl() };
+    const flush = () => h.queue.flushTradeQueue({ network: 'testnet', signal: new AbortController().signal, onRecorded() {} });
+    return { ...h, input, flush, tokens: () => tokens };
+  }
+  test(`${chain} launch confirmation persists first, sends only the Factory hash and restores the server slug after reload`, async () => {
+    let h;
+    const store = storage();
+    h = confirmationHarness(() => {
+      assert.equal(h.queue.readTradeQueue().length, 1);
+      return { result: { launches: [{ contractId: ID, slug: 'server-suffixed-project' }] } };
+    }, store);
+    const record = h.queue.enqueueLaunch(h.input);
+    h.queue.enqueueLaunch(h.input);
+    assert.equal(h.queue.readTradeQueue().length, 1);
+    const key = h.queue.tradeQueueKey(record);
+    assert.ok(key.includes(chain)); assert.ok(key.includes('testnet')); assert.ok(key.includes('launch'));
+    assert.ok(key.includes(encodeURIComponent(h.input.userId))); assert.ok(key.includes(h.input.transactionHash));
+    await h.flush();
+    assert.equal(h.calls[0].url, 'http://api.example/v1/launches/confirm');
+    same(JSON.parse(h.calls[0].init.body), { transactionHash: h.input.transactionHash });
+    const headers = h.calls[0].init.headers;
+    assert.equal(headers['X-User-Id'], h.input.userId);
+    assert.equal(headers[chain === 'base' ? 'X-Network' : 'X-Stellar-Network'], 'testnet');
+    if (chain === 'base') { assert.equal(headers.Authorization, 'Bearer fresh-1'); assert.equal(headers['X-Stellar-Network'], undefined); }
+    assert.equal(h.queue.readTradeQueue().length, 0);
+    const reload = confirmationHarness(undefined, store);
+    assert.equal(reload.queue.readLaunchConfirmation(record).slug, 'server-suffixed-project');
+    reload.queue.enqueueLaunch(h.input); await reload.flush(); assert.equal(reload.calls.length, 0);
+    assert.ok(![...Array(store.length)].map((_, i) => store.getItem(store.key(i))).join('').includes('fresh-'));
+  });
+  test(`${chain} pending launch receipts survive reload, respect Retry-After and retry registration only`, async () => {
+    const store = storage();
+    const h = confirmationHarness(() => ({ status: 202, retryAfter: '120' }), store);
+    h.queue.enqueueLaunch(h.input); await h.flush();
+    const pending = h.queue.readTradeQueue()[0];
+    assert.equal(pending.state, 'pending'); assert.ok(pending.nextAttemptAt > Date.now() + 119000);
+    const reload = confirmationHarness(() => ({ result: { launches: [{ contractId: ID, slug: 'persisted' }] } }), store);
+    await reload.flush(); assert.equal(reload.calls.length, 0);
+    store.setItem(h.queue.tradeQueueKey(pending), JSON.stringify({ ...pending, nextAttemptAt: 0 }));
+    await reload.flush(); assert.equal(reload.calls.length, 1); assert.equal(reload.queue.readTradeQueue().length, 0);
+    same(JSON.parse(reload.calls[0].init.body), { transactionHash: h.input.transactionHash });
+  });
+  test(`${chain} confirmation waits for its original account and environment`, async () => {
+    const h = confirmationHarness(() => ({ status: 503 }));
+    h.queue.enqueueLaunch(h.input);
+    h.client.setApiUserId(chain === 'base' ? 'did:privy:another' : '43');
+    h.queue.enqueueLaunch({ ...h.input, userId: chain === 'base' ? 'did:privy:another' : '43' });
+    assert.equal(h.queue.readTradeQueue().length, 2);
+    h.client.configureApiContext({ chain, network: 'public' });
+    h.client.setApiUserId(h.input.userId);
+    await h.flush(); assert.equal(h.calls.length, 0);
+    await h.queue.flushTradeQueue({ network: 'public', signal: new AbortController().signal, onRecorded() {} });
+    assert.equal(h.calls.length, 0);
+  });
+  test(`${chain} permission failures stop automatic confirmation but preserve the successful hash`, async () => {
+    const h = confirmationHarness(() => ({ status: 403 }));
+    h.queue.enqueueLaunch(h.input); await h.flush(); await h.flush();
+    assert.equal(h.calls.length, 1); assert.equal(h.queue.readTradeQueue()[0].state, 'invalid');
+  });
+  test(`${chain} unauthorized confirmation pauses until the same identity signs in with fresh auth`, async () => {
+    const h = confirmationHarness(() => ({ status: 401 }));
+    h.queue.enqueueLaunch(h.input); await h.flush();
+    const count = h.calls.length;
+    await h.flush(); assert.equal(h.calls.length, count);
+    assert.equal(h.queue.readTradeQueue()[0].state, 'identity');
+    h.setHandler(() => ({ result: { launches: [{ contractId: ID, slug: 'registered' }] } }));
+    h.queue.resumeTradeIdentity('testnet', ID, OWNER); await h.flush();
+    assert.equal(h.queue.readTradeQueue().length, 0);
+    if (chain === 'base') assert.ok(h.tokens() >= 3);
+  });
+}
+
+test('live trades persist before receipt tracking and register only after its release; reload recovers interrupted tracking', async () => {
+  const store = storage(), h = harness(undefined, store);
+  const context = { chain: 'stellar', userId: '42', apiBaseUrl: h.client.getApiBaseUrl(), awaitingReceipt: true };
+  h.queue.enqueueTrade('testnet', ID, 'a'.repeat(64), OWNER, SLUG, context);
+  await drain(h); assert.equal(h.calls.length, 0); assert.equal(h.queue.readTradeQueue().length, 1);
+  h.queue.releaseTradeReceipt('testnet', 'a'.repeat(64), context);
+  await drain(h); assert.equal(h.calls.length, 1); assert.equal(h.queue.readTradeQueue().length, 0);
+  h.queue.enqueueTrade('testnet', ID, 'b'.repeat(64), OWNER, SLUG, context);
+  const reload = harness(undefined, store);
+  await drain(reload); assert.equal(reload.calls.length, 1); assert.equal(reload.queue.readTradeQueue().length, 0);
+});
+
+test('trade hash normalization deduplicates repeated hashes and actions have separate queue keys', () => {
+  const h = harness();
+  const hash = 'AB'.repeat(32), context = { chain: 'stellar', userId: '42', apiBaseUrl: h.client.getApiBaseUrl() };
+  h.queue.enqueueTrade('testnet', ID, '0x' + hash, OWNER, SLUG, context);
+  h.queue.enqueueTrade('testnet', ID, hash.toLowerCase(), OWNER, SLUG, context);
+  assert.equal(h.queue.readTradeQueue().length, 1);
+  assert.equal(h.queue.readTradeQueue()[0].transactionHash, hash.toLowerCase());
+  h.queue.enqueueLaunch({ ...context, network: 'testnet', contractId: ID, transactionHash: hash, traderAddress: OWNER });
+  assert.equal(h.queue.readTradeQueue().length, 2);
+});
+
+for (const chain of ['stellar', 'base']) test(`${chain} public confirmation uses public headers and chain-correct transaction hashes`, async () => {
+  const h = harness(() => ({ result: { launches: [{ slug: 'public-project', contractId: ID }] } }));
+  h.client.configureApiContext({ chain, network: 'public' });
+  const userId = chain === 'base' ? 'did:privy:public-user' : '42';
+  h.client.setApiUserId(userId);
+  if (chain === 'base') h.client.setBaseAuthentication({ userId, getAccessToken: async () => 'fresh-public-token', onExpired() {} });
+  const hash = (chain === 'base' ? '0x' : '') + 'd'.repeat(64);
+  h.queue.enqueueLaunch({ chain, network: 'public', userId, apiBaseUrl: h.client.getApiBaseUrl(), transactionHash: hash, contractId: ID, traderAddress: OWNER });
+  await h.queue.flushTradeQueue({ network: 'public', signal: new AbortController().signal, onRecorded() {} });
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.calls[0].init.headers[chain === 'base' ? 'X-Network' : 'X-Stellar-Network'], 'public');
+  assert.equal(h.calls[0].init.headers['X-Chain'], chain);
+  same(JSON.parse(h.calls[0].init.body), { transactionHash: hash });
+  if (chain === 'base') assert.equal(h.calls[0].init.headers['X-Stellar-Network'], undefined);
 });

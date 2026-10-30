@@ -1,6 +1,8 @@
 'use client';
 
 import { LAUNCH_CONFIGURED } from '@/lib/stellar/network';
+import { getApiChain, getApiNetwork } from '@/lib/api/client';
+import { useBaseBondingLaunch } from '../hooks/use-base-bonding-launch';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { useLaunchpad } from '@/lib/launchpad';
@@ -33,13 +35,26 @@ export function LaunchStudio() {
 
   return (
     <LaunchMotionConfig>
-      <LaunchStudioContent key={session} onCompletedExit={resetSession} />
+      {getApiChain() === 'base'
+        ? <BaseLaunchStudio key={session} onCompletedExit={resetSession} />
+        : <StellarLaunchStudio key={session} onCompletedExit={resetSession} />}
     </LaunchMotionConfig>
   );
 }
 
-function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void }) {
+function BaseLaunchStudio({ onCompletedExit }: { onCompletedExit: () => void }) {
+  const bondingLaunch = useBaseBondingLaunch();
+  return <LaunchStudioContent onCompletedExit={onCompletedExit} bondingLaunch={bondingLaunch} />;
+}
+
+function StellarLaunchStudio({ onCompletedExit }: { onCompletedExit: () => void }) {
   const bondingLaunch = useBondingLaunch();
+  return <LaunchStudioContent onCompletedExit={onCompletedExit} bondingLaunch={bondingLaunch} />;
+}
+
+function LaunchStudioContent({ onCompletedExit, bondingLaunch }: {
+  onCompletedExit: () => void; bondingLaunch: Omit<ReturnType<typeof useBondingLaunch>, 'nameConflict'> & { unavailable?: string; nameConflict: { name: string; message: string; field?: 'project-name' | 'launch-symbol'; symbol?: string } | null };
+}) {
   const completed = bondingLaunch.operation?.status === 'success';
 
   // Activity preserves routes. Replace the completed session when it is hidden,
@@ -105,7 +120,8 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       try {
-        const stored = window.sessionStorage.getItem(BONDING_AUTH_RETURN_KEY);
+        const draftKey = getApiChain() === 'base' ? `${BONDING_AUTH_RETURN_KEY}:base:${getApiNetwork()}` : BONDING_AUTH_RETURN_KEY;
+        const stored = window.sessionStorage.getItem(draftKey);
         if (!stored) return;
         const restored: unknown = JSON.parse(stored);
         // Preserve auth-return drafts saved before creator fees became percentages.
@@ -127,7 +143,7 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
         setStep(needsTokenomicsReview ? launchStageIndex('token') : restored.quote === 'XLM' ? launchStageIndex('settings') : launchStages.length - 1);
         if (needsTokenomicsReview) notify('Launch calculations have changed. Enter your Creator Raise and review tokenomics before continuing.');
         setReachedIndex(launchStages.length - 1);
-        window.sessionStorage.removeItem(BONDING_AUTH_RETURN_KEY);
+        if (getApiChain() !== 'base') window.sessionStorage.removeItem(draftKey);
       } catch (cause) {
         notify(
           cause instanceof Error
@@ -143,18 +159,18 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
   const currentStage = visibleSteps[step] ?? visibleSteps[0];
   const currentStep = currentStage.id;
   const currentIndex = step;
-  const nameConflict = bondingLaunch.nameConflict?.name === draft.name ? bondingLaunch.nameConflict : null;
+  const nameConflict = bondingLaunch.nameConflict && bondingLaunch.nameConflict.name === draft.name && (bondingLaunch.nameConflict.field !== 'launch-symbol' || bondingLaunch.nameConflict.symbol === draft.symbol) ? bondingLaunch.nameConflict : null;
   useEffect(() => {
     if (!nameConflict) return;
     const frame = requestAnimationFrame(() => {
       setCompleting(false);
       setStep(launchStageIndex('project'));
-      requestAnimationFrame(() => document.getElementById('project-name')?.focus());
+      requestAnimationFrame(() => document.getElementById(nameConflict.field ?? 'project-name')?.focus());
     });
     return () => cancelAnimationFrame(frame);
   }, [nameConflict]);
   const fieldErrors = showErrors ? validateLaunchStage(draft, currentStage) : {};
-  if (nameConflict) fieldErrors['project-name'] = nameConflict.message;
+  if (nameConflict) fieldErrors[nameConflict.field ?? 'project-name'] = nameConflict.message;
 
   function goToStep(nextStep: number) {
     setDirection(nextStep < step ? 'back' : 'forward');
@@ -175,6 +191,8 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
     goToStep(step + 1);
   }
 
+  const unavailable = getApiChain() === 'base' ? bondingLaunch.unavailable : !LAUNCH_CONFIGURED ? 'Launching is not configured by the server for this network.' : undefined;
+
   // FocusedShell reserves a 4rem header and a 1.5rem bottom gutter.
   return (
     <div
@@ -182,7 +200,7 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
       data-launch-studio=""
       className="@container/studio relative mx-auto w-full min-w-0 max-w-[88rem] scroll-mt-20 lg:scroll-mt-4 lg:h-[min(60rem,calc(100dvh-5.5rem))]"
     >
-      {!LAUNCH_CONFIGURED && <p role="status" className="mb-4 rounded-xl border border-border bg-card p-4 text-small">Launching is not configured by the server for this network.</p>}
+      {unavailable && <p role="status" className="mb-4 rounded-xl border border-border bg-card p-4 text-small">{unavailable}</p>}
       {completing ? <LaunchCompletion
         operation={bondingLaunch.operation}
         working={bondingLaunch.working}
@@ -229,7 +247,7 @@ function LaunchStudioContent({ onCompletedExit }: { onCompletedExit: () => void 
                 key={`${currentStep}-${draft.method}`}
                 direction={direction}
                 heading={currentStage.heading}
-                description={stepDescriptions[currentStep]}
+                description={getApiChain() === 'base' && currentStep === 'project' ? 'Create a bonding-curve launch on Base Sepolia.' : stepDescriptions[currentStep]}
               >
                 <LaunchStepContent
                   stage={currentStage}

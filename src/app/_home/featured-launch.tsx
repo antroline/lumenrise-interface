@@ -1,5 +1,9 @@
 'use client';
-import { API_NETWORK } from '@/lib/stellar/network';
+
+import { pairScale } from '@/lib/api/launches/display';
+import { routeNetwork } from '@/lib/chain-address';
+
+import { API_NETWORK, getApiChain } from '@/lib/api/client';
 
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
@@ -32,11 +36,11 @@ export function FeaturedLaunch({ network = API_NETWORK }: { network?: ApiNetwork
             <Skeleton className="col-span-2 h-10 w-full md:w-40" />
           </div>
           <Skeleton className="h-28 w-full md:h-auto md:min-h-40" />
-          <h1 className="sr-only">Launches on Stellar</h1>
+          <h1 className="sr-only">Launches on {getApiChain() === 'base' ? 'Base' : 'Stellar'}</h1>
         </div>
       ) : query.isError && !query.data ? (
         <div className="flex flex-col items-start gap-4">
-          <h1 className="text-2xl font-semibold">Launches on Stellar</h1>
+          <h1 className="text-2xl font-semibold">Launches on {getApiChain() === 'base' ? 'Base' : 'Stellar'}</h1>
           <p role="alert" className="text-sm text-muted-foreground">Featured launch data could not be loaded.</p>
           <Button variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()}>
             {query.isFetching ? 'Retrying…' : 'Try again'}
@@ -77,8 +81,8 @@ export function FeaturedLaunch({ network = API_NETWORK }: { network?: ApiNetwork
             </div>
             <Progress value={Math.max(0, Math.min(100, launch.bonding.progressBps / 100))} aria-valuetext={`${progressLabel(launch.bonding.progressBps)} filled`} tone="lime" size="thick" aria-label={`${launch.metadata.name} graduation progress`} className="mt-2 md:mt-3 [&_[data-slot=progress-indicator]]:motion-reduce:transition-none" />
             <dl className="mt-3 grid grid-cols-2 gap-3 text-sm tabular-nums md:mt-4 md:gap-4">
-              <div><dt className="text-muted-foreground">Raised</dt><dd className="mt-1 break-words font-medium">{compactAmount(launch.bonding.state.quoteReserve)} {pairLabel(launch.pair, network)}</dd></div>
-              <div><dt className="text-muted-foreground">Graduation target</dt><dd className="mt-1 break-words font-medium">{compactAmount(launch.bonding.curve.graduationTarget)} {pairLabel(launch.pair, network)}</dd></div>
+              <div><dt className="text-muted-foreground">Raised</dt><dd className="mt-1 break-words font-medium">{compactAmount(launch.bonding.state.quoteReserve, pairScale(launch))} {pairLabel(launch.pair, network)}</dd></div>
+              <div><dt className="text-muted-foreground">Graduation target</dt><dd className="mt-1 break-words font-medium">{compactAmount(launch.bonding.curve.graduationTarget, pairScale(launch))} {pairLabel(launch.pair, network)}</dd></div>
             </dl>
             <p className={cn('text-xs leading-relaxed text-muted-foreground md:mt-4 md:block', launch.bonding.stateStale || query.isError || !participating ? 'mt-3' : 'hidden')}>
               <span className={participating ? 'hidden md:inline' : undefined}>{participating ? 'Highest progress among curves accepting participation on this page.' : status === 'Graduated' ? 'Graduation confirmed.' : 'Participation is currently unavailable.'}</span>
@@ -88,9 +92,9 @@ export function FeaturedLaunch({ network = API_NETWORK }: { network?: ApiNetwork
         </div>
       ) : (
         <div className="flex flex-col items-start gap-4">
-          <h1 className="text-2xl font-semibold">Launches on Stellar</h1>
+          <h1 className="text-2xl font-semibold">Launches on {getApiChain() === 'base' ? 'Base' : 'Stellar'}</h1>
           <p className="text-sm text-muted-foreground">No featured launch is available on this network yet.</p>
-          <Button render={<Link href={`/projects?network=${network}`} />} nativeButton={false}>Explore launches <ArrowRight data-icon="inline-end" /></Button>
+          <Button render={<Link href={`/projects?network=${routeNetwork(network)}`} />} nativeButton={false}>Explore launches <ArrowRight data-icon="inline-end" /></Button>
         </div>
       )}
     </DarkPanel>

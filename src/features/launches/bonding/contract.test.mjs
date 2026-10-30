@@ -23,7 +23,7 @@ function loadSource(filename, mocks = {}, cache = new Map(), globals = {}) {
   }).outputText;
   runInNewContext(output, {
     module, exports: module.exports, Error, setTimeout: (resolve, ms) => ms === 1000 ? resolve() : 0, clearTimeout: () => {}, ...globals,
-    require: name => name === '@/lib/stellar/network' ? networkModule : name in mocks ? mocks[name] : name.startsWith('.')
+    require: name => name === '@/lib/stellar/network' ? networkModule : name === '@/lib/base/amount' ? loadSource('../../../lib/base/amount.ts') : name in mocks ? mocks[name] : name.startsWith('.')
       ? loadSource(resolve(dirname(path), `${name}${name === './transaction-hash' ? '.tsx' : '.ts'}`), mocks, cache, globals) : require(name),
   }, { filename: path });
   return module.exports;
@@ -234,14 +234,16 @@ function renderTrade(side, position = '20000000', confirmation = 'SUCCESS', miss
     '@/lib/launchpad': { useLaunchpad: () => ({ loginPending: false, login: async () => {} }) },
     './trade-result-dialog': { TradeResultDialog: 'TradeResultDialog' },
     '@/components/token-logo': { TokenLogo: () => null },
-    '@/lib/api/launches/trade-queue': { enqueueTrade: () => true },
+    '@/lib/api/client': { getApiUserId: () => '42', getApiBaseUrl: () => 'http://api.test' },
+    '@/lib/api/launches/trade-queue': { releaseTradeReceipt() {}, enqueueTrade: () => true },
     '@/features/launches/hooks/queries': { usePageVisible: () => true },
   };
-  const { TradeForm } = loadSource('trade-form.tsx', mocks, new Map(), {
+  const { TradeForm, TradeFormView } = loadSource('trade-form.tsx', mocks, new Map(), {
     localStorage: { getItem: key => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, value), removeItem: key => stored.delete(key) },
   });
-  const form = TradeForm({ address: curve, side, tokens: { asset, pair: usdc, assetSymbol: 'LAUNCH', pairSymbol: 'USDC' },
+  const view = TradeForm({ address: curve, side, tokens: { asset, pair: usdc, assetSymbol: 'LAUNCH', pairSymbol: 'USDC' },
     snapshot: { config: { buckets: { curve: 500000000000000n }, params: { curve: { virtual_base_reserve: 1000000000000000n, virtual_quote_reserve: 1000000000000n, creator_fee_bps: 0n } } }, state: { busy: false, sold: 0n }, status: 'Open', price: 10000000n }, locked: false, setLocked: () => {}, refresh: async () => calls.push('refreshed') });
+  const form = TradeFormView(view.props);
   return { submit: () => form.props.onSubmit({ preventDefault() {} }), calls, states, stored, get written() { return written; } };
 }
 

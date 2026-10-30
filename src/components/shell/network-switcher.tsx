@@ -1,78 +1,105 @@
 'use client';
 
-import { ArrowLeftRight, Globe } from 'lucide-react';
-import { useBlux, useSwitchNetwork } from '@bluxcc/react';
+import Image from 'next/image';
+import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
-  DropdownMenuGroup,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
+  DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel,
+  DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { getConfiguration } from '@/lib/api/config';
-import { API_NETWORK } from '@/lib/stellar/network';
+import { useNetwork } from '@/lib/networks/context';
+import type { Blockchain } from '@/lib/networks/types';
 import { cn } from '@/lib/utils';
 
-export function NetworkSwitcher({ compact = false, className }: { compact?: boolean; className?: string }) {
-  const isMainnet = API_NETWORK === 'public';
-  const label = isMainnet ? 'Mainnet' : 'Testnet';
-  const nextNetwork = isMainnet ? 'testnet' : 'public';
-  const nextLabel = isMainnet ? 'Testnet' : 'Mainnet';
-  const { isReady } = useBlux();
-  const { networks, switchNetwork } = useSwitchNetwork();
-  const canSwitch = isReady && getConfiguration().network.supported.includes(nextNetwork);
+function NetworkBrand({ blockchain, symbolOnly = false }: { blockchain: Blockchain; symbolOnly?: boolean }) {
+  const label = blockchain === 'stellar' ? 'Stellar' : 'Base';
+  // Balance the heavier Base lettering optically; preserve each asset's aspect ratio.
+  const width = symbolOnly ? (blockchain === 'stellar' ? 22 : 18) : (blockchain === 'stellar' ? 76 : 64);
+  const aspectRatio = symbolOnly ? (blockchain === 'stellar' ? 31.3177 / 26 : 1) : (blockchain === 'stellar' ? 106 / 26 : 1280 / 323.84);
+  const height = Math.round(width / aspectRatio);
+  const asset = `/branding/networks/${blockchain}-${symbolOnly ? 'symbol' : 'lockup'}`;
 
+  if (blockchain === 'base' && symbolOnly) {
+    return <Image src={`${asset}.svg`} alt={label} width={width} height={height} className="h-auto shrink-0" />;
+  }
+
+  return <>
+    <Image src={`${asset}-light.svg`} alt={label} width={width} height={height} className="block h-auto shrink-0 dark:hidden" />
+    <Image src={`${asset}-dark.svg`} alt={label} width={width} height={height} className="hidden h-auto shrink-0 dark:block" />
+  </>;
+}
+
+export function NetworkSwitcher({ compact = false, className }: { compact?: boolean; className?: string }) {
+  const { activeNetwork } = useNetwork();
   return (
-    <Button
-      variant="secondary"
-      className={cn('group/network h-11 w-full justify-start gap-2.5 px-3', compact && 'size-10 flex-col justify-center gap-0.5 px-0', className)}
-      disabled={!canSwitch}
-      aria-label={`Current network: ${label}. Switch to ${nextLabel}`}
-      title={canSwitch ? `Switch to ${nextLabel}` : `Current network: ${label}. Switching unavailable`}
-      onClick={() => {
-        if (!canSwitch) return;
-        switchNetwork(isMainnet ? networks.testnet : networks.mainnet);
-        window.location.assign('/projects?network=' + nextNetwork);
-      }}
-    >
-      <span className={cn('flex shrink-0 items-center justify-center', compact ? 'size-4' : 'size-7 rounded-full', isMainnet ? 'text-ok' : 'text-warn', !compact && (isMainnet ? 'bg-ok-soft' : 'bg-warn-soft'))}>
-        <Globe className={compact ? 'size-3.5' : 'size-4'} aria-hidden="true" />
-      </span>
-      {compact && <span className="text-[10px] leading-none font-semibold">{isMainnet ? 'Main' : 'Test'}</span>}
-      {!compact && (
-        <>
-          <span className="flex-1 text-left">{label}</span>
-          <ArrowLeftRight className="size-3.5 text-muted-foreground transition-colors group-hover/network:text-foreground motion-reduce:transition-none" aria-hidden="true" />
-        </>
-      )}
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger render={
+        <Button variant="secondary"
+          className={cn('h-11 w-full justify-start gap-2 px-3', compact && 'size-10 justify-center px-0', className)}
+          aria-label={`Network: ${activeNetwork.label}`}
+          title={activeNetwork.label}
+        >
+          <NetworkBrand blockchain={activeNetwork.blockchain} symbolOnly={compact} />
+          {!compact && <>
+            <Badge size="sm" className="ml-auto">{activeNetwork.environment === 'testnet' ? 'Testnet' : 'Mainnet'}</Badge>
+            <ChevronDown data-icon="inline-end" aria-hidden="true" className="text-muted-foreground transition-transform duration-150 in-aria-expanded:rotate-180 motion-reduce:transition-none" />
+          </>}
+        </Button>
+      } />
+      <DropdownMenuContent side={compact ? 'right' : 'top'} align="start" sideOffset={8} className="w-64 min-w-0 max-w-[calc(100vw-2rem)] p-2">
+        <NetworkMenuItems />
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
+/** The sidebar, mobile drawer, and wallet menu share one set of choices. */
 export function NetworkMenuItems() {
-  const supported = getConfiguration().network.supported;
-  const { isReady } = useBlux();
-  const { networks, switchNetwork } = useSwitchNetwork();
-
-  return (
+  const { activeNetwork, networks, switchNetwork, switchBlockchain } = useNetwork();
+  return <>
     <DropdownMenuGroup>
-      <DropdownMenuLabel>Network</DropdownMenuLabel>
-      <DropdownMenuRadioGroup
-        aria-label="Stellar network"
-        value={API_NETWORK}
-        onValueChange={(network) => {
-          if (!isReady || network === API_NETWORK || !supported.some(value => value === network)) return;
-          switchNetwork(network === 'public' ? networks.mainnet : networks.testnet);
-          window.location.assign('/projects?network=' + network);
-        }}
-      >
-        <DropdownMenuRadioItem value="testnet" disabled={!isReady || !supported.includes('testnet')} className="min-h-11">
-          Testnet
-        </DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value="public" disabled={!isReady || !supported.includes('public')} className="min-h-11">
-          Mainnet
-        </DropdownMenuRadioItem>
+      <DropdownMenuLabel className="px-3 pb-2 pt-1">Blockchain</DropdownMenuLabel>
+      <DropdownMenuRadioGroup aria-label="Blockchain" value={activeNetwork.blockchain} onValueChange={value => {
+        if (value === 'stellar' || value === 'base') switchBlockchain(value);
+      }}>
+        {(['stellar', 'base'] as const).map(blockchain => (
+          <DropdownMenuRadioItem
+            key={blockchain}
+            value={blockchain}
+            label={blockchain === 'stellar' ? 'Stellar' : 'Base'}
+            className="min-h-12 cursor-pointer rounded-lg pl-3 pr-9 data-checked:bg-secondary focus:bg-secondary focus:text-foreground"
+            aria-label={blockchain === 'stellar' ? 'Stellar' : 'Base'}
+          >
+            <NetworkBrand blockchain={blockchain} />
+          </DropdownMenuRadioItem>
+        ))}
       </DropdownMenuRadioGroup>
     </DropdownMenuGroup>
-  );
+    <DropdownMenuSeparator className="mx-1 my-2" />
+    <DropdownMenuGroup>
+      <DropdownMenuLabel className="px-3 pb-2 pt-1">Environment</DropdownMenuLabel>
+      <DropdownMenuRadioGroup aria-label="Network environment" value={activeNetwork.id} onValueChange={value => {
+        const network = networks.find(entry => entry.id === value && entry.blockchain === activeNetwork.blockchain);
+        if (network) switchNetwork(network.id);
+      }}>
+        {networks.filter(entry => entry.blockchain === activeNetwork.blockchain).map(network => (
+          <DropdownMenuRadioItem
+            key={network.id}
+            value={network.id}
+            label={network.environment === 'mainnet' ? 'Mainnet' : 'Testnet'}
+            aria-label={network.label}
+            className="min-h-14 cursor-pointer rounded-lg py-2 pl-3 pr-9 data-checked:bg-secondary focus:bg-secondary focus:text-foreground"
+          >
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="font-medium">{network.environment === 'mainnet' ? 'Mainnet' : 'Testnet'}</span>
+              <span className="text-xs text-muted-foreground">
+                {network.environment === 'mainnet' ? 'Real funds' : network.blockchain === 'base' ? 'Sepolia · Test funds' : 'Test funds'}
+              </span>
+            </span>
+          </DropdownMenuRadioItem>
+        ))}
+      </DropdownMenuRadioGroup>
+    </DropdownMenuGroup>
+  </>;
 }

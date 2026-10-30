@@ -1,4 +1,4 @@
-import { configurationModule, networkModule } from '../configuration-fixture.mjs';
+import { apiContextModule, configurationModule, networkModule } from '../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -18,7 +18,7 @@ function load(file, mocks, window, expose = '', environment = 'test') {
   runInNewContext(code, {
     module, exports: module.exports, window, URL,
     process: { env: { NODE_ENV: environment } },
-    require: (name) => name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name === '@/lib/configuration' || name === '@/lib/blux-config' ? {} : name === '@/lib/client-rules' ? {imageHint: () => 'Server image rules'} : name in mocks ? mocks[name] : require(name),
+    require: (name) => name === '@/components/shell/network-wallet-button' ? { NetworkWalletButton: 'WalletControl' } : name === '@/lib/api/client' ? { ...apiContextModule, ...mocks[name] } : name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name === '@/lib/configuration' || name === '@/lib/blux-config' ? {} : name === '@/lib/client-rules' ? {imageHint: () => 'Server image rules'} : name in mocks ? mocks[name] : require(name),
   });
   return module.exports;
 }

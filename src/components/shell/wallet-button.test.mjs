@@ -4,108 +4,92 @@ import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 import ts from 'typescript';
 import { configuration } from '../../lib/api/config.fixture.mjs';
+import { loadNetworkRegistry } from '../../lib/networks/registry.fixture.mjs';
 
-const code = ts.transpileModule(readFileSync(new URL('./wallet-button.tsx', import.meta.url), 'utf8'), {
+const compile = file => ts.transpileModule(readFileSync(new URL(file, import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
 }).outputText;
-const switcherCode = ts.transpileModule(readFileSync(new URL('./network-switcher.tsx', import.meta.url), 'utf8'), {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
-}).outputText;
-function harness(network, supported = configuration.network.supported, walletProps = {}, switcherProps, { isReady = true } = {}) {
-  const navigations = [], switches = [], events = [], module = { exports: {} };
-  const networks = { mainnet: configuration.network.configurations.public.networkPassphrase, testnet: configuration.network.configurations.testnet.networkPassphrase };
+const code = compile('./wallet-button.tsx');
+const switcherCode = compile('./network-switcher.tsx');
+const registry = loadNetworkRegistry();
+
+function harness(network, { supported = ['testnet', 'public'], compact = false, wallet = false, showNetwork = true } = {}) {
+  const config = { ...configuration, network: { ...configuration.network, supported } };
+  const activeNetwork = registry.resolveNetwork(network, config);
+  const switches = [], chainSwitches = [];
   const jsx = (type, props) => typeof type === 'function' ? type(props) : ({ type, props });
   const mocks = {
-    'react/jsx-runtime': { jsx, jsxs: jsx },
+    'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'Fragment' },
     'next/link': { default: 'Link' },
-    '@/lib/stellar/network': { API_NETWORK: network },
-    '@/lib/api/config': { getConfiguration: () => ({ ...configuration, network: { ...configuration.network, supported } }) },
+    '@/lib/stellar/network': { API_NETWORK: activeNetwork.apiNetwork },
+    '@/lib/networks/context': { useNetwork: () => ({
+      activeNetwork, networks: registry.availableNetworks(config),
+      switchNetwork: id => switches.push(id), switchBlockchain: chain => chainSwitches.push(chain),
+    }) },
     '@/lib/launchpad': { useLaunchpad: () => ({ isSignedIn: true, address: 'owner', account: { status: 'registered', profile: { name: 'Name', avatarUrl: null } } }) },
-    '@bluxcc/react': {
-      useBlux: () => ({ isReady, profile() {} }),
-      useSwitchNetwork: () => ({ networks, switchNetwork: network => { switches.push(network); events.push('switch'); } }),
-    },
+    '@bluxcc/react': { useBlux: () => ({ profile() {} }) },
     '@/lib/connections': { shortAddress: value => value },
     '@/lib/utils': { cn: (...values) => values.filter(Boolean).join(' ') },
     './navigation': { settingsItem: { href: '/settings' } },
   };
-  const load = (source, target) => runInNewContext(source, {
-    module: target, exports: target.exports,
-    window: { location: { assign: url => { navigations.push(url); events.push('navigate'); } } },
-    require: name => mocks[name] ?? new Proxy({}, { get: (_, key) => key }),
-  });
-  const switcher = { exports: {} };
-  load(switcherCode, switcher);
-  mocks['./network-switcher'] = switcher.exports;
-  load(code, module);
+  function load(source) {
+    const module = { exports: {} };
+    runInNewContext(source, {
+      module, exports: module.exports,
+      require: name => mocks[name] ?? new Proxy({}, { get: (_, key) => key }),
+    });
+    return module.exports;
+  }
+  const switcher = load(switcherCode);
+  mocks['./network-switcher'] = switcher;
   function elements(node) {
     if (!node || typeof node !== 'object') return [];
     return [node, ...[node.props?.children].flat(Infinity).flatMap(elements)];
   }
-  return { nodes: elements(switcherProps ? switcher.exports.NetworkSwitcher(switcherProps) : module.exports.WalletButton(walletProps)), navigations, switches, events };
+  const tree = wallet ? load(code).WalletButton({ showNetwork }) : switcher.NetworkSwitcher({ compact });
+  return { nodes: elements(tree), switches, chainSwitches };
 }
-for (const network of ['testnet', 'public']) test(`wallet menu selects ${network} and changes the whole application network`, () => {
-  const h = harness(network);
-  const group = h.nodes.find(node => node.type === 'DropdownMenuRadioGroup');
-  assert.equal(group.props.value, network);
-  group.props.onValueChange(network);
-  group.props.onValueChange('unsupported');
-  assert.equal(h.navigations.length, 0);
-  assert.equal(h.switches.length, 0);
-  const other = network === 'testnet' ? 'public' : 'testnet';
-  group.props.onValueChange(other);
-  assert.deepEqual(h.navigations, ['/projects?network=' + other]);
-  assert.deepEqual(h.switches, [configuration.network.configurations[other].networkPassphrase]);
-  assert.deepEqual(h.events, ['switch', 'navigate']);
-  const settings = h.nodes.find(node => node.props?.href?.startsWith('/settings'));
-  // Link is passed through the dropdown's render prop.
-  const renderLink = h.nodes.map(node => node.props?.render).find(node => node?.props?.href?.startsWith('/settings'));
-  assert.equal((settings ?? renderLink).props.href, '/settings?network=' + network);
-});
-test('wallet menu disables networks absent from server support', () => {
-  const h = harness('testnet', ['testnet']);
-  assert.equal(h.nodes.find(node => node.type === 'DropdownMenuRadioItem' && node.props.value === 'public').props.disabled, true);
-  h.nodes.find(node => node.type === 'DropdownMenuRadioGroup').props.onValueChange('public');
-  assert.equal(h.navigations.length, 0);
-  assert.equal(h.switches.length, 0);
+
+for (const id of ['stellar-testnet', 'stellar-mainnet', 'base-mainnet', 'base-sepolia']) {
+  for (const compact of [false, true]) test(`network selector uses shared context without a wallet: ${id}, compact=${compact}`, () => {
+    const h = harness(id, { compact });
+    const trigger = h.nodes.find(node => node.type === 'DropdownMenuTrigger').props.render;
+    assert.equal(trigger.props['aria-label'], 'Network: ' + registry.resolveNetwork(id, configuration).label);
+    assert.notEqual(trigger.props.disabled, true);
+    const group = h.nodes.find(node => node.type === 'DropdownMenuRadioGroup' && node.props['aria-label'] === 'Blockchain');
+    const chain = id.startsWith('base') ? 'base' : 'stellar';
+    assert.equal(group.props.value, chain);
+    group.props.onValueChange('invalid');
+    assert.equal(h.chainSwitches.length, 0);
+    group.props.onValueChange(chain === 'base' ? 'stellar' : 'base');
+    assert.deepEqual(h.chainSwitches, [chain === 'base' ? 'stellar' : 'base']);
+    const environment = h.nodes.find(node => node.type === 'DropdownMenuRadioGroup' && node.props['aria-label'] === 'Network environment');
+    assert.equal(environment.props.value, id);
+    environment.props.onValueChange(chain === 'base' ? 'stellar-mainnet' : 'base-mainnet');
+    environment.props.onValueChange('unsupported');
+    assert.equal(h.switches.length, 0);
+    const next = chain === 'base' ? id === 'base-mainnet' ? 'base-sepolia' : 'base-mainnet' : id === 'stellar-mainnet' ? 'stellar-testnet' : 'stellar-mainnet';
+    environment.props.onValueChange(next);
+    assert.deepEqual(h.switches, [next]);
+  });
+}
+
+test('Stellar environment choices respect server support', () => {
+  const h = harness('stellar-testnet', { supported: ['testnet'] });
+  const choices = h.nodes.filter(node => node.type === 'DropdownMenuRadioItem').map(node => node.props.value);
+  assert.ok(choices.includes('stellar-testnet'));
+  assert.ok(!choices.includes('stellar-mainnet'));
+  assert.ok(choices.includes('base'));
 });
 
-for (const compact of [false, true]) for (const network of ['testnet', 'public']) test(`sidebar switches from ${network} without a connected wallet (compact: ${compact})`, () => {
-  const h = harness(network, ['testnet', 'public'], {}, { compact });
-  const trigger = h.nodes.find(node => node.type === 'DropdownMenuTrigger').props.render;
-  assert.equal(trigger.props['aria-label'], 'Network: ' + (network === 'public' ? 'Mainnet' : 'Testnet'));
-  const group = h.nodes.find(node => node.type === 'DropdownMenuRadioGroup');
-  assert.equal(group.props.value, network);
-  group.props.onValueChange(network);
-  group.props.onValueChange('unsupported');
-  assert.equal(h.navigations.length, 0);
-  assert.equal(h.switches.length, 0);
-  const other = network === 'testnet' ? 'public' : 'testnet';
-  group.props.onValueChange(other);
-  assert.deepEqual(h.navigations, ['/projects?network=' + other]);
-  assert.deepEqual(h.switches, [configuration.network.configurations[other].networkPassphrase]);
-  assert.deepEqual(h.events, ['switch', 'navigate']);
+for (const network of ['testnet', 'public']) test(`Stellar wallet retains profile navigation and shared network choices: ${network}`, () => {
+  const h = harness(network, { wallet: true });
+  const link = h.nodes.map(node => node.props?.render).find(node => node?.props?.href?.startsWith('/settings'));
+  assert.equal(link.props.href, '/settings?network=' + network);
+  assert.ok(h.nodes.some(node => node.type === 'DropdownMenuRadioGroup'));
 });
 
-test('sidebar network switcher disables unsupported networks', () => {
-  const h = harness('public', ['public'], {}, {});
-  assert.equal(h.nodes.find(node => node.type === 'DropdownMenuRadioItem' && node.props.value === 'testnet').props.disabled, true);
-  h.nodes.find(node => node.type === 'DropdownMenuRadioGroup').props.onValueChange('testnet');
-  assert.equal(h.navigations.length, 0);
-  assert.equal(h.switches.length, 0);
-});
-
-for (const switcherProps of [undefined, {}, { compact: true }]) test(`network controls wait for Blux readiness (${JSON.stringify(switcherProps)})`, () => {
-  const h = harness('testnet', ['testnet', 'public'], {}, switcherProps, { isReady: false });
-  for (const item of h.nodes.filter(node => node.type === 'DropdownMenuRadioItem')) assert.equal(item.props.disabled, true);
-  h.nodes.find(node => node.type === 'DropdownMenuRadioGroup').props.onValueChange('public');
-  assert.deepEqual(h.switches, []);
-  assert.deepEqual(h.navigations, []);
-});
-
-test('sidebar wallet omits duplicate network controls while retaining account navigation', () => {
-  const h = harness('public', ['testnet', 'public'], { showNetwork: false });
+test('sidebar wallet omits duplicate network controls', () => {
+  const h = harness('public', { wallet: true, showNetwork: false });
   assert.equal(h.nodes.some(node => node.type === 'DropdownMenuRadioGroup'), false);
-  const renderLink = h.nodes.map(node => node.props?.render).find(node => node?.props?.href?.startsWith('/settings'));
-  assert.equal(renderLink.props.href, '/settings?network=public');
 });

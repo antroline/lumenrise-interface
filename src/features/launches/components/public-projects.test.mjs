@@ -1,4 +1,4 @@
-import { configurationModule, networkModule } from '../../../configuration-fixture.mjs';
+import { apiContextModule, chainAddressModule, configurationModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -16,7 +16,7 @@ function compile(path, imports, globals = {}) {
         jsx: ts.JsxEmit.ReactJSX,
       },
     }).outputText,
-    { exports, require: name => name.endsWith('/api/config') ? configurationModule : imports(name), URL, URLSearchParams, ...globals },
+    { exports, require: name => name === '@/lib/chain-address' ? chainAddressModule : name.endsWith('/api/config') ? configurationModule : imports(name), URL, URLSearchParams, ...globals },
   );
   return exports;
 }
@@ -92,7 +92,9 @@ function harness(initial = status(), initialProps = {}) {
     './public-projects.tsx',
     (name) => {
       if (name === '@/lib/api/config') return configurationModule;
-      if (name === '@/lib/stellar/network') return networkModule;
+      if (name === '@/lib/api/client') return { ...apiContextModule, ApiError: typeof ApiError === 'function' ? ApiError : Error };
+        if (name === '@/lib/chain-address') return chainAddressModule;
+        if (name === '@/lib/stellar/network') return networkModule;
       if (name === 'react') return react;
       if (name === 'react/jsx-runtime')
         return { jsx, jsxs: jsx, Fragment: 'Fragment' };
@@ -118,12 +120,12 @@ function harness(initial = status(), initialProps = {}) {
         };
       if (name.endsWith('/queries'))
         return { publicQueryOptions: {}, usePageVisible: () => true };
-      if (name.endsWith('/client')) return { ApiError };
+      if (name.endsWith('/client')) return { ApiError, getApiChain: () => 'stellar' };
       if (name.endsWith('/utils'))
         return { cn: (...values) => values.filter(Boolean).join(' ') };
       if (name.endsWith('/display'))
         return {
-          pairLabel: () => 'USDC',
+          pairScale: () => 7, assetScale: () => 7, pairLabel: () => 'USDC',
           displayAmount: (raw) => raw,
           compactAmount: (raw) => raw,
         };

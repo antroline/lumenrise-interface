@@ -16,7 +16,7 @@ import {
   type ExternalMemberInput, type TeamCandidate, type TeamMember,
 } from '@/lib/api/launches/team';
 import type { ApiNetwork } from '@/lib/api/launches/types';
-import { resolveApiFileUrl } from '@/lib/api/client';
+import { resolveApiFileUrl, getApiChain } from '@/lib/api/client';
 
 export type TeamChange =
   | { kind: 'registered'; identityId: string; role: string }
@@ -58,7 +58,7 @@ export function LaunchTeamMemberDialog({ slug, network, sessionId, member, busy,
     return () => clearTimeout(timer);
   }, [search]);
   const candidates = useQuery({
-    queryKey: ['team-candidates', network, slug, sessionId, debouncedSearch],
+    queryKey: ['team-candidates', getApiChain(), network, slug, sessionId, debouncedSearch],
     queryFn: ({ signal }) => searchTeamCandidates(slug, debouncedSearch, { network, signal }),
     enabled: !member && kind === 'registered' && debouncedSearch.length >= getConfiguration().rules.team.searchMinLength && debouncedSearch.length <= getConfiguration().rules.team.searchMaxLength && debouncedSearch === search.trim(),
     staleTime: 0,

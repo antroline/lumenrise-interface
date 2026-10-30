@@ -26,7 +26,7 @@ export function useHolders(
     queryFn: ({ signal }) =>
       getHolders(slug, network, { limit }, signal),
     enabled: visible && !!slug,
-    refetchInterval: active && visible ? 60_000 : false,
+    refetchInterval: active && visible ? 3_000 : false,
     // A new first-page snapshot must replace appended pages even if values match.
     structuralSharing: false,
   });

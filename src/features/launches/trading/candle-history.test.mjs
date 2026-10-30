@@ -34,10 +34,16 @@ function page(items, patch = {}) {
     frame: { timeframe: '1m', timezone: 'UTC', items, hasMore: false, nextBefore: null, ...patch.frame } };
 }
 const helpers = load('./candle-history.ts');
-test('all nine identifiers, UTC Monday weeks and true calendar months', () => {
-  assert.equal(helpers.candleTimeframes.join(','), '1m,5m,15m,45m,1h,4h,1d,1w,1M');
+test('all supported identifiers, UTC Monday weeks and true calendar periods', () => {
+  assert.equal(helpers.candleTimeframes.join(','), '1m,5m,15m,45m,1h,4h,1d,1w,1M,3M,6M,1y');
   assert.equal(new Date(helpers.candleBoundary(NOW, '1w')).toISOString(), '2026-10-26T00:00:00.000Z');
   assert.equal(new Date(helpers.candleBoundary(NOW, '1M')).toISOString(), '2026-10-01T00:00:00.000Z');
+  assert.equal(new Date(helpers.candleBoundary(NOW, '3M')).toISOString(), '2026-10-01T00:00:00.000Z');
+  assert.equal(new Date(helpers.candleBoundary(NOW, '6M')).toISOString(), '2026-07-01T00:00:00.000Z');
+  assert.equal(new Date(helpers.candleBoundary(NOW, '1y')).toISOString(), '2026-01-01T00:00:00.000Z');
+  assert.equal(new Date(helpers.earlierBoundary(NOW, '3M', 3)).toISOString(), '2026-01-01T00:00:00.000Z');
+  assert.equal(new Date(helpers.earlierBoundary(NOW, '6M', 1)).toISOString(), '2026-01-01T00:00:00.000Z');
+  assert.equal(new Date(helpers.earlierBoundary(NOW, '1y', 1)).toISOString(), '2025-01-01T00:00:00.000Z');
   assert.equal(helpers.candleBoundary(NOW, '1m'), NOW);
   for (const [frame, minutes] of [['5m', 5], ['15m', 15], ['45m', 45], ['1h', 60], ['4h', 240], ['1d', 1440]])
     assert.equal(helpers.candleBoundary(NOW + 59234, frame) % (minutes * 60000), 0);
@@ -75,7 +81,7 @@ test('snapshot merging deduplicates, sorts, preserves flat/partial bars and reje
 });
 test('requests use explicit network and case-sensitive timeframe, overlap UTC boundary, never legacy range', async () => {
   const calls = [];
-  const api = load('./candle-history.ts', { '@/lib/api/client': { apiRequest: async (url, options) => {
+  const api = load('./candle-history.ts', { '@/lib/api/client': { getApiChain: () => 'stellar', apiRequest: async (url, options) => {
     calls.push({ url, options });
     const p = page([candle(NOW), candle(NOW - 60000), candle(NOW)]);
     return { ...p.result, timeframes: [{ ...p.frame, timeframe: new URLSearchParams(url.split('?')[1]).get('timeframes') }] };
@@ -107,7 +113,8 @@ function hookHarness(handler) {
     } },
   };
   const api = { ...helpers, requestCandles: async (...request) => { requests.push(request); return handler(...request, requests.length); } };
-  const module = load('./use-candle-history.ts', { react, './candle-history': api }, { document,
+  const client = { getQueryCache: () => ({ subscribe: fn => { listeners.set('cache', fn); return () => listeners.delete('cache'); } }) };
+  const module = load('./use-candle-history.ts', { react, '@tanstack/react-query': { useQueryClient: () => client }, './candle-history': api }, { document,
     Date: class extends Date { static now() { return now; } },
     setTimeout: (fn, delay) => { const id = ++nextTimer; timers.set(id, { fn, at: now + delay }); return id; }, clearTimeout: id => timers.delete(id) });
   const render = (patch = {}) => {
@@ -187,7 +194,7 @@ test('temporary refresh failures retain candles and retry with bounded backoff',
   h.render({ 3: NOW }); await h.flush(); await h.advance(15000);
   assert.equal(h.render().items.length, 1);
   assert.equal(h.render().error, 'Offline');
-  const count = h.requests.length; await h.advance(14999); assert.equal(h.requests.length, count);
+  const count = h.requests.length; await h.advance(2999); assert.equal(h.requests.length, count);
   await h.advance(1); assert.ok(h.requests.length > count);
   h.cleanup();
 });
@@ -312,5 +319,19 @@ test('interval switches retain a separate display snapshot until replacement arr
   assert.equal(replacement.items[0].timestamp, new Date(NOW - 3600000).toISOString());
   const anotherMarket = h.render({ 0: 'another-market', 2: '4h' });
   assert.equal(anotherMarket.previous, undefined);
+  h.cleanup();
+});
+
+test('refreshes candles every three seconds and immediately after scoped trade invalidation', async () => {
+  const h = hookHarness(async () => page([candle(NOW)]));
+  h.render({ 3: NOW }); await h.flush();
+  const count = h.requests.length;
+  await h.advance(2999); assert.equal(h.requests.length, count);
+  await h.advance(1); assert.ok(h.requests.length > count);
+  const polled = h.requests.length;
+  h.listeners.get('cache')({ type: 'updated', action: { type: 'invalidate' }, query: { queryKey: ['launch', 'stellar', 'public', 'other'] } });
+  await h.flush(); assert.equal(h.requests.length, polled);
+  h.listeners.get('cache')({ type: 'updated', action: { type: 'invalidate' }, query: { queryKey: ['launch', 'stellar', 'testnet', 'launch'] } });
+  await h.flush(); assert.ok(h.requests.length > polled);
   h.cleanup();
 });

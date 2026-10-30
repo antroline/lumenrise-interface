@@ -1,5 +1,9 @@
 'use client';
 
+import { pairScale } from '@/lib/api/launches/display';
+
+import { routeNetwork } from '@/lib/chain-address';
+
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowRight, Globe } from 'lucide-react';
@@ -27,9 +31,9 @@ function openingAge(seconds: string, now: number) {
   return `${Math.floor(minutes / 1440)}d ago`;
 }
 
-function amountLabel(raw: string) {
-  return BigInt(raw) > BigInt(0) && BigInt(raw) < BigInt(100_000)
-    ? displayAmount(raw) : compactAmount(raw);
+function amountLabel(raw: string, scale: number | null) {
+  return scale !== null && BigInt(raw) > BigInt(0) && BigInt(raw) < BigInt(10) ** BigInt(scale) / BigInt(100)
+    ? displayAmount(raw, undefined, scale) : compactAmount(raw, scale);
 }
 
 export function RecentlyLaunched({ launches, network, loaded, total, pending, failed }: {
@@ -55,7 +59,7 @@ export function RecentlyLaunched({ launches, network, loaded, total, pending, fa
           <h2 id="recently-launched-heading" className="text-h2 font-semibold">Recently Launched</h2>
           <p className="mt-1 text-sm text-muted-foreground">The latest openings among projects loaded on Home.</p>
         </div>
-        <Button variant="outline" size="sm" render={<Link href={`/projects?network=${network}`} />} nativeButton={false}>
+        <Button variant="outline" size="sm" render={<Link href={`/projects?network=${routeNetwork(network)}`} />} nativeButton={false}>
           View all <ArrowRight data-icon="inline-end" />
         </Button>
       </div>
@@ -116,9 +120,9 @@ export function RecentlyLaunched({ launches, network, loaded, total, pending, fa
                 </div>
                 <div className="min-w-0 text-xs">
                   <p className="text-muted-foreground">Raised / target<span className="sr-only sm:not-sr-only"> · {pair}</span></p>
-                  <p className="mt-1 break-words font-medium tabular-nums" title={`Net reserve, excluding fees: ${displayAmount(bonding.state.quoteReserve)} ${pair}. Graduation target: ${targetAvailable ? `${displayAmount(bonding.curve.graduationTarget)} ${pair}` : 'unavailable'}.`}>
-                    {amountLabel(bonding.state.quoteReserve)}
-                    <span className="text-muted-foreground"> / {targetAvailable ? amountLabel(bonding.curve.graduationTarget) : '—'}</span>
+                  <p className="mt-1 break-words font-medium tabular-nums" title={`Net reserve, excluding fees: ${displayAmount(bonding.state.quoteReserve, undefined, pairScale(launch))} ${pair}. Graduation target: ${targetAvailable ? `${displayAmount(bonding.curve.graduationTarget, undefined, pairScale(launch))} ${pair}` : 'unavailable'}.`}>
+                    {amountLabel(bonding.state.quoteReserve, pairScale(launch))}
+                    <span className="text-muted-foreground"> / {targetAvailable ? amountLabel(bonding.curve.graduationTarget, pairScale(launch)) : '—'}</span>
                   </p>
                 </div>
                 <div className="min-w-0 text-xs">

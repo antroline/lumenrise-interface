@@ -1,4 +1,4 @@
-import { networkModule } from '../../../configuration-fixture.mjs';
+import { apiContextModule, chainAddressModule, networkModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
@@ -18,7 +18,9 @@ const mocks = {
   '@/lib/utils': { cn: (...values) => values.filter(Boolean).join(' ') },
 };
 runInNewContext(source, { module, exports: module.exports, URLSearchParams, require: (name) => {
-  if (name === '@/lib/stellar/network') return networkModule;
+  if (name === '@/lib/api/client') return { ...apiContextModule, ApiError: typeof ApiError === 'function' ? ApiError : Error };
+        if (name === '@/lib/chain-address') return chainAddressModule;
+        if (name === '@/lib/stellar/network') return networkModule;
   if (!(name in mocks)) throw new Error(`Unexpected import: ${name}`);
   return mocks[name];
 } });

@@ -5,6 +5,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { TokenLogo } from '@/components/token-logo';
 import { Check, CircleAlert } from 'lucide-react';
 import { formatAmount } from '@/lib/stellar/amount';
+import { formatBaseAmount } from '@/lib/base/amount';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { AppDialogContent } from '@/components/app-dialog';
@@ -15,7 +16,7 @@ export type TradeConfirmation = {
   hash: string;
   side?: 'buy' | 'sell';
   /** The submitted token quantity; supported SAC assets use seven decimals. */
-  token?: { symbol: string; amount: bigint };
+  token?: { symbol: string; amount: bigint; decimals?: number };
 };
 
 export function TradeResultDialog({
@@ -115,7 +116,7 @@ export function TradeResultDialog({
             </div>
             <div className="min-w-0 text-right">
               <p className="text-xs leading-4 text-muted-foreground">Amount:</p>
-              <p className="mt-1 break-all text-sm font-semibold leading-5 tabular-nums sm:text-base sm:leading-6">{formatSummaryAmount(confirmation.token.amount)}</p>
+              <p className="mt-1 break-all text-sm font-semibold leading-5 tabular-nums sm:text-base sm:leading-6">{formatSummaryAmount(confirmation.token.amount, confirmation.token.decimals)}</p>
             </div>
           </div>}
           {busy && message && <p role="status" className="sr-only">{message}</p>}
@@ -136,7 +137,7 @@ export function TradeResultDialog({
   );
 }
 
-function formatSummaryAmount(amount: bigint) {
-  const [whole, fraction = ''] = formatAmount(amount, 3).split('.');
+function formatSummaryAmount(amount: bigint, decimals?: number) {
+  const [whole, fraction = ''] = (decimals === undefined ? formatAmount(amount, 3) : formatBaseAmount(amount, decimals, 3)).split('.');
   return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${fraction.padEnd(3, '0')}`;
 }

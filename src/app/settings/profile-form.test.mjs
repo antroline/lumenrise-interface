@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 import ts from 'typescript';
-import { configurationModule, networkModule } from '../../configuration-fixture.mjs';
+import { apiContextModule, configurationModule, networkModule } from '../../configuration-fixture.mjs';
 
 const require = createRequire(import.meta.url);
 const jsx = (type, props) => ({ type, props });
@@ -34,6 +34,7 @@ function harness({ name = 'Alice', avatarUrl = '/old.webp', save, remove } = {})
     '@/components/ui/badge': ui('Badge'), '@/components/ui/button': ui('Button'),
     '@/components/ui/card': ui('Card', 'CardDescription', 'CardHeader', 'CardTitle'),
     '@/components/ui/field': ui('Field', 'FieldDescription', 'FieldError', 'FieldLabel'), '@/components/form-controls': { FieldSurface: 'FieldSurface', FormInput: 'Input' },
+    '@/lib/api/client': apiContextModule,
     '@/lib/api/config': configurationModule, '@/lib/stellar/network': networkModule,
     '@/lib/client-rules': { imageHint: () => 'Supported image formats' }, '@/lib/connections': { shortAddress: value => value },
     '@/features/launches/components/team-invitations': ui('TeamInvitations'),

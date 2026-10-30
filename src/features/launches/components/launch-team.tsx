@@ -1,6 +1,8 @@
 'use client';
 
 import { getConfiguration } from '@/lib/api/config';
+import { sameAddress } from '@/lib/chain-address';
+import { getApiChain } from '@/lib/api/client';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ellipsis, LoaderCircle, Pencil, Plus, Trash2 } from 'lucide-react';
@@ -38,7 +40,7 @@ type LaunchTeamProps = {
 /** Mounted only for an indexed, confirmed launch. The server authorizes every request. */
 export function LaunchTeam(props: LaunchTeamProps) {
   const { address, account } = useLaunchpad();
-  if (!props.slug || address !== props.owner || account.status !== 'registered') {
+  if (!props.slug || !sameAddress(address, props.owner) || account.status !== 'registered') {
     if (!props.members?.length) return null;
     return (
       <ul className="mb-2 grid gap-2 sm:grid-cols-2" aria-label="Team members">
@@ -77,7 +79,7 @@ function OwnerLaunchTeam({
     controller.current = current;
     return () => current.abort();
   }, []);
-  const queryKey = ['launch-team', network, slug, sessionId];
+  const queryKey = ['launch-team', getApiChain(), network, slug, sessionId];
   const query = useQuery({
     queryKey,
     queryFn: ({ signal }) => getLaunchTeam(slug, { network, signal }),
@@ -115,7 +117,7 @@ function OwnerLaunchTeam({
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey }),
-        client.invalidateQueries({ queryKey: ['launch', network, slug, 'detail'] }),
+        client.invalidateQueries({ queryKey: ['launch', getApiChain(), network, slug, 'detail'] }),
       ]);
     },
     onError: async (error) => {

@@ -1,4 +1,4 @@
-import { apiRequest } from '@/lib/api/client';
+import { apiRequest, getApiChain } from '@/lib/api/client';
 import {
   chartFrom,
   decodeChart,
@@ -18,6 +18,9 @@ export const candleTimeframes = [
   '1d',
   '1w',
   '1M',
+  '3M',
+  '6M',
+  '1y',
 ] as const;
 export type CandleTimeframe = (typeof candleTimeframes)[number];
 export type CandlePage = {
@@ -38,6 +41,7 @@ export function decodeCandleResult(value: unknown): ChartResult {
     value.priceScale > 300
   )
     throw new Error('Invalid candle price scale.');
+  if (getApiChain() === 'base') return decodeChart(value);
   const result = decodeChart({ ...value, priceScale: 7 });
   return { ...result, priceScale: value.priceScale };
 }
@@ -48,8 +52,10 @@ export function candleBoundary(
   timeframe: CandleTimeframe,
 ): number {
   const date = new Date(time);
-  if (timeframe === '1M')
-    return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1);
+  if (['1M', '3M', '6M', '1y'].includes(timeframe)) {
+    const months = timeframe === '1y' ? 12 : timeframe === '6M' ? 6 : timeframe === '3M' ? 3 : 1;
+    return Date.UTC(date.getUTCFullYear(), Math.floor(date.getUTCMonth() / months) * months, 1);
+  }
   if (timeframe === '1w') {
     date.setUTCHours(0, 0, 0, 0);
     date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
@@ -63,6 +69,7 @@ export function candleBoundary(
     '1h': 60,
     '4h': 240,
     '1d': 1440,
+    '1M': 0, '3M': 0, '6M': 0, '1y': 0,
   }[timeframe];
   return Math.floor(time / (minutes * 60000)) * minutes * 60000;
 }
@@ -74,8 +81,9 @@ export function earlierBoundary(
 ): number {
   const start = candleBoundary(time, timeframe);
   const date = new Date(start);
-  if (timeframe === '1M') {
-    date.setUTCMonth(date.getUTCMonth() - bars);
+  if (['1M', '3M', '6M', '1y'].includes(timeframe)) {
+    const months = timeframe === '1y' ? 12 : timeframe === '6M' ? 6 : timeframe === '3M' ? 3 : 1;
+    date.setUTCMonth(date.getUTCMonth() - bars * months);
     return date.getTime();
   }
   if (timeframe === '1w') {

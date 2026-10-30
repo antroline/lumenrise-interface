@@ -2,12 +2,13 @@
 
 import {
   useEffect,
+  useContext,
   useState,
   type ComponentProps,
   type ReactNode,
 } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -34,9 +35,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { useLaunchpad } from '@/lib/launchpad';
+import { LaunchpadContext } from '@/lib/launchpad';
 import { GlobalSearchDialog } from './global-search';
-import { API_NETWORK } from '@/lib/stellar/network';
+import { useNetwork } from '@/lib/networks/context';
 import {
   isActive,
   mobileDrawerItems,
@@ -46,7 +47,7 @@ import {
   settingsItem,
   type NavItem,
 } from './navigation';
-import { WalletButton } from './wallet-button';
+import { NetworkWalletButton as WalletButton } from './network-wallet-button';
 import { NetworkSwitcher } from './network-switcher';
 
 const sideNavId = 'side-navigation';
@@ -84,7 +85,7 @@ export function SideNavigation({
         <div
           id={sideNavId}
           className={cn(
-            'sticky top-[var(--network-banner-height,0px)] z-30 hidden h-[calc(100svh-var(--network-banner-height,0px))] shrink-0 overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:block',
+            'sticky top-0 z-30 hidden h-svh shrink-0 overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:block',
             expanded ? 'w-62' : 'w-16',
           )}
         >
@@ -132,7 +133,7 @@ export function SideNavigation({
         </div>
       )}
 
-      <div className="sticky top-[var(--network-banner-height,0px)] z-30 border-b border-sidebar-border bg-sidebar px-4 pt-[env(safe-area-inset-top)] lg:hidden">
+      <div className="sticky top-0 z-30 border-b border-sidebar-border bg-sidebar px-4 pt-[env(safe-area-inset-top)] lg:hidden">
         <div className="grid h-14 grid-cols-[1fr_auto_1fr] items-center">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger
@@ -182,9 +183,10 @@ export function SideNavigation({
 }
 
 function MobileDrawerContent({ onNavigate }: { onNavigate: () => void }) {
-  const { isSignedIn } = useLaunchpad();
+  const isSignedIn = useContext(LaunchpadContext)?.isSignedIn ?? false;
   const pathname = usePathname();
-  const network = useSearchParams().get('network') ?? API_NETWORK;
+  const { activeNetwork } = useNetwork();
+  const network = activeNetwork.id;
   const primary = mobileDrawerItems.filter((item) =>
     mobilePrimaryItems.some((tab) => tab.href === item.href),
   );
@@ -249,7 +251,7 @@ function MobileDrawerContent({ onNavigate }: { onNavigate: () => void }) {
             {secondary.map((item) => (
               <Link
                 key={item.href}
-                href={navigationHref(item.href, API_NETWORK)}
+                href={navigationHref(item.href, network)}
                 onClick={onNavigate}
                 aria-current={isActive(pathname, item) ? 'page' : undefined}
                 className="flex min-h-12 items-center gap-4 rounded-xl px-4 py-3 text-base font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-[current=page]:bg-secondary aria-[current=page]:text-foreground motion-reduce:transition-none"
@@ -297,7 +299,8 @@ function SidebarPanel({
   walletMenuSide: 'top' | 'right';
 }) {
   const pathname = usePathname();
-  const { isSignedIn } = useLaunchpad();
+  const isSignedIn = useContext(LaunchpadContext)?.isSignedIn ?? false;
+  const { activeNetwork } = useNetwork();
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -359,7 +362,7 @@ function SidebarPanel({
                       collapsed={collapsed}
                       render={
                         <Link
-                          href={navigationHref(item.href, API_NETWORK)}
+                          href={navigationHref(item.href, activeNetwork.id)}
                           onClick={onNavigate}
                           aria-current={active ? 'page' : undefined}
                           className={cn(
@@ -471,9 +474,10 @@ function HomeLink({
   onClick?: () => void;
   className?: string;
 }) {
+  const { activeNetwork } = useNetwork();
   return (
     <Link
-      href={navigationHref('/', API_NETWORK)}
+      href={navigationHref('/', activeNetwork.id)}
       aria-label="LumenRise home"
       onClick={onClick}
       className={cn(

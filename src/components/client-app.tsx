@@ -50,6 +50,7 @@ export default function ClientApp({
   apiBaseUrl: string;
 }) {
   const config = useConfiguration();
+  if ('chain' in config) throw new Error('Blux requires Stellar configuration.');
   const bluxConfig = useMemo(() => createBluxConfig(config, config.network.configurations[API_NETWORK]), [config]);
   // Public query observers start in child effects; configure their URL first.
   configureApi(apiBaseUrl);

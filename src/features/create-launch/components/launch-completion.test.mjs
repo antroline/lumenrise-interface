@@ -1,4 +1,4 @@
-import { networkModule } from '../../../configuration-fixture.mjs';
+import { networkModule, apiContextModule, chainAddressModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -14,6 +14,8 @@ const source = ts.transpileModule(readFileSync(new URL('./launch-completion.tsx'
   compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
 }).outputText;
 const mocks = {
+  '@/lib/api/client': apiContextModule,
+  '@/lib/chain-address': { ...chainAddressModule, explorerUrl: (value, network) => `https://stellar.expert/explorer/${network}/tx/${value}` },
   '../hooks/use-completion-message': { useCompletionMessage: (message) => ({ message, onEntered() {} }) },
   '../lib/launch-motion': { launchTransition: { duration: 0.2 }, useLaunchReducedMotion: () => true },
   'next/link': { __esModule: true, default: 'a' },

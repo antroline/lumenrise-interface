@@ -2,7 +2,6 @@ import {
   decodeConfig,
   decodeState,
   errorMessage,
-  formatAmount,
   type Snapshot,
 } from '../bonding/contract';
 import type { Bonding, LaunchResult } from '@/lib/api/launches/market';
@@ -126,9 +125,11 @@ export function detailDate(seconds: string | null | undefined) {
   );
 }
 
-export function detailAmount(raw: string | null | undefined) {
-  if (raw == null) return 'Unavailable';
-  const [whole, fraction] = formatAmount(BigInt(raw)).split('.');
+export function detailAmount(raw: string | null | undefined, scale: number | null = 7) {
+  if (raw == null || scale === null) return 'Unavailable';
+  const units = BigInt(raw), unit = BigInt(10) ** BigInt(scale);
+  const whole = (units / unit).toString();
+  const fraction = scale === 0 ? '' : (units % unit).toString().padStart(scale, '0').replace(/0+$/, '');
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return fraction ? `${grouped}.${fraction}` : grouped;
 }

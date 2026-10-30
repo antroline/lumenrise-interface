@@ -1,6 +1,6 @@
 import { requireLaunchSlug } from '../../launch-slug';
 import { getConfiguration } from '../config';
-import { ApiError, apiRequest } from '../client';
+import { ApiError, apiRequest, getApiChain, type ApiContext } from '../client';
 import type { ApiNetwork } from './types';
 import { decodePublicTeamMember, type PublicTeamMember } from './team';
 
@@ -37,7 +37,9 @@ export type Bonding = {
 export type LaunchResult = {
   network: ApiNetwork;
   factoryContractId: string;
-  factoryIndex: number;
+  factoryIndex: number | string;
+  assetDecimals?: number;
+  pairDecimals?: number;
   slug: string | null;
   contractId: string;
   owner: string;
@@ -83,7 +85,7 @@ export type LaunchList = {
   dateMeaning: 'contract_creation';
   statsAsOf: string;
   statsSince: string;
-  statsCoverage: 'verified_client_submitted_trades';
+  statsCoverage: 'verified_client_submitted_trades' | 'verified_receipts_and_events';
 };
 type MarketVolume = {
   grossPairAmount: string;
@@ -230,7 +232,8 @@ function priceType(v: unknown): 'marginal_before_fee' {
   return v === 'marginal_before_fee' ? v : invalid();
 }
 function scale(v: unknown) {
-  return number(v) === 7 ? 7 : invalid();
+  const n = number(v);
+  return getApiChain() === 'base' ? n <= 18 ? n : invalid() : n === 7 ? 7 : invalid();
 }
 export function decodeLaunch(v: unknown): LaunchResult {
   const l = object(v),
@@ -294,7 +297,9 @@ export function decodeLaunch(v: unknown): LaunchResult {
     slug: l.slug == null ? null : string(l.slug),
     contractId: string(l.contractId),
     factoryContractId: string(l.factoryContractId),
-    factoryIndex: number(l.factoryIndex),
+    factoryIndex: getApiChain() === 'base' ? (typeof l.factoryIndex === 'string' ? raw(l.factoryIndex) : number(l.factoryIndex)) : number(l.factoryIndex),
+    assetDecimals: getApiChain() === 'base' && l.assetDecimals != null ? scale(l.assetDecimals) : undefined,
+    pairDecimals: getApiChain() === 'base' && l.pairDecimals != null ? scale(l.pairDecimals) : undefined,
     owner: string(l.owner),
     team: l.team == null ? [] : array(l.team, decodePublicTeamMember),
     asset: string(l.asset),
@@ -481,7 +486,7 @@ export async function getLaunchList(
     !sort ||
     (r.direction !== 'asc' && r.direction !== 'desc') ||
     r.dateMeaning !== 'contract_creation' ||
-    r.statsCoverage !== 'verified_client_submitted_trades'
+    r.statsCoverage !== (getApiChain() === 'base' ? 'verified_receipts_and_events' : 'verified_client_submitted_trades')
   ) invalid();
   return {
     launches,
@@ -493,7 +498,7 @@ export async function getLaunchList(
     dateMeaning: r.dateMeaning,
     statsAsOf: date(r.statsAsOf),
     statsSince: date(r.statsSince),
-    statsCoverage: r.statsCoverage,
+    statsCoverage: getApiChain() === 'base' ? 'verified_receipts_and_events' : 'verified_client_submitted_trades',
   };
 }
 
@@ -506,6 +511,7 @@ export function launchListKey(
   filters: LaunchListFilters = {},
 ) {
   return ['launch-list', {
+    chain: getApiChain(),
     network,
     owner: owner ?? '',
     search: filters.search ?? '',
@@ -625,6 +631,7 @@ export async function recordTrade(
   n: ApiNetwork,
   transactionHash: string,
   signal?: AbortSignal,
+  context?: ApiContext,
 ) {
   const r = object(
     await apiRequest<unknown>(path(slug, n, '/trades'), {
@@ -633,12 +640,30 @@ export async function recordTrade(
       expectedStatus: 200,
       json: { transactionHash },
       signal,
+      context,
     }),
   );
   return {
     trade: decodeTrade(r.trade),
+    trades: r.trades == null ? [decodeTrade(r.trade)] : array(r.trades, decodeTrade),
     pair: string(r.pair),
     amountScale: scale(r.amountScale),
     priceScale: scale(r.priceScale),
   };
+}
+
+/** Confirmation returns persisted identities, including any server-assigned slug. */
+export async function confirmLaunch(transactionHash: string, context: ApiContext, signal?: AbortSignal) {
+  const result = object(await apiRequest<unknown>('/launches/confirm', {
+    method: 'POST', user: true, expectedStatus: 200,
+    json: { transactionHash }, context, signal,
+  }));
+  const launches = array(result.launches, value => {
+    const launch = object(value);
+    const slug = string(launch.slug);
+    requireLaunchSlug(slug);
+    return { slug, contractId: string(launch.contractId) };
+  });
+  if (!launches.length) invalid();
+  return launches;
 }

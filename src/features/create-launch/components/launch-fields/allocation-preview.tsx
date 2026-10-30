@@ -28,19 +28,19 @@ export function AllocationPreview({
   const shares = [
     {
       label: allocationLabels[draft.method],
-      amount: calculation ? formatLaunchUnits(calculation.tokenUnits.curve) : undefined,
+      amount: calculation ? formatLaunchUnits(calculation.tokenUnits.curve, calculation.assetDecimals) : undefined,
       percent: allocation.saleShare,
       color: 'bg-foreground',
     },
     {
       label: 'Pool',
-      amount: calculation ? formatLaunchUnits(calculation.tokenUnits.pool) : undefined,
+      amount: calculation ? formatLaunchUnits(calculation.tokenUnits.pool, calculation.assetDecimals) : undefined,
       percent: allocation.poolShare,
       color: 'bg-lime',
     },
     {
       label: 'Team',
-      amount: calculation ? formatLaunchUnits(calculation.tokenUnits.team) : undefined,
+      amount: calculation ? formatLaunchUnits(calculation.tokenUnits.team, calculation.assetDecimals) : undefined,
       percent: draft.allocation.teamShare,
       color: 'bg-orange',
     },

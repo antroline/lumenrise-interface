@@ -1,5 +1,5 @@
 'use client';
-import { API_NETWORK } from '@/lib/stellar/network';
+import { API_NETWORK } from '@/lib/api/client';
 
 import { Button } from '@/components/ui/button';
 import type { ApiNetwork } from '@/lib/api/launches/types';

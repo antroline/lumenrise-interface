@@ -14,6 +14,8 @@ import {
   type Bonding,
 } from '@/lib/api/launches/market';
 import type { ApiNetwork } from '@/lib/api/launches/types';
+import { getApiChain } from '@/lib/api/client';
+import { routeNetwork } from '@/lib/chain-address';
 import { discoverLaunches, type HomeLaunch } from './home-discovery';
 
 export type { HomeLaunch } from './home-discovery';
@@ -82,10 +84,10 @@ export function timeUntil(seconds: string | null, now: number) {
 }
 
 export const launchHref = (launch: HomeLaunch, network: ApiNetwork) =>
-  launch.slug ? `/projects/${encodeURIComponent(launch.slug)}?network=${network}` : `/projects?network=${network}`;
+  launch.slug ? `/projects/${encodeURIComponent(launch.slug)}?network=${routeNetwork(network)}` : `/projects?network=${routeNetwork(network)}`;
 
 export const networkName = (network: ApiNetwork) =>
-  network === 'public' ? 'Stellar Mainnet' : 'Stellar Testnet';
+  `${getApiChain() === 'base' ? 'Base' : 'Stellar'} ${network === 'public' ? 'Mainnet' : 'Testnet'}`;
 
 export function curveInput(bonding: Bonding): CurveModelInput {
   return {

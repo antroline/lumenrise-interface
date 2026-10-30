@@ -9,6 +9,8 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Spinner } from '@/components/ui/spinner'
 import { useLaunchpad } from '@/lib/launchpad'
 import { saveAuthReturnTo } from '@/lib/auth-return'
+import { getApiChain, getApiNetwork } from '@/lib/api/client'
+import { routeNetwork } from '@/lib/chain-address'
 
 /**
  * Renders in place of account-only content whenever access is not ready:
@@ -26,7 +28,7 @@ export function AuthGate({ destination, description }: { destination: string; de
   useEffect(() => {
     if (!unregistered) return
     saveAuthReturnTo(destination)
-    router.replace('/register')
+    router.replace(getApiChain() === 'base' ? `/register?network=${routeNetwork(getApiNetwork())}` : '/register')
   }, [unregistered, destination, router])
 
   if (unregistered) {
@@ -90,8 +92,8 @@ export function AuthGate({ destination, description }: { destination: string; de
           {loginPending
             ? loginPhase === 'checking'
               ? 'Checking your account…'
-              : 'Opening Blux…'
-            : 'Continue with Blux'}
+              : getApiChain() === 'base' ? 'Opening Privy…' : 'Opening Blux…'
+            : getApiChain() === 'base' ? 'Continue with Privy' : 'Continue with Blux'}
           {!loginPending && <ArrowRight data-icon="inline-end" />}
         </Button>
         <Link href="/" className="text-ui font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">

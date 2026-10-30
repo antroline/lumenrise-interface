@@ -1,5 +1,7 @@
 'use client';
 
+import { pairScale } from '@/lib/api/launches/display';
+
 import Link from 'next/link';
 import { TokenLogo } from '@/components/token-logo';
 import { compactAmount, pairLabel } from '@/lib/api/launches/display';
@@ -63,7 +65,7 @@ export function LaunchCard({ launch, network }: { launch: HomeLaunch; network: A
         <dl className="min-w-0 max-w-[45%] text-right">
           <dt className="text-[11px] text-muted-foreground">Target</dt>
           <dd className="break-words text-[13px] leading-snug font-medium tabular-nums">
-            {compactAmount(b.curve.graduationTarget)} {pair}
+            {compactAmount(b.curve.graduationTarget, pairScale(launch))} {pair}
           </dd>
         </dl>
       </div>

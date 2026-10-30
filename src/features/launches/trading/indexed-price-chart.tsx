@@ -21,6 +21,7 @@ import {
   type CandleTimeframe,
 } from './candle-history';
 import { useCandleHistory } from './use-candle-history';
+import { getApiChain } from '@/lib/api/client';
 
 export function IndexedPriceChart({
   slug,
@@ -42,7 +43,7 @@ export function IndexedPriceChart({
   // A keyed chart-local session prevents even one render of another market's candles.
   return (
     <ChartSession
-      key={`${network}:${slug}`}
+      key={`${getApiChain()}:${network}:${slug}`}
       {...{ slug, network, ticker, pair, price, active, embedded }}
     />
   );

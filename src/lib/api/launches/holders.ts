@@ -1,7 +1,7 @@
 import { requireLaunchSlug } from '../../launch-slug';
 import { getConfiguration } from '../config';
-import { StrKey } from '@stellar/stellar-sdk';
-import { ApiError, apiRequest } from '../client';
+import { isContractAddress, isWalletAddress } from '../../chain-address';
+import { ApiError, apiRequest, getApiChain } from '../client';
 import type { ApiNetwork } from './types';
 
 export type Holder = { address: string; balance: string; observedAt: string };
@@ -9,9 +9,9 @@ export type HoldersResult = {
   network: ApiNetwork;
   contractId: string;
   asset: string;
-  amountScale: 7;
+  amountScale: number;
   balanceSource: 'token_contract';
-  coverage: 'trade_participants';
+  coverage: 'trade_participants' | 'indexed_trades_and_transfers';
   totalHolders: number;
   nextCursor: string | null;
   items: Holder[];
@@ -44,12 +44,12 @@ export async function getHolders(
   );
   if (
     !result ||
-    !StrKey.isValidContract(result.contractId) ||
+    !isContractAddress(result.contractId) ||
     result.network !== network ||
-    !StrKey.isValidContract(result.asset) ||
-    result.amountScale !== 7 ||
+    !isContractAddress(result.asset) ||
+    (getApiChain() === 'base' ? !Number.isInteger(result.amountScale) || result.amountScale < 0 || result.amountScale > 18 : result.amountScale !== 7) ||
     result.balanceSource !== 'token_contract' ||
-    result.coverage !== 'trade_participants' ||
+    result.coverage !== (getApiChain() === 'base' ? 'indexed_trades_and_transfers' : 'trade_participants') ||
     !Number.isSafeInteger(result.totalHolders) ||
     result.totalHolders < 0 ||
     (result.nextCursor !== null && typeof result.nextCursor !== 'string') ||
@@ -58,10 +58,7 @@ export async function getHolders(
       (item) =>
         !item ||
         typeof item.address !== 'string' ||
-        !(
-          StrKey.isValidEd25519PublicKey(item.address) ||
-          StrKey.isValidContract(item.address)
-        ) ||
+        !isWalletAddress(item.address) ||
         typeof item.balance !== 'string' ||
         !/^\d+$/.test(item.balance) ||
         typeof item.observedAt !== 'string' ||
@@ -87,12 +84,13 @@ export function formatHolderBalance(raw: string, scale: number): string {
 }
 
 export function appendHolders(items: Holder[], next: Holder[]): Holder[] {
-  const seen = new Set(items.map((item) => item.address));
+  const key = (address: string) => getApiChain() === 'base' ? address.toLowerCase() : address;
+  const seen = new Set(items.map((item) => key(item.address)));
   return [
     ...items,
     ...next.filter((item) => {
-      if (seen.has(item.address)) return false;
-      seen.add(item.address);
+      if (seen.has(key(item.address))) return false;
+      seen.add(key(item.address));
       return true;
     }),
   ];

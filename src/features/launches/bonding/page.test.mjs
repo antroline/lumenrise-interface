@@ -26,6 +26,7 @@ for (const state of ['loaded', 'initial', 'error', 'refresh', 'wallet-ready', 'w
       },
     ).outputText;
     const mocks = {
+      '@tanstack/react-query': { useQueryClient: () => ({ invalidateQueries: async () => {} }) },
       react: {
         useState: (initial) => [
           typeof initial === 'function' ? initial() : initial,
@@ -84,7 +85,10 @@ for (const state of ['loaded', 'initial', 'error', 'refresh', 'wallet-ready', 'w
         API_NETWORK: accountEnabled ? 'public' : 'testnet',
         NETWORK: 'Testnet passphrase',
       },
-      '@/lib/api/client': { ApiError: class ApiError extends Error {} },
+      '@/lib/api/client': { ApiError: class ApiError extends Error {}, getApiChain: () => 'stellar' },
+      '@/features/base': { BaseTradeForm: 'BaseTradeForm' },
+      '@/lib/configuration': { useConfiguration: () => ({ auth: { appId: 'test-app' } }) },
+      '@/lib/base/deployment': { BASE_WRITE_BLOCK_REASON: 'Deployment verification required' },
       '@/features/launches/hooks/queries': {
         usePageVisible: () => true,
         useLaunchDetail: () => ({
@@ -139,10 +143,11 @@ for (const state of ['loaded', 'initial', 'error', 'refresh', 'wallet-ready', 'w
         return mocks[name];
       },
     });
-    const result = module.exports.BondingCurvePage({
+    const page = module.exports.BondingCurvePage({
       address: 'contract',
       network: 'public',
     });
+    const result = page.type(page.props);
     if (!accountEnabled) assert.ok(observers.every((observer) => observer.enabled === false));
     else assert.equal(observers.at(-1).enabled, !incompleteAddress);
     if (state === 'initial') {

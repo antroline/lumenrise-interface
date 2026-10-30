@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { CandleStore, candleBoundary, dailyPercentage, maxChartCandles, requestCandles, type CandleTimeframe, type CandlePage } from './candle-history';
 import type { Candle, ChartResult } from '@/lib/api/launches/market';
 import type { ApiNetwork } from '@/lib/api/launches/types';
+import { useQueryClient } from '@tanstack/react-query';
+import { getApiChain } from '@/lib/api/client';
 
 type HistoryState = {
   items: Candle[]; result?: ChartResult; daily: string | null;
@@ -20,8 +22,9 @@ function previousDisplay(state: SessionState, market: string): DisplayHistory | 
 }
 
 export function useCandleHistory(slug: string, network: ApiNetwork, timeframe: CandleTimeframe, lower: number | undefined, active: boolean) {
-  const market = `${network}:${slug}`;
-  const identity = `${network}:${slug}:${timeframe}:${active}`;
+  const client = useQueryClient();
+  const market = `${getApiChain()}:${network}:${slug}`;
+  const identity = `${market}:${timeframe}:${active}`;
   const [state, setState] = useState<SessionState>(initial);
   const target = useRef(lower);
   useEffect(() => { target.current = lower; }, [lower]);
@@ -79,7 +82,7 @@ export function useCandleHistory(slug: string, network: ApiNetwork, timeframe: C
             daily = null;
             throw cause;
           }
-          nextRefresh = Date.now() + 15000;
+          nextRefresh = Date.now() + 3000;
           error = '';
           failures = 0;
           publish();
@@ -128,7 +131,7 @@ export function useCandleHistory(slug: string, network: ApiNetwork, timeframe: C
       } finally {
         running = false;
         if (!disposed && !document.hidden && active) {
-          const delay = failures ? Math.min(120000, 15000 * 2 ** Math.min(failures - 1, 3)) : reconnect || needsHistory() ? 80 : Math.max(80, nextRefresh - Date.now());
+          const delay = failures ? Math.min(120000, 3000 * 2 ** Math.min(failures - 1, 3)) : reconnect || needsHistory() ? 80 : Math.max(80, nextRefresh - Date.now());
           timer = setTimeout(() => void pump(), delay);
         }
       }
@@ -158,15 +161,24 @@ export function useCandleHistory(slug: string, network: ApiNetwork, timeframe: C
       if (document.hidden) request?.abort();
       else { nextRefresh = 0; void pump(); }
     };
+    const unsubscribe = client.getQueryCache().subscribe(event => {
+      const key = event.query.queryKey;
+      if (event.type === 'updated' && event.action.type === 'invalidate' &&
+          key[0] === 'launch' && key[1] === getApiChain() && key[2] === network && key[3] === slug) {
+        nextRefresh = 0;
+        void pump();
+      }
+    });
     document.addEventListener('visibilitychange', visibility);
     void pump();
     return () => {
       disposed = true;
+      unsubscribe();
       clearTimeout(timer);
       request?.abort();
       document.removeEventListener('visibilitychange', visibility);
     };
-  }, [slug, network, timeframe, active, identity, market]);
+  }, [client, slug, network, timeframe, active, identity, market]);
   useEffect(() => { controls.current.wake(); }, [lower]);
   return { ...(state.identity === identity ? state : initial), timeframe, previous: state.identity === identity ? state.previous : previousDisplay(state, market), retry: () => controls.current.wake(), loadEarlier: (time: number) => controls.current.earlier(time) };
 }

@@ -1,4 +1,4 @@
-import { configurationModule } from '../../../configuration-fixture.mjs';
+import { chainAddressModule, configurationModule } from '../../../configuration-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
@@ -15,7 +15,7 @@ runInNewContext(
       },
     },
   ).outputText,
-  { exports, URLSearchParams, require: () => configurationModule },
+  { exports, URLSearchParams, require: name => name === '@/lib/chain-address' ? chainAddressModule : configurationModule },
 );
 const { directoryHref, directoryPage, directorySort, directoryCategory } =
   exports;

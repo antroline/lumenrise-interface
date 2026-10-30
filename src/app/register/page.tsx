@@ -17,6 +17,8 @@ import { getConfiguration } from '@/lib/api/config'
 import { imageHint } from '@/lib/client-rules'
 import { useLaunchpad } from '@/lib/launchpad'
 import { consumeAuthReturnTo } from '@/lib/auth-return'
+import { getApiChain } from '@/lib/api/client'
+import { NetworkWalletButton } from '@/components/shell/network-wallet-button'
 
 const DEFAULT_DESTINATION = '/'
 
@@ -40,10 +42,11 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-page">
       <header className="mx-auto flex max-w-7xl items-center justify-between border-b px-5 py-6 sm:px-8">
         <LogoHorizontal height={24} />
+        {getApiChain() === 'base' && <NetworkWalletButton />}
       </header>
       <main className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:py-16">
         {!isSignedIn ? (
-          <AuthGate destination={DEFAULT_DESTINATION} description="Connect your account with Blux to set up your LumenRise profile." />
+          <AuthGate destination={DEFAULT_DESTINATION} description={`Connect your account with ${getApiChain() === 'base' ? 'Privy' : 'Blux'} to set up your LumenRise profile.`} />
         ) : account.status === 'unregistered' && !getConfiguration().features.registration ? (
           <StatusPanel title="Registration unavailable" description="Account registration is not configured right now." />
         ) : account.status === 'unregistered' ? (

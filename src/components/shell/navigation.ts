@@ -14,7 +14,7 @@ export const documentationItem: NavItem = {
   label: 'Documentation', href: 'https://docs.lumenrise.app', icon: BookOpen,
 };
 export const projectBrowseItems: HeaderNavItem[] = [{
-  label: 'All projects', description: 'Browse projects across Stellar.',
+  label: 'All projects', description: 'Browse projects on the selected network.',
   href: '/projects', icon: LayoutGrid, match: ['/launches', '/launch', '/auction'],
 }];
 export const projectItems: HeaderNavItem[] = [{
@@ -41,8 +41,13 @@ export const mobileDrawerItems: NavItem[] = searchPages;
 
 /** Keep internal navigation on the same server-supported network. */
 export function navigationHref(href: string, network?: string | null) {
-  if ((href.startsWith('/') && !href.startsWith('//')) && (network === 'public' || network === 'testnet' || network === 'mainnet')) {
-    return `${href}?network=${network === 'mainnet' ? 'public' : network}`;
+  if ((href.startsWith('/') && !href.startsWith('//')) && network &&
+    ['public', 'testnet', 'mainnet', 'stellar-mainnet', 'stellar-testnet', 'base-mainnet', 'base-sepolia'].includes(network)) {
+    const [path, hash] = href.split('#', 2);
+    const [pathname, query] = path.split('?', 2);
+    const params = new URLSearchParams(query);
+    params.set('network', network === 'mainnet' ? 'public' : network);
+    return `${pathname}?${params}${hash !== undefined ? `#${hash}` : ''}`;
   }
   return href;
 }
