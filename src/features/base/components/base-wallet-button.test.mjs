@@ -37,7 +37,7 @@ function harness(overrides = {}) {
     '@/lib/connections': { shortAddress: address => address },
     '@/lib/utils': { cn: (...parts) => parts.filter(Boolean).join(' ') },
     '@/lib/networks/context': { useNetwork: () => ({ activeNetwork: { blockchain: 'base', apiNetwork: state.chainId === 8453 ? 'public' : 'testnet', chainId: state.chainId, label: state.chainId === 8453 ? 'Base Mainnet' : 'Base Sepolia' } }) },
-    '@/lib/launchpad': { useLaunchpad: () => ({ logout: async () => {
+    '@/lib/launchpad': { useLaunchpad: () => ({ account: state.account ?? { status: 'unregistered' }, logout: async () => {
       events.push('logout');
       if (state.logoutError) notifications.push({ message: 'Could not sign out. Please try again.' });
     } }) },
@@ -63,6 +63,21 @@ function harness(overrides = {}) {
   return { state, render, callbacks, notifications, events };
 }
 const settle = () => new Promise(resolve => setImmediate(resolve));
+
+test('Base wallet button follows the registered profile photo and falls back when it is removed', () => {
+  const h = harness({ authenticated: true, wallets: [{ address: '0xprimary', chainId: 'eip155:8453', walletClientType: 'metamask' }], account: { status: 'registered', profile: { avatarUrl: '/files/avatar.webp' } } });
+  const avatar = compact => h.render({ compact }).nodes.find(node => node.type === 'DropdownMenuTrigger').props.render.props.children.find(node => node?.type === 'ProfileAvatar');
+  for (const compact of [false, true]) {
+    assert.equal(avatar(compact).props.avatarUrl, '/files/avatar.webp');
+    assert.equal(avatar(compact).props.seed, '0xprimary');
+  }
+  h.state.account = { status: 'registered', profile: { avatarUrl: '/files/updated.webp' } };
+  assert.equal(avatar(false).props.avatarUrl, '/files/updated.webp');
+  h.state.account = { status: 'registered', profile: { avatarUrl: null } };
+  assert.equal(avatar(false).props.avatarUrl, null);
+  h.state.account = { status: 'unregistered' };
+  assert.equal(avatar(false).props.avatarUrl, null);
+});
 
 test('wallet login waits for SDK readiness and uses Privy rather than Stellar', () => {
   const h = harness({ ready: false });
@@ -109,11 +124,17 @@ test('multiple connected wallets can be selected, and a disconnected selection i
   assert.equal(h.render().nodes.find(node => node.type === 'DropdownMenuTrigger').props.render.props['aria-label'], 'Base wallet 0xprimary');
 });
 
-test('a signed-in user without a connected wallet can connect one or create an app wallet', () => {
+test('a signed-in user without a connected wallet can reconnect an external wallet without creating one', () => {
   const h = harness({ authenticated: true });
   const items = h.render().nodes.filter(node => node.type === 'DropdownMenuItem');
   assert.ok(items.some(node => String(node.props.children).includes('Connect existing')));
-  assert.ok(items.some(node => String(node.props.children).includes('Create app wallet')));
+  assert.ok(!items.some(node => String(node.props.children).includes('Create app wallet')));
+});
+
+test('a connected wallet menu has no additional connection or app wallet creation actions', () => {
+  const h = harness({ authenticated: true, wallets: [{ address: '0xprimary', chainId: 'eip155:8453', walletClientType: 'metamask' }] });
+  const items = h.render().nodes.filter(node => node.type === 'DropdownMenuItem');
+  assert.ok(!items.some(node => /Connect another|Connect existing|Create app wallet/.test(String(node.props.children))));
 });
 
 test('failed sign-out reports failure without pretending the session ended', async () => {

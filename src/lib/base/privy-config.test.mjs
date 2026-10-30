@@ -21,8 +21,8 @@ for (const id of ['base-mainnet', 'base-sepolia']) test(`Privy follows the globa
   const config = module.exports.createPrivyConfig(network, false);
   assert.equal(config.defaultChain.id, network.chainId);
   assert.deepEqual(Array.from(config.supportedChains, chain => chain.id), [network.chainId]);
-  assert.deepEqual(Array.from(config.loginMethods), ['wallet', 'email']);
-  assert.equal(config.embeddedWallets.ethereum.createOnLogin, 'users-without-wallets');
+  assert.deepEqual(Array.from(config.loginMethods), ['wallet']);
+  assert.equal(config.embeddedWallets.ethereum.createOnLogin, 'off');
   assert.equal(config.appearance.walletChainType, 'ethereum-only');
   assert.equal(config.appearance.theme, 'light');
   assert.match(config.appearance.logo, /light-background/);

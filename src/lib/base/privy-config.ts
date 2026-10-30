@@ -3,13 +3,16 @@ import { base, baseSepolia } from 'viem/chains';
 import type { BaseNetwork } from '../networks/types';
 
 /** Public SDK configuration only. Credentials are injected at the server boundary. */
-export function createPrivyConfig(network: BaseNetwork, dark: boolean): PrivyClientConfig {
+export function createPrivyConfig(
+  network: BaseNetwork,
+  dark: boolean,
+): PrivyClientConfig {
   const chain = network.chainId === base.id ? base : baseSepolia;
   return {
     defaultChain: chain,
     supportedChains: [chain],
-    loginMethods: ['wallet', 'email'],
-    embeddedWallets: { ethereum: { createOnLogin: 'users-without-wallets' } },
+    loginMethods: ['wallet'],
+    embeddedWallets: { ethereum: { createOnLogin: 'off' } },
     appearance: {
       theme: dark ? 'dark' : 'light',
       accentColor: '#cbff18',

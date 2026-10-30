@@ -42,7 +42,7 @@ export function WalletButton({
     return (
       <Button
         variant="ghost"
-        className={cn('h-10 rounded-full bg-neutral-100 text-neutral-900 hover:bg-neutral-200 hover:text-neutral-900 focus-visible:ring-neutral-400 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700 dark:hover:text-neutral-100 dark:focus-visible:ring-neutral-500', compact && 'w-10 px-0', className)}
+        className={cn('h-10 rounded-full bg-muted text-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring dark:bg-muted dark:text-foreground dark:hover:bg-muted dark:hover:text-foreground dark:focus-visible:ring-ring', compact && 'w-10 px-0', className)}
         onClick={() => void login()}
         loading={loginPending}
         aria-label={compact ? label : undefined}
@@ -74,7 +74,7 @@ export function WalletButton({
           <Button
             variant="ghost"
             className={cn(
-              'h-10 gap-2 rounded-full bg-neutral-100 px-2.5 font-mono text-small font-medium text-neutral-900 hover:bg-neutral-200 hover:text-neutral-900 focus-visible:ring-neutral-400 aria-expanded:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700 dark:hover:text-neutral-100 dark:focus-visible:ring-neutral-500 dark:aria-expanded:bg-neutral-700',
+              'h-10 gap-2 rounded-full bg-muted px-2.5 font-mono text-small font-medium text-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring aria-expanded:bg-secondary dark:bg-muted dark:text-foreground dark:hover:bg-muted dark:hover:text-foreground dark:focus-visible:ring-ring dark:aria-expanded:bg-muted',
               compact && 'w-10 px-0',
               className,
             )}
@@ -87,7 +87,7 @@ export function WalletButton({
               Wallet menu
             </span>
             {!compact && (
-              <ChevronDown className="size-3.5 text-neutral-500 dark:text-neutral-400" />
+              <ChevronDown className="size-3.5 text-muted-foreground dark:text-muted-foreground" />
             )}
           </Button>
         }

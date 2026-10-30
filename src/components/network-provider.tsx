@@ -21,7 +21,12 @@ export function NetworkProvider({ network, config, requestedNetworkId, children 
   };
   const switchBlockchain = (blockchain: Blockchain) => {
     if (blockchain === network.blockchain) return;
-    window.location.assign(networkSwitchHref(blockchain === 'base' ? 'base-mainnet' : 'stellar'));
+    // Base initializes without Stellar configuration. Resolve support at the
+    // destination configuration gate, while retaining an explicit environment.
+    const destination: NetworkId = blockchain === 'base'
+      ? network.environment === 'testnet' ? 'base-sepolia' : 'base-mainnet'
+      : network.environment === 'testnet' ? 'stellar-testnet' : 'stellar-mainnet';
+    window.location.assign(networkSwitchHref(destination));
   };
 
   return (

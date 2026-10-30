@@ -13,6 +13,45 @@ const code = compile('./wallet-button.tsx');
 const switcherCode = compile('./network-switcher.tsx');
 const registry = loadNetworkRegistry();
 
+const providerCode = compile('../network-provider.tsx');
+for (const [from, to] of [
+  ['stellar-testnet', 'base-sepolia'], ['base-sepolia', 'stellar-testnet'],
+  ['stellar-mainnet', 'base-mainnet'], ['base-mainnet', 'stellar-mainnet'],
+]) test(`changing blockchain preserves the environment: ${from} to ${to}`, () => {
+  const destinations = [];
+  const module = { exports: {} };
+  runInNewContext(providerCode, {
+    module, exports: module.exports,
+    window: { location: { assign: href => destinations.push(href) } },
+    require: name => ({
+      'react/jsx-runtime': { jsx: (type, props) => ({ type, props }) },
+      '@/lib/networks/registry': registry,
+      '@/lib/networks/context': { NetworkContext: { Provider: 'Provider' } },
+    })[name],
+  });
+  const tree = module.exports.NetworkProvider({ network: registry.resolveNetwork(from, configuration), config: configuration });
+  tree.props.value.switchBlockchain(to.startsWith('base') ? 'base' : 'stellar');
+  assert.deepEqual(destinations, ['/projects?network=' + to]);
+});
+
+test('returning from Base without Stellar configuration keeps an explicit environment for destination validation', () => {
+  const destinations = [];
+  const module = { exports: {} };
+  runInNewContext(providerCode, {
+    module, exports: module.exports,
+    window: { location: { assign: href => destinations.push(href) } },
+    require: name => ({
+      'react/jsx-runtime': { jsx: (type, props) => ({ type, props }) },
+      '@/lib/networks/registry': registry,
+      '@/lib/networks/context': { NetworkContext: { Provider: 'Provider' } },
+    })[name],
+  });
+  const config = { ...configuration, network: { ...configuration.network, supported: ['testnet'] } };
+  const tree = module.exports.NetworkProvider({ network: registry.resolveNetwork('base-mainnet', config) });
+  tree.props.value.switchBlockchain('stellar');
+  assert.deepEqual(destinations, ['/projects?network=stellar-mainnet']);
+});
+
 function harness(network, { supported = ['testnet', 'public'], compact = false, wallet = false, showNetwork = true } = {}) {
   const config = { ...configuration, network: { ...configuration.network, supported } };
   const activeNetwork = registry.resolveNetwork(network, config);

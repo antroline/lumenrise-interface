@@ -298,7 +298,7 @@ test('registration without a photo posts JSON with current userId, address and n
   assert.equal(calls[0].url, 'http://localhost:5000/v1/auth/register');
 });
 
-test('registration with a photo posts multipart including the selected address', async () => {
+test('registration with a photo stays within the API two-field and three-part upload limits', async () => {
   const { calls, client, auth } = harness(() =>
     response({
       body: successBody({
@@ -317,10 +317,11 @@ test('registration with a photo posts multipart including the selected address',
   const entries = [...init.body.entries()];
   assert.deepEqual(
     entries.map(([key]) => key).sort(),
-    ['address', 'avatar', 'name', 'userId'],
+    ['avatar', 'name', 'userId'],
   );
   assert.equal(init.body.get('userId'), '42');
-  assert.equal(init.body.get('address'), 'GABC');
+  assert.equal(init.body.get('address'), null);
+  assert.equal(entries.filter(([, value]) => typeof value === 'string').length, 2);
   assert.equal(init.body.get('name'), 'Alice');
   assert.equal(init.body.get('avatar').name, 'avatar.png');
 });

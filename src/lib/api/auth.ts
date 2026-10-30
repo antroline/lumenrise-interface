@@ -154,7 +154,8 @@ export async function registerAccount(input: {
     if (issue) throw new Error(issue);
     const formData = new FormData();
     formData.append('userId', userId);
-    formData.append('address', input.address);
+    // Registration uploads allow two text fields plus the avatar. The API
+    // discovers and verifies linked wallets through the authentication provider.
     formData.append('name', name);
     formData.append('avatar', input.avatar);
     result = await apiRequest<unknown>('/auth/register', {

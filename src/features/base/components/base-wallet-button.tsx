@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useConnection, useSwitchChain } from 'wagmi';
-import { useActiveWallet, useConnectWallet, useCreateWallet, useLogin, usePrivy, useWallets } from '@privy-io/react-auth';
-import { ArrowLeftRight, ChevronDown, Copy, LogOut, Plus, Wallet } from 'lucide-react';
+import { useActiveWallet, useConnectWallet, useLogin, usePrivy, useWallets } from '@privy-io/react-auth';
+import { ArrowLeftRight, ChevronDown, Copy, LogOut, Wallet } from 'lucide-react';
 import { ProfileAvatar } from '@/components/profile-avatar';
 import { NetworkMenuItems } from '@/components/shell/network-switcher';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,7 @@ export function BaseWalletButton({ compact = false, className, menuSide = 'botto
   const { ready, authenticated, user } = usePrivy();
   const connection = useConnection();
   const { switchChainAsync } = useSwitchChain();
-  const { logout, syncWallets, accountReady } = useLaunchpad();
+  const { logout, syncWallets, accountReady, account } = useLaunchpad();
   const { wallets, ready: walletsReady } = useWallets();
   const { wallet: activeWallet, setActiveWallet } = useActiveWallet();
   const { activeNetwork } = useNetwork();
@@ -36,7 +36,6 @@ export function BaseWalletButton({ compact = false, className, menuSide = 'botto
   const { connectWallet } = useConnectWallet({ onError: error => {
     if (String(error) !== 'exited_auth_flow') notify('Could not connect the wallet. Please try again.', { tone: 'error' });
   } });
-  const { createWallet } = useCreateWallet();
   const linkedWallets = wallets.filter(entry => linkedEvmAddresses(user?.linkedAccounts ?? []).some(address => sameEvmAddress(entry.address, address)));
   const wallet = selectLinkedWallet(linkedWallets, linkedEvmAddresses(user?.linkedAccounts ?? []), activeWallet?.address);
   const loading = !ready || (authenticated && !walletsReady);
@@ -63,23 +62,36 @@ export function BaseWalletButton({ compact = false, className, menuSide = 'botto
   }
 
   const chainId = activeNetwork.blockchain === 'base' ? activeNetwork.chainId : null;
+  const avatarUrl = account.status === 'registered' ? account.profile.avatarUrl : null;
   const wrongNetwork = wallet && chainId !== null && wallet.chainId !== `eip155:${chainId}`;
-  const hasEmbeddedWallet = user?.linkedAccounts.some(account => account.type === 'wallet' && account.walletClientType === 'privy');
 
   return <DropdownMenu>
     <DropdownMenuTrigger render={
       <Button variant="ghost" className={cn(controlClass, 'gap-2', !compact && 'min-w-0 px-2.5')} disabled={actionPending}
         aria-label={wallet ? `Base wallet ${shortAddress(wallet.address)}` : 'Connect a Base wallet'}>
-        {wallet ? <ProfileAvatar seed={wallet.address} size={24} radius={6} /> : <Wallet data-icon="inline-start" aria-hidden="true" />}
+        {wallet ? <ProfileAvatar seed={wallet.address} avatarUrl={avatarUrl} size={24} radius={6} /> : <Wallet data-icon="inline-start" aria-hidden="true" />}
         {!compact && <span className="truncate">{wallet ? shortAddress(wallet.address) : 'Connect wallet'}</span>}
         {!compact && <ChevronDown data-icon="inline-end" aria-hidden="true" />}
       </Button>
     } />
     <DropdownMenuContent side={menuSide} align={menuSide === 'top' ? 'start' : 'end'} sideOffset={8}
       className="w-62 max-w-[calc(100vw-1.5rem)] rounded-2xl bg-card p-2 text-card-foreground ring-border">
+      {wallet && <>
+        <div className="flex min-w-0 items-center gap-2.5 px-2 py-2">
+          <ProfileAvatar seed={wallet.address} avatarUrl={avatarUrl} size={36} radius={9} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold" title={account.status === 'registered' ? account.profile.name : undefined}>
+              {account.status === 'registered' ? account.profile.name : 'Connected wallet'}
+            </p>
+            <p className="mt-1 font-mono text-xs text-muted-foreground" title={wallet.address}>
+              {shortAddress(wallet.address)}
+            </p>
+          </div>
+        </div>
+        <DropdownMenuSeparator className="mx-1 my-2 bg-divider" />
+      </>}
       <DropdownMenuGroup>
         <DropdownMenuLabel>{wallet ? activeNetwork.label : 'Signed in · No wallet connected'}</DropdownMenuLabel>
-        {wallet && <p className="break-all px-2 py-2 text-xs text-muted-foreground">{wallet.address}</p>}
         {linkedWallets.length > 1 && <DropdownMenuRadioGroup aria-label="Active Base wallet" value={wallet?.address ?? ''} onValueChange={address => {
           const selected = linkedWallets.find(entry => sameEvmAddress(entry.address, address));
           if (selected) setActiveWallet(selected);
@@ -102,18 +114,15 @@ export function BaseWalletButton({ compact = false, className, menuSide = 'botto
           await navigator.clipboard.writeText(wallet.address);
           notify('Address copied to clipboard.', { tone: 'success' });
         }, 'Could not copy the address. Copy it from this menu instead.')}><Copy />Copy address</DropdownMenuItem>}
-        <DropdownMenuItem className="min-h-11" disabled={actionPending} onClick={() => connectWallet()}>
-          <Wallet />{wallet ? 'Connect another wallet' : 'Connect existing wallet'}
-        </DropdownMenuItem>
+        {!wallet && <DropdownMenuItem className="min-h-11" disabled={actionPending} onClick={() => connectWallet()}>
+          <Wallet />Connect existing wallet
+        </DropdownMenuItem>}
         {accountReady && syncWallets && <DropdownMenuItem className="min-h-11" disabled={actionPending} onClick={() => void runAction(async () => {
           const result = await syncWallets();
           if (!result.ok) throw new Error(result.error);
           notify('Linked wallets verified with LumenRise.', { tone: 'success' });
         }, 'Could not synchronize verified wallets. Check your account and try again.')}>
           <ArrowLeftRight />Sync linked wallets
-        </DropdownMenuItem>}
-        {!hasEmbeddedWallet && <DropdownMenuItem className="min-h-11" disabled={actionPending} onClick={() => void runAction(() => createWallet(), 'Could not create your app wallet. Please try again.')}>
-          <Plus />Create app wallet
         </DropdownMenuItem>}
       </DropdownMenuGroup>
       {showNetwork && <><DropdownMenuSeparator /><NetworkMenuItems /></>}
