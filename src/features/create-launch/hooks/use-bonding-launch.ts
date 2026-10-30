@@ -6,7 +6,8 @@ import { useBlux, useWriteContract } from '@bluxcc/react';
 import { Keypair, scValToNative, StrKey } from '@stellar/stellar-sdk';
 import { LAUNCH_CONFIGURED } from '@/lib/stellar/network';
 import { CONFIRMATION_TIMEOUT_MS, recoverSubmittedTransaction, waitForTransaction, waitForTransactionResult } from '../../../lib/stellar/confirmation';
-import { ApiError } from '@/lib/api/client';
+import { ApiError, getApiBaseUrl, getApiUserId } from '@/lib/api/client';
+import { enqueueLaunch, waitForLaunchRegistration } from '@/lib/api/launches/trade-queue';
 import {
   fileFromDataUrl,
   getLaunchImage,
@@ -15,7 +16,6 @@ import {
 } from '@/lib/api/launches/images';
 import { useLaunchpad, type AccountState } from '@/lib/launchpad';
 import { buildBondingCurveParams, FACTORY_CONTRACT_ID } from '../lib/bonding-curve';
-import { waitForIndexedLaunch } from '../lib/indexing';
 import type { LaunchDraft } from '../lib/launch-draft';
 import type { LaunchOperation, LaunchOperationStep } from '../lib/launch-operation';
 import {
@@ -115,7 +115,7 @@ export function useBondingLaunch() {
   const [working, setWorking] = useState(false);
   const [operation, setOperation] = useState<LaunchOperation | null>(null);
   const running = useRef(false);
-  // Keep completed steps for retries on this page only. Reloading starts fresh.
+  // Intermediate token steps stay in memory; the final Factory hash also survives reload.
   const records = useRef(new Map<string, BondingRecord>());
   const loadRecord = (owner: string, input: LaunchInput) =>
     records.current.get(recordKey(owner, input)) ?? null;
@@ -156,25 +156,22 @@ export function useBondingLaunch() {
   }
 
   /**
-   * After the factory transaction confirms on-chain, the server reads the
-   * launch from the contract on its own. Wait for that index before pointing
-   * the user at the token page; a still-pending index is not a launch failure
-   * and never triggers another transaction.
+   * Register the confirmed Factory transaction and navigate with its persisted
+   * slug. Pending registration never triggers another wallet transaction.
    */
-  async function finish(address: string, image: LaunchImageRecord | undefined, hash?: string, timeoutMs = CONFIRMATION_TIMEOUT_MS) {
+  async function finish(address: string, hash: string | undefined, origin: { userId: string; apiBaseUrl: string; traderAddress: string }, timeoutMs = CONFIRMATION_TIMEOUT_MS) {
     report(
       'index', 'Confirmed on Stellar. Preparing your project page.',
       'confirming', hash,
     );
-    const slug = image?.slug;
-    if (!slug) throw new Error('Your launch is confirmed, but the project page could not be loaded within 10 seconds.');
-    const result = await waitForIndexedLaunch(slug, API_NETWORK, timeoutMs);
-    if (result !== 'ready')
-      throw new Error(
-        'Your launch is confirmed, but the project page could not be loaded within 10 seconds.',
-      );
+    if (!hash) throw new Error('Your launch is confirmed, but its Factory transaction hash is unavailable.');
+    const record = enqueueLaunch({ chain: 'stellar', network: API_NETWORK, contractId: address,
+      transactionHash: hash, ...origin });
+    const result = await waitForLaunchRegistration(record, timeoutMs);
+    if (!result) throw new Error('Your launch is confirmed on Stellar. Backend registration is pending and will retry automatically for the original account and network. Do not submit another launch.');
+    if (result.contractId !== address) throw new Error('The registered project does not match the confirmed Factory transaction. Keep its hash.');
     router.refresh();
-    complete(address, slug, hash);
+    complete(address, result.slug, hash);
   }
 
   /**
@@ -260,12 +257,39 @@ export function useBondingLaunch() {
       const owner = user.address;
       requireCreator(owner);
       requireRegisteredAccount(account.account);
+      const userId = getApiUserId();
+      if (!userId) throw new Error('Sign in before launching.');
+      const origin = { userId, apiBaseUrl: getApiBaseUrl(), traderAddress: owner };
+      const queueFactory = (hash: string) => enqueueLaunch({ chain: 'stellar', network: API_NETWORK,
+        contractId: '', transactionHash: hash, ...origin });
       const input = validateInput({
         name: draft.name,
         code: draft.symbol,
         amount: draft.supply,
       });
+      const recoveryKey = `${recordKey(owner, input)}:factory:${encodeURIComponent(origin.apiBaseUrl)}:${origin.userId}`;
+      const saveFactory = (record: BondingRecord) => {
+        saveRecord(record);
+        // Persist only the final hash, never the temporary issuer secret or signed XDRs.
+        try { localStorage.setItem(recoveryKey, JSON.stringify({ transactionHash: record.factoryHash })); }
+        catch { account.notify('Launch recovery could not be saved. Keep the Factory transaction hash.', { tone: 'error' }); }
+      };
+      let persistedHash: string | undefined;
+      try {
+        const value: unknown = JSON.parse(localStorage.getItem(recoveryKey) ?? 'null');
+        if (value && typeof value === 'object' && 'transactionHash' in value && typeof value.transactionHash === 'string' && /^[a-fA-F0-9]{64}$/.test(value.transactionHash)) persistedHash = value.transactionHash;
+      } catch { /* A damaged local entry must not be interpreted as a submitted transaction. */ }
       let saved = loadRecord(owner, input);
+      if (persistedHash && !saved?.factoryHash) {
+        report('curve', 'Checking your saved Factory transaction.', 'confirming', persistedHash);
+        const confirmed = await waitForTransaction(persistedHash);
+        if (confirmed.status !== 'SUCCESS') throw new Error('The saved launch is not confirmed. Keep its hash and check again before submitting another launch.');
+        queueFactory(persistedHash);
+        const address = curveAddress(confirmed.returnValue ? scValToNative(confirmed.returnValue) : null);
+        await finish(address, persistedHash, origin);
+        localStorage.removeItem(recoveryKey);
+        return;
+      }
       const resuming = !!saved;
       if (saved) {
         const transactionHashes = {
@@ -277,7 +301,8 @@ export function useBondingLaunch() {
         setOperation((current) => current ? { ...current, transactionHashes } : current);
       }
       if (saved?.curveAddress) {
-        await finish(saved.curveAddress, saved.image, saved.factoryHash);
+        await finish(saved.curveAddress, saved.factoryHash, origin);
+        localStorage.removeItem(recoveryKey);
         return;
       }
       // Recover a submitted factory call before considering another transfer.
@@ -289,11 +314,13 @@ export function useBondingLaunch() {
         );
         const result = await waitForTransaction(saved.factoryHash);
         if (result.status === 'SUCCESS') {
+          queueFactory(saved.factoryHash);
           const address = curveAddress(
             result.returnValue ? scValToNative(result.returnValue) : null,
           );
-          saveRecord({ ...saved, curveAddress: address });
-          await finish(address, saved.image, saved.factoryHash, Math.max(0, CONFIRMATION_TIMEOUT_MS - (Date.now() - startedAt)));
+          saveFactory({ ...saved, curveAddress: address });
+          await finish(address, saved.factoryHash, origin, Math.max(0, CONFIRMATION_TIMEOUT_MS - (Date.now() - startedAt)));
+          localStorage.removeItem(recoveryKey);
           return;
         }
         if (result.status !== 'FAILED')
@@ -302,6 +329,7 @@ export function useBondingLaunch() {
           );
         saved = { token: saved.token, image: saved.image };
         saveRecord(saved);
+        localStorage.removeItem(recoveryKey);
         throw new Error('The launch transaction failed on-chain.');
       }
       const keypair = Keypair.random();
@@ -486,11 +514,11 @@ export function useBondingLaunch() {
           options: { network: NETWORK },
         }),
         (hash) => {
-          saveRecord({ token, factoryHash: hash, image });
+          saveFactory({ token, factoryHash: hash, image });
           report('curve', 'Confirming your bonding curve on Stellar.', 'confirming', hash);
         },
       );
-      saveRecord({ token, factoryHash: result.hash, image });
+      saveFactory({ token, factoryHash: result.hash, image });
       report(
         'curve', 'Confirming your bonding curve on Stellar.',
         'confirming', result.hash,
@@ -499,13 +527,16 @@ export function useBondingLaunch() {
       const confirmed = await waitForTransaction(result.hash);
       if (confirmed.status !== 'SUCCESS') {
         saveRecord({ token, image });
+        localStorage.removeItem(recoveryKey);
         throw new Error('The launch transaction failed on-chain.');
       }
+      queueFactory(result.hash);
       const address = curveAddress(
         confirmed.returnValue ? scValToNative(confirmed.returnValue) : null,
       );
-      saveRecord({ token, factoryHash: result.hash, curveAddress: address, image });
-      await finish(address, image, result.hash, Math.max(0, CONFIRMATION_TIMEOUT_MS - (Date.now() - startedAt)));
+      saveFactory({ token, factoryHash: result.hash, curveAddress: address, image });
+      await finish(address, result.hash, origin, Math.max(0, CONFIRMATION_TIMEOUT_MS - (Date.now() - startedAt)));
+      localStorage.removeItem(recoveryKey);
     } catch (cause) {
       const message = describeError(cause);
       setOperation((current) =>

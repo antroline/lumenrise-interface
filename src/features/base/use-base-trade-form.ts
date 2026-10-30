@@ -4,7 +4,7 @@ import { useBalance, useBytecode, useEstimateGas, useEstimateFeesPerGas, useConn
 import { encodeFunctionData, erc20Abi, isAddress, type Hash, type TransactionReceipt } from 'viem';
 import { useLaunchpad } from '@/lib/launchpad';
 import { getApiBaseUrl } from '@/lib/api/client';
-import { enqueueTrade } from '@/lib/api/launches/trade-queue';
+import { enqueueTrade, releaseTradeReceipt } from '@/lib/api/launches/trade-queue';
 import { decodeBaseTradeEvents } from '@/lib/base/events';
 import { launchAbi } from '@/lib/base/launchAbi';
 import { parseBaseAmount, sellableBaseBalance } from '@/lib/base/amount';
@@ -107,7 +107,7 @@ export function useBaseTradeForm(launch: LaunchResult, side: 'buy' | 'sell', loc
     if (activeTrades.has(scopeKey) || running.current || locked || submittedHash || !accountReady || !owner || !userId || !curve || !amount || !quote || minimumReceived === undefined || !permitted || limitError) return;
     const started = epoch.current, originalEntry = entry, originalSlippage = limitEntry;
     const origin = getApiBaseUrl();
-    const context = { chain: 'base' as const, userId, apiBaseUrl: origin };
+    const context = { chain: 'base' as const, userId, apiBaseUrl: origin, awaitingReceipt: true };
     const expected = quote;
     const assertCurrent = () => {
       const current = latest.current;
@@ -181,7 +181,10 @@ export function useBaseTradeForm(launch: LaunchResult, side: 'buy' | 'sell', loc
       if (!enqueueTrade(launch.network, launch.contractId, hash, owner, launch.slug ?? undefined, context))
         setRegistrationNotice('The transaction was submitted, but activity recovery could not be saved. Keep its hash.');
       setMessage('Trade submitted. Waiting for mining and indexing…');
-      const mined = await waitForReceipt(hash);
+      let mined: TransactionReceipt;
+      try { mined = await waitForReceipt(hash); }
+      catch (error) { releaseTradeReceipt(launch.network, hash, context); throw error; }
+      releaseTradeReceipt(launch.network, hash, context, mined.status !== 'success');
       if (mined.status !== 'success') { setSubmittedHash(undefined); throw new Error('The trade reverted on-chain.'); }
       const events = decodeBaseTradeEvents(mined.logs, curve, owner, launch.assetDecimals!);
       const executed = events.filter(event => event.side === side);

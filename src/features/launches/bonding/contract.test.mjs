@@ -234,7 +234,8 @@ function renderTrade(side, position = '20000000', confirmation = 'SUCCESS', miss
     '@/lib/launchpad': { useLaunchpad: () => ({ loginPending: false, login: async () => {} }) },
     './trade-result-dialog': { TradeResultDialog: 'TradeResultDialog' },
     '@/components/token-logo': { TokenLogo: () => null },
-    '@/lib/api/launches/trade-queue': { enqueueTrade: () => true },
+    '@/lib/api/client': { getApiUserId: () => '42', getApiBaseUrl: () => 'http://api.test' },
+    '@/lib/api/launches/trade-queue': { releaseTradeReceipt() {}, enqueueTrade: () => true },
     '@/features/launches/hooks/queries': { usePageVisible: () => true },
   };
   const { TradeForm, TradeFormView } = loadSource('trade-form.tsx', mocks, new Map(), {

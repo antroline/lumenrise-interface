@@ -206,7 +206,7 @@ test('rejects unsupported methods, local image references, and invalid contract 
   assert.equal(isBondingDraft({ method: 'bonding' }), false);
 });
 
-function harness({ network = networkModule, signedIn = true, rejectLogin = false, rejectSetup = false, setupError, rejectSac = false, rejectReturn = false, factoryStatus = 'SUCCESS', balance, returnWait, accountStatus = 'registered', imageStatus = 'pending', uploadFailures = [], indexResult = 'ready', sacTimeout = false, factoryTimeout = false, lookupStatuses, setupLookupDelay = 0 } = {}) {
+function harness({ factoryHash, confirmationSlug = 'server-project', network = networkModule, signedIn = true, rejectLogin = false, rejectSetup = false, setupError, rejectSac = false, rejectReturn = false, factoryStatus = 'SUCCESS', balance, returnWait, accountStatus = 'registered', imageStatus = 'pending', uploadFailures = [], indexResult = 'ready', sacTimeout = false, factoryTimeout = false, lookupStatuses, setupLookupDelay = 0 } = {}) {
   const storage = new Map();
   const messages = [];
   const calls = [];
@@ -267,7 +267,7 @@ function harness({ network = networkModule, signedIn = true, rejectLogin = false
     'next/navigation': {
       useRouter: () => ({ refresh: () => refreshes.push('refresh') }),
     },
-    '@/lib/api/client': { ApiError },
+    '@/lib/api/client': { ApiError, getApiUserId: () => '42', getApiBaseUrl: () => 'http://api.test' },
     '@/lib/api/launches/images': {
       uploadLaunchImage: async (input) => {
         events.push('upload');
@@ -307,7 +307,7 @@ function harness({ network = networkModule, signedIn = true, rejectLogin = false
         factoryCalls++;
         calls.push(call);
         if (factoryTimeout) throw timeout();
-        return { hash: `factory-${factoryCalls}`, returnValue: async () => { await returnWait; if (rejectReturn) throw new Error('Result temporarily unavailable'); return curve; } };
+        return { hash: factoryHash ?? `factory-${factoryCalls}`, returnValue: async () => { await returnWait; if (rejectReturn) throw new Error('Result temporarily unavailable'); return curve; } };
       } }),
     },
     '@/lib/launchpad': { useLaunchpad: () => ({
@@ -318,6 +318,13 @@ function harness({ network = networkModule, signedIn = true, rejectLogin = false
       },
       account: { status: accountStatus },
     }) },
+    '@/lib/api/launches/trade-queue': {
+      enqueueLaunch: record => record,
+      waitForLaunchRegistration: async (record) => {
+        indexedSlugs.push('server-project'); events.push('index'); indexChecks++;
+        return indexed === 'ready' ? { slug: confirmationSlug, contractId: curve } : undefined;
+      },
+    },
     '../lib/indexing': {
       waitForIndexedLaunch: async (slug) => {
         indexedSlugs.push(slug);
@@ -681,7 +688,7 @@ test('a pending server index keeps the confirmed hash and retries without anothe
   const stalled = h.progress.at(-1);
   assert.equal(stalled.status, 'error');
   assert.equal(stalled.step, 'index');
-  assert.match(stalled.message, /within 10 seconds/);
+  assert.match(stalled.message, /registration is pending/);
   assert.equal(stalled.transactionHashes.curve, 'factory-1');
   assert.equal(h.refreshes.length, 0);
   // Retrying only re-checks the index: no new signature, factory call, or upload.
@@ -980,4 +987,29 @@ test('a failed factory transaction stops with an error without submitting anothe
   assert.equal(savedRecords(h)[0].factoryHash, undefined);
   assert.equal(h.indexChecks(), 0);
   assert.equal(h.storage.size, 0);
+});
+
+test('Stellar completion uses the confirmation slug even when it differs from the reservation', async () => {
+  const h = harness({ confirmationSlug: 'persisted-server-slug' });
+  await h.flow.launch(draft());
+  assert.equal(h.progress.at(-1).status, 'success');
+  assert.equal(h.progress.at(-1).slug, 'persisted-server-slug');
+  assert.equal(h.progress.at(-1).hash, 'factory-1');
+  assert.equal(h.factoryCalls(), 1);
+});
+
+test('Stellar reload recovery verifies the saved Factory hash and never repeats token setup or submission', async () => {
+  const hash = 'c'.repeat(64);
+  const h = harness({ factoryHash: hash, indexResult: 'pending' });
+  await h.flow.launch(draft());
+  assert.match(h.progress.at(-1).message, /registration is pending/);
+  const sends = h.sends.length;
+  h.setIndexResult('ready');
+  const reloaded = h.reload();
+  await reloaded.launch(draft());
+  assert.equal(h.factoryCalls(), 1);
+  assert.equal(h.sends.length, sends);
+  assert.equal(h.uploads.length, 1);
+  assert.equal(h.progress.at(-1).status, 'success');
+  assert.equal(h.progress.at(-1).hash, hash);
 });

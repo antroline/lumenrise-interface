@@ -80,6 +80,11 @@ function harness(options = {}, storage = new Map()) {
     '@/lib/configuration': { useConfiguration: () => config },
     '@/lib/networks/context': { useNetwork: () => ({ activeNetwork: { id: options.mainnet ? 'base-mainnet' : 'base-sepolia', apiNetwork: options.mainnet ? 'public' : 'testnet' } }) },
     '@/lib/api/client': { getApiBaseUrl: () => 'https://api.test', getApiChain: () => 'base', getApiNetwork: () => 'testnet', getApiUserId: () => 'did:privy:creation', ApiError: class extends Error {} },
+
+    '@/lib/api/launches/trade-queue': {
+      enqueueLaunch(record) { calls.push({ confirmation: record }); return record; },
+      async waitForLaunchRegistration(record) { assert.equal(record.transactionHash, hash(3)); return options.pendingIndex ? undefined : { slug: 'persisted-server-slug', contractId: curve }; },
+    },
     '@/lib/api/launches/market': { async getLaunchList() { return { launches: options.conflict ? [{ metadata: { name: 'Example', symbol: 'EX' } }] : [], total: 0, limit: 20 }; } },
     '@/lib/api/launches/images': { async uploadLaunchImage() { calls.push('upload'); return image; }, async getLaunchImage() { return imageInfo(); }, fileFromDataUrl: () => ({}), launchImageErrorMessage: e => e.message },
   };
@@ -107,8 +112,8 @@ function harness(options = {}, storage = new Map()) {
 }
 
 test('Base creation deploys fixed supply, approves full asset balance, and creates exact 18/6 tuple', async () => {
-  const h = harness(); assert.equal((await h.launch()).status, 'success');
-  const writes = h.calls.filter(call => typeof call === 'object');
+  const h = harness(); const completed = await h.launch(); assert.equal(completed.status, 'success'); assert.equal(completed.slug, 'persisted-server-slug');
+  const writes = h.calls.filter(call => call?.functionName);
   assert.deepEqual(writes.map(call => call.functionName), ['approve', 'create_bonding_curve']);
   assert.equal(writes[1].args[0].curve.graduation_target, 5000n * 10n ** 6n);
   assert.equal(writes[1].args[0].vesting.schedule, 1);
@@ -143,13 +148,13 @@ test('pending factory receipt survives reload and never repeats token deployment
   const h = harness({ receiptPending: true }); assert.equal((await h.launch()).status, 'error');
   const resumed = harness({}, h.storage); assert.equal((await resumed.launch()).status, 'success');
   assert.equal(resumed.calls.includes('deploy'), false);
-  assert.equal(resumed.calls.some(call => typeof call === 'object'), false);
+  assert.equal(resumed.calls.some(call => call?.functionName), false);
 });
 test('pending indexing retries the saved receipt without repeating signatures', async () => {
-  const h = harness({ pendingIndex: true }); assert.match((await h.launch()).message, /indexing is still pending/);
+  const h = harness({ pendingIndex: true }); assert.match((await h.launch()).message, /registration is pending/);
   const resumed = harness({}, h.storage); assert.equal((await resumed.launch()).status, 'success');
   assert.equal(resumed.calls.includes('deploy'), false);
-  assert.equal(resumed.calls.some(call => typeof call === 'object'), false);
+  assert.equal(resumed.calls.some(call => call?.functionName), false);
 });
 test('rejected approval retry reuses the token deployment', async () => {
   const h = harness({ rejectApproval: true }); await h.launch();
@@ -173,7 +178,7 @@ test('an ambiguous wallet response blocks further signing after reload', async (
 });
 test('an account change during approval simulation prevents the approval and factory signature', async () => {
   const h = harness({ changeIdentity: true }); assert.match((await h.launch()).message, /context changed/);
-  assert.equal(h.calls.some(call => typeof call === 'object'), false);
+  assert.equal(h.calls.some(call => call?.functionName), false);
 });
 test('the bundled literal deploys creation bytecode.object with the supplied constructor ABI', () => {
   const h = harness();

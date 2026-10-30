@@ -5,11 +5,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useLaunchpad } from '@/lib/launchpad';
 import { getApiChain } from '@/lib/api/client';
 import { sameAddress } from '@/lib/chain-address';
-import { launchKey, usePageVisible } from './queries';
-import { flushTradeQueue, QUEUE_EVENT, readTradeQueue } from '../../../lib/api/launches/trade-queue';
+import { useNetwork } from '@/lib/networks/context';
+import { usePageVisible } from './queries';
+import { flushTradeQueue, QUEUE_EVENT, REGISTERED_EVENT, registrationRecorded, readTradeQueue, resumeTradeIdentity, type QueuedTrade, type ConfirmedLaunch } from '../../../lib/api/launches/trade-queue';
 import type { ApiNetwork } from '../../../lib/api/launches/types';
 
-export function useTradeQueue(network: ApiNetwork, contractId: string, slug?: string) {
+export function useTradeQueue(network: ApiNetwork, contractId?: string, slug?: string) {
   const { address, account } = useLaunchpad();
   const client = useQueryClient();
   const visible = usePageVisible();
@@ -26,9 +27,9 @@ export function useTradeQueue(network: ApiNetwork, contractId: string, slug?: st
           (t) =>
             (t.chain ?? 'stellar') === getApiChain() &&
             t.network === network &&
-            sameAddress(t.contractId, contractId) &&
-            sameAddress(t.traderAddress, address) &&
-            (t.userId === null || t.userId === userId),
+            (!contractId || sameAddress(t.contractId, contractId)) &&
+            (!contractId || sameAddress(t.traderAddress, address)) &&
+            t.userId === userId,
         ),
       );
     const drain = async () => {
@@ -41,21 +42,9 @@ export function useTradeQueue(network: ApiNetwork, contractId: string, slug?: st
           network,
           contractId,
           slug,
-          traderAddress: address,
+          traderAddress: contractId ? address : undefined,
           signal: controller.signal,
-          onRecorded: () => {
-            if (getApiChain() === 'base') {
-              const chainId = network === 'testnet' ? 84532 : 8453;
-              void client.invalidateQueries({ queryKey: ['readContract', { chainId }] });
-              void client.invalidateQueries({ queryKey: ['balance', { chainId }] });
-            }
-            void client.invalidateQueries({
-              queryKey: launchKey(network, slug ?? ''),
-            });
-            void client.invalidateQueries({
-              queryKey: ['launch-list', { chain: getApiChain(), network }],
-            });
-          },
+          onRecorded: registrationRecorded,
         });
       } catch {
         if (!controller.signal.aborted) setRecoveryError(true);
@@ -83,4 +72,43 @@ export function useTradeQueue(network: ApiNetwork, contractId: string, slug?: st
     };
   }, [address, userId, network, contractId, slug, client, visible]);
   return { records, recoveryError };
+}
+
+/** Mounted throughout the application, including Create and after reload. */
+export function useConfirmationRecovery(network: ApiNetwork) {
+  const { account, address } = useLaunchpad();
+  const userId = account.status === 'registered' ? account.profile.userId : null;
+  const client = useQueryClient();
+  useTradeQueue(network);
+  useEffect(() => {
+    if (!userId || !address) return;
+    for (const record of readTradeQueue()) {
+      if (record.network === network && record.userId === userId)
+        resumeTradeIdentity(network, record.contractId, record.traderAddress);
+    }
+  }, [userId, address, network]);
+  useEffect(() => {
+    const recorded = (event: Event) => {
+      const { record, launches } = (event as CustomEvent<{ record: QueuedTrade; launches?: ConfirmedLaunch[] }>).detail;
+      const chain = record.chain ?? 'stellar';
+      // Detail prefixes include market, trades, chart and holders. Lists own project volume data.
+      for (const slug of new Set([record.slug, ...launches?.map(launch => launch.slug) ?? []])) {
+        if (slug) void client.invalidateQueries({ queryKey: ['launch', chain, record.network, slug] });
+      }
+      void client.invalidateQueries({ queryKey: ['launch-list', { chain, network: record.network }] });
+      if (chain === 'base') {
+        const chainId = record.network === 'testnet' ? 84532 : 8453;
+        void client.invalidateQueries({ queryKey: ['readContract', { chainId }] });
+        void client.invalidateQueries({ queryKey: ['balance', { chainId }] });
+      }
+    };
+    window.addEventListener(REGISTERED_EVENT, recorded);
+    return () => window.removeEventListener(REGISTERED_EVENT, recorded);
+  }, [client]);
+}
+
+export function ConfirmationRecovery() {
+  const { activeNetwork } = useNetwork();
+  useConfirmationRecovery(activeNetwork.apiNetwork);
+  return null;
 }

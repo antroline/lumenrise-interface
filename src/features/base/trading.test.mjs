@@ -81,7 +81,7 @@ function harness(options = {}) {
         : name === '@/lib/launchpad' ? { useLaunchpad: () => ({ address: state.owner, accountReady: state.ready, baseSigningSupported: true, account: state.ready ? { status: 'registered', profile: { userId: 'did:privy:test' } } : { status: 'signed-out' } }) }
         : name === './use-base-launch-reads' ? { useBaseLaunchReads: () => ({ chainId: 84532, curve: CURVE, asset: ASSET, pair: PAIR, pairSymbol: 'USDC', unavailable: state.unavailable, revalidate: async () => { if (state.unavailable) throw new Error(state.unavailable); } }) }
         : name === '@/lib/api/client' ? { getApiBaseUrl: () => 'https://original.api/v1' }
-        : name === '@/lib/api/launches/trade-queue' ? { enqueueTrade: (...args) => { events.push('queue'); queue.push(args); return true; } }
+        : name === '@/lib/api/launches/trade-queue' ? { releaseTradeReceipt() {}, enqueueTrade: (...args) => { events.push('queue'); queue.push(args); return true; } }
         : name.startsWith('@/') ? load(name.slice(2) + '.ts') : name.startsWith('.') ? load(resolve(dirname(file), name + '.ts')) : require(name),
     }, { filename: file }); return module.exports;
   }

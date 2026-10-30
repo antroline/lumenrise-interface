@@ -651,3 +651,19 @@ export async function recordTrade(
     priceScale: scale(r.priceScale),
   };
 }
+
+/** Confirmation returns persisted identities, including any server-assigned slug. */
+export async function confirmLaunch(transactionHash: string, context: ApiContext, signal?: AbortSignal) {
+  const result = object(await apiRequest<unknown>('/launches/confirm', {
+    method: 'POST', user: true, expectedStatus: 200,
+    json: { transactionHash }, context, signal,
+  }));
+  const launches = array(result.launches, value => {
+    const launch = object(value);
+    const slug = string(launch.slug);
+    requireLaunchSlug(slug);
+    return { slug, contractId: string(launch.contractId) };
+  });
+  if (!launches.length) invalid();
+  return launches;
+}

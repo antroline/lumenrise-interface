@@ -7,6 +7,7 @@ import { useConfiguration } from '@/lib/configuration';
 import { useNetwork } from '@/lib/networks/context';
 import { ApiError, getApiBaseUrl, getApiChain, getApiNetwork, getApiUserId } from '@/lib/api/client';
 import { getLaunchList } from '@/lib/api/launches/market';
+import { enqueueLaunch, waitForLaunchRegistration } from '@/lib/api/launches/trade-queue';
 import { fileFromDataUrl, getLaunchImage, uploadLaunchImage, launchImageErrorMessage } from '@/lib/api/launches/images';
 import { requireBaseWrites, BASE_MAINNET_BLOCK_REASON } from '@/lib/base/deployment';
 import { factoryAbi } from '@/lib/base/factoryAbi';
@@ -234,25 +235,20 @@ export function useBaseBondingLaunch() {
       report('curve', 'Confirming your launch on Base Sepolia.', 'confirming', saved.factoryHash);
       const mined = baseReceipt(await wallet.receipt(saved.factoryHash)); guard();
       if (mined.status !== 'success') { saved.factoryHash = undefined; save(); throw new Error('The launch transaction reverted. Your token deployment is saved for retry.'); }
+      const confirmationRecord = enqueueLaunch({ chain: 'base', network: 'testnet', userId, apiBaseUrl: origin,
+        transactionHash: saved.factoryHash, traderAddress: owner, contractId: '' });
       const curve = createdBaseCurve(mined.logs, env.factory, owner, token, deposit);
       saved.curveAddress = curve; save();
       const [curveConfig] = await wallet.read([{ address: curve, abi: launchAbi, functionName: 'get_config' }]); guard();
       const config = baseObject(curveConfig), curveParams = baseObject(config.params);
       if (!sameEvmAddress(baseAddress(config.factory), env.factory) || !sameEvmAddress(baseAddress(curveParams.owner), owner) || !sameEvmAddress(baseAddress(curveParams.asset), token) || !sameEvmAddress(baseAddress(curveParams.pair), env.pair) || baseInteger(config.total_supply) !== deposit) throw new Error('The mined launch configuration could not be verified. Do not submit a second launch.');
       report('index', 'Launch mined. Waiting for your project page to be indexed.', 'confirming', saved.factoryHash);
-      const deadline = Date.now() + 20000;
-      while (Date.now() < deadline) {
-        const status = await getLaunchImage(image.imageId); guard();
-        if (status.status === 'finalized') {
-          if (!status.slug || !status.launchContractId || !status.assetContractId || !sameEvmAddress(status.launchContractId, curve) || !sameEvmAddress(status.assetContractId, token) || status.network !== 'testnet' || !sameEvmAddress(status.ownerAddress, owner)) throw new Error('The indexed project does not match the mined launch.');
-          setOperation({ step: 'index', status: 'success', phase: 'confirming', message: 'Your Base launch is confirmed and its project page is ready.', curveAddress: curve, slug: status.slug, hash: saved.factoryHash, transactionHashes: { setup: saved.tokenHash, deploy: saved.approvalHash, curve: saved.factoryHash } });
-          localStorage.removeItem(key); sessionStorage.removeItem(BASE_AUTH_RETURN_KEY); records.current.delete(key);
-          router.refresh(); return;
-        }
-        if (status.status === 'expired' || status.status === 'deleting') throw new Error('The launch mined, but its project reservation expired. Keep the launch hash; retrying will only check indexing.');
-        await new Promise(resolve => setTimeout(resolve, 1500)); guard();
-      }
-      throw new Error('The launch is mined but indexing is still pending. Retry checks the saved transaction and project status; it will not deploy or deposit again.');
+      const registered = await waitForLaunchRegistration(confirmationRecord); guard();
+      if (!registered) throw new Error('Your launch is confirmed on Base. Backend registration is pending and will retry automatically for the original account and network. Do not deploy or deposit again.');
+      if (!sameEvmAddress(registered.contractId, curve)) throw new Error('The registered project does not match the mined launch. Keep the Factory transaction hash.');
+      setOperation({ step: 'index', status: 'success', phase: 'confirming', message: 'Your Base launch is confirmed and its project page is ready.', curveAddress: curve, slug: registered.slug, hash: saved.factoryHash, transactionHashes: { setup: saved.tokenHash, deploy: saved.approvalHash, curve: saved.factoryHash } });
+      localStorage.removeItem(key); sessionStorage.removeItem(BASE_AUTH_RETURN_KEY); records.current.delete(key);
+      router.refresh(); return;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'The launch could not be completed.';
       setOperation(current => ({ ...(current ?? { step: 'check', transactionHashes: {} }), status: 'error', phase: 'working', message }));

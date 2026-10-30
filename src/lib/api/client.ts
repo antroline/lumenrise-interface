@@ -285,6 +285,8 @@ export async function apiRequest<T>(
         }
         headers.Authorization = `Bearer ${token}`;
       }
+      if (protectedRequest && headers['X-User-Id'] !== getApiUserId())
+        throw new DOMException('Account changed.', 'AbortError');
       if (revision !== contextRevision) throw new DOMException('Request context changed.', 'AbortError');
       return fetch(requestUrl, {
         method: options.method ?? 'GET',
@@ -302,7 +304,7 @@ export async function apiRequest<T>(
       response = await send();
     }
     responseText = await response.text();
-    if (revision !== contextRevision || (chain === 'base' && protectedRequest && authentication !== baseAuthentication))
+    if (revision !== contextRevision || (protectedRequest && headers['X-User-Id'] !== getApiUserId()) || (chain === 'base' && protectedRequest && authentication !== baseAuthentication))
       throw new DOMException('Request context changed.', 'AbortError');
     if (response.status === 401 && chain === 'base' && protectedRequest) authentication?.onExpired();
   } catch (error) {
