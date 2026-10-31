@@ -42,7 +42,7 @@ export function LaunchActionCard({
   const [quoteHost, setQuoteHost] = useState<HTMLDivElement | null>(null);
   const [direction, setDirection] = useState('buy');
   const form = (
-    <div className="flex min-w-0 flex-col gap-3 p-4 sm:p-5">
+    <div className="flex min-w-0 flex-col gap-2.5 p-3.5 sm:p-4">
       {trade ??
         (buy || sell ? (
           <Tabs
@@ -50,18 +50,18 @@ export function LaunchActionCard({
             onValueChange={(value) => {
               if (value === 'buy' || value === 'sell') setDirection(value);
             }}
-            className="relative gap-3"
+            className="relative gap-2.5"
           >
-            <TabsList aria-label="Trade direction" className="h-8 w-fit">
+            <TabsList aria-label="Trade direction" className="h-9 w-fit border border-border bg-muted">
               <TabsTrigger
                 value="buy"
-                className="min-w-14 px-3! text-xs! font-semibold uppercase data-active:bg-ok! data-active:text-white! dark:data-active:text-ink!"
+                className="h-7! min-w-14 border border-transparent px-2.5! text-xs! font-semibold uppercase data-active:border-foreground/30 data-active:bg-ink! data-active:text-white! data-active:shadow-none!"
               >
                 Buy
               </TabsTrigger>
               <TabsTrigger
                 value="sell"
-                className="min-w-14 px-3! text-xs! font-semibold uppercase data-active:bg-bad! data-active:text-white! dark:data-active:text-ink!"
+                className="h-7! min-w-14 border border-transparent px-2.5! text-xs! font-semibold uppercase data-active:border-foreground/30 data-active:bg-ink! data-active:text-white! data-active:shadow-none!"
               >
                 Sell
               </TabsTrigger>
@@ -104,11 +104,6 @@ export function LaunchActionCard({
           form
         ) : (
           <Sheet open={open} onOpenChange={setOpen}>
-            <div className="p-4 sm:p-5">
-              <Button className="w-full" onClick={() => setOpen(true)}>
-                Buy / Sell
-              </Button>
-            </div>
             {/* Page entrance transforms must not contain this viewport-fixed control. */}
             {typeof document !== 'undefined' && createPortal(
               <div className="fixed inset-x-0 bottom-[calc(4.75rem+max(0.75rem,env(safe-area-inset-bottom)))] z-30 border-t border-divider bg-card px-4 py-3 lg:hidden">
