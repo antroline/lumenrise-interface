@@ -10,16 +10,16 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useWideLayout } from '../hooks/use-scrolled-past';
 import { LaunchPanel } from './launch-panel';
 
 export type TradeFormRenderer = (
   host: HTMLElement | null,
   active: boolean,
+  flip: () => void,
 ) => ReactNode;
 
-/** Keep both directions mounted when switching tabs or closing the mobile sheet. */
+/** Keep both directions mounted when swapping direction or closing the mobile sheet. */
 export function LaunchActionCard({
   identity,
   name,
@@ -40,39 +40,26 @@ export function LaunchActionCard({
   const wide = useWideLayout();
   const [open, setOpen] = useState(false);
   const [quoteHost, setQuoteHost] = useState<HTMLDivElement | null>(null);
-  const [direction, setDirection] = useState('buy');
+  const [direction, setDirection] = useState<'buy' | 'sell'>('buy');
+  const flip = () =>
+    setDirection((current) => (current === 'buy' ? 'sell' : 'buy'));
   const form = (
     <div className="flex min-w-0 flex-col gap-2.5 p-3.5 sm:p-4">
       {trade ??
         (buy || sell ? (
-          <Tabs
-            value={direction}
-            onValueChange={(value) => {
-              if (value === 'buy' || value === 'sell') setDirection(value);
-            }}
-            className="relative gap-2.5"
-          >
-            <TabsList aria-label="Trade direction" className="h-9 w-fit border border-border bg-muted">
-              <TabsTrigger
-                value="buy"
-                className="h-7! min-w-14 border border-transparent px-2.5! text-xs! font-semibold uppercase data-active:border-foreground/30 data-active:bg-ink! data-active:text-white! data-active:shadow-none!"
-              >
-                Buy
-              </TabsTrigger>
-              <TabsTrigger
-                value="sell"
-                className="h-7! min-w-14 border border-transparent px-2.5! text-xs! font-semibold uppercase data-active:border-foreground/30 data-active:bg-ink! data-active:text-white! data-active:shadow-none!"
-              >
-                Sell
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="buy" keepMounted>
-              {buy?.(quoteHost, direction === 'buy')}
-            </TabsContent>
-            <TabsContent value="sell" keepMounted>
-              {sell?.(quoteHost, direction === 'sell')}
-            </TabsContent>
-          </Tabs>
+          buy && sell ? (
+            <div className="relative min-w-0">
+              {/* Both directions stay mounted so wallet, quote and dialog state survive a swap. */}
+              <div hidden={direction !== 'buy'}>
+                {buy(quoteHost, direction === 'buy', flip)}
+              </div>
+              <div hidden={direction !== 'sell'}>
+                {sell(quoteHost, direction === 'sell', flip)}
+              </div>
+            </div>
+          ) : (
+            (buy ?? sell)?.(quoteHost, true, flip)
+          )
         ) : loading ? (
           <div
             role="status"
@@ -80,9 +67,9 @@ export function LaunchActionCard({
             aria-busy="true"
             className="flex flex-col gap-3"
           >
-            <Skeleton className="h-8 w-24 motion-reduce:animate-none" />
-            <Skeleton className="h-[76px] w-full rounded-lg motion-reduce:animate-none" />
-            <Skeleton className="h-11 w-full rounded-lg motion-reduce:animate-none" />
+            <Skeleton className="h-[92px] w-full rounded-xl motion-reduce:animate-none" />
+            <Skeleton className="h-[92px] w-full rounded-xl motion-reduce:animate-none" />
+            <Skeleton className="h-12 w-full rounded-xl motion-reduce:animate-none" />
             <Skeleton className="h-3 w-40 motion-reduce:animate-none" />
           </div>
         ) : (
@@ -108,7 +95,7 @@ export function LaunchActionCard({
             {typeof document !== 'undefined' && createPortal(
               <div className="fixed inset-x-0 bottom-[calc(4.75rem+max(0.75rem,env(safe-area-inset-bottom)))] z-30 border-t border-divider bg-card px-4 py-3 lg:hidden">
                 <Button className="w-full" onClick={() => setOpen(true)}>
-                  Buy / Sell {name}
+                  Trade {name}
                 </Button>
               </div>,
               document.body,

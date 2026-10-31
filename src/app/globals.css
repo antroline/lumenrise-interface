@@ -757,8 +757,7 @@
 
 @media (hover: hover) {
   .trade-panel-neutral
-    [data-trade-control]:not(:disabled):not([aria-disabled='true']):hover,
-  .trade-panel-neutral [data-slot='tabs-trigger']:not([data-active]):hover {
+    [data-trade-control]:not(:disabled):not([aria-disabled='true']):hover {
     background-color: var(--trade-control-hover);
   }
 }

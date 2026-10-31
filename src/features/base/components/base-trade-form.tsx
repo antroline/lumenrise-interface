@@ -5,8 +5,8 @@ import { TradeFormView } from '@/features/launches';
 import { launchKey } from '@/features/launches';
 import { pairLabel } from '@/lib/api/launches/display';
 import { useBaseTradeForm } from '../use-base-trade-form';
-export function BaseTradeForm({ launch, side, locked, setLocked, quoteHost, active }: {
-  launch: LaunchResult; side: 'buy' | 'sell'; locked: boolean; setLocked: (locked: boolean) => void; quoteHost: HTMLElement | null; active: boolean;
+export function BaseTradeForm({ launch, side, onFlip, locked, setLocked, quoteHost, active }: {
+  launch: LaunchResult; side: 'buy' | 'sell'; onFlip?: () => void; locked: boolean; setLocked: (locked: boolean) => void; quoteHost: HTMLElement | null; active: boolean;
 }) {
   const client = useQueryClient();
   async function refresh() {
@@ -26,6 +26,6 @@ export function BaseTradeForm({ launch, side, locked, setLocked, quoteHost, acti
     return <p role="status">Token decimals are unavailable. Trading cannot be verified.</p>;
   return <TradeFormView model={model} scales={{ asset: launch.assetDecimals, pair: launch.pairDecimals }}
     address={launch.contractId} slug={launch.slug ?? undefined} network={launch.network} tokens={{ assetSymbol: launch.metadata.symbol }}
-    snapshot={{ price: trade.price }} side={side} locked={locked} balances={trade.balances}
+    snapshot={{ price: trade.price }} side={side} onFlip={onFlip} locked={locked} balances={trade.balances}
     tokenLogo={launch.metadata.logo} quoteHost={quoteHost} active={active} />;
 }
