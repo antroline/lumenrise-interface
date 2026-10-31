@@ -28,7 +28,7 @@ function harness({ name = 'Alice', avatarUrl = '/old.webp', save, remove } = {})
   };
   const mocks = {
     react, 'react/jsx-runtime': { jsx, jsxs: jsx },
-    'next/link': { default: 'Link' }, 'lucide-react': ui('LogOut', 'Wallet'),
+    'next/link': { default: 'Link' }, 'lucide-react': ui('Camera', 'LogOut', 'Trash2', 'Undo2', 'Wallet'),
     '@/components/auth-gate': ui('AuthGate'), '@/components/page-header': ui('PageHeader'),
     '@/components/profile-avatar': ui('ProfileAvatar'), '@/components/image-crop-input': ui('ImageCropInput'),
     '@/components/ui/badge': ui('Badge'), '@/components/ui/button': ui('Button'),
@@ -61,7 +61,7 @@ function harness({ name = 'Alice', avatarUrl = '/old.webp', save, remove } = {})
   let tree;
   const render = () => { cursor = 0; tree = module.exports.ProfileCard(props); return tree; };
   const find = type => elements(tree).find(node => node.type === type);
-  const button = label => elements(tree).find(node => node.type === 'Button' && node.props.children === label);
+  const button = label => elements(tree).find(node => node.type === 'Button' && [node.props.children].flat().filter(child => typeof child === 'string').join('') === label);
   const changeName = value => { find('Input').props.onChange({ target: { value } }); render(); };
   const crop = file => { find('ImageCropInput').props.onCropped(file); render(); };
   const submit = () => find('form').props.onSubmit({ preventDefault() {} });
@@ -149,7 +149,7 @@ test('background profile refresh does not overwrite a dirty name and unavailable
   h.props.name = 'Refreshed name'; h.render();
   assert.equal(h.find('Input').props.value, 'Unsaved name');
   const cards = h.elements(h.settings()).filter(node => typeof node.type === 'function' && node.type.name === 'SettingsCard');
-  assert.deepEqual(cards.map(node => node.props.id), ['team-invitations', 'security', 'wallets']);
+  assert.deepEqual(cards.map(node => node.props.id), ['team-invitations', 'wallets', 'security']);
 });
 
 
