@@ -75,9 +75,9 @@ const phases = {
 const controlClass =
   'inline-flex h-8 min-w-0 shrink-0 items-center justify-center rounded-md px-2 text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-foreground';
 const activeClass =
-  'bg-white text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50';
+  'bg-card text-foreground dark:bg-muted dark:text-foreground';
 const inactiveClass =
-  'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50';
+  'text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground';
 const statsHelp =
   'Rolling 24-hour statistics cover verified client-submitted trades recorded by the backend; they may not include all on-chain activity.';
 const totalVolumeHelp =
@@ -345,7 +345,7 @@ export function PublicProjects({
         <div className="flex min-w-0 items-center gap-2">
           <nav
             aria-label="Launch category"
-            className="min-w-0 rounded-lg bg-neutral-200/60 p-1 dark:bg-neutral-800"
+            className="min-w-0 rounded-lg bg-secondary/60 p-1 dark:bg-muted"
           >
             <div className="flex gap-1">
               {categories.map((item) => (
@@ -398,7 +398,7 @@ export function PublicProjects({
           aria-label="Project sorting"
           className="w-full min-w-0 max-w-full lg:ml-auto lg:w-auto"
         >
-          <div className="grid grid-cols-[auto_auto_auto_auto] items-stretch gap-1 rounded-md bg-neutral-200/60 p-1 lg:flex lg:flex-wrap lg:items-center lg:bg-transparent lg:p-0 dark:bg-neutral-800 lg:dark:bg-transparent">
+          <div className="grid grid-cols-[auto_auto_auto_auto] items-stretch gap-1 rounded-md bg-secondary/60 p-1 lg:flex lg:flex-wrap lg:items-center lg:bg-transparent lg:p-0 dark:bg-muted lg:dark:bg-transparent">
             <span className="mr-1 hidden shrink-0 text-xs whitespace-nowrap text-muted-foreground lg:inline">
               Sort by:
             </span>
@@ -427,7 +427,7 @@ export function PublicProjects({
           </div>
         </nav>
       </div>
-      <div className="@container -mx-4 min-w-0 border-y border-neutral-200 bg-white sm:-mx-5 lg:mx-0 lg:overflow-hidden lg:rounded-xl lg:border dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="@container -mx-4 min-w-0 border-y border-border bg-card sm:-mx-5 lg:mx-0 lg:overflow-hidden lg:rounded-xl lg:border dark:border-border dark:bg-card">
         {needsPair ? (
           <Empty>
             <EmptyHeader>

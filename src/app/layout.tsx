@@ -21,15 +21,15 @@ export const metadata: Metadata = {
   },
   description:
     'Identity, reputation, and launch infrastructure for Stellar. Transparent, reputation-gated launches — from discovery to settlement.',
-  icons: { icon: { url: '/branding/lumenrise-symbol-for-light-background.svg', type: 'image/svg+xml' } },
+  icons: { icon: { url: '/assets/logo/lumenrise-favicon-adaptive.svg', type: 'image/svg+xml', sizes: 'any' } },
 }
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0e0e0d' },
+    { media: '(prefers-color-scheme: light)', color: '#fafafa' },
+    { media: '(prefers-color-scheme: dark)', color: '#020202' },
   ],
 }
 

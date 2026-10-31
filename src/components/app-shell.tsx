@@ -31,13 +31,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   if (bareRoutes.has(pathname) || (process.env.NODE_ENV === 'development' && pathname === '/design-lab')) return children;
   if (pathname === '/create') return <FocusedShell title="Create a launch">{children}</FocusedShell>;
-  const stellarOnly = isBase && /^\/(?:reputation|missions|developers|cli|polic(?:y|ies))(?:\/|$)/.test(pathname);
+  const stellarOnly = isBase && /^\/(?:missions|developers|cli|polic(?:y|ies))(?:\/|$)/.test(pathname);
 
   return (
-    <div className={cn('relative isolate min-h-svh bg-page pb-[calc(5.5rem+max(0.75rem,env(safe-area-inset-bottom)))] lg:flex lg:pb-0', pathname === '/projects' && 'bg-neutral-100 dark:bg-page', isLaunchDetails && 'dark:bg-black')}>
+    <div className={cn('relative isolate min-h-svh bg-page pb-[calc(5.5rem+max(0.75rem,env(safe-area-inset-bottom)))] lg:flex lg:pb-0', pathname === '/projects' && 'bg-muted dark:bg-page', isLaunchDetails && 'dark:bg-page')}>
       <SideNavigation />
 
-      <div className={cn('min-w-0 flex-1', isLaunchDetails && 'dark:bg-neutral-950')}>
+      <div className={cn('min-w-0 flex-1', isLaunchDetails && 'dark:bg-card')}>
         <main
           className={cn(
             'animate-settle relative z-10 mx-auto w-full px-4 pt-6 pb-16 sm:pt-8 lg:pt-10 lg:pb-[72px]',

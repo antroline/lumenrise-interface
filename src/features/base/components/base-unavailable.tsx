@@ -9,7 +9,7 @@ export function BaseUnavailable() {
   return (
     <NetworkNotice
       title="This feature is Stellar-only"
-      description={`You’re viewing ${activeNetwork.label}. Reputation, Stellar evidence, social connections, developer APIs, and policy features are not supported on Base. Projects and account settings remain available.`}
+      description={`You’re viewing ${activeNetwork.label}. Stellar evidence, social connections, developer APIs, and policy features are not supported on Base. Projects, reputation preview, and account settings remain available.`}
     >
       <Button onClick={() => switchBlockchain('stellar')}>Switch to Stellar</Button>
     </NetworkNotice>

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-label="LumenRise">
+<title>LumenRise (one color)</title>
+<defs><clipPath id="ob"><circle cx="500" cy="500" r="480"/></clipPath></defs><g clip-path="url(#ob)"><path fill="#0B0B0B" fill-rule="evenodd" d="M0 0H1000V1000H0Z M0 462H1000V538H0Z M500 538H1000V633H500Z"/></g>
+</svg>

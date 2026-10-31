@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-label="LumenRise">
+<title>LumenRise</title>
+<desc>Settle, open, rise. 1.15s, plays once. Hosts serve the static mark when prefers-reduced-motion is set.</desc>
+<defs><clipPath id="al"><circle cx="500" cy="500" r="480"/></clipPath></defs><g clip-path="url(#al)">
+  <rect x="0" y="0" width="1000" height="462" fill="#0B0B0B" opacity="0">
+    <animate attributeName="opacity" from="0" to="1" dur="0.1s" begin="0.1s" fill="freeze"/>
+    <animateTransform attributeName="transform" type="translate" from="0 38" to="0 0" dur="0.5s" begin="0.1s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.2 0.7 0.2 1"/>
+  </rect>
+  <rect x="0" y="538" width="1000" height="462" fill="#CFCFCF" opacity="0">
+    <animate attributeName="opacity" from="0" to="1" dur="0.15s" begin="0s" fill="freeze"/>
+    <animateTransform attributeName="transform" type="translate" from="0 -38" to="0 0" dur="0.5s" begin="0.1s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.2 0.7 0.2 1"/>
+  </rect>
+  <rect x="0" y="538" width="500" height="95" fill="#0B0B0B" opacity="0">
+    <animate attributeName="opacity" from="0" to="1" dur="0.05s" begin="0.5s" fill="freeze"/>
+    <animateTransform attributeName="transform" type="translate" values="0 95;0 -8;0 0" keyTimes="0;0.7;1" dur="0.4s" begin="0.5s" fill="freeze" calcMode="spline" keySplines="0.3 0.8 0.3 1;0.3 0.8 0.3 1"/>
+  </rect>
+</g>
+</svg>

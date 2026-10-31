@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="LumenRise app icon">
+
+<rect x="0" y="0" width="512" height="512" rx="112" fill="#0B0B0B"/><g transform="translate(56 56) scale(0.4)">
+  <defs><clipPath id="icon-disc"><circle cx="500" cy="500" r="480"/></clipPath></defs>
+  <g clip-path="url(#icon-disc)">
+    <rect x="0" y="0" width="1000" height="462" fill="#FFFFFF"/>
+    <rect x="0" y="538" width="1000" height="462" fill="#545450" opacity="1"/>
+    <rect x="0" y="538" width="500" height="95" fill="#FFFFFF"/>
+  </g>
+</g>
+</svg>

@@ -53,13 +53,13 @@ import { NetworkSwitcher } from './network-switcher';
 const sideNavId = 'side-navigation';
 
 const rowClass =
-  'relative flex h-10 w-full items-center overflow-hidden rounded-lg text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors duration-150 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset focus-visible:outline-none motion-reduce:transition-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 dark:focus-visible:ring-neutral-500';
+  'relative flex h-10 w-full items-center overflow-hidden rounded-lg text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset focus-visible:outline-none motion-reduce:transition-none dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground dark:focus-visible:ring-ring';
 
 const fadeClass =
   'transition-opacity duration-200 motion-reduce:transition-none';
 
 const iconButtonClass =
-  'shrink-0 text-muted-foreground hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-sidebar-ring dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 dark:focus-visible:ring-neutral-500';
+  'shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-sidebar-ring dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground dark:focus-visible:ring-ring';
 
 export function SideNavigation({
   mobileOnly = false,
@@ -69,6 +69,7 @@ export function SideNavigation({
   const [expanded, setExpanded] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const { activeNetwork } = useNetwork();
 
   useEffect(() => {
     const desktop = window.matchMedia('(min-width: 64rem)');
@@ -134,7 +135,7 @@ export function SideNavigation({
       )}
 
       <div className="sticky top-0 z-30 border-b border-sidebar-border bg-sidebar px-4 pt-[env(safe-area-inset-top)] lg:hidden">
-        <div className="grid h-14 grid-cols-[1fr_auto_1fr] items-center">
+        <div className="flex h-14 items-center gap-2">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger
               render={
@@ -163,7 +164,9 @@ export function SideNavigation({
               <MobileDrawerContent onNavigate={() => setMobileOpen(false)} />
             </SheetContent>
           </Sheet>
-          <HomeLink height={32} className="h-11 justify-self-center px-0" />
+          <Link href={navigationHref('/', activeNetwork.id)} aria-label="LumenRise home" className="flex size-11 shrink-0 items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-ring sm:hidden"><LogoSymbol size={28} /></Link>
+          <HomeLink height={26} className="hidden h-11 shrink-0 px-0 sm:flex" />
+          <NetworkSwitcher className="ml-auto h-10 w-auto gap-1.5 px-2 [&_span[translate=no]]:hidden" />
           <Button
             variant="ghost"
             size="icon"
@@ -272,7 +275,6 @@ function MobileDrawerContent({ onNavigate }: { onNavigate: () => void }) {
       </nav>
       <div className="shrink-0 border-t border-sidebar-border px-5 py-5 sm:px-8">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-3 [&>button]:min-h-11 [&>button]:min-w-11">
-          <NetworkSwitcher />
           <WalletButton
             menuSide="top"
             onNavigate={onNavigate}
@@ -317,7 +319,7 @@ function SidebarPanel({
               aria-keyshortcuts="/ Control+K Meta+K"
               className={cn(
                 rowClass,
-                'shrink-0 bg-neutral-100 hover:bg-neutral-200/70 dark:bg-neutral-800 dark:hover:bg-neutral-700',
+                'shrink-0 bg-muted hover:bg-secondary/70 dark:bg-muted dark:hover:bg-muted',
               )}
             />
           }
@@ -329,7 +331,7 @@ function SidebarPanel({
           <Kbd
             aria-hidden="true"
             className={cn(
-              'mr-2.5 ml-auto border-neutral-200 text-muted-foreground dark:border-neutral-700 dark:text-neutral-400',
+              'mr-2.5 ml-auto border-border text-muted-foreground dark:border-border dark:text-muted-foreground',
               fadeClass,
               collapsed && 'opacity-0',
             )}
@@ -396,7 +398,7 @@ function SidebarPanel({
                       {item.count && (
                         <span
                           className={cn(
-                            'mr-2.5 ml-auto font-mono text-caption text-muted-foreground dark:text-neutral-400',
+                            'mr-2.5 ml-auto font-mono text-caption text-muted-foreground dark:text-muted-foreground',
                             fadeClass,
                             collapsed && 'opacity-0',
                           )}
@@ -417,14 +419,14 @@ function SidebarPanel({
         <div
           className={cn('flex gap-2', collapsed ? 'flex-col' : 'items-center')}
         >
-          <div className="shrink-0 [&>button]:rounded-lg [&>button]:bg-secondary [&>button]:text-muted-foreground [&>button]:hover:bg-neutral-100 [&>button]:hover:text-neutral-900 [&>button]:focus-visible:ring-sidebar-ring dark:[&>button]:text-neutral-400 dark:[&>button]:hover:bg-neutral-800 dark:[&>button]:hover:text-neutral-100 dark:[&>button]:focus-visible:ring-neutral-500">
+          <div className="shrink-0 [&>button]:rounded-lg [&>button]:bg-secondary [&>button]:text-muted-foreground [&>button]:hover:bg-muted [&>button]:hover:text-foreground [&>button]:focus-visible:ring-sidebar-ring dark:[&>button]:text-muted-foreground dark:[&>button]:hover:bg-muted dark:[&>button]:hover:text-foreground dark:[&>button]:focus-visible:ring-ring">
             <ThemeToggle />
           </div>
           <WalletButton
             compact={collapsed}
             showNetwork={false}
             menuSide={walletMenuSide}
-            className={cn('rounded-lg bg-secondary focus-visible:ring-sidebar-ring dark:bg-neutral-800 dark:focus-visible:ring-neutral-500', !collapsed && 'min-w-0 flex-1')}
+            className={cn('rounded-lg bg-secondary focus-visible:ring-sidebar-ring dark:bg-muted dark:focus-visible:ring-ring', !collapsed && 'min-w-0 flex-1')}
           />
         </div>
       </div>
@@ -481,7 +483,7 @@ function HomeLink({
       aria-label="LumenRise home"
       onClick={onClick}
       className={cn(
-        'flex h-10 shrink-0 items-center rounded-lg px-1.5 focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none dark:focus-visible:ring-neutral-500',
+        'flex h-10 shrink-0 items-center rounded-lg px-1.5 focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none dark:focus-visible:ring-ring',
         className,
       )}
     >

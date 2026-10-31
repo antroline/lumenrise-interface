@@ -35,7 +35,7 @@ export function LaunchDescription({ description }: { description: string }) {
         id={id}
         ref={content}
         className={cn(
-          'w-full whitespace-pre-wrap text-base leading-7 text-neutral-600 [overflow-wrap:anywhere] dark:text-neutral-400',
+          'w-full whitespace-pre-wrap text-base leading-7 text-muted-foreground [overflow-wrap:anywhere] dark:text-muted-foreground',
           !expanded && 'line-clamp-6',
         )}
       >
@@ -47,7 +47,7 @@ export function LaunchDescription({ description }: { description: string }) {
           aria-expanded={expanded}
           aria-controls={id}
           onClick={() => setExpanded(current => !current)}
-          className="mt-3 font-medium text-neutral-900 underline-offset-4 focus-visible:ring-neutral-400 dark:text-neutral-100"
+          className="mt-3 font-medium text-foreground underline-offset-4 focus-visible:ring-ring dark:text-foreground"
         >
           {expanded ? 'Show less' : 'Read more'}
         </Button>

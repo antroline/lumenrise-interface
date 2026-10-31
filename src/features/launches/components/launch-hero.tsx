@@ -17,9 +17,9 @@ export type LaunchFigure = {
 
 const figureRow = 'grid min-h-10 grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-3 py-2';
 const figureLabel =
-  'flex min-w-0 items-center gap-2 text-xs leading-5 text-neutral-500 sm:text-[13px] dark:text-neutral-400';
+  'flex min-w-0 items-center gap-2 text-xs leading-5 text-muted-foreground sm:text-[13px] dark:text-muted-foreground';
 const figureValue =
-  'flex min-w-0 flex-col justify-center text-right text-xs leading-5 font-medium text-neutral-900 tabular-nums sm:text-[13px] dark:text-neutral-50';
+  'flex min-w-0 flex-col justify-center text-right text-xs leading-5 font-medium text-foreground tabular-nums sm:text-[13px] dark:text-foreground';
 
 function Figures({
   items,
@@ -29,13 +29,13 @@ function Figures({
   loading?: boolean;
 }) {
   return (
-    <dl className="mt-4 divide-y divide-neutral-200 dark:divide-neutral-800">
+    <dl className="mt-4 divide-y divide-border dark:divide-border">
       {items.map((item) => (
         <div key={item.label} className={figureRow}>
           <dt className={figureLabel}>
             <item.icon
               aria-hidden="true"
-              className="size-4 shrink-0 text-neutral-500 dark:text-neutral-400"
+              className="size-4 shrink-0 text-muted-foreground dark:text-muted-foreground"
             />
             <TradeTooltipText
               content={[
@@ -124,16 +124,16 @@ export function LaunchHero({
       aria-busy={loading || undefined}
       className="min-w-0 scroll-mt-24 outline-none"
     >
-      <div ref={chartPanel} className="relative h-[400px] min-w-0 overflow-hidden border-neutral-200 bg-white p-4 sm:h-[360px] sm:rounded-xl sm:border lg:h-[var(--chart-panel-height,360px)] dark:border-neutral-800 dark:bg-neutral-900">
+      <div ref={chartPanel} className="relative h-[400px] min-w-0 overflow-hidden border-border bg-card p-4 sm:h-[360px] sm:rounded-xl sm:border lg:h-[var(--chart-panel-height,360px)] dark:border-border dark:bg-card">
         {priceChart}
       </div>
-      <div className="mt-4 border border-border bg-white p-4 text-neutral-900 sm:rounded-xl dark:bg-neutral-900 dark:text-neutral-50">
+      <div className="mt-4 border border-border bg-card p-4 text-foreground sm:rounded-xl dark:bg-card dark:text-foreground">
         {timeline}
         <section aria-labelledby="graduation-heading" className={timeline ? 'pt-5 sm:mt-5 sm:border-t sm:border-divider sm:pt-5' : undefined}>
           <div className="mb-2 flex items-center justify-between gap-3">
             <h2
               id="graduation-heading"
-              className="flex items-center gap-1.5 text-xs font-medium text-neutral-500 sm:text-base sm:font-semibold sm:text-neutral-900 dark:text-neutral-400 sm:dark:text-neutral-50"
+              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:text-base sm:font-semibold sm:text-foreground dark:text-muted-foreground sm:dark:text-foreground"
             >
               <Flag aria-hidden="true" className="size-3.5" />
               <TradeTooltipText
@@ -166,18 +166,18 @@ export function LaunchHero({
                     {raised}
                   </TradeTooltipText>
                 </span>
-                <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground">
                   {pair}
                 </span>
                 <span className="sr-only">raised</span>
               </p>
             )}
-            <p className="flex flex-wrap items-baseline gap-x-1 text-xs text-neutral-500 dark:text-neutral-400">
+            <p className="flex flex-wrap items-baseline gap-x-1 text-xs text-muted-foreground dark:text-muted-foreground">
               Target
               {loading ? (
                 <Skeleton className="inline-block h-4 w-20 motion-reduce:animate-none" />
               ) : (
-                <span className="font-medium text-neutral-900 tabular-nums dark:text-neutral-50">{target} {pair}</span>
+                <span className="font-medium text-foreground tabular-nums dark:text-foreground">{target} {pair}</span>
               )}
             </p>
           </div>
@@ -198,7 +198,7 @@ export function LaunchHero({
                     : `${percent} of the ${target} ${pair} target. ${status} launch.`
                 }
                 title={stale ? 'May be outdated' : freshness}
-                className="[&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-neutral-200 dark:[&_[data-slot=progress-track]]:bg-neutral-800 [&_[data-slot=progress-indicator]]:bg-brand-lime [&_[data-slot=progress-indicator]]:transition-[width] [&_[data-slot=progress-indicator]]:duration-300 motion-reduce:[&_[data-slot=progress-indicator]]:transition-none"
+                className="[&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-secondary dark:[&_[data-slot=progress-track]]:bg-muted [&_[data-slot=progress-indicator]]:bg-brand-lime [&_[data-slot=progress-indicator]]:transition-[width] [&_[data-slot=progress-indicator]]:duration-300 motion-reduce:[&_[data-slot=progress-indicator]]:transition-none"
               />
             </>
           )}

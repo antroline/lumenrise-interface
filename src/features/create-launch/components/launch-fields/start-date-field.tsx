@@ -27,7 +27,7 @@ export function StartDateField({
 }) {
   return (
     <FieldSurface
-      className={`min-w-0 ${!enabled ? 'bg-neutral-100 hover:bg-neutral-100 dark:bg-neutral-900 dark:hover:bg-neutral-900' : ''}`}
+      className={`min-w-0 ${!enabled ? 'bg-muted hover:bg-muted dark:bg-card dark:hover:bg-card' : ''}`}
     >
       <div className="flex min-h-7 min-w-0 items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-1">
@@ -61,7 +61,7 @@ export function StartDateField({
       </div>
       <div
         id="scheduled-launch-date"
-        className={`min-w-0 ${!enabled ? '[&_button]:cursor-not-allowed [&_button]:opacity-100 [&_button_span]:text-neutral-300 [&_button_svg]:text-neutral-300 dark:[&_button_span]:text-neutral-600 dark:[&_button_svg]:text-neutral-600' : ''}`}
+        className={`min-w-0 ${!enabled ? '[&_button]:cursor-not-allowed [&_button]:opacity-100 [&_button_span]:text-muted-foreground [&_button_svg]:text-muted-foreground dark:[&_button_span]:text-muted-foreground dark:[&_button_svg]:text-muted-foreground' : ''}`}
       >
         <DateTimePicker
           id="bonding-start"

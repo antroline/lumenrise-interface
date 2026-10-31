@@ -91,7 +91,7 @@ function TimelineSkeleton() {
       role="status"
       aria-label="Loading launch timeline"
       aria-busy="true"
-      className="relative grid grid-cols-3 before:absolute before:inset-x-[16.6667%] before:top-14 before:h-px before:bg-neutral-200 sm:before:top-9 dark:before:bg-neutral-700"
+      className="relative grid grid-cols-3 before:absolute before:inset-x-[16.6667%] before:top-14 before:h-px before:bg-secondary sm:before:top-9 dark:before:bg-muted"
     >
       <span className="sr-only">Loading launch timeline…</span>
       {[0, 1, 2].map((step) => (
@@ -408,7 +408,7 @@ export function IndexedLaunchOverview({
     <TradeMotion>
       <div
         data-launch-page
-        className="launch-details mx-auto w-full max-w-[1320px] pb-24 lg:pb-16 selection:bg-lime selection:text-ink dark:bg-neutral-950 dark:text-neutral-50 dark:[--muted:var(--color-neutral-800)]! dark:[--surface:var(--color-neutral-800)]! dark:[--input:var(--color-neutral-800)]! [&_section]:shadow-none [&_[data-slot=card]]:shadow-none"
+        className="launch-details mx-auto w-full max-w-[1320px] pb-24 lg:pb-16 selection:bg-lime selection:text-ink dark:bg-card dark:text-foreground [&_section]:shadow-none [&_[data-slot=card]]:shadow-none"
       >
         <div className="mb-4 px-4 sm:px-0 md:hidden">
           <BackLink href={`/projects?network=${routeNetwork(network)}`}>Projects</BackLink>
@@ -476,7 +476,7 @@ export function IndexedLaunchOverview({
                   : `${detailAmount(graduationPrice.toString(), pairDecimals)} ${pair}`
               }
               marketStats={
-                <section id="market-stats" aria-labelledby="market-overview-heading" className="mt-4 border border-border bg-white p-4 text-neutral-900 sm:rounded-xl dark:bg-neutral-900 dark:text-neutral-50">
+                <section id="market-stats" aria-labelledby="market-overview-heading" className="mt-4 border border-border bg-card p-4 text-foreground sm:rounded-xl dark:bg-card dark:text-foreground">
                   <h2 id="market-overview-heading" className="mb-4 text-base font-semibold tracking-tight">
                     Market Overview
                   </h2>
@@ -568,7 +568,7 @@ export function IndexedLaunchOverview({
                 >
                   <h2
                     id="about-heading"
-                    className="mb-4 text-xl font-semibold tracking-tight text-neutral-900 sm:text-2xl dark:text-neutral-50"
+                    className="mb-4 text-xl font-semibold tracking-tight text-foreground sm:text-2xl dark:text-foreground"
                   >
                     About the project
                   </h2>
@@ -598,7 +598,7 @@ export function IndexedLaunchOverview({
                       />
                     </div>
                   ) : (
-                    <p className="text-sm text-neutral-500">
+                    <p className="text-sm text-muted-foreground">
                       The creator has not provided a project description.
                     </p>
                   )}

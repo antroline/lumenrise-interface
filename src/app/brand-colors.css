@@ -1,0 +1,66 @@
+/* Product colors from LumenRise brand tokens v3.0 (2026-10-31).
+   Editorial surfaces and logo-only colors stay outside product UI. */
+
+:root,
+.theme-reset {
+  --lr-ink: #0B0B0B;
+  --lr-white: #FFFFFF;
+  --lr-lime: #CBFF18;
+  --lr-lime-hover: #B8E717;
+  --lr-orange: #FF7315;
+  --lr-page: #FAFAFA;
+  --lr-bg: #FFFFFF;
+  --lr-fg: #0B0B0B;
+  --lr-card: #FFFFFF;
+  --lr-surface: #F1F0F2;
+  --lr-secondary: #EFEFEF;
+  --lr-secondary-fg: #2E2E2E;
+  --lr-muted: #F6F6F6;
+  --lr-muted-fg: #5C5C5C;
+  --lr-faint: #6A6A6A;
+  --lr-border: #E5E5E5;
+  --lr-divider: #EDEDED;
+  --lr-ring: #0B0B0B;
+  --lr-ok: #17744A;
+  --lr-ok-soft: #E7F4EC;
+  --lr-warn: #8F5200;
+  --lr-warn-soft: #FFF3DF;
+  --lr-bad: #B42318;
+  --lr-bad-soft: #FDECEA;
+  --lr-info: #2551BF;
+  --lr-info-soft: #EAF0FC;
+  --lr-chart-1: #0B0B0B;
+  --lr-chart-2: var(--lr-lime);
+  --lr-chart-3: #8E8E89;
+  --lr-chart-4: #E5E5E5;
+  --lr-chart-5: var(--lr-orange);
+  --lr-chart-6: #3D6B8F;
+}
+
+.dark {
+  --lr-page: #020202;
+  --lr-bg: #0E0E0D;
+  --lr-fg: #F4F4EF;
+  --lr-card: #080808;
+  --lr-surface: #19191A;
+  --lr-secondary: #121212;
+  --lr-secondary-fg: #D9D9D3;
+  --lr-muted: #22221F;
+  --lr-muted-fg: #A3A39E;
+  --lr-faint: #999993;
+  --lr-border: #383834;
+  --lr-divider: #2D2D29;
+  --lr-ring: var(--lr-lime);
+  --lr-ok: #5FD39A;
+  --lr-ok-soft: rgb(95 211 154 / .12);
+  --lr-warn: #F2B25C;
+  --lr-warn-soft: rgb(242 178 92 / .12);
+  --lr-bad: #F58F86;
+  --lr-bad-soft: rgb(245 143 134 / .12);
+  --lr-info: #8FB0FF;
+  --lr-info-soft: rgb(143 176 255 / .12);
+  --lr-chart-1: #F4F4EF;
+  --lr-chart-3: #7A7A75;
+  --lr-chart-4: #2A2A28;
+  --lr-chart-6: #6F9CC0;
+}

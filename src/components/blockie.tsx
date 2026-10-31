@@ -2,12 +2,12 @@ import { cn } from '@/lib/utils'
 
 const palettes = [
   ['#0B0B0B', '#E5E5E5'],
-  ['#2E2E2C', '#F0F0EC'],
-  ['#5E5E5A', '#E5E5E5'],
-  ['#0B0B0B', '#F0F0EC'],
-  ['#0B0B0B', '#E4FF4D'],
+  ['#2E2E2E', '#F1F0F2'],
+  ['#5C5C5C', '#E5E5E5'],
+  ['#0B0B0B', '#F6F6F6'],
+  ['#0B0B0B', '#CBFF18'],
   ['#17744A', '#E7F4EC'],
-  ['#3D6B8F', '#E8EDF2'],
+  ['#2551BF', '#EAF0FC'],
 ] as const
 
 function hash(seed: string) {

@@ -31,7 +31,7 @@ export default async function ProjectsPage({
   const requestedLimit = Number(params.limit);
   return (
     <ResultsTransition>
-      <div className="w-full min-w-0 pb-12 text-neutral-900 [--color-lime:var(--color-brand-lime)] dark:text-neutral-50">
+      <div className="w-full min-w-0 pb-12 text-foreground [--color-lime:var(--color-brand-lime)] dark:text-foreground">
         <div className="mx-auto mb-8 w-full max-w-[1400px]">
           <h1 className="text-[36px] leading-none font-bold tracking-[-0.04em] sm:text-[48px]">
             Projects

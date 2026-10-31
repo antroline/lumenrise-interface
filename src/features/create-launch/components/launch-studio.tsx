@@ -220,7 +220,7 @@ function LaunchStudioContent({ onCompletedExit, bondingLaunch }: {
           onNavigate={goToStep}
         />
         <section
-          className="@container/launch relative flex min-h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] min-w-0 scroll-mt-4 flex-col bg-card p-(--launch-pad) [--launch-pad:--spacing(4)] sm:[--launch-pad:--spacing(6)] lg:h-full lg:min-h-0 lg:rounded-2xl lg:border lg:border-border studio-compact:[--launch-pad:--spacing(5)]"
+          className="@container/launch relative flex min-h-[calc(100dvh-7rem-env(safe-area-inset-top))] min-w-0 scroll-mt-4 flex-col bg-card p-(--launch-pad) [--launch-pad:--spacing(4)] sm:[--launch-pad:--spacing(6)] lg:h-full lg:min-h-0 lg:rounded-2xl lg:border lg:border-border studio-compact:[--launch-pad:--spacing(5)]"
           aria-labelledby="wizard-title"
         >
           <LaunchStepper steps={visibleSteps} currentIndex={currentIndex} locked={bondingLaunch.working} onNavigate={goToStep} />

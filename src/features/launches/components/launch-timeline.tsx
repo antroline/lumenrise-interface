@@ -11,10 +11,10 @@ export type TimelineStep = {
 };
 
 const track: Record<TimelineStep['state'], string> = {
-  done: 'border-neutral-900 bg-neutral-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-950',
-  active: 'border-brand-lime bg-brand-lime text-neutral-900',
-  halted: 'border-neutral-300 bg-neutral-100 text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
-  upcoming: 'border-neutral-200 bg-white text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400',
+  done: 'border-foreground bg-foreground text-background',
+  active: 'border-brand-lime bg-brand-lime text-ink',
+  halted: 'border-border bg-muted text-muted-foreground dark:border-border dark:bg-muted dark:text-muted-foreground',
+  upcoming: 'border-border bg-card text-muted-foreground',
 };
 
 const stateLabel: Record<TimelineStep['state'], string> = {
@@ -28,7 +28,7 @@ export function LaunchTimeline({ steps }: { steps: TimelineStep[] }) {
   return (
     <ol
       aria-label="Launch timeline"
-      className="relative grid grid-cols-3 before:absolute before:inset-x-[16.6667%] before:top-14 before:h-px before:bg-neutral-200 sm:before:top-9 dark:before:bg-neutral-700"
+      className="relative grid grid-cols-3 before:absolute before:inset-x-[16.6667%] before:top-14 before:h-px before:bg-secondary sm:before:top-9 dark:before:bg-muted"
     >
       {steps.map((step) => (
         <li
@@ -38,8 +38,8 @@ export function LaunchTimeline({ steps }: { steps: TimelineStep[] }) {
         >
           <p
             className={cn(
-              'flex h-8 items-center justify-center text-[11px] leading-tight font-medium text-neutral-900 sm:h-5 sm:text-[13px] dark:text-neutral-50',
-              step.state === 'upcoming' && 'text-neutral-500 dark:text-neutral-400',
+              'flex h-8 items-center justify-center text-[11px] leading-tight font-medium text-foreground sm:h-5 sm:text-[13px] dark:text-foreground',
+              step.state === 'upcoming' && 'text-muted-foreground dark:text-muted-foreground',
             )}
           >
             <TradeTooltipText content={step.detail}>
@@ -64,14 +64,14 @@ export function LaunchTimeline({ steps }: { steps: TimelineStep[] }) {
           </span>
           <p
             className={cn(
-              'mt-2 break-words text-[11px] leading-snug font-medium text-neutral-900 tabular-nums sm:mt-1.5 sm:text-xs dark:text-neutral-50',
-              step.state === 'upcoming' && 'text-neutral-500 dark:text-neutral-400',
+              'mt-2 break-words text-[11px] leading-snug font-medium text-foreground tabular-nums sm:mt-1.5 sm:text-xs dark:text-foreground',
+              step.state === 'upcoming' && 'text-muted-foreground dark:text-muted-foreground',
             )}
           >
             {step.value}
           </p>
           {step.caption && (
-            <p className="mt-0.5 text-[10px] leading-snug text-neutral-500 tabular-nums sm:text-[11px] dark:text-neutral-400">
+            <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground tabular-nums sm:text-[11px] dark:text-muted-foreground">
               {step.caption}
             </p>
           )}

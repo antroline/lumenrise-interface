@@ -54,11 +54,11 @@ const headClass =
 const cellClass = 'py-2.5 first:pl-4 last:pr-4';
 const nameClass = 'flex min-w-0 items-center gap-3';
 const directoryTableClass =
-  'min-w-[1200px] table-fixed bg-white text-sm text-neutral-900 dark:bg-neutral-900 dark:text-neutral-50';
+  'min-w-[1200px] table-fixed bg-card text-sm text-foreground dark:bg-card dark:text-foreground';
 const directoryHeadClass =
-  'h-12 border-0 bg-neutral-100 px-3 py-0 align-middle font-sans! text-xs! font-medium! tracking-normal! whitespace-nowrap text-neutral-600 first:pl-4 last:pr-4 dark:bg-neutral-800 dark:text-neutral-400';
+  'h-12 border-0 bg-muted px-3 py-0 align-middle font-sans! text-xs! font-medium! tracking-normal! whitespace-nowrap text-muted-foreground first:pl-4 last:pr-4 dark:bg-muted dark:text-muted-foreground';
 const directoryCellClass =
-  'border-neutral-100 bg-white px-3 py-3 whitespace-nowrap first:pl-4 last:pr-4 dark:border-neutral-800 dark:bg-neutral-900';
+  'border-border bg-card px-3 py-3 whitespace-nowrap first:pl-4 last:pr-4 dark:border-border dark:bg-card';
 const directoryColumns = projectColumns.map((column) => ({
   ...column,
   label: column.key === 'phase' ? 'Graduation' : column.label,
@@ -110,7 +110,7 @@ function ProjectName({
           </span>
           {row.ticker && (
             <span
-              className="block max-w-20 shrink-0 truncate text-xs text-neutral-500 dark:text-neutral-400"
+              className="block max-w-20 shrink-0 truncate text-xs text-muted-foreground dark:text-muted-foreground"
               title={row.ticker}
             >
               {row.ticker}
@@ -168,7 +168,7 @@ function Graduation({
       </Badge>
       {graduation.stale && (
         <span
-          className="text-xs text-neutral-500"
+          className="text-xs text-muted-foreground"
           title="Last indexed snapshot · may be out of date"
         >
           *
@@ -272,7 +272,7 @@ export function ProjectsTable({
               className={cn(
                 'relative [&>td]:transition-colors',
                 directory
-                  ? 'focus-within:[&>td]:bg-neutral-50 hover:[&>td]:bg-neutral-50 dark:focus-within:[&>td]:bg-neutral-800 dark:hover:[&>td]:bg-neutral-800'
+                  ? 'focus-within:[&>td]:bg-muted hover:[&>td]:bg-muted'
                   : 'focus-within:[&>td]:bg-muted hover:[&>td]:bg-muted',
               )}
             >
@@ -322,7 +322,7 @@ export function ProjectsTable({
                                 row.name + ': ' + label + ' (opens in new tab)'
                               }
                               title={label}
-                              className="inline-flex size-7 items-center justify-center rounded text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-foreground pointer-coarse:size-11 dark:hover:bg-neutral-800 dark:hover:text-neutral-50"
+                              className="inline-flex size-7 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground pointer-coarse:size-11 dark:hover:bg-muted dark:hover:text-foreground"
                             >
                               <Icon className="size-3" aria-hidden="true" />
                             </a>

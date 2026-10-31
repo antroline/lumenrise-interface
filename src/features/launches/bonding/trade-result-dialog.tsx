@@ -86,7 +86,7 @@ export function TradeResultDialog({
         <div className={cn('flex min-w-0 flex-col items-center justify-center text-center', failed ? 'gap-3 pt-7' : confirmation ? 'min-h-[270px] gap-4' : 'min-h-[210px] gap-4')}>
           <div aria-hidden="true" className={cn(
             'grid shrink-0 place-items-center rounded-full',
-            busy ? 'size-14 bg-black text-primary' : confirmation ? 'size-16 bg-primary text-primary-foreground' : 'size-13 bg-bad-soft text-bad',
+            busy ? 'size-14 bg-ink text-primary' : confirmation ? 'size-16 bg-primary text-primary-foreground' : 'size-13 bg-bad-soft text-bad',
           )}>
             {busy
               ? <Spinner aria-hidden="true" role={undefined} aria-label={undefined} className="size-11 motion-reduce:animate-none" />

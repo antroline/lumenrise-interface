@@ -144,7 +144,7 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
         <Field
           data-trade-input=""
           data-invalid={!!inputError}
-          className="gap-1 rounded-lg bg-neutral-100 px-3 py-2.5"
+          className="gap-1 rounded-lg bg-muted px-3 py-2.5"
         >
           <div className="flex min-w-0 items-center justify-between gap-3">
             <FieldLabel

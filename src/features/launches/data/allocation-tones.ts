@@ -4,8 +4,8 @@ export const allocationTones = [
   { swatch: 'bg-foreground', color: 'var(--foreground)' },
   { swatch: 'bg-muted-foreground', color: 'var(--muted-foreground)' },
   { swatch: 'bg-border', color: 'var(--border)' },
-  { swatch: 'bg-[var(--allocation-neutral)]', color: 'var(--allocation-neutral, #8b918c)' },
-  { swatch: 'bg-[var(--allocation-pale)]', color: 'var(--allocation-pale, #c6cbc6)' },
+  { swatch: 'bg-chart-3', color: 'var(--chart-3)' },
+  { swatch: 'bg-chart-6', color: 'var(--chart-6)' },
 ] as const
 
 export function toneFor(index: number) {

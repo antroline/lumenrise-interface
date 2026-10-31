@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
+@import './brand-colors.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -22,14 +23,10 @@
 
   /* Brand constants: identical in light and dark. The official brand lime is
      the single lime source; hover is a slightly darker shift, never lighter. */
-  --color-ink: #0b0b0b;
-  --color-lime: #cbff18;
-  --color-lime-hover: color-mix(
-    in srgb,
-    var(--color-lime) 90%,
-    var(--color-ink)
-  );
-  --color-orange: #ff7315;
+  --color-ink: var(--lr-ink);
+  --color-lime: var(--lr-lime);
+  --color-lime-hover: var(--lr-lime-hover);
+  --color-orange: var(--lr-orange);
   --color-brand-lime: var(--color-lime);
   --color-price-area: var(--color-brand-lime);
 
@@ -165,156 +162,156 @@
 /* `.theme-reset` restores the light tokens for surfaces nested inside a DarkPanel. */
 :root,
 :root:not(.dark) .theme-reset {
-  --page: #fafafa;
-  --background: #ffffff;
-  --foreground: #0b0b0b;
-  --card: #fff;
-  --card-foreground: #0b0b0b;
-  --surface: #f1f0f2;
-  /* Hairlines need more separation on the stone ground than on the white page. */
-  --surface-divider: #dcdcdd;
-  --popover: #ffffff;
-  --popover-foreground: #0b0b0b;
+  --page: var(--lr-page);
+  --background: var(--lr-bg);
+  --foreground: var(--lr-fg);
+  --card: var(--lr-card);
+  --card-foreground: var(--lr-fg);
+  --surface: var(--lr-surface);
+  /* Supporting surfaces share the supplied product border token. */
+  --surface-divider: var(--lr-border);
+  --popover: var(--lr-card);
+  --popover-foreground: var(--lr-fg);
   --blux-backdrop: rgba(11, 11, 11, 0.28);
   --blux-shadow: 0 24px 70px rgba(11, 11, 11, 0.18);
   --primary: var(--color-lime);
   --primary-foreground: #0b0b0b;
-  --secondary: #efefef;
-  --secondary-foreground: #2e2e2e;
-  --muted: #f6f6f6;
-  --muted-foreground: #5c5c5c;
-  --faint: #6a6a6a;
+  --secondary: var(--lr-secondary);
+  --secondary-foreground: var(--lr-secondary-fg);
+  --muted: var(--lr-muted);
+  --muted-foreground: var(--lr-muted-fg);
+  --faint: var(--lr-faint);
   /* Neutral hover/highlight surface; lime never fills standard interactive states. */
-  --accent: #efefef;
-  --accent-foreground: #0b0b0b;
-  --destructive: #b42318;
-  --border: #e5e5e5;
-  --divider: #ededed;
-  --input: #e5e5e5;
-  --ring: #0b0b0b;
+  --accent: var(--lr-secondary);
+  --accent-foreground: var(--lr-fg);
+  --destructive: var(--lr-bad);
+  --border: var(--lr-border);
+  --divider: var(--lr-divider);
+  --input: var(--lr-border);
+  --ring: var(--lr-ring);
 
-  --soft-background: #ffffff;
-  --soft-foreground: #181a17;
-  --soft-secondary: #fafaf8;
-  --soft-inset: #fafafa;
-  --soft-muted-foreground: #71756f;
-  --soft-border: #e8eae6;
-  --soft-outline: #e5e7e4;
-  --soft-primary: var(--color-lime);
-  --soft-primary-foreground: #171a12;
-  --soft-primary-hover: var(--color-lime-hover);
-  --soft-hover: #f7f8f5;
-  --soft-icon: #626761;
+  --soft-background: var(--lr-card);
+  --soft-foreground: var(--lr-fg);
+  --soft-secondary: var(--lr-secondary);
+  --soft-inset: var(--lr-page);
+  --soft-muted-foreground: var(--lr-muted-fg);
+  --soft-border: var(--lr-border);
+  --soft-outline: var(--lr-border);
+  --soft-primary: var(--lr-lime);
+  --soft-primary-foreground: var(--lr-ink);
+  --soft-primary-hover: var(--lr-lime-hover);
+  --soft-hover: var(--lr-muted);
+  --soft-icon: var(--lr-muted-fg);
 
   --emphasis: #0b0b0b;
   --emphasis-foreground: #ffffff;
   --emphasis-mark: var(--color-lime);
 
-  --ok: #17744a;
-  --ok-soft: #e7f4ec;
-  --warn: #8f5200;
-  --warn-soft: #fff3df;
-  --bad: #b42318;
-  --bad-soft: #fdecea;
-  --bad-line: #f3c7c2;
-  --info: #2551bf;
-  --info-soft: #eaf0fc;
+  --ok: var(--lr-ok);
+  --ok-soft: var(--lr-ok-soft);
+  --warn: var(--lr-warn);
+  --warn-soft: var(--lr-warn-soft);
+  --bad: var(--lr-bad);
+  --bad-soft: var(--lr-bad-soft);
+  --bad-line: color-mix(in srgb, var(--bad) 24%, var(--background));
+  --info: var(--lr-info);
+  --info-soft: var(--lr-info-soft);
 
-  --panel: #0b0b0b;
+  --panel: var(--lr-ink);
   --panel-line: transparent;
 
-  --chart-1: #0b0b0b;
-  --chart-2: var(--color-lime);
-  --chart-3: #8e8e89;
-  --chart-4: #e5e5e5;
-  --chart-5: #ff7315;
-  --chart-6: #3d6b8f;
+  --chart-1: var(--lr-chart-1);
+  --chart-2: var(--lr-chart-2);
+  --chart-3: var(--lr-chart-3);
+  --chart-4: var(--lr-chart-4);
+  --chart-5: var(--lr-chart-5);
+  --chart-6: var(--lr-chart-6);
 
-  --sidebar: var(--color-white);
-  --sidebar-foreground: var(--color-neutral-900);
+  --sidebar: var(--lr-bg);
+  --sidebar-foreground: var(--lr-fg);
   --sidebar-primary: #0b0b0b;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #efefef;
-  --sidebar-accent-foreground: #0b0b0b;
-  --sidebar-border: var(--color-neutral-200);
-  --sidebar-ring: #0b0b0b;
+  --sidebar-primary-foreground: var(--lr-white);
+  --sidebar-accent: var(--lr-secondary);
+  --sidebar-accent-foreground: var(--lr-fg);
+  --sidebar-border: var(--lr-border);
+  --sidebar-ring: var(--lr-ring);
 }
 
 /* Dark: warm near-black paper, not an inverted light theme. Ink emphasis
    hands over to lime so selected state keeps the same contrast weight. */
 .dark {
-  --page: #020202;
-  --background: #0e0e0d;
-  --foreground: #f4f4ef;
-  --card: #080808;
-  --card-foreground: #f4f4ef;
-  --surface: #19191a;
-  --surface-divider: #2f2f30;
-  --popover: #181817;
-  --popover-foreground: #f4f4ef;
+  --page: var(--lr-page);
+  --background: var(--lr-bg);
+  --foreground: var(--lr-fg);
+  --card: var(--lr-card);
+  --card-foreground: var(--lr-fg);
+  --surface: var(--lr-surface);
+  --surface-divider: var(--lr-border);
+  --popover: var(--lr-card);
+  --popover-foreground: var(--lr-fg);
   --blux-backdrop: rgba(0, 0, 0, 0.6);
   --blux-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
   --primary: var(--color-lime);
   --primary-foreground: #0b0b0b;
-  --secondary: #121212;
-  --secondary-foreground: #d9d9d3;
-  --muted: #22221f;
-  --muted-foreground: #a3a39e;
-  --faint: #999993;
+  --secondary: var(--lr-secondary);
+  --secondary-foreground: var(--lr-secondary-fg);
+  --muted: var(--lr-muted);
+  --muted-foreground: var(--lr-muted-fg);
+  --faint: var(--lr-faint);
   /* Neutral hover surface; dark mode keeps lime for focus and indicators only. */
-  --accent: #232321;
-  --accent-foreground: #f4f4ef;
-  --destructive: #f58f86;
-  --border: #383834;
-  --divider: #2d2d29;
-  --input: #2f2f2c;
-  --ring: var(--color-lime);
+  --accent: var(--lr-secondary);
+  --accent-foreground: var(--lr-fg);
+  --destructive: var(--lr-bad);
+  --border: var(--lr-border);
+  --divider: var(--lr-divider);
+  --input: var(--lr-border);
+  --ring: var(--lr-ring);
 
-  --soft-background: var(--card);
-  --soft-foreground: var(--foreground);
-  --soft-secondary: var(--secondary);
-  --soft-inset: var(--secondary);
-  --soft-muted-foreground: var(--muted-foreground);
-  --soft-border: var(--border);
-  --soft-outline: var(--border);
-  --soft-primary: var(--primary);
-  --soft-primary-foreground: var(--primary-foreground);
-  --soft-primary-hover: var(--color-lime-hover);
-  --soft-hover: var(--secondary);
-  --soft-icon: var(--muted-foreground);
+  --soft-background: var(--lr-card);
+  --soft-foreground: var(--lr-fg);
+  --soft-secondary: var(--lr-secondary);
+  --soft-inset: var(--lr-page);
+  --soft-muted-foreground: var(--lr-muted-fg);
+  --soft-border: var(--lr-border);
+  --soft-outline: var(--lr-border);
+  --soft-primary: var(--lr-lime);
+  --soft-primary-foreground: var(--lr-ink);
+  --soft-primary-hover: var(--lr-lime-hover);
+  --soft-hover: var(--lr-muted);
+  --soft-icon: var(--lr-muted-fg);
 
   --emphasis: var(--color-lime);
   --emphasis-foreground: #0b0b0b;
   --emphasis-mark: #0b0b0b;
 
-  --ok: #5fd39a;
-  --ok-soft: rgba(95, 211, 154, 0.12);
-  --warn: #f2b25c;
-  --warn-soft: rgba(242, 178, 92, 0.12);
-  --bad: #f58f86;
-  --bad-soft: rgba(245, 143, 134, 0.12);
-  --bad-line: rgba(245, 143, 134, 0.35);
-  --info: #8fb0ff;
-  --info-soft: rgba(143, 176, 255, 0.12);
+  --ok: var(--lr-ok);
+  --ok-soft: var(--lr-ok-soft);
+  --warn: var(--lr-warn);
+  --warn-soft: var(--lr-warn-soft);
+  --bad: var(--lr-bad);
+  --bad-soft: var(--lr-bad-soft);
+  --bad-line: color-mix(in srgb, var(--bad) 35%, transparent);
+  --info: var(--lr-info);
+  --info-soft: var(--lr-info-soft);
 
-  --panel: #161615;
-  --panel-line: #2a2a28;
+  --panel: var(--lr-ink);
+  --panel-line: transparent;
 
-  --chart-1: #f4f4ef;
-  --chart-2: var(--color-lime);
-  --chart-3: #7a7a75;
-  --chart-4: #2a2a28;
-  --chart-5: #ff7315;
-  --chart-6: #6f9cc0;
+  --chart-1: var(--lr-chart-1);
+  --chart-2: var(--lr-chart-2);
+  --chart-3: var(--lr-chart-3);
+  --chart-4: var(--lr-chart-4);
+  --chart-5: var(--lr-chart-5);
+  --chart-6: var(--lr-chart-6);
 
-  --sidebar: var(--color-neutral-950);
-  --sidebar-foreground: var(--color-neutral-100);
+  --sidebar: var(--lr-bg);
+  --sidebar-foreground: var(--lr-fg);
   --sidebar-primary: var(--color-lime);
-  --sidebar-primary-foreground: #0b0b0b;
-  --sidebar-accent: #232321;
-  --sidebar-accent-foreground: #f4f4ef;
-  --sidebar-border: var(--color-neutral-800);
-  --sidebar-ring: var(--color-lime);
+  --sidebar-primary-foreground: var(--lr-ink);
+  --sidebar-accent: var(--lr-secondary);
+  --sidebar-accent-foreground: var(--lr-fg);
+  --sidebar-border: var(--lr-border);
+  --sidebar-ring: var(--lr-ring);
 }
 
 @layer base {
@@ -559,45 +556,45 @@
 
 /* Launch details share one neutral palette across content, trading, and portals. */
 .launch-details {
-  --background: var(--color-white);
-  --foreground: var(--color-neutral-900);
-  --card: var(--color-white);
-  --card-foreground: var(--color-neutral-900);
-  --popover: var(--color-white);
-  --popover-foreground: var(--color-neutral-900);
-  --secondary: var(--color-neutral-100);
-  --secondary-foreground: var(--color-neutral-900);
-  --muted: var(--color-neutral-50);
-  --muted-foreground: var(--color-neutral-500);
-  --faint: var(--color-neutral-500);
-  --surface: var(--color-neutral-50);
-  --border: var(--color-neutral-200);
-  --divider: var(--color-neutral-100);
-  --input: var(--color-neutral-200);
-  --accent: var(--color-neutral-100);
-  --accent-foreground: var(--color-neutral-900);
-  --primary-foreground: var(--color-neutral-900);
+  --background: var(--lr-bg);
+  --foreground: var(--lr-fg);
+  --card: var(--lr-card);
+  --card-foreground: var(--lr-fg);
+  --popover: var(--lr-card);
+  --popover-foreground: var(--lr-fg);
+  --secondary: var(--lr-secondary);
+  --secondary-foreground: var(--lr-secondary-fg);
+  --muted: var(--lr-muted);
+  --muted-foreground: var(--lr-muted-fg);
+  --faint: var(--lr-faint);
+  --surface: var(--lr-surface);
+  --border: var(--lr-border);
+  --divider: var(--lr-divider);
+  --input: var(--lr-border);
+  --accent: var(--lr-secondary);
+  --accent-foreground: var(--lr-fg);
+  --primary-foreground: var(--lr-ink);
 }
 
 .dark .launch-details,
 .launch-details.dark {
-  --background: var(--color-neutral-950);
-  --foreground: var(--color-neutral-50);
-  --card: var(--color-neutral-900);
-  --card-foreground: var(--color-neutral-50);
-  --popover: var(--color-neutral-900);
-  --popover-foreground: var(--color-neutral-50);
-  --secondary: var(--color-neutral-800);
-  --secondary-foreground: var(--color-neutral-100);
-  --muted: var(--color-neutral-900);
-  --muted-foreground: var(--color-neutral-400);
-  --faint: var(--color-neutral-500);
-  --surface: var(--color-neutral-950);
-  --border: var(--color-neutral-800);
-  --divider: var(--color-neutral-800);
-  --input: var(--color-neutral-700);
-  --accent: var(--color-neutral-800);
-  --accent-foreground: var(--color-neutral-50);
+  --background: var(--lr-bg);
+  --foreground: var(--lr-fg);
+  --card: var(--lr-card);
+  --card-foreground: var(--lr-fg);
+  --popover: var(--lr-card);
+  --popover-foreground: var(--lr-fg);
+  --secondary: var(--lr-secondary);
+  --secondary-foreground: var(--lr-secondary-fg);
+  --muted: var(--lr-muted);
+  --muted-foreground: var(--lr-muted-fg);
+  --faint: var(--lr-faint);
+  --surface: var(--lr-surface);
+  --border: var(--lr-border);
+  --divider: var(--lr-divider);
+  --input: var(--lr-border);
+  --accent: var(--lr-secondary);
+  --accent-foreground: var(--lr-fg);
 }
 
 /* Flat disclosure rows form a continuous reading surface, rather than nested cards. */
@@ -678,17 +675,17 @@
 
 /* Price history keeps a neutral palette without changing surrounding launch UI. */
 .price-history {
-  --foreground: var(--color-neutral-900);
-  --card: var(--color-white);
-  --muted-foreground: var(--color-neutral-500);
-  --border: var(--color-neutral-100);
+  --foreground: var(--lr-fg);
+  --card: var(--lr-card);
+  --muted-foreground: var(--lr-muted-fg);
+  --border: var(--lr-border);
 }
 
 .dark .price-history {
-  --foreground: var(--color-neutral-100);
-  --card: var(--color-neutral-900);
-  --muted-foreground: var(--color-neutral-400);
-  --border: var(--color-neutral-800);
+  --foreground: var(--lr-fg);
+  --card: var(--lr-card);
+  --muted-foreground: var(--lr-muted-fg);
+  --border: var(--lr-border);
 }
 
 /* Apply the shared soft palette locally; other variants retain their tokens. */
@@ -698,14 +695,14 @@
 }
 
 :root:not(.dark) .accordion-soft {
-  --background: var(--soft-background);
-  --foreground: var(--soft-foreground);
-  --card: var(--soft-background);
-  --card-foreground: var(--soft-foreground);
-  --secondary: var(--soft-secondary);
-  --secondary-foreground: var(--soft-foreground);
-  --muted-foreground: var(--soft-muted-foreground);
-  --border: var(--soft-border);
+  --background: var(--lr-bg);
+  --foreground: var(--lr-fg);
+  --card: var(--lr-card);
+  --card-foreground: var(--lr-fg);
+  --secondary: var(--lr-secondary);
+  --secondary-foreground: var(--lr-secondary-fg);
+  --muted-foreground: var(--lr-muted-fg);
+  --border: var(--lr-border);
   --primary: var(--soft-primary);
   --primary-foreground: var(--soft-primary-foreground);
   --color-lime-hover: var(--soft-primary-hover);
@@ -726,20 +723,20 @@
 }
 
 :root:not(.dark) .trade-panel-neutral {
-  --background: var(--color-white);
-  --card: var(--color-white);
-  --foreground: var(--color-neutral-900);
-  --card-foreground: var(--color-neutral-900);
-  --secondary: var(--color-neutral-100);
-  --secondary-foreground: var(--color-neutral-900);
-  --muted-foreground: var(--color-neutral-500);
-  --border: var(--color-neutral-200);
-  --divider: var(--color-neutral-100);
-  --input: var(--color-neutral-200);
-  --trade-input-background: var(--color-neutral-50);
-  --trade-control-hover: var(--color-neutral-100);
-  --trade-disabled-background: var(--color-neutral-100);
-  --trade-disabled-text: var(--color-neutral-400);
+  --background: var(--lr-bg);
+  --card: var(--lr-card);
+  --foreground: var(--lr-fg);
+  --card-foreground: var(--lr-fg);
+  --secondary: var(--lr-secondary);
+  --secondary-foreground: var(--lr-secondary-fg);
+  --muted-foreground: var(--lr-muted-fg);
+  --border: var(--lr-border);
+  --divider: var(--lr-divider);
+  --input: var(--lr-border);
+  --trade-input-background: var(--lr-muted);
+  --trade-control-hover: var(--lr-secondary);
+  --trade-disabled-background: var(--lr-secondary);
+  --trade-disabled-text: var(--lr-faint);
 }
 
 .trade-panel-neutral [data-trade-input] {

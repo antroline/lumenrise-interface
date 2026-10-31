@@ -26,7 +26,7 @@ function render(pathname, blockchain, requestedNetworkId) {
   return flatten(tree);
 }
 
-for (const route of ['/', '/projects', '/projects/TOKEN', '/create', '/portfolio', '/settings', '/register', '/onboarding', '/design-lab']) {
+for (const route of ['/', '/projects', '/projects/TOKEN', '/create', '/portfolio', '/settings', '/register', '/onboarding', '/design-lab', '/reputation']) {
   test(`Base reuses shared route content: ${route}`, () => {
     const nodes = render(route, 'base');
     assert.ok(!nodes.some(node => node?.type === 'BaseUnavailable'));
@@ -34,7 +34,7 @@ for (const route of ['/', '/projects', '/projects/TOKEN', '/create', '/portfolio
   });
 }
 
-for (const route of ['/reputation', '/missions', '/developers', '/cli', '/policies']) {
+for (const route of ['/missions', '/developers', '/cli', '/policies']) {
   test(`Base does not mount unsupported feature content: ${route}`, () => {
     const nodes = render(route, 'base');
     assert.ok(nodes.some(node => node?.type === 'BaseUnavailable'));

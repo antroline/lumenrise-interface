@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-label="LumenRise">
+
+<g transform="translate(0 0) scale(1.0)">
+  <defs><clipPath id="r-disc"><circle cx="500" cy="500" r="480"/></clipPath></defs>
+  <g clip-path="url(#r-disc)">
+    <rect x="0" y="0" width="1000" height="462" fill="#FFFFFF"/>
+    <rect x="0" y="538" width="1000" height="462" fill="#545450" opacity="1"/>
+    <rect x="0" y="538" width="500" height="95" fill="#FFFFFF"/>
+  </g>
+</g>
+</svg>
