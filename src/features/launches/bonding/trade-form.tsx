@@ -109,10 +109,10 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
     <form
       id={`${side}-trade`}
       onSubmit={submit}
-      className="flex min-w-0 flex-col gap-2.5"
+      className="relative flex min-w-0 flex-col gap-2"
     >
       <div
-        className="absolute right-0 top-0 flex h-8 items-center gap-1"
+        className="absolute -top-[46px] right-0 flex h-9 items-center gap-1"
         aria-label="Use a percentage of your available balance"
       >
         {[25, 50, 75, 100].map((percent) => (
@@ -122,7 +122,7 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
             type="button"
             variant="ghost"
             size="sm"
-            className="h-7 rounded-md bg-secondary px-1.5 text-[10px] font-medium tabular-nums"
+            className="h-7 rounded-md bg-secondary px-2 text-[11px] font-medium tabular-nums"
             disabled={
               locked ||
               !permitted ||
@@ -144,7 +144,7 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
         <Field
           data-trade-input=""
           data-invalid={!!inputError}
-          className="gap-1 rounded-lg bg-muted px-3 py-2.5"
+          className="gap-1 rounded-lg bg-muted px-3 py-2"
         >
           <div className="flex min-w-0 items-center justify-between gap-3">
             <FieldLabel
@@ -174,7 +174,7 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
                     ? `Amount to pay in ${pair}`
                     : `Sell amount in ${tokens.assetSymbol}`
                 }
-                className="h-9 min-w-0 border-0 bg-transparent px-0 text-xl font-semibold tabular-nums"
+                className="h-8 min-w-0 border-0 bg-transparent px-0 text-lg font-semibold tabular-nums"
                 inputMode="decimal"
                 autoComplete="off"
                 value={entry}
@@ -257,7 +257,7 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
       </TradeFeedback>
 
       <Button
-        className="h-11 w-full rounded-lg text-sm font-semibold disabled:bg-secondary disabled:text-muted-foreground disabled:opacity-100"
+        className="h-10 w-full rounded-lg text-sm font-semibold disabled:bg-secondary disabled:text-muted-foreground disabled:opacity-100"
         type={user ? 'submit' : 'button'}
         onClick={() => {
           if (!user)
