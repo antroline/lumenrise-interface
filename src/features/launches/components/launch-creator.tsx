@@ -31,7 +31,7 @@ export function LaunchCreator({
             <div className="min-w-0 flex-1">
               <h3 className="truncate text-sm leading-tight font-semibold">
                 <TradeTooltipText content={owner}>
-                  {profile?.name || `${owner.slice(0, 6)}…${owner.slice(-6)}`}
+                  {profile?.name || <span className="font-mono">{owner.slice(0, 6)}…{owner.slice(-6)}</span>}
                 </TradeTooltipText>
               </h3>
               <p className="mt-1 text-xs text-muted-foreground">

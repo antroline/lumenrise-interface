@@ -70,7 +70,7 @@ export function BaseWalletButton({ compact = false, className, menuSide = 'botto
       <Button variant="ghost" className={cn(controlClass, 'gap-2', !compact && 'min-w-0 px-2.5')} disabled={actionPending}
         aria-label={wallet ? `Base wallet ${shortAddress(wallet.address)}` : 'Connect a Base wallet'}>
         {wallet ? <ProfileAvatar seed={wallet.address} avatarUrl={avatarUrl} size={24} radius={6} /> : <Wallet data-icon="inline-start" aria-hidden="true" />}
-        {!compact && <span className="truncate">{wallet ? shortAddress(wallet.address) : 'Connect wallet'}</span>}
+        {!compact && <span className={wallet ? 'truncate font-mono' : 'truncate'}>{wallet ? shortAddress(wallet.address) : 'Connect wallet'}</span>}
         {!compact && <ChevronDown data-icon="inline-end" aria-hidden="true" />}
       </Button>
     } />
@@ -97,7 +97,7 @@ export function BaseWalletButton({ compact = false, className, menuSide = 'botto
           if (selected) setActiveWallet(selected);
         }}>
           {linkedWallets.map(entry => <DropdownMenuRadioItem key={entry.address} value={entry.address} className="min-h-11">
-            {entry.walletClientType === 'privy' ? 'App wallet' : 'External wallet'} · {shortAddress(entry.address)}
+            {entry.walletClientType === 'privy' ? 'App wallet' : 'External wallet'} · <span className="font-mono">{shortAddress(entry.address)}</span>
           </DropdownMenuRadioItem>)}
         </DropdownMenuRadioGroup>}
         {wrongNetwork && <DropdownMenuItem className="min-h-11" disabled={actionPending} onClick={() => {
