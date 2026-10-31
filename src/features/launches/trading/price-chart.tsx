@@ -16,14 +16,14 @@ export function ChartTimeframeSelector({ range, onRangeChange, timeframe, onTime
   const available: ChartRange[] = ['1D', '1W', '1M', '3M', 'ALL'];
   const intervals = candleTimeframes.filter(option => getConfiguration().rules.chart.timeframes.includes(option));
   const labels = { '1D': 'Last day', '1W': 'Last week', '1M': 'Last month', '3M': 'Last 3 months', ALL: 'All available history' };
-  const itemClass = 'h-9 min-w-7 rounded-md px-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground data-pressed:bg-foreground! data-pressed:text-background! data-pressed:shadow-none motion-reduce:transition-none sm:h-8 sm:px-2';
+  const itemClass = 'h-9 min-w-7 rounded-md px-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground data-pressed:bg-foreground! data-pressed:text-background! data-pressed:shadow-none motion-reduce:transition-none sm:h-8 sm:px-2 sm:text-xs';
   return (
     <div className="contents">
-    <div className="mr-auto flex shrink-0 items-center">
+    <div className="mr-auto flex shrink-0 items-center max-sm:w-full">
     <ToggleGroup aria-label="Display range" value={range ? [range] : []} onValueChange={values => {
       const next = values[0];
       if (available.includes(next as ChartRange)) onRangeChange(next as ChartRange);
-    }} className="max-w-full rounded-lg bg-muted/50!">
+    }} className="h-9 max-w-full rounded-lg border border-border/60 bg-muted/50! p-0.5! max-sm:w-full [&_[data-slot=toggle-group-item]]:h-[30px] max-sm:[&_[data-slot=toggle-group-item]]:flex-1">
       {available.map(option => (
         <ToggleGroupItem key={option} value={option} aria-label={labels[option]} title={labels[option]} className={itemClass}>
           {option}
@@ -35,9 +35,9 @@ export function ChartTimeframeSelector({ range, onRangeChange, timeframe, onTime
       const next = intervals.find(option => option === value);
       if (next) onTimeframeChange(next);
     }}>
-      <SelectTrigger aria-label="Candle timeframe" size="sm" className="h-9! shrink-0 gap-1.5 rounded-lg! border-border/60 bg-transparent px-2 text-xs! text-foreground sm:h-8!"><span className="sr-only">Interval</span><SelectValue /></SelectTrigger>
+      <SelectTrigger aria-label="Candle timeframe" size="sm" className="w-18 shrink-0 gap-1.5 border-border/60 bg-muted/50 px-2 text-foreground hover:bg-accent data-popup-open:bg-accent data-[size=sm]:h-9 data-[size=sm]:rounded-lg data-[size=sm]:text-[11px] max-sm:mr-auto sm:data-[size=sm]:text-xs [&_svg]:size-3.5"><span className="sr-only">Interval</span><SelectValue /></SelectTrigger>
       <SelectContent><SelectGroup>
-        {intervals.map(option => <SelectItem key={option} value={option}>{option}{option === '1M' ? ' · Month' : option === '1m' ? ' · Minute' : ''}</SelectItem>)}
+        {intervals.map(option => <SelectItem key={option} value={option} className="text-[11px] sm:text-xs">{option}{option === '1M' ? ' · Month' : option === '1m' ? ' · Minute' : ''}</SelectItem>)}
       </SelectGroup></SelectContent>
     </Select>
     </div>

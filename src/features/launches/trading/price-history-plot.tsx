@@ -271,18 +271,18 @@ export function PriceHistoryPlot({ points, timeDomain, ticker, pair, embedded = 
           if (activeSeries) chartRef.current?.setCrosshairPosition(point.price, timestamp(point.time), activeSeries);
         }}
       />
-      <div role="group" aria-label="Chart controls" className="mt-2.5 flex max-w-full shrink-0 flex-nowrap items-center gap-1 overflow-x-auto border-t border-border/60 pt-2.5 pb-0.5 [scrollbar-width:thin] sm:gap-1.5">
+      <div role="group" aria-label="Chart controls" className="mt-2.5 flex max-w-full shrink-0 flex-wrap items-center gap-2 border-t border-border/60 pt-2.5 pb-0.5 sm:flex-nowrap">
         {timeframeControl}
         <ToggleGroup aria-label="Chart type" value={[chartType]} onValueChange={values => {
           const next = values[0];
           if (next === 'area' || next === 'candles') onChartTypeChange?.(next);
-        }} className="shrink-0 rounded-lg bg-muted/50!">
+        }} className="h-9 shrink-0 rounded-lg border border-border/60 bg-muted/50! p-0.5! [&_[data-slot=toggle-group-item]]:size-[30px]">
           <ToggleGroupItem value="area" aria-label="Area chart" title="Area chart" className="size-8 rounded-md p-0 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground data-pressed:bg-foreground! data-pressed:text-background! data-pressed:shadow-none motion-reduce:transition-none"><ChartLine aria-hidden="true" className="size-4" /></ToggleGroupItem>
           <ToggleGroupItem value="candles" aria-label="Candlestick chart" title="Candlestick chart" className="size-8 rounded-md p-0 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground data-pressed:bg-foreground! data-pressed:text-background! data-pressed:shadow-none motion-reduce:transition-none"><ChartCandlestick aria-hidden="true" className="size-4" /></ToggleGroupItem>
         </ToggleGroup>
         <div className="flex shrink-0 items-center gap-1">
           <Tooltip>
-            <TooltipTrigger render={<Button variant="ghost" size="sm" aria-label="Reset chart view" className="size-8 shrink-0 rounded-md px-0 text-muted-foreground hover:text-foreground" onClick={() => { manualUntil.current = Date.now() + 1500; chartRef.current?.timeScale().fitContent(); }}><RotateCcw aria-hidden="true" /></Button>} />
+            <TooltipTrigger render={<Button variant="outline" size="sm" aria-label="Reset chart view" className="size-9 shrink-0 rounded-lg border-border/60 bg-muted/50 px-0 text-muted-foreground hover:bg-accent hover:text-foreground" onClick={() => { manualUntil.current = Date.now() + 1500; chartRef.current?.timeScale().fitContent(); }}><RotateCcw aria-hidden="true" /></Button>} />
             <TooltipContent>Reset view · Fit available history</TooltipContent>
           </Tooltip>
         </div>
