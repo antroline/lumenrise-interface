@@ -26,7 +26,7 @@ export function FeaturedLaunch({ network = API_NETWORK }: { network?: ApiNetwork
   return (
     <div>
     <h2 className="mb-3 text-h2 font-semibold">Featured Launch</h2>
-    <DarkPanel className="rounded-2xl p-4 sm:p-6 lg:p-7">
+    <DarkPanel className="rounded-2xl p-4 ring-1 ring-border sm:p-6 lg:p-7">
       {query.isPending ? (
         <div role="status" aria-label="Loading featured launch" className="grid gap-4 md:grid-cols-2 md:gap-8 motion-reduce:[&_[data-slot=skeleton]]:animate-none">
           <div className="grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-3 md:flex md:flex-col md:items-start md:gap-4">

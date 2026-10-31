@@ -31,7 +31,7 @@ function QuarterCircles() {
 export function QuickActions() {
   return (
     <section aria-labelledby="quick-actions-heading" className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-      <DarkPanel className="rounded-2xl">
+      <DarkPanel className="rounded-2xl ring-1 ring-border">
         <Link
           href="/create"
           className="group relative flex h-full min-h-48 flex-col justify-between gap-5 p-5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lime sm:p-6"
