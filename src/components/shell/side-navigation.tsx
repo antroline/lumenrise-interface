@@ -69,7 +69,6 @@ export function SideNavigation({
   const [expanded, setExpanded] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const { activeNetwork } = useNetwork();
 
   useEffect(() => {
     const desktop = window.matchMedia('(min-width: 64rem)');
@@ -164,19 +163,9 @@ export function SideNavigation({
               <MobileDrawerContent onNavigate={() => setMobileOpen(false)} />
             </SheetContent>
           </Sheet>
-          <Link href={navigationHref('/', activeNetwork.id)} aria-label="LumenRise home" className="flex size-11 shrink-0 items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-ring sm:hidden"><LogoSymbol size={28} /></Link>
+          <HomeLink height={24} className="h-11 shrink-0 px-0 sm:hidden" />
           <HomeLink height={26} className="hidden h-11 shrink-0 px-0 sm:flex" />
-          <NetworkSwitcher className="ml-auto h-10 w-auto gap-1.5 px-2 [&_span[translate=no]]:hidden" />
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Search"
-            aria-keyshortcuts="/ Control+K Meta+K"
-            onClick={() => setSearchOpen(true)}
-            className={cn(iconButtonClass, 'size-11 justify-self-end')}
-          >
-            <Search className="size-5" />
-          </Button>
+          <NetworkSwitcher className="ml-auto h-11 w-auto gap-1.5 border-border bg-background px-2 hover:border-foreground/25 hover:bg-secondary active:border-foreground/30 active:bg-secondary aria-expanded:border-foreground/30 aria-expanded:bg-secondary [&_span[translate=no]]:hidden" />
         </div>
       </div>
 
