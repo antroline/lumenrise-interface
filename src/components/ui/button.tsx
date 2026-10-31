@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 import { Spinner } from "@/components/ui/spinner"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-clip-padding text-sm font-semibold tracking-[-0.005em] whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/60 active:not-aria-[haspopup]:translate-y-px disabled:cursor-not-allowed disabled:border-transparent disabled:bg-secondary disabled:text-faint aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-clip-padding text-sm font-semibold tracking-[-0.005em] whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform] outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card active:not-aria-[haspopup]:translate-y-px motion-reduce:transition-none disabled:cursor-not-allowed disabled:border-transparent disabled:bg-secondary disabled:text-faint aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -13,13 +13,15 @@ const buttonVariants = cva(
         outline:
           "border-border bg-background text-foreground hover:bg-muted aria-expanded:bg-muted",
         secondary:
-          "bg-secondary text-foreground hover:bg-border aria-expanded:bg-border",
+          "border-border bg-secondary text-foreground hover:bg-border aria-expanded:bg-border",
+        // Half-strength secondary keeps ghost below the resting secondary emphasis in both themes.
         ghost:
-          "text-foreground hover:bg-secondary aria-expanded:bg-secondary",
+          "text-foreground hover:bg-ghost-hover aria-expanded:bg-ghost-hover",
         destructive:
           "border-bad-line bg-background text-bad hover:bg-bad-soft",
         link: "h-auto! px-0! font-medium text-foreground underline-offset-4 hover:underline",
       },
+      // xs sizes target dense desktop toolbars; touch-critical and primary actions use default/lg (46px+).
       size: {
         default: "h-control px-[18px]",
         xs: "h-7 gap-1.5 rounded-md px-2.5 text-xs",

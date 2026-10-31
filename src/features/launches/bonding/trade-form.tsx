@@ -120,9 +120,9 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
             key={percent}
             data-trade-control=""
             type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 rounded-md bg-secondary px-2 text-[11px] font-medium tabular-nums"
+            variant="secondary"
+            size="xs"
+            className="tabular-nums"
             disabled={
               locked ||
               !permitted ||
@@ -257,7 +257,7 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
       </TradeFeedback>
 
       <Button
-        className="h-10 w-full rounded-lg text-sm font-semibold disabled:bg-secondary disabled:text-muted-foreground disabled:opacity-100"
+        className="h-control w-full disabled:text-muted-foreground disabled:opacity-100"
         type={user ? 'submit' : 'button'}
         onClick={() => {
           if (!user)

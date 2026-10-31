@@ -102,6 +102,8 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-faint: var(--faint);
+  /* Ghost hover sits one step below the resting secondary fill in both themes. */
+  --color-ghost-hover: color-mix(in srgb, var(--secondary) 50%, transparent);
   /* Soft surfaces, controls, and their supporting colors. */
   --color-soft-background: var(--soft-background);
   --color-soft-foreground: var(--soft-foreground);
@@ -213,7 +215,7 @@
   --warn-soft: var(--lr-warn-soft);
   --bad: var(--lr-bad);
   --bad-soft: var(--lr-bad-soft);
-  --bad-line: color-mix(in srgb, var(--bad) 24%, var(--background));
+  --bad-line: color-mix(in srgb, var(--bad) 40%, var(--background));
   --info: var(--lr-info);
   --info-soft: var(--lr-info-soft);
 
@@ -290,7 +292,7 @@
   --warn-soft: var(--lr-warn-soft);
   --bad: var(--lr-bad);
   --bad-soft: var(--lr-bad-soft);
-  --bad-line: color-mix(in srgb, var(--bad) 35%, transparent);
+  --bad-line: color-mix(in srgb, var(--bad) 50%, transparent);
   --info: var(--lr-info);
   --info-soft: var(--lr-info-soft);
 
