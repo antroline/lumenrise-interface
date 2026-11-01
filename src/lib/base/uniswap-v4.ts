@@ -1,12 +1,12 @@
-import { decodeEventLog, encodeAbiParameters, keccak256, parseAbi, zeroAddress, type Address, type Hex, type Log } from 'viem';
-import { formatBaseAmount, MAX_BASE_AMOUNT, requireBaseTokenDecimals } from './amount';
+import { decodeEventLog, encodeAbiParameters, formatUnits, keccak256, parseAbi, zeroAddress, type Address, type Hex, type Log } from 'viem';
+import { MAX_BASE_AMOUNT, requireBaseTokenDecimals } from './amount';
 import { sameEvmAddress } from './wallet';
 
 // Official v4 deployments; router encoding is pinned to Universal Router 2.0.0,
 // v4-periphery commit 444c526b77d804590f0d7bc5a481af5a3277c952.
 // https://developers.uniswap.org/docs/protocols/v4/deployments
 export const V4_DEPLOYMENTS = {
-  8453: { manager: '0x498581ff718922c3f8e6a244956af099b2652b2b', router: '0x6ff5693b99212da76ad316178a184ab56d299b43', positions: '0x7c5f5a4bbd8fd63184577525326123b519429bdc', stateView: '0xa3c0c9b65bad0b08107aa264b0f3db444b867a71', quoter: '0x0d5e0f971ed27fbff6c2837bf31316121532048d' },
+  8453: { manager: '0x498581ff718922c3f8e6a244956af099b2652b2b', router: '0x6ff5693b99212da76ad316178a184ab56d299b43', positions: '0x7c5f5a4bbd8fd63184577525326123b519429bdc', stateView: '0xa3c0c9b65bad0b08107aa264b0f3db444b867a71', quoter: '0xe1a6c5803e3c44368b171bd680c7d32dfc92ca47' },
   84532: { manager: '0x05e73354cfdd6745c338b50bcfdfa3aa6fa03408', router: '0x492e6456d9528771018deb9e87ef7750ef184104', positions: '0x4b2c77d209d3405f41a037ec6c77f7f5b8e2ca80', stateView: '0x571291b572ed32ce6751a2cb2486ebee8defb9b4', quoter: '0x4a6513c898fe1b2d0e78d3b0e0a4a151589b1cba' },
 } as const;
 export const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
@@ -38,7 +38,8 @@ export function poolId(key: PoolKey): Hex {
   return keccak256(encodeAbiParameters([{ type: 'tuple', components: poolKeyComponents }], [key]));
 }
 export function verifyPool(key: PoolKey, id: Hex, asset: Address, pair: Address) {
-  if (key.hooks !== zeroAddress || key.fee >= 1_000_000 || key.tickSpacing <= 0 ||
+  if (!sameEvmAddress(key.hooks, zeroAddress) || !Number.isInteger(key.fee) || key.fee < 0 || key.fee >= 1_000_000 ||
+    !Number.isInteger(key.tickSpacing) || key.tickSpacing <= 0 || key.tickSpacing > 32767 ||
     BigInt(key.currency0) >= BigInt(key.currency1) || poolId(key).toLowerCase() !== id.toLowerCase() ||
     !((sameEvmAddress(key.currency0, asset) && sameEvmAddress(key.currency1, pair)) ||
       (sameEvmAddress(key.currency1, asset) && sameEvmAddress(key.currency0, pair))))
@@ -56,8 +57,16 @@ export function v4AssetPrice(sqrtPriceX96: bigint, key: PoolKey, asset: Address,
 export function formatV4Price(pairNumerator: bigint, assetDenominator: bigint, assetDecimals: number, pairDecimals: number): string {
   requireBaseTokenDecimals(assetDecimals); requireBaseTokenDecimals(pairDecimals);
   if (pairNumerator <= BigInt(0) || assetDenominator <= BigInt(0)) throw new Error('Invalid price ratio.');
-  const scaled = pairNumerator * BigInt(10) ** BigInt(assetDecimals + 12) / (assetDenominator * BigInt(10) ** BigInt(pairDecimals));
-  return scaled === BigInt(0) ? '<0.000000000001' : formatBaseAmount(scaled, 12);
+  const numerator = pairNumerator * BigInt(10) ** BigInt(assetDecimals);
+  const denominator = assetDenominator * BigInt(10) ** BigInt(pairDecimals);
+  let decimals = 12;
+  let scaled = numerator * BigInt(10) ** BigInt(decimals) / denominator;
+  // Increase display precision for tiny prices without changing token signing units.
+  while (scaled < BigInt(100000) && decimals < 84) {
+    decimals += 6;
+    scaled = numerator * BigInt(10) ** BigInt(decimals) / denominator;
+  }
+  return scaled === BigInt(0) ? '<' + formatUnits(BigInt(1), decimals) : formatUnits(scaled, decimals);
 }
 export function encodeV4Swap(key: PoolKey, input: Address, amount: bigint, minimum: bigint): Hex {
   if (amount <= BigInt(0) || amount > MAX_BASE_AMOUNT || minimum <= BigInt(0) || minimum > MAX_BASE_AMOUNT)
@@ -69,6 +78,8 @@ export function encodeV4Swap(key: PoolKey, input: Address, amount: bigint, minim
     { name: 'amountIn', type: 'uint128' }, { name: 'amountOutMinimum', type: 'uint128' }, { name: 'hookData', type: 'bytes' },
   ] }], [{ poolKey: key, zeroForOne, amountIn: amount, amountOutMinimum: minimum, hookData: '0x' }]);
   const currencyAmount = [{ type: 'address' }, { type: 'uint256' }] as const;
+  // SETTLE_ALL pays from msgSender(); TAKE_ALL sends all output to that same
+  // wallet. These pinned router actions cannot leave output in the router.
   return encodeAbiParameters([{ type: 'bytes' }, { type: 'bytes[]' }], ['0x060c0f', [swap,
     encodeAbiParameters(currencyAmount, [input, amount]),
     encodeAbiParameters(currencyAmount, [zeroForOne ? key.currency1 : key.currency0, minimum]),

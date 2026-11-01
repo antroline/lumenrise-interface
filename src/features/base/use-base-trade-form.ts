@@ -175,6 +175,8 @@ export function useBaseTradeForm(launch: LaunchResult, side: 'buy' | 'sell', loc
       const simulated = await simulation.refetch(); assertCurrent();
       if (simulated.isError || !simulated.data) throw simulated.error ?? new Error('Trade simulation failed.');
       await verifyGas(false);
+      // Graduation may occur while simulation or gas estimation is in flight.
+      await latest.current.live.revalidate(); assertCurrent();
       // Simulation uses the actual caller, total input and net-output minimum; methods are nonpayable.
       await verifyWalletChain();
       setAwaitingApproval(true); setMessage(`Approve the ${side} transaction in your wallet…`);

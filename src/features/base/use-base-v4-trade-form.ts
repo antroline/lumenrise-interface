@@ -1,11 +1,11 @@
 'use client';
-import { useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useConnection, useReadContract, useSwitchChain, useWriteContract } from 'wagmi';
 import { encodeFunctionData, erc20Abi, isAddress, type Address, type Hash, type Hex } from 'viem';
 import { useLaunchpad } from '@/lib/launchpad';
 import { getApiBaseUrl } from '@/lib/api/client';
-import { enqueueTrade, releaseTradeReceipt } from '@/lib/api/launches/trade-queue';
+import { enqueueTrade, releaseTradeReceipt, readTradeQueue, QUEUE_EVENT } from '@/lib/api/launches/trade-queue';
 import type { LaunchResult } from '@/lib/api/launches/market';
 import type { TradeConfirmation, TradeFormModel } from '@/features/launches';
 import { MAX_BASE_AMOUNT, parseBaseAmount } from '@/lib/base/amount';
@@ -16,14 +16,14 @@ import { useBaseV4Pool } from './use-base-v4-pool';
 import type { BaseTradeInputs } from './use-base-trade-form';
 
 const activeSwaps = new Set<string>();
-export function useBaseV4TradeForm(launch: LaunchResult, side: 'buy' | 'sell', locked: boolean, setLocked: (value: boolean) => void, refresh: () => Promise<void>, inputs?: BaseTradeInputs) {
+export function useBaseV4TradeForm(launch: LaunchResult, side: 'buy' | 'sell', locked: boolean, setLocked: (value: boolean) => void, refresh: () => Promise<void>, inputs?: BaseTradeInputs, active = true) {
   const { address, account, accountReady, baseSigningSupported } = useLaunchpad();
   const connection = useConnection();
   const { switchChainAsync } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
   const owner = address && isAddress(address) ? address : undefined;
   const userId = account.status === 'registered' ? account.profile.userId : undefined;
-  const scopeKey = `base:${launch.network}:${userId ?? ''}:${owner ?? ''}:${launch.contractId}`;
+  const scopeKey = `base:${launch.network}:${userId ?? ''}:${owner ?? ''}:${launch.contractId}:${launch.asset}:${launch.pair}`;
   const live = useBaseLaunchReads(launch, scopeKey, 'pool');
   const pool = useBaseV4Pool(launch);
   const { client, chainId, deployment } = pool;
@@ -38,7 +38,33 @@ export function useBaseV4TradeForm(launch: LaunchResult, side: 'buy' | 'sell', l
   const epoch = useRef<object>({});
   const running = useRef(false);
   useLayoutEffect(() => { latest.current = { scopeKey, entry, limitEntry, connection, accountReady, baseSigningSupported }; });
-  useLayoutEffect(() => { epoch.current = {}; return () => { epoch.current = {}; }; }, [scopeKey, connection.connector, connection.address]);
+  useLayoutEffect(() => { epoch.current = {}; return () => { epoch.current = {}; }; }, [scopeKey, side, active, connection.connector, connection.address]);
+  const refreshRef = useRef(refresh);
+  useLayoutEffect(() => { refreshRef.current = refresh; });
+  const watchedPoolId = pool.isError ? undefined : pool.data?.graduation.pool_id;
+  useEffect(() => {
+    if (!active || !client || !watchedPoolId) return;
+    // Events invalidate API-backed views; the API remains authoritative for history.
+    return client.watchContractEvent({ address: deployment.manager, abi: v4Abi, eventName: 'Swap',
+      args: { id: watchedPoolId },
+      onLogs: () => { void refreshRef.current().catch(() => { /* Queries retain their refresh errors. */ }); },
+      onError: () => { /* Three-second polling continues if event reads fail. */ },
+    });
+  }, [active, client, deployment.manager, watchedPoolId]);
+  useEffect(() => {
+    if (!confirmation) return;
+    const update = () => {
+      const record = readTradeQueue().find(item => item.chain === 'base' && item.network === launch.network && item.userId === userId &&
+        item.transactionHash.toLowerCase() === confirmation.hash.toLowerCase() && sameEvmAddress(item.contractId, launch.contractId));
+      setRegistrationNotice(record ? record.state === 'invalid' || record.state === 'identity'
+        ? `Swap confirmed. Activity synchronization needs attention: ${record.error ?? 'Sign in with the original account.'}`
+        : 'Swap confirmed. Activity synchronization is pending; retrying the same transaction hash automatically.'
+        : 'Swap confirmed and recorded in activity.');
+    };
+    update();
+    window.addEventListener(QUEUE_EVENT, update);
+    return () => window.removeEventListener(QUEUE_EVENT, update);
+  }, [confirmation, launch.network, launch.contractId, userId]);
   const query = { enabled: !!owner && !!live.asset && !!live.pair && accountReady, retry: false, refetchInterval: 3000 } as const;
   const held = useReadContract({ chainId, address: live.asset, abi: erc20Abi, functionName: 'balanceOf', args: owner ? [owner] : undefined, scopeKey, query });
   const pairHeld = useReadContract({ chainId, address: live.pair, abi: erc20Abi, functionName: 'balanceOf', args: owner ? [owner] : undefined, scopeKey, query });
@@ -58,21 +84,32 @@ export function useBaseV4TradeForm(launch: LaunchResult, side: 'buy' | 'sell', l
   }
   const unavailable = live.unavailable ?? (pool.isError ? pool.error.message : !pool.data ? 'Loading the graduated pool…' : undefined);
   const permitted = !unavailable && (!owner || baseSigningSupported === true);
+  const quoteIdentity = `${scopeKey}:${side}:${active}:${pool.data ? poolId(pool.data.key) : ''}:${connection.chainId}:${input}:${amount?.toString()}`;
+  const [debouncedQuote, setDebouncedQuote] = useState({ key: quoteIdentity, ready: false });
+  if (debouncedQuote.key !== quoteIdentity) setDebouncedQuote({ key: quoteIdentity, ready: false });
+  useEffect(() => {
+    if (!active) return;
+    const timer = setTimeout(() => setDebouncedQuote({ key: quoteIdentity, ready: true }), 300);
+    return () => clearTimeout(timer);
+  }, [quoteIdentity, active]);
+  const quoteReady = active && debouncedQuote.key === quoteIdentity && debouncedQuote.ready && amount !== undefined && amount > BigInt(0);
   const quoteRead = useQuery({
-    queryKey: ['base-v4-quote', scopeKey, pool.data ? poolId(pool.data.key) : '', input, amount?.toString()],
-    enabled: permitted && !!client && !!pool.data && !!input && amount !== undefined,
+    queryKey: ['base-v4-quote', quoteIdentity],
+    enabled: permitted && !!client && !!pool.data && !!input && quoteReady,
     retry: false, refetchInterval: 3000,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
+      signal.throwIfAborted();
       if (!client || !pool.data || !input || amount === undefined) throw new Error('The swap quote is unavailable.');
       const result = await client.simulateContract({ address: deployment.quoter, abi: v4Abi, functionName: 'quoteExactInputSingle',
         args: [{ poolKey: pool.data.key, zeroForOne: sameEvmAddress(input, pool.data.key.currency0), exactAmount: amount, hookData: '0x' }] });
+      signal.throwIfAborted();
       const output = result.result[0];
       if (output <= BigInt(0) || output > MAX_BASE_AMOUNT) throw new Error('The pool cannot quote this amount.');
       // Pool fees are already included by the Quoter. Curve creator tax no longer applies.
       return { gross: buying ? amount : output, creator_fee: BigInt(0), user_amount: buying ? amount : output, amount_received: output };
     },
   });
-  const quote = permitted && !quoteRead.isError && !quoteRead.isPlaceholderData ? quoteRead.data : undefined;
+  const quote = permitted && quoteReady && !quoteRead.isError && !quoteRead.isPlaceholderData ? quoteRead.data : undefined;
   const minimumReceived = quote && bps !== undefined && !limitError ? quote.amount_received * (BigInt(10000) - bps) / BigInt(10000) : undefined;
   if (minimumReceived === BigInt(0)) limitError = 'The minimum output rounds to zero. Increase the amount or reduce slippage.';
 
@@ -170,8 +207,9 @@ export function useBaseV4TradeForm(launch: LaunchResult, side: 'buy' | 'sell', l
       if (mined.status !== 'success') { setSubmittedHash(undefined); throw new Error('The swap reverted on-chain.'); }
       const executed = v4ExecutedAmounts(mined.logs, deployment.manager, deployment.router, selectedPool.graduation.pool_id, selectedPool.key, input);
       if (executed.paid > amount || executed.received < minimumReceived) throw new Error('Unexpected swap amounts. Keep the transaction hash.');
+      if (epoch.current !== started) return;
       setConfirmation({ hash, side, token: { symbol: launch.metadata.symbol, amount: buying ? executed.received : executed.paid, decimals: launch.assetDecimals } });
-      setMessage('Swap confirmed on-chain.'); setRegistrationNotice('Pool activity will appear when supported by the indexer.'); setEntry('');
+      setMessage('Swap confirmed on-chain.'); setRegistrationNotice('Swap confirmed. Activity synchronization is pending.'); setEntry('');
       await refreshWallet();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'The swap could not be completed.'); }
     finally { activeSwaps.delete(scopeKey); running.current = false; setLocked(false); setWorking(false); setAwaitingApproval(false); }
@@ -181,10 +219,11 @@ export function useBaseV4TradeForm(launch: LaunchResult, side: 'buy' | 'sell', l
     entry, setEntry, limitEntry, setLimitEntry, working, message, error, confirmation, dialogOpen, awaitingApproval,
     dismissConfirmation: () => { if (!working || submittedHash) setDialogOpen(false); },
     finishDialogClose: () => { if (!dialogOpen && !working && confirmation) { setSubmittedHash(undefined); setConfirmation(undefined); } },
-    trustHash: undefined, registrationNotice, submittedHash, buying, pair: live.pairSymbol ?? 'USDC', permitted: permitted && !submittedHash,
+    trustHash: undefined, registrationNotice, submittedHash, buying, pair: live.pairSymbol ?? 'Pair token', permitted: permitted && !submittedHash,
     inputError, amount, quote, quoteError: quoteRead.isError ? 'The pool quote is unavailable.' : '', slippage, minimumReceived,
     limit: buying ? minimumReceived === undefined ? undefined : amount : minimumReceived, limitError, sellable: held.data,
-    unavailable: owner && baseSigningSupported !== true ? 'Select a linked EOA wallet to trade.' : unavailable, quoteRead, submit,
+    unavailable: owner && baseSigningSupported !== true ? 'Select a linked EOA wallet to trade.' : unavailable,
+    quoteRead: { ...quoteRead, isFetching: quoteRead.isFetching || !!entry && !quoteReady && !inputError }, submit,
   };
   let priceLabel: string | undefined;
   if (!pool.isError && pool.data && launch.assetDecimals !== undefined && launch.pairDecimals !== undefined) {

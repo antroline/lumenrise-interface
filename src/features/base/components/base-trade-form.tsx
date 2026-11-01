@@ -11,12 +11,15 @@ import { isAddress } from 'viem';
 import { graduationAbi } from '@/lib/base/uniswap-v4';
 import { launchAbi } from '@/lib/base/launchAbi';
 import { useState } from 'react';
+import { useLaunchpad } from '@/lib/launchpad';
 import type { BaseTradeInputs } from '../use-base-trade-form';
 type Props = {
   launch: LaunchResult; side: 'buy' | 'sell'; onFlip?: () => void; locked: boolean; setLocked: (locked: boolean) => void; quoteHost: HTMLElement | null; active: boolean;
 };
 export function BaseTradeForm(props: Props) {
-  return <BaseTradeRouter key={`${props.launch.network}:${props.launch.contractId}:${props.side}`} {...props} />;
+  const { address, account } = useLaunchpad();
+  const identity = account.status === 'registered' ? account.profile.userId : account.status;
+  return <BaseTradeRouter key={`${props.launch.network}:${props.launch.contractId}:${props.side}:${identity}:${address}`} {...props} />;
 }
 function BaseTradeRouter(props: Props) {
   const { launch } = props;
@@ -28,7 +31,7 @@ function BaseTradeRouter(props: Props) {
   // Cache the complete settlement struct on load, including pre-graduation launches.
   const graduation = useReadContract({ chainId, address, abi: graduationAbi, functionName: 'graduation_state', query });
   const state = useReadContract({ chainId, address, abi: launchAbi, functionName: 'get_state', query });
-  const graduated = graduation.data?.settled || state.data?.graduated || launch.bonding?.state.graduated || launch.bonding?.status === 'Graduated';
+  const graduated = graduation.data?.settled || state.data?.graduated || launch.state.graduated === true || launch.graduationState?.settled || launch.bonding?.state.graduated || launch.bonding?.status === 'Graduated';
   // Preserve entered amounts across graduation and never unmount an in-flight curve trade.
   if (graduated && !poolRoute && !props.locked) setPoolRoute(true);
   const inputs = { entry, setEntry, limitEntry, setLimitEntry };
@@ -41,6 +44,8 @@ function useRefreshLaunch(launch: LaunchResult) {
     await Promise.all([
       client.invalidateQueries({ queryKey: ['readContract', { chainId }] }),
       client.invalidateQueries({ queryKey: ['balance', { chainId }] }),
+      client.invalidateQueries({ queryKey: ['base-v4-pool', chainId, launch.contractId] }),
+      client.invalidateQueries({ queryKey: ['base-v4-quote'] }),
       client.invalidateQueries({ queryKey: launchKey(launch.network, launch.slug ?? '') }),
       client.invalidateQueries({ queryKey: ['launch-list', { chain: 'base', network: launch.network }] }),
     ]);
@@ -54,8 +59,11 @@ function BaseCurveTradeForm(props: Props & { inputs: BaseTradeInputs }) {
 }
 function BasePoolTradeForm(props: Props & { inputs: BaseTradeInputs }) {
   const refresh = useRefreshLaunch(props.launch);
-  const trade = useBaseV4TradeForm(props.launch, props.side, props.locked, props.setLocked, refresh, props.inputs);
-  return <BaseTradePresentation {...props} trade={trade} />;
+  const trade = useBaseV4TradeForm(props.launch, props.side, props.locked, props.setLocked, refresh, props.inputs, props.active);
+  return <div className="flex min-w-0 flex-col gap-3">
+    <p role="status" className="text-xs text-muted-foreground">Trading on Uniswap V4{trade.model.unavailable ? ' · Preparing pool' : ''}</p>
+    <BaseTradePresentation {...props} trade={trade} />
+  </div>;
 }
 function BaseTradePresentation({ launch, side, onFlip, locked, quoteHost, active, trade }: Props & { trade: ReturnType<typeof useBaseTradeForm> & { poolPricing?: ReturnType<typeof useBaseV4TradeForm>['poolPricing'] } }) {
   const knownPair = pairLabel(launch.pair, launch.network);

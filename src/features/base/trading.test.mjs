@@ -56,7 +56,7 @@ function harness(options = {}) {
     useReadContract: read,
     useBalance: () => ({ ...result({ value: state.gas }), refetch: async () => result({ value: state.gas }) }),
     useBytecode: () => result(state.ownerCode ?? (state.smart ? '0x1234' : undefined)),
-    useEstimateGas: () => result(21000n), useEstimateFeesPerGas: () => result({ maxFeePerGas: 1000000000n }),
+    useEstimateGas: () => ({ ...result(21000n), refetch: async () => { state.afterGas?.(state); return result(21000n); } }), useEstimateFeesPerGas: () => result({ maxFeePerGas: 1000000000n }),
     useSimulateContract: request => ({ refetch: async () => {
       events.push('simulate:' + request.functionName);
       if (state.simulationFailed && request.functionName !== 'approve') return { isError: true, error: new Error('Simulation reverted') };
@@ -135,4 +135,12 @@ test('excess fractional input never reaches a signature', async () => {
 test('a mined trade is never replayed by a second submit while its report is pending', async () => {
   const h = harness({ allowance: 10n ** 30n }); await h.enter('20.1'); await h.submit(); await h.submit();
   assert.equal(h.events.filter(event => event === 'write:buy').length, 1); assert.equal(h.queue.length, 1);
+});
+
+test('graduation during final curve gas estimation prevents the curve trade signature', async () => {
+  const h = harness({ allowance: 10n ** 30n, afterGas: state => { state.unavailable = 'Graduation completed. Preparing the Uniswap V4 pool.'; } });
+  await h.enter('20.1'); await h.submit();
+  assert.equal(h.state.request, undefined);
+  assert.equal(h.queue.length, 0);
+  assert.match(h.model.error, /Graduation completed/);
 });
