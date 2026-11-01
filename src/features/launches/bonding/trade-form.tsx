@@ -42,6 +42,10 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
   const formatInput = (value: bigint) => scales ? formatBaseAmount(value, side === 'buy' ? scales.pair : scales.asset) : formatAmount(value);
   const formatOutput = (value: bigint, precision?: Parameters<typeof formatAmount>[1]) => scales ? formatBaseAmount(value, side === 'buy' ? scales.asset : scales.pair, precision) : formatAmount(value, precision);
   const formatPair = (value: bigint, precision?: Parameters<typeof formatAmount>[1]) => scales ? formatBaseAmount(value, scales.pair, precision) : formatAmount(value, precision);
+  const formatQuotedOutput = (value: bigint) => {
+    const compact = formatOutput(value, 3);
+    return props.poolPricing && value > BigInt(0) && compact === '0' ? formatOutput(value) : compact;
+  };
   const { login, loginPending } = useLaunchpad();
   const {
     user,
@@ -253,7 +257,7 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
               htmlFor={`${side}-amount`}
               aria-label={`Estimated ${receiveSymbol} received`}
               aria-busy={quoteLoading}
-              className="flex h-10 min-w-0 flex-1 items-center break-words text-2xl font-semibold tabular-nums"
+              className={`flex min-w-0 flex-1 items-center break-words text-2xl font-semibold tabular-nums ${props.poolPricing ? 'min-h-10 [&_span]:min-w-0 [&_span]:break-all' : 'h-10'}`}
             >
               {quoteLoading ? (
                 <span
@@ -265,7 +269,7 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
                 <>
                   {received !== undefined && <span aria-hidden="true">≈ </span>}
                   <TradeValue>
-                    {received === undefined ? '—' : formatOutput(received, 3)}
+                    {received === undefined ? '—' : formatQuotedOutput(received)}
                   </TradeValue>
                 </>
               )}
@@ -409,7 +413,7 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
               {quote
                 ? minimumReceived === undefined || limitError
                   ? 'Invalid amount'
-                  : `${formatOutput(minimumReceived, 3)} ${receiveSymbol}`
+                  : `${props.poolPricing ? formatOutput(minimumReceived) : formatOutput(minimumReceived, 3)} ${receiveSymbol}`
                 : '—'}
             </TradeValue>
           </dd>
@@ -467,6 +471,7 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
         awaitingApproval={awaitingApproval}
         side={side}
         message={message}
+        showProgress={!!props.poolPricing}
         error={error}
         submittedHash={submittedHash}
         trustHash={trustHash}

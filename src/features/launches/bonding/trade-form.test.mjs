@@ -202,7 +202,7 @@ function harness({
     },
   };
   const { TradeForm, TradeFormView } = load('trade-form.tsx', mocks, globals);
-  const render = () => {
+  const render = (overrides = {}) => {
     stateIndex = refIndex = 0;
     const view = TradeForm({
     address,
@@ -222,7 +222,7 @@ function harness({
     setLocked() {},
     refresh: async () => events.push('refresh'),
     });
-    return TradeFormView(view.props);
+    return TradeFormView({ ...view.props, ...overrides, model: { ...view.props.model, ...overrides.model } });
   };
   const form = render();
   return {
@@ -774,4 +774,15 @@ test('compact explorer actions use the selected network and do not dismiss or re
   assert.equal(link.props.target, '_blank');
   assert.equal(link.props.title, undefined, 'The compact explorer action does not expose the hash in a tooltip');
   assert.equal(link.props.onClick, undefined);
+});
+
+test('graduated-pool output and minimum retain nonzero pair atomic units for tiny prices', () => {
+  const h = harness({ side: 'sell' });
+  const form = h.render({ scales: { asset: 18, pair: 6 }, poolPricing: { label: '0.000204', lpFee: 3000 }, model: {
+    amount: 10n ** 18n, quote: { gross: 204n, creator_fee: 0n, user_amount: 204n, amount_received: 204n }, minimumReceived: 202n,
+    quoteRead: { isFetching: false }, pair: 'USDC',
+  } });
+  assert.match(content(elements(form).find(node => node.type === 'output')), /0\.000204/);
+  assert.match(content(form), /0\.000202 USDC/);
+  assert.match(content(form), /LP fee/);
 });

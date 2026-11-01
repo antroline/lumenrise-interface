@@ -426,6 +426,7 @@ export function IndexedLaunchOverview({
           >
             <LaunchActionCard
               name={name}
+              description={getApiChain() === 'base' ? 'Buy or sell through this launch’s active trading venue.' : undefined}
               identity={
                 <LaunchCover
                   integrated
@@ -651,8 +652,9 @@ export function IndexedLaunchOverview({
                         share: share(b.buckets.pool),
                         tokens: `${compactAmount(b.buckets.pool, assetDecimals)} ${ticker}`,
                         tokensTitle: `${detailAmount(b.buckets.pool, assetDecimals)} ${ticker}`,
-                        detail:
-                          'Earmarked for a pool; pool creation is not implemented.',
+                        detail: getApiChain() === 'base'
+                          ? 'Allocated to the Uniswap V4 pool at graduation.'
+                          : 'Earmarked for a pool; pool creation is not implemented.',
                       },
                       {
                         name: 'Team',
@@ -704,7 +706,9 @@ export function IndexedLaunchOverview({
                         ],
                         [
                           'At graduation',
-                          'The contract calculates pool allocations and payouts, but does not create a DEX pool or transfer proceeds.',
+                          getApiChain() === 'base'
+                            ? 'After graduation settlement, trading moves to the launch’s Uniswap V4 pool. Pool fees and network gas apply.'
+                            : 'The contract calculates pool allocations and payouts, but does not create a DEX pool or transfer proceeds.',
                         ],
                       ]}
                     />

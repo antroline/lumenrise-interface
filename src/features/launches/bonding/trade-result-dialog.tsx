@@ -32,6 +32,7 @@ export function TradeResultDialog({
   submittedHash,
   trustHash,
   registrationNotice,
+  showProgress = false,
   tokenLogo,
   tokenSeed,
 }: {
@@ -47,6 +48,7 @@ export function TradeResultDialog({
   submittedHash?: string;
   trustHash?: string;
   registrationNotice?: string;
+  showProgress?: boolean;
   tokenLogo?: string;
   tokenSeed?: string;
 }) {
@@ -119,7 +121,7 @@ export function TradeResultDialog({
               <p className="mt-1 break-all text-sm font-semibold leading-5 tabular-nums sm:text-base sm:leading-6">{formatSummaryAmount(confirmation.token.amount, confirmation.token.decimals)}</p>
             </div>
           </div>}
-          {busy && message && <p role="status" className="sr-only">{message}</p>}
+          {busy && message && <p role="status" className={showProgress ? 'w-full break-words text-sm leading-5 text-muted-foreground' : 'sr-only'}>{message}</p>}
           {trustHash && !confirmation && <TransactionHash hash={trustHash} label="View trustline transaction" compact className="h-11! rounded-xl border-border bg-background text-sm font-semibold" />}
           {confirmation && error && <p role="alert" className="w-full break-words text-sm leading-5 text-muted-foreground">
             Your trade is confirmed, but balances could not refresh. Refresh the page to update them.

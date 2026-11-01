@@ -179,7 +179,7 @@ export function IndexedTrades({
                       <EmptyTitle>No recorded trades</EmptyTitle>
                       <EmptyDescription>
                         Trades matching these filters will appear here when
-                        available.
+                        available. Indexed history may still be synchronizing.
                       </EmptyDescription>
                     </EmptyHeader>
                   </Empty>
