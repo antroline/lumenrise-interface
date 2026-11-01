@@ -220,6 +220,7 @@ export function IndexedLaunchOverview({
   sell,
   walletFeedback,
   tradingLoading = false,
+  pool,
 }: {
   address: string;
   network: ApiNetwork;
@@ -233,6 +234,7 @@ export function IndexedLaunchOverview({
   sell?: TradeFormRenderer | null;
   walletFeedback?: ReactNode;
   tradingLoading?: boolean;
+  pool?: ReactNode;
 }) {
   const market = useMarket(launch?.slug ?? '', network);
   const now = useNow(30_000);
@@ -734,12 +736,12 @@ export function IndexedLaunchOverview({
                 />
               }
               holders={<IndexedHolders holders={holders} ticker={ticker} />}
-              pools={
+              pools={pool ?? (
                 <PoolTable
                   ticker={ticker}
                   unavailableReason="External pool data is not connected. This contract version does not create a pool or transfer graduation proceeds."
                 />
-              }
+              )}
             />
           </div>
         </div>

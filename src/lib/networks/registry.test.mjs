@@ -28,7 +28,7 @@ test('Stellar defaults, available environments, and launch capability follow ser
   assert.deepEqual(availableNetworks(config).map(n => n.id), ['stellar-mainnet', 'base-mainnet', 'base-sepolia']);
 });
 
-test('Base resolves without Stellar config and exposes reads while keeping contract writes disabled', () => {
+test('Base exposes trading on both networks and creation on Sepolia', () => {
   for (const [id, chainId] of [['base-mainnet', 8453], ['base-sepolia', 84532]]) {
     const network = resolveNetwork(id);
     assert.equal(network.blockchain, 'base');
@@ -36,7 +36,7 @@ test('Base resolves without Stellar config and exposes reads while keeping contr
     assert.equal(network.capabilities.wallet, true);
     assert.equal(network.capabilities.projects, true);
     assert.equal(network.capabilities.creation, chainId === 84532);
-    assert.equal(network.capabilities.trading, chainId === 84532);
+    assert.equal(network.capabilities.trading, true);
     assert.equal(network.apiNetwork, chainId === 8453 ? 'public' : 'testnet');
   }
   assert.throws(() => resolveNetwork('public'), /not supported/);

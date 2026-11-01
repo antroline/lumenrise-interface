@@ -37,7 +37,7 @@ export type TradeViewProps = Pick<TradeFormProps, 'slug' | 'address' | 'network'
   tokens: Pick<TradeFormProps['tokens'], 'assetSymbol'>;
   snapshot: { price: bigint | undefined };
 };
-export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; scales?: { asset: number; pair: number } }) {
+export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; scales?: { asset: number; pair: number }; poolPricing?: { label?: string; lpFee: number } }) {
   const { tokens, side, locked, balances, scales } = props;
   const formatInput = (value: bigint) => scales ? formatBaseAmount(value, side === 'buy' ? scales.pair : scales.asset) : formatAmount(value);
   const formatOutput = (value: bigint, precision?: Parameters<typeof formatAmount>[1]) => scales ? formatBaseAmount(value, side === 'buy' ? scales.asset : scales.pair, precision) : formatAmount(value, precision);
@@ -282,7 +282,9 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
         <dt className="text-muted-foreground">
           <TradeTooltipText
             content={
-              quotedPrice === undefined
+              props.poolPricing
+                ? quote ? 'Average Uniswap V4 execution price, including pool fees. Network gas is separate.' : 'Current Uniswap V4 pool price before swap fees. Network gas is separate.'
+                : quotedPrice === undefined
                 ? 'Current contract price per token, before creator and network fees.'
                 : scales ? 'Average execution price before creator fees. Network gas is separate.' : 'Average price per token for this quote, including the creator fee. Network fees are separate.'
             }
@@ -292,7 +294,7 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
         </dt>
         <dd className="min-w-0 break-words text-right font-medium tabular-nums">
           <TradeValue>
-            {`1 ${tokens.assetSymbol} ≈ ${price === undefined ? '—' : formatPair(price)} ${pair}`}
+            {`1 ${tokens.assetSymbol} ≈ ${props.poolPricing ? props.poolPricing.label ?? '—' : price === undefined ? '—' : formatPair(price)} ${pair}`}
           </TradeValue>
         </dd>
       </dl>
@@ -382,13 +384,13 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
       >
         <dl className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-x-3 gap-y-2 text-xs tabular-nums">
           <dt className="text-muted-foreground">
-            <TradeTooltipText content="The creator fee returned by the contract quote. Already included in the quoted payment; network fees are separate.">
-              Fee · included
+            <TradeTooltipText content={props.poolPricing ? 'The pool liquidity-provider fee. Pool and any protocol fees are included in the Uniswap quote; network gas is separate.' : 'The creator fee returned by the contract quote. Already included in the quoted payment; network fees are separate.'}>
+              {props.poolPricing ? 'LP fee · included' : 'Fee · included'}
             </TradeTooltipText>
           </dt>
           <dd className="break-words text-right font-medium">
             <TradeValue>
-              {quote ? `${formatPair(quote.creator_fee, 3)} ${pair}` : '—'}
+              {props.poolPricing ? `${formatBaseAmount(BigInt(props.poolPricing.lpFee), 4)}%` : quote ? `${formatPair(quote.creator_fee, 3)} ${pair}` : '—'}
             </TradeValue>
           </dd>
           <dt className="text-muted-foreground">

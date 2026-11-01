@@ -68,7 +68,7 @@ function deployment(patch = {}) {
     useBytecode(options) { return { data: options.address === patch.emptyCode ? undefined : '0x1234', isError: false, refetch: async () => ({ data: options.address === patch.emptyCode ? undefined : '0x1234', isError: false }) }; },
   };
   const load = loader({ wagmi: hooks, '@/lib/api/config': { getConfiguration: () => ({ chain: 'base', network: { configurations: { [launch.network]: { factoryContractId: F, launchConfigured: true } } } }) } });
-  return { runtime: load('features/base/use-base-launch-reads.ts').useBaseLaunchReads(launch, 'base:testnet:test-wallet'), calls };
+  return { runtime: load('features/base/use-base-launch-reads.ts').useBaseLaunchReads(launch, 'base:testnet:test-wallet', patch.mode), calls };
 }
 test('live deployment verification uses explicitly scoped hooks and uint256 launch membership', async () => {
   const h = deployment(); assert.equal(h.runtime.unavailable, undefined); await h.runtime.revalidate();
@@ -82,3 +82,12 @@ for (const [name, patch] of [
   ['busy', { values: { get_state: { busy: true, graduated: false } } }], ['scheduled', { values: { status: 0 } }],
   ['graduated', { values: { status: 2 } }], ['wrong factory pair', { values: { settings: { platform: F, platform_fee_bps: 100, pair: A } } }],
 ]) test(`${name} blocks the runtime capability`, async () => { const h = deployment(patch); assert.ok(h.runtime.unavailable); await assert.rejects(h.runtime.revalidate()); });
+
+for (const network of ['testnet', 'public']) test(`graduated ${network} launches validate for pool trading without curve price`, async () => {
+  const h = deployment({ mode: 'pool', launch: { network }, values: { get_state: { busy: false, graduated: true }, status: 2, current_price: undefined, getChainId: network === 'public' ? 8453n : 84532n } });
+  assert.equal(h.runtime.unavailable, undefined); await h.runtime.revalidate();
+  assert.equal(h.calls.find(c => c.functionName === 'current_price').query.enabled, false);
+});
+test('ungraduated launches cannot use the pool verification mode', async () => {
+  const h = deployment({ mode: 'pool' }); assert.ok(h.runtime.unavailable); await assert.rejects(h.runtime.revalidate());
+});
