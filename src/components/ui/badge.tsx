@@ -21,6 +21,7 @@ const badgeVariants = cva(
         bad: "border-transparent bg-bad-soft text-bad",
         info: "border-transparent bg-info-soft text-info",
         lime: "border-lime bg-lime text-ink",
+        status: "h-7 border-0 bg-secondary px-2.5 text-xs text-muted-foreground before:size-1.5 before:shrink-0 before:rounded-full before:bg-current before:content-[''] data-[live=true]:bg-lime/35 data-[live=true]:text-foreground data-[live=true]:before:bg-ink/65 dark:data-[live=true]:before:bg-lime",
         net: "font-mono text-caption tracking-[0.04em]",
         tag: "h-auto gap-[5px] rounded-sm border-transparent bg-secondary px-2 py-[3px] font-mono text-caption",
         "tag-outline": "h-auto gap-[5px] rounded-sm px-2 py-[3px] font-mono text-caption",

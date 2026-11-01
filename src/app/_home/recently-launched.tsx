@@ -137,7 +137,7 @@ export function RecentlyLaunched({ launches, network, loaded, total, pending, fa
                   <ProfileAvatar seed={launch.owner} avatarUrl={founder?.avatarUrl} size={28} radius={14} className="shrink-0" />
                   <div className="min-w-0 text-xs">
                     <p className="text-muted-foreground">Founder</p>
-                    <p className="mt-1 truncate font-medium" title={`${founderName} · ${launch.owner}`}>{founderName}</p>
+                    <p className="mt-1 truncate font-medium" title={`${founderName} · ${launch.owner}`}>{founder?.name || <span className="font-mono">{founderName}</span>}</p>
                   </div>
                 </div>
                 <div className="hidden min-w-0 text-xs sm:block">
