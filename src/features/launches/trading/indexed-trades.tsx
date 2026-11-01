@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import { tradeTableClass } from './trade-table-style';
 import { ArrowRightLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -53,6 +54,22 @@ export function IndexedTrades({
     filtered,
     query,
   } = useIndexedTrades(slug, network);
+  const scope = JSON.stringify([slug, network, side, size, period]);
+  const [pagination, setPagination] = useState({ scope, page: 0 });
+  if (pagination.scope !== scope) setPagination({ scope, page: 0 });
+  const pageSize = 10;
+  const lastLoadedPage = Math.max(0, Math.ceil(filtered.length / pageSize) - 1);
+  const page = pagination.scope === scope ? Math.min(pagination.page, lastLoadedPage) : 0;
+  const pageTrades = filtered.slice(page * pageSize, (page + 1) * pageSize);
+  const canGoNext = page < lastLoadedPage || query.hasNextPage;
+
+  async function nextPage() {
+    if (page >= lastLoadedPage) {
+      const result = await query.fetchNextPage();
+      if (result.isError) return;
+    }
+    setPagination(current => current.scope === scope ? { scope, page: page + 1 } : current);
+  }
   return (
     <section
       className="flex min-w-0 flex-col gap-3"
@@ -159,7 +176,7 @@ export function IndexedTrades({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((trade, index) => (
+            {pageTrades.map((trade, index) => (
               <IndexedTradeRow
                 key={`${trade.trader}:${trade.tradedAt}:${index}`}
                 trade={trade}
@@ -206,14 +223,30 @@ export function IndexedTrades({
           </Button>
         </p>
       )}
-      {query.hasNextPage && (
-        <Button
-          variant="outline"
-          disabled={query.isFetching}
-          onClick={() => void query.fetchNextPage()}
-        >
-          {query.isFetchingNextPage ? 'Loading…' : 'Load more trades'}
-        </Button>
+      {(filtered.length > 0 || query.hasNextPage) && (
+        <nav aria-label="Recent trades pagination" className="flex flex-wrap items-center justify-between gap-3">
+          <p role="status" aria-live="polite" className="text-xs text-muted-foreground tabular-nums">
+            Page {page + 1}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page === 0 || query.isFetchingNextPage}
+              onClick={() => setPagination({ scope, page: page - 1 })}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!canGoNext || query.isFetching}
+              onClick={nextPage}
+            >
+              {query.isFetchingNextPage ? 'Loading…' : 'Next'}
+            </Button>
+          </div>
+        </nav>
       )}
     </section>
   );

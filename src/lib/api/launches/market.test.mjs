@@ -642,13 +642,17 @@ test('holders unwrap the public response, preserve opaque cursors and use the la
   assert.equal(h.calls[2].url, `http://api.example/v1/launches/${SLUG}/holders?network=public&limit=20`);
 });
 
-test('holder balances remain exact above MAX_SAFE_INTEGER and appended rows retain server order', () => {
+test('holder balances round to three decimals without precision loss and appended rows retain server order', () => {
   const { formatHolderBalance, appendHolders } = harness().holders;
   for (const [raw, expected] of [
-    ['0', '0'], ['1', '0.0000001'], ['123456789', '12.3456789'],
-    ['9007199254740993', '900719925.4740993'],
-    ['9223372036854775807', '922337203685.4775807'],
+    ['0', '0.000'], ['1', '0.000'], ['123456789', '12.346'],
+    ['9007199254740993', '900719925.474'],
+    ['9223372036854775807', '922337203685.478'],
+    ['9995000', '1.000'], ['12345000', '1.235'],
   ]) assert.equal(formatHolderBalance(raw, 7), expected);
+  assert.equal(formatHolderBalance('12', 0), '12.000');
+  assert.equal(formatHolderBalance('1234', 2), '12.340');
+  assert.equal(formatHolderBalance('1234567890123456789', 18), '1.235');
   const second = { address: ID, balance: '1', observedAt: DATE };
   same(appendHolders(holderResult.items, [...holderResult.items, second, second]), [...holderResult.items, second]);
 });
@@ -1342,6 +1346,60 @@ test('trade list and submission reject missing or malformed gross amounts', asyn
     await assert.rejects(h.api.getTrades(SLUG, 'testnet', {}), { code: 'invalid-response' });
     await assert.rejects(h.api.recordTrade(SLUG, 'testnet', 'a'.repeat(64)), { code: 'invalid-response' });
   }
+});
+
+test('recent trades paginate ten rows, fetch older history, preserve failed pages and reset filters', async () => {
+  const jsx = (type, props) => ({ type, props });
+  let pagination, fail = false, fetches = 0;
+  const items = Array.from({ length: 20 }, (_, index) => ({ ...trade, trader: `wallet-${index}`, amountScale: 7, priceScale: 7 }));
+  const data = {
+    side: 'all', size: 'all', period: 'all', asOf: Date.parse(DATE), filtered: items,
+    query: { data: {}, hasNextPage: true, isFetching: false, async fetchNextPage() {
+      fetches++;
+      if (fail) return { isError: true };
+      data.filtered = [...items, ...items.slice(0, 3)];
+      data.query.hasNextPage = false;
+      return { isError: false };
+    } },
+  };
+  const { IndexedTrades } = load('../../../features/launches/trading/indexed-trades.tsx', {
+    require: name => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
+      : name === 'react' ? { useState(initial) {
+        pagination ??= initial;
+        return [pagination, value => { pagination = typeof value === 'function' ? value(pagination) : value; }];
+      } }
+      : name === './use-indexed-trades' ? { useIndexedTrades: () => data }
+      : name === '@/lib/utils' ? { cn: (...values) => values.join(' ') }
+      : name === './trade-table-style' ? { tradeTableClass: '' }
+      : Object.fromEntries(['Button', 'Table', 'TableHeader', 'TableHead', 'TableBody', 'TableRow', 'TableCell', 'IndexedTradeRow', 'TradeFilter', 'TradeTooltipText'].map(key => [key, key])),
+  });
+  function nodes(value) {
+    if (Array.isArray(value)) return value.flatMap(nodes);
+    if (!value || typeof value !== 'object') return [];
+    return [value, ...nodes(value.props?.children)];
+  }
+  const render = () => nodes(IndexedTrades({ slug: SLUG, network: 'testnet', ticker: 'TOK', pair: 'USDC' }));
+  const button = (tree, label) => tree.find(node => node.type === 'Button' && node.props.children === label);
+  const rows = tree => tree.filter(node => node.type === 'IndexedTradeRow');
+  let tree = render();
+  assert.equal(rows(tree).length, 10);
+  assert.equal(button(tree, 'Previous').props.disabled, true);
+  await button(tree, 'Next').props.onClick();
+  tree = render();
+  assert.equal(rows(tree)[0].props.trade.trader, 'wallet-10');
+  assert.equal(fetches, 0);
+  fail = true;
+  await button(tree, 'Next').props.onClick();
+  assert.equal(rows(render())[0].props.trade.trader, 'wallet-10');
+  fail = false;
+  await button(render(), 'Next').props.onClick();
+  tree = render();
+  assert.equal(rows(tree).length, 3);
+  assert.equal(button(tree, 'Next').props.disabled, true);
+  button(tree, 'Previous').props.onClick();
+  assert.equal(rows(render())[0].props.trade.trader, 'wallet-10');
+  data.side = 'buy';
+  assert.equal(rows(render())[0].props.trade.trader, 'wallet-0');
 });
 
 test('trade quantity filters use each response scale and exact BigInt boundaries', () => {
