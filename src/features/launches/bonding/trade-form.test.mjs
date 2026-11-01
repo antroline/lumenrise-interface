@@ -776,13 +776,38 @@ test('compact explorer actions use the selected network and do not dismiss or re
   assert.equal(link.props.onClick, undefined);
 });
 
-test('graduated-pool output and minimum retain nonzero pair atomic units for tiny prices', () => {
+test('receive output stays visible during quote refresh and changes only with the returned amount', () => {
+  const h = harness({ side: 'sell' });
+  function output(amount, isFetching) {
+    const form = h.render({ scales: { asset: 18, pair: 6 }, model: {
+      quote: { gross: amount, creator_fee: 0n, user_amount: amount, amount_received: amount },
+      quoteRead: { isFetching }, pair: 'USDC',
+    } });
+    return elements(form).find(node => node.type === 'output');
+  }
+  const initial = output(1234567n, false);
+  const refreshing = output(1234567n, true);
+  assert.equal(content(initial), content(refreshing));
+  assert.match(content(refreshing), /1\.234/);
+  assert.equal(refreshing.props['aria-busy'], true);
+  assert.ok(!elements(refreshing).some(node => node.props?.['data-slot'] === 'skeleton'));
+  assert.match(content(output(2345678n, false)), /2\.345/);
+});
+
+test('graduated-pool output retains tiny values while minimum received shows three decimals', () => {
   const h = harness({ side: 'sell' });
   const form = h.render({ scales: { asset: 18, pair: 6 }, poolPricing: { label: '0.000204', lpFee: 3000 }, model: {
     amount: 10n ** 18n, quote: { gross: 204n, creator_fee: 0n, user_amount: 204n, amount_received: 204n }, minimumReceived: 202n,
     quoteRead: { isFetching: false }, pair: 'USDC',
   } });
   assert.match(content(elements(form).find(node => node.type === 'output')), /0\.000204/);
-  assert.match(content(form), /0\.000202 USDC/);
+  assert.match(content(form), /0\.000 USDC/);
   assert.match(content(form), /LP fee/);
+  for (const [minimumReceived, expected] of [[1000000n, '1.000 USDC'], [1234567n, '1.234 USDC']]) {
+    const updated = h.render({ scales: { asset: 18, pair: 6 }, poolPricing: { lpFee: 3000 }, model: {
+      quote: { gross: 2000000n, creator_fee: 0n, user_amount: 2000000n, amount_received: 2000000n },
+      minimumReceived, pair: 'USDC',
+    } });
+    assert.ok(content(updated).includes(expected));
+  }
 });

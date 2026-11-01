@@ -18,7 +18,7 @@ import { TradeTooltipText } from '@/features/launches/trading/trade-tooltip';
 import { TradeFeedback } from '@/features/launches/trading/trade-feedback';
 import { TradeTokenPill } from '@/features/launches/trading/trade-token-pill';
 import { TokenLogo } from '@/components/token-logo';
-import { ArrowDownUp, Coins, Wallet } from 'lucide-react';
+import { ArrowDownUp, Coins, Fuel, ShieldCheck, SlidersHorizontal, Wallet } from 'lucide-react';
 import { formatAmount, UNIT } from './contract';
 import { formatBaseAmount, baseExecutionPrice } from '@/lib/base/amount';
 import { friendlyError } from './friendly-trade-error';
@@ -111,6 +111,16 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
       : undefined;
   const price = quotedPrice ?? props.snapshot.price;
   const needed = buying ? limit : amount;
+  const feeValue = props.poolPricing
+    ? `${formatBaseAmount(BigInt(props.poolPricing.lpFee), 4)}%`
+    : quote ? `${formatPair(quote.creator_fee, 3)} ${pair}` : '—';
+  const [minimumWhole, minimumFraction = ''] = minimumReceived === undefined
+    ? [] : formatOutput(minimumReceived, 3).split('.');
+  const minimumValue = quote
+    ? minimumReceived === undefined || limitError
+      ? 'Invalid amount'
+      : `${minimumWhole}.${minimumFraction.padEnd(3, '0')} ${receiveSymbol}`
+    : '—';
 
   const insufficient =
     !!user &&
@@ -259,20 +269,10 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
               aria-busy={quoteLoading}
               className={`flex min-w-0 flex-1 items-center break-words text-2xl font-semibold tabular-nums ${props.poolPricing ? 'min-h-10 [&_span]:min-w-0 [&_span]:break-all' : 'h-10'}`}
             >
-              {quoteLoading ? (
-                <span
-                  aria-hidden="true"
-                  data-slot="skeleton"
-                  className="block h-6 w-28 max-w-full animate-pulse rounded-md bg-foreground/10 motion-reduce:animate-none"
-                />
-              ) : (
-                <>
-                  {received !== undefined && <span aria-hidden="true">≈ </span>}
-                  <TradeValue>
-                    {received === undefined ? '—' : formatQuotedOutput(received)}
-                  </TradeValue>
-                </>
-              )}
+              {received !== undefined && <span aria-hidden="true">≈ </span>}
+              <TradeValue>
+                {received === undefined ? '—' : formatQuotedOutput(received)}
+              </TradeValue>
             </output>
             <TradeTokenPill
               symbol={receiveSymbol}
@@ -385,6 +385,26 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
       <TradeQuoteDetails
         host={props.quoteHost}
         visible={(props.active ?? true) && entry.trim().length > 0}
+        summary={
+          <span className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-xs tabular-nums">
+            <span className="sr-only">Quote details. </span>
+            <span className="flex min-w-0 items-center gap-1.5">
+              <Fuel aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="sr-only">{props.poolPricing ? 'LP fee: ' : 'Fee: '}</span>
+              <span className="break-all">{feeValue}</span>
+            </span>
+            <span className="flex min-w-0 items-center gap-1.5">
+              <ShieldCheck aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="sr-only">Minimum received: </span>
+              <span className="break-all">{minimumValue}</span>
+            </span>
+            <span className="flex min-w-0 items-center gap-1.5">
+              <SlidersHorizontal aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="sr-only">Slippage: </span>
+              <span>{limitError ? 'Invalid amount' : `${slippage}%`}</span>
+            </span>
+          </span>
+        }
       >
         <dl className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-x-3 gap-y-2 text-xs tabular-nums">
           <dt className="text-muted-foreground">
@@ -394,7 +414,7 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
           </dt>
           <dd className="break-words text-right font-medium">
             <TradeValue>
-              {props.poolPricing ? `${formatBaseAmount(BigInt(props.poolPricing.lpFee), 4)}%` : quote ? `${formatPair(quote.creator_fee, 3)} ${pair}` : '—'}
+              {feeValue}
             </TradeValue>
           </dd>
           <dt className="text-muted-foreground">
@@ -410,11 +430,7 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
           </dt>
           <dd className="break-words text-right font-medium">
             <TradeValue>
-              {quote
-                ? minimumReceived === undefined || limitError
-                  ? 'Invalid amount'
-                  : `${props.poolPricing ? formatOutput(minimumReceived) : formatOutput(minimumReceived, 3)} ${receiveSymbol}`
-                : '—'}
+              {minimumValue}
             </TradeValue>
           </dd>
         </dl>

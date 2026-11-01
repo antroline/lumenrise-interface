@@ -60,10 +60,7 @@ function BaseCurveTradeForm(props: Props & { inputs: BaseTradeInputs }) {
 function BasePoolTradeForm(props: Props & { inputs: BaseTradeInputs }) {
   const refresh = useRefreshLaunch(props.launch);
   const trade = useBaseV4TradeForm(props.launch, props.side, props.locked, props.setLocked, refresh, props.inputs, props.active);
-  return <div className="flex min-w-0 flex-col gap-3">
-    <p role="status" className="text-xs text-muted-foreground">Trading on Uniswap V4{trade.model.unavailable ? ' · Preparing pool' : ''}</p>
-    <BaseTradePresentation {...props} trade={trade} />
-  </div>;
+  return <BaseTradePresentation {...props} trade={trade} />;
 }
 function BaseTradePresentation({ launch, side, onFlip, locked, quoteHost, active, trade }: Props & { trade: ReturnType<typeof useBaseTradeForm> & { poolPricing?: ReturnType<typeof useBaseV4TradeForm>['poolPricing'] } }) {
   const knownPair = pairLabel(launch.pair, launch.network);
