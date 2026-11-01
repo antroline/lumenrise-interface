@@ -5,13 +5,13 @@ import { TradeTooltipText } from './trade-tooltip';
 export function IndexedTradeRow({
   trade,
   asOf,
-  amountScale = 7,
-  priceScale = 7,
+  amountScale,
+  priceScale,
 }: {
   trade: Awaited<ReturnType<typeof getTrades>>['items'][number];
   asOf: number;
-  amountScale?: number;
-  priceScale?: number;
+  amountScale: number;
+  priceScale: number;
 }) {
   return (
     <TableRow className="rounded-2xl">
@@ -37,17 +37,10 @@ export function IndexedTradeRow({
         {trade.side === 'buy' ? 'Buy' : 'Sell'}
       </TableCell>
       <TableCell
-        title="Estimate: token amount × average execution price, before fees"
+        title="Recorded pair amount before creator fees."
         className="font-semibold tabular-nums whitespace-nowrap"
       >
-        {displayAmount(
-          (
-            (BigInt(trade.assetAmount) * BigInt(trade.executionPrice)) /
-            (BigInt(10) ** BigInt(amountScale))
-          ).toString(),
-          3,
-          priceScale,
-        )}
+        {displayAmount(trade.grossAmount, undefined, priceScale)}
       </TableCell>
       <TableCell className="tabular-nums">
         {displayAmount(trade.assetAmount, 3, amountScale)}

@@ -25,7 +25,7 @@ const baseConfiguration = {
   },
   features: { registration: true, imageUploads: true, githubConnection: false, xConnection: false },
 };
-const trade = { trader: ADDRESS, tradedAt: DATE, asset: ADDRESS, side: 'buy', assetAmount: '100000000000000000001', executionPrice: '10000001' };
+const trade = { trader: ADDRESS, tradedAt: DATE, asset: ADDRESS, side: 'buy', assetAmount: '100000000000000000001', grossAmount: '2000000000', executionPrice: '10000001' };
 const registered = { registered: true, userId: DID, identityId: 'identity-base', name: 'Alice', avatarUrl: null };
 const response = (result, status = 200, retryAfter) => new Response(JSON.stringify({
   status: status === 202 ? 'pending' : status >= 400 ? 'error' : 'success',

@@ -135,7 +135,7 @@ export function IndexedTrades({
               {[
                 'Time',
                 'Trade',
-                `Value · ${pair} ≈`,
+                `Value · ${pair}`,
                 ticker,
                 `Price · ${pair}`,
               ].map((label) => (
@@ -146,7 +146,7 @@ export function IndexedTrades({
                   <TradeTooltipText
                     content={
                       label.startsWith('Value')
-                        ? 'Estimated payment value: tokens traded × average execution price, before fees.'
+                        ? 'Recorded pair amount before creator fees.'
                         : label.startsWith('Price')
                           ? 'Average execution price for the recorded trade, before fees. This may differ from the current marginal price.'
                           : undefined
@@ -163,8 +163,8 @@ export function IndexedTrades({
               <IndexedTradeRow
                 key={`${trade.trader}:${trade.tradedAt}:${index}`}
                 trade={trade}
-                  amountScale={query.data?.pages[0]?.amountScale}
-                  priceScale={query.data?.pages[0]?.priceScale}
+                amountScale={trade.amountScale}
+                priceScale={trade.priceScale}
                 asOf={asOf}
               />
             ))}

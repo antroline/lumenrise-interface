@@ -175,6 +175,7 @@ export type TradeResult = {
   asset: string;
   side: 'buy' | 'sell';
   assetAmount: string;
+  grossAmount: string;
   executionPrice: string;
 };
 export type TradesResult = {
@@ -201,7 +202,7 @@ function string(v: unknown): string {
 }
 function raw(v: unknown): string {
   const s = string(v);
-  return /^\d+$/.test(s) ? s : invalid();
+  return s.length > 0 && !/\D/.test(s) ? s : invalid();
 }
 function number(v: unknown): number {
   return typeof v === 'number' && Number.isSafeInteger(v) && v >= 0
@@ -230,6 +231,10 @@ function network(v: unknown): ApiNetwork {
 }
 function priceType(v: unknown): 'marginal_before_fee' {
   return v === 'marginal_before_fee' ? v : invalid();
+}
+function tradeScale(v: unknown) {
+  const n = number(v);
+  return n <= 18 ? n : invalid();
 }
 function scale(v: unknown) {
   const n = number(v);
@@ -408,6 +413,7 @@ export function decodeTrade(v: unknown): TradeResult {
     asset: string(t.asset),
     side: t.side,
     assetAmount: raw(t.assetAmount),
+    grossAmount: raw(t.grossAmount),
     executionPrice: raw(t.executionPrice),
   };
 }
@@ -417,8 +423,8 @@ export function decodeTrades(v: unknown): TradesResult {
     items: array(t.items, decodeTrade),
     nextCursor: nullable(t.nextCursor, string),
     pair: string(t.pair),
-    amountScale: scale(t.amountScale),
-    priceScale: scale(t.priceScale),
+    amountScale: tradeScale(t.amountScale),
+    priceScale: tradeScale(t.priceScale),
   };
 }
 const path = (slug: string, n: ApiNetwork, section = '') => {
@@ -647,8 +653,8 @@ export async function recordTrade(
     trade: decodeTrade(r.trade),
     trades: r.trades == null ? [decodeTrade(r.trade)] : array(r.trades, decodeTrade),
     pair: string(r.pair),
-    amountScale: scale(r.amountScale),
-    priceScale: scale(r.priceScale),
+    amountScale: tradeScale(r.amountScale),
+    priceScale: tradeScale(r.priceScale),
   };
 }
 
