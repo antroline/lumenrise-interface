@@ -11,6 +11,8 @@ export type TradeFormProps = {
   tokens: Tokens;
   tokenLogo?: string;
   side: 'buy' | 'sell';
+  /** Swap-style direction switch; the active form clears its amount before calling it. */
+  onFlip?: () => void;
   compact?: boolean;
   quoteHost?: HTMLElement | null;
   active?: boolean;

@@ -38,7 +38,7 @@ export function ProjectMarquee({
     <ul
       aria-hidden={hidden || undefined}
       inert={hidden || undefined}
-      className={cn('flex shrink-0 gap-4 py-2', loops && 'pr-4', hidden && 'motion-reduce:hidden')}
+      className={cn('flex shrink-0 gap-4 py-2', loops && 'sm:pr-4', hidden && 'hidden sm:flex motion-reduce:hidden')}
     >
       {track.map((launch, index) => {
         // Repeats within a copy pad the loop for wide screens; only the first pass is announced.
@@ -48,7 +48,7 @@ export function ProjectMarquee({
             key={`${launch.contractId}-${index}`}
             aria-hidden={(!hidden && repeated) || undefined}
             inert={(!hidden && repeated) || undefined}
-            className={cn(!hidden && repeated && 'motion-reduce:hidden')}
+            className={cn('snap-start', !hidden && repeated && 'hidden sm:block motion-reduce:hidden')}
           >
             <BondingProjectCard launch={launch} href={launchHref(launch, network)} status={launchStatus(launch)} />
           </li>
@@ -72,7 +72,7 @@ export function ProjectMarquee({
               aria-pressed={paused}
               aria-label={paused ? 'Resume project carousel' : 'Pause project carousel'}
               onClick={() => setPaused((value) => !value)}
-              className="motion-reduce:hidden"
+              className="hidden sm:inline-flex motion-reduce:hidden"
             >
               {paused ? <Play /> : <Pause />}
             </Button>
@@ -96,7 +96,7 @@ export function ProjectMarquee({
           className={cn(
             'group/marquee -mx-2 px-2',
             loops
-              ? 'overflow-hidden mask-x-from-92% mask-x-to-100% motion-reduce:overflow-x-auto motion-reduce:mask-none'
+              ? 'snap-x snap-mandatory overflow-x-auto sm:overflow-hidden sm:mask-x-from-98% sm:mask-x-to-100% motion-reduce:overflow-x-auto motion-reduce:mask-none'
               : 'overflow-x-auto',
           )}
         >
@@ -105,7 +105,7 @@ export function ProjectMarquee({
             className={cn(
               'flex w-max',
               loops &&
-                'animate-marquee group-focus-within/marquee:[animation-play-state:paused] group-hover/marquee:[animation-play-state:paused] data-paused:[animation-play-state:paused] motion-reduce:animate-none',
+                'sm:animate-marquee group-focus-within/marquee:[animation-play-state:paused] group-hover/marquee:[animation-play-state:paused] data-paused:[animation-play-state:paused] motion-reduce:animate-none',
             )}
             style={loops ? { animationDuration: `${track.length * SECONDS_PER_CARD}s` } : undefined}
           >

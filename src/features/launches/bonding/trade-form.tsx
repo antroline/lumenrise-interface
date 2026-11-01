@@ -16,7 +16,9 @@ import { TradeQuoteDetails } from '@/features/launches/trading/trade-quote-detai
 import { TradeValue } from '@/features/launches/trading/trade-value';
 import { TradeTooltipText } from '@/features/launches/trading/trade-tooltip';
 import { TradeFeedback } from '@/features/launches/trading/trade-feedback';
-import { Wallet } from 'lucide-react';
+import { TradeTokenPill } from '@/features/launches/trading/trade-token-pill';
+import { TokenLogo } from '@/components/token-logo';
+import { ArrowDownUp, Coins, Wallet } from 'lucide-react';
 import { formatAmount, UNIT } from './contract';
 import { formatBaseAmount, baseExecutionPrice } from '@/lib/base/amount';
 import { friendlyError } from './friendly-trade-error';
@@ -31,11 +33,11 @@ export type TradeFormModel = Omit<ReturnType<typeof useTradeForm>, 'user' | 'quo
   quote: (NonNullable<ReturnType<typeof useTradeForm>['quote']> & { amount_received?: bigint }) | undefined;
   quoteRead: { isFetching: boolean; error: unknown };
 };
-export type TradeViewProps = Pick<TradeFormProps, 'slug' | 'address' | 'network' | 'side' | 'locked' | 'balances' | 'balanceStatus' | 'quoteHost' | 'active' | 'tokenLogo'> & {
+export type TradeViewProps = Pick<TradeFormProps, 'slug' | 'address' | 'network' | 'side' | 'locked' | 'balances' | 'balanceStatus' | 'quoteHost' | 'active' | 'tokenLogo' | 'onFlip'> & {
   tokens: Pick<TradeFormProps['tokens'], 'assetSymbol'>;
   snapshot: { price: bigint | undefined };
 };
-export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; scales?: { asset: number; pair: number } }) {
+export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; scales?: { asset: number; pair: number }; poolPricing?: { label?: string; lpFee: number } }) {
   const { tokens, side, locked, balances, scales } = props;
   const formatInput = (value: bigint) => scales ? formatBaseAmount(value, side === 'buy' ? scales.pair : scales.asset) : formatAmount(value);
   const formatOutput = (value: bigint, precision?: Parameters<typeof formatAmount>[1]) => scales ? formatBaseAmount(value, side === 'buy' ? scales.asset : scales.pair, precision) : formatAmount(value, precision);
@@ -79,6 +81,22 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
   const paySymbol = buying ? pair : tokens.assetSymbol;
 
   const receiveSymbol = buying ? tokens.assetSymbol : pair;
+  const pairMark =
+    pair === 'USDC' ? (
+      <img src="/tokens/usdc.svg" alt="" aria-hidden="true" className="size-5 shrink-0 rounded-full" />
+    ) : pair === 'XLM' ? (
+      <img src="/tokens/xlm.svg" alt="" aria-hidden="true" className="size-5 shrink-0 rounded-full" />
+    ) : (
+      <Coins aria-hidden="true" className="size-5 shrink-0" />
+    );
+  const tokenMark = (
+    <TokenLogo
+      logo={props.tokenLogo}
+      name={tokens.assetSymbol}
+      seed={props.address}
+      size={20}
+    />
+  );
   const available = buying ? balances?.pairHeld : sellable;
   const received = quote ? (scales ? quote.amount_received : buying ? amount : quote.user_amount) : undefined;
   const quoteLoading = quoteRead.isFetching && entry.trim().length > 0;
@@ -111,61 +129,53 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
       onSubmit={submit}
       className="relative flex min-w-0 flex-col gap-2"
     >
-      <div
-        className="absolute -top-[46px] right-0 flex h-9 items-center gap-1"
-        aria-label="Use a percentage of your available balance"
-      >
-        {[25, 50, 75, 100].map((percent) => (
-          <Button
-            key={percent}
-            data-trade-control=""
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 rounded-md bg-secondary px-2 text-[11px] font-medium tabular-nums"
-            disabled={
-              locked ||
-              !permitted ||
-              available === undefined ||
-              available <= BigInt(0)
-            }
-            onClick={() => {
-              if (available !== undefined)
-                setEntry(
-                  formatInput((available * BigInt(percent)) / BigInt(100)),
-                );
-            }}
-          >
-            {`${percent}%`}
-          </Button>
-        ))}
-      </div>
       <FieldGroup>
         <Field
           data-trade-input=""
           data-invalid={!!inputError}
-          className="gap-1 rounded-lg bg-muted px-3 py-2"
+          className="gap-1.5 rounded-xl bg-muted px-3 py-2.5"
         >
           <div className="flex min-w-0 items-center justify-between gap-3">
             <FieldLabel
               htmlFor={`${side}-amount`}
               className="text-[11px] font-medium text-muted-foreground"
             >
-              <span className="inline-flex items-center gap-1.5">
-                Amount · {paySymbol}
-                {scales && buying && pair === 'USDC' && <img src="/tokens/usdc.svg" alt="" aria-hidden="true" className="size-4 shrink-0" />}
-              </span>
+              From
             </FieldLabel>
-            <span className="text-[10px] text-muted-foreground">
-              <TradeTooltipText content="Estimated tokens or payment asset you receive for this amount, based on the current contract quote. The final amount is subject to slippage.">
-                Est. receive
-              </TradeTooltipText>
-            </span>
+            <div
+              className="flex items-center gap-0.5"
+              aria-label="Use a percentage of your available balance"
+            >
+              {[25, 50, 75, 100].map((percent) => (
+                <Button
+                  key={percent}
+                  data-trade-control=""
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  className="px-1.5 tabular-nums"
+                  disabled={
+                    locked ||
+                    !permitted ||
+                    available === undefined ||
+                    available <= BigInt(0)
+                  }
+                  onClick={() => {
+                    if (available !== undefined)
+                      setEntry(
+                        formatInput((available * BigInt(percent)) / BigInt(100)),
+                      );
+                  }}
+                >
+                  {percent === 100 ? 'Max' : `${percent}%`}
+                </Button>
+              ))}
+            </div>
           </div>
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
             <InputGroup
               dir="ltr"
-              className="h-9 min-w-0 border-0 bg-transparent shadow-none has-disabled:bg-transparent has-[[data-slot=input-group-control]:focus-visible]:border-transparent has-[[data-slot=input-group-control]:focus-visible]:ring-0"
+              className="h-10 min-w-0 flex-1 border-0 bg-transparent shadow-none has-disabled:bg-transparent has-[[data-slot=input-group-control]:focus-visible]:border-transparent has-[[data-slot=input-group-control]:focus-visible]:ring-0"
             >
               <InputGroupInput
                 id={`${side}-amount`}
@@ -174,7 +184,7 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
                     ? `Amount to pay in ${pair}`
                     : `Sell amount in ${tokens.assetSymbol}`
                 }
-                className="h-8 min-w-0 border-0 bg-transparent px-0 text-lg font-semibold tabular-nums"
+                className="h-10 min-w-0 border-0 bg-transparent px-0 text-2xl font-semibold tabular-nums"
                 inputMode="decimal"
                 autoComplete="off"
                 value={entry}
@@ -184,32 +194,10 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
                 placeholder="0.00"
               />
             </InputGroup>
-            <output
-              id={`${side}-receive`}
-              htmlFor={`${side}-amount`}
-              aria-label={`Estimated ${receiveSymbol} received`}
-              aria-busy={quoteLoading}
-              className="min-w-0 break-words text-right text-[13px] leading-5 font-medium text-muted-foreground tabular-nums"
-            >
-              {quoteLoading ? (
-                <span
-                  aria-hidden="true"
-                  data-slot="skeleton"
-                  className="ml-auto block h-5 w-28 max-w-full animate-pulse rounded-md bg-foreground/10 motion-reduce:animate-none"
-                />
-              ) : (
-                <>
-                  {received !== undefined && <span aria-hidden="true">≈ </span>}
-                  <TradeValue>
-                    {received === undefined ? '—' : formatOutput(received, 3)}
-                  </TradeValue>{' '}
-                  <span className="inline-flex items-center gap-1">
-                    {scales && !buying && pair === 'USDC' && <img src="/tokens/usdc.svg" alt="" aria-hidden="true" className="size-4 shrink-0" />}
-                    {receiveSymbol}
-                  </span>
-                </>
-              )}
-            </output>
+            <TradeTokenPill
+              symbol={paySymbol}
+              mark={buying ? pairMark : tokenMark}
+            />
           </div>
           {inputError && (
             <p role="alert" className="text-xs text-destructive">
@@ -219,11 +207,84 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
         </Field>
       </FieldGroup>
 
+      {props.onFlip && (
+        <div className="relative z-10 -my-3.5 flex justify-center">
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon-sm"
+            data-trade-control=""
+            className="rounded-full border-4 border-card shadow-none"
+            disabled={locked}
+            aria-label={
+              buying
+                ? `Swap direction to sell ${tokens.assetSymbol}`
+                : `Swap direction to buy ${tokens.assetSymbol}`
+            }
+            title={buying ? `Sell ${tokens.assetSymbol}` : `Buy ${tokens.assetSymbol}`}
+            onClick={() => {
+              setEntry('');
+              props.onFlip?.();
+            }}
+          >
+            <ArrowDownUp aria-hidden="true" className="size-4" />
+          </Button>
+        </div>
+      )}
+
+      <FieldGroup>
+        <Field
+          data-trade-input=""
+          className="gap-1.5 rounded-xl bg-muted px-3 py-2.5"
+        >
+          <div className="flex min-w-0 items-center justify-between gap-3">
+            <span className="text-[11px] font-medium text-muted-foreground">
+              To
+            </span>
+            <span className="text-[10px] text-muted-foreground">
+              <TradeTooltipText content="Estimated tokens or payment asset you receive for this amount, based on the current contract quote. The final amount is subject to slippage.">
+                Estimated
+              </TradeTooltipText>
+            </span>
+          </div>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <output
+              id={`${side}-receive`}
+              htmlFor={`${side}-amount`}
+              aria-label={`Estimated ${receiveSymbol} received`}
+              aria-busy={quoteLoading}
+              className="flex h-10 min-w-0 flex-1 items-center break-words text-2xl font-semibold tabular-nums"
+            >
+              {quoteLoading ? (
+                <span
+                  aria-hidden="true"
+                  data-slot="skeleton"
+                  className="block h-6 w-28 max-w-full animate-pulse rounded-md bg-foreground/10 motion-reduce:animate-none"
+                />
+              ) : (
+                <>
+                  {received !== undefined && <span aria-hidden="true">≈ </span>}
+                  <TradeValue>
+                    {received === undefined ? '—' : formatOutput(received, 3)}
+                  </TradeValue>
+                </>
+              )}
+            </output>
+            <TradeTokenPill
+              symbol={receiveSymbol}
+              mark={buying ? tokenMark : pairMark}
+            />
+          </div>
+        </Field>
+      </FieldGroup>
+
       <dl className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-baseline gap-3 text-xs">
         <dt className="text-muted-foreground">
           <TradeTooltipText
             content={
-              quotedPrice === undefined
+              props.poolPricing
+                ? quote ? 'Average Uniswap V4 execution price, including pool fees. Network gas is separate.' : 'Current Uniswap V4 pool price before swap fees. Network gas is separate.'
+                : quotedPrice === undefined
                 ? 'Current contract price per token, before creator and network fees.'
                 : scales ? 'Average execution price before creator fees. Network gas is separate.' : 'Average price per token for this quote, including the creator fee. Network fees are separate.'
             }
@@ -233,7 +294,7 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
         </dt>
         <dd className="min-w-0 break-words text-right font-medium tabular-nums">
           <TradeValue>
-            {`1 ${tokens.assetSymbol} ≈ ${price === undefined ? '—' : formatPair(price)} ${pair}`}
+            {`1 ${tokens.assetSymbol} ≈ ${props.poolPricing ? props.poolPricing.label ?? '—' : price === undefined ? '—' : formatPair(price)} ${pair}`}
           </TradeValue>
         </dd>
       </dl>
@@ -257,7 +318,7 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
       </TradeFeedback>
 
       <Button
-        className="h-10 w-full rounded-lg text-sm font-semibold disabled:bg-secondary disabled:text-muted-foreground disabled:opacity-100"
+        className="h-12 w-full rounded-xl font-semibold disabled:text-muted-foreground disabled:opacity-100"
         type={user ? 'submit' : 'button'}
         onClick={() => {
           if (!user)
@@ -323,13 +384,13 @@ export function TradeFormView(props: TradeViewProps & { model: TradeFormModel; s
       >
         <dl className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-x-3 gap-y-2 text-xs tabular-nums">
           <dt className="text-muted-foreground">
-            <TradeTooltipText content="The creator fee returned by the contract quote. Already included in the quoted payment; network fees are separate.">
-              Fee · included
+            <TradeTooltipText content={props.poolPricing ? 'The pool liquidity-provider fee. Pool and any protocol fees are included in the Uniswap quote; network gas is separate.' : 'The creator fee returned by the contract quote. Already included in the quoted payment; network fees are separate.'}>
+              {props.poolPricing ? 'LP fee · included' : 'Fee · included'}
             </TradeTooltipText>
           </dt>
           <dd className="break-words text-right font-medium">
             <TradeValue>
-              {quote ? `${formatPair(quote.creator_fee, 3)} ${pair}` : '—'}
+              {props.poolPricing ? `${formatBaseAmount(BigInt(props.poolPricing.lpFee), 4)}%` : quote ? `${formatPair(quote.creator_fee, 3)} ${pair}` : '—'}
             </TradeValue>
           </dd>
           <dt className="text-muted-foreground">

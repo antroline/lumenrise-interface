@@ -18,8 +18,8 @@ import {
 import { TradeForm } from './trade-form';
 import { useWalletBalances } from './use-wallet-balances';
 import { ApiError, getApiChain, getApiNetwork } from '@/lib/api/client';
-import { BASE_MAINNET_BLOCK_REASON } from '@/lib/base/deployment';
 import { BaseTradeForm } from '@/features/base';
+import { BasePoolTable } from '@/features/base/components/base-pool-table';
 import { useConfiguration } from '@/lib/configuration';
 import {
   launchKey,
@@ -57,9 +57,10 @@ function IndexedBondingCurvePage({ slug, network = getApiNetwork() }: { slug: st
   return <IndexedLaunchOverview
     address={address} network={network} launch={indexed.data} loading={indexed.isPending}
     feedback={indexed.isError ? <p role="alert">{indexed.error.message} <Button variant="outline" onClick={() => void indexed.refetch()}>Retry</Button></p> : null}
-    buy={network === 'testnet' && configuration.auth.appId && indexed.data ? (quoteHost, active) => <BaseTradeForm launch={indexed.data!} side="buy" locked={locked} setLocked={setLocked} quoteHost={quoteHost} active={active} /> : null}
-    sell={network === 'testnet' && configuration.auth.appId && indexed.data ? (quoteHost, active) => <BaseTradeForm launch={indexed.data!} side="sell" locked={locked} setLocked={setLocked} quoteHost={quoteHost} active={active} /> : null}
-    walletFeedback={network === 'public' ? <p>{BASE_MAINNET_BLOCK_REASON}</p> : !configuration.auth.appId ? <p>Base sign-in is not configured by the server. Public browsing remains available.</p> : null}
+    buy={configuration.auth.appId && indexed.data ? (quoteHost, active, flip) => <BaseTradeForm launch={indexed.data!} side="buy" onFlip={flip} locked={locked} setLocked={setLocked} quoteHost={quoteHost} active={active} /> : null}
+    sell={configuration.auth.appId && indexed.data ? (quoteHost, active, flip) => <BaseTradeForm launch={indexed.data!} side="sell" onFlip={flip} locked={locked} setLocked={setLocked} quoteHost={quoteHost} active={active} /> : null}
+    walletFeedback={!configuration.auth.appId ? <p>Base sign-in is not configured by the server. Public browsing remains available.</p> : null}
+    pool={indexed.data ? <BasePoolTable launch={indexed.data} /> : undefined}
   >
     <BondingTechnicalDetails address={address} network={network} launch={indexed.data} loading={indexed.isPending} />
   </IndexedLaunchOverview>;
@@ -269,7 +270,7 @@ function StellarBondingCurvePage({
     ) : null;
   const buyForm =
     snapshot && tokens
-      ? (quoteHost: HTMLElement | null, active: boolean) => (
+      ? (quoteHost: HTMLElement | null, active: boolean, flip: () => void) => (
         <TradeForm
           key={`buy:${owner ?? 'disconnected'}`}
           slug={indexed.data?.slug ?? undefined}
@@ -279,6 +280,7 @@ function StellarBondingCurvePage({
           tokens={tokens}
           tokenLogo={indexed.data?.metadata.logo}
           side="buy"
+          onFlip={flip}
           quoteHost={quoteHost}
           active={active}
           compact
@@ -292,7 +294,7 @@ function StellarBondingCurvePage({
       : null;
   const sellForm =
     snapshot && tokens
-      ? (quoteHost: HTMLElement | null, active: boolean) => (
+      ? (quoteHost: HTMLElement | null, active: boolean, flip: () => void) => (
         <TradeForm
           key={`sell:${owner ?? 'disconnected'}`}
           slug={indexed.data?.slug ?? undefined}
@@ -302,6 +304,7 @@ function StellarBondingCurvePage({
           tokens={tokens}
           tokenLogo={indexed.data?.metadata.logo}
           side="sell"
+          onFlip={flip}
           quoteHost={quoteHost}
           active={active}
           compact

@@ -14,6 +14,18 @@ const bricolage = localFont({
   display: 'swap',
 })
 
+const barlow = localFont({
+  src: [
+    { path: '../../public/fonts/BarlowSemiCondensed-Regular.ttf', weight: '400' },
+    { path: '../../public/fonts/BarlowSemiCondensed-Medium.ttf', weight: '500' },
+    { path: '../../public/fonts/BarlowSemiCondensed-SemiBold.ttf', weight: '600' },
+    { path: '../../public/fonts/BarlowSemiCondensed-Bold.ttf', weight: '700' },
+  ],
+  variable: '--font-barlow',
+  display: 'swap',
+  preload: false,
+})
+
 export const metadata: Metadata = {
   title: {
     default: 'LumenRise — Identity, reputation, and launch infrastructure for Stellar',
@@ -39,7 +51,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${bricolage.variable} font-sans`}
+      className={`${bricolage.variable} ${barlow.variable} font-sans`}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >

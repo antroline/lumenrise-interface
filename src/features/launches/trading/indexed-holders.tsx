@@ -86,7 +86,7 @@ export function IndexedHolders({
                   size={20}
                   className="shrink-0 rounded-full"
                 />
-                <span className="truncate text-[11px] text-muted-foreground">
+                <span className="truncate font-mono text-[11px] text-muted-foreground">
                   <TradeTooltipText content={holder.address}>
                     {holder.address.slice(0, 4)}…{holder.address.slice(-4)}
                   </TradeTooltipText>

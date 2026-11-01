@@ -329,13 +329,13 @@ test('initial wallet reads show accessible skeletons without unavailable message
 test('buy shows only USDC and keeps presets available when the project token has no trustline', () => {
   const h = harness({ paymentAsset: new Asset('USDC', owner), balances: { pairHeld: 123456789n }, balanceStatus: { held: 'error', pairHeld: 'ready', position: 'error' } });
   assert.equal(walletContent(h.form), 'Balance: 12.346 USDC');
-  assert.equal(elements(h.form).find(node => node.type === 'Button' && node.props.children === '100%').props.disabled, false);
+  assert.equal(elements(h.form).find(node => node.type === 'Button' && node.props.children === 'Max').props.disabled, false);
 });
 
 test('sell shows only its unavailable sellable balance and disables sell presets', () => {
   const h = harness({ side: 'sell', balances: { held: 20000000n, pairHeld: 30000000n }, balanceStatus: { held: 'ready', pairHeld: 'ready', position: 'error' } });
   assert.equal(walletContent(h.form), 'Sellable balance unavailable');
-  assert.equal(elements(h.form).find(node => node.type === 'Button' && node.props.children === '100%').props.disabled, true);
+  assert.equal(elements(h.form).find(node => node.type === 'Button' && node.props.children === 'Max').props.disabled, true);
 });
 
 test('failed refreshes keep values visible with an outdated label and no new retry button', () => {
@@ -381,7 +381,7 @@ test('balance presets retain exact stroops on both sides', () => {
   for (const side of ['buy', 'sell']) {
     for (const [percent, expected] of [[25, '3.0864197'], [50, '6.1728394'], [75, '9.2592591'], [100, '12.3456789']]) {
       const h = harness({ side, balances: { held: 123456790n, position: 123456789n, pairHeld: 123456789n } });
-      const preset = elements(h.form).find(node => node.type === 'Button' && node.props.children === percent + '%');
+      const preset = elements(h.form).find(node => node.type === 'Button' && node.props.children === (percent === 100 ? 'Max' : percent + '%'));
       assert.equal(preset.props.disabled, false);
       preset.props.onClick();
       assert.ok(h.states.includes(expected), side + ' ' + percent + '% must round down in raw units');
@@ -391,7 +391,7 @@ test('balance presets retain exact stroops on both sides', () => {
 
 test('100% USDC buy caps payment at 1.11 and applies 1% slippage to tokens received', async () => {
   const h = harness({ paymentAsset: new Asset('USDC', owner), entry: '1.11', slippage: '1', balances: { pairHeld: 11100000n }, walletBalance: 11100000n, feeBps: 100n });
-  const preset = elements(h.form).find(node => node.type === 'Button' && node.props.children === '100%');
+  const preset = elements(h.form).find(node => node.type === 'Button' && node.props.children === 'Max');
   preset.props.onClick();
   assert.ok(h.states.includes('1.11'));
   const action = elements(h.form).find(node => node.type === 'Button' && node.props.type === 'submit');
@@ -451,7 +451,7 @@ test('buy rejects an entered amount above the available USDC balance', async () 
 test('100% sell uses the lesser of held tokens and eligible curve purchases without losing stroops', () => {
   for (const [held, position] of [[90071992547409930n, 90071992547409931n], [90071992547409931n, 90071992547409930n]]) {
     const h = harness({ side: 'sell', balances: { held, position, pairHeld: 0n } });
-    const max = elements(h.form).find(node => node.type === 'Button' && node.props.children === '100%');
+    const max = elements(h.form).find(node => node.type === 'Button' && node.props.children === 'Max');
     assert.equal(max.props.disabled, false);
     max.props.onClick();
     assert.ok(h.states.includes('9007199254.740993'));

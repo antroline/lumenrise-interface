@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react';
 import { useBalance, useBytecode, useEstimateGas, useEstimateFeesPerGas, useConnection, useReadContract, useSimulateContract, useSwitchChain, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { encodeFunctionData, erc20Abi, isAddress, type Hash, type TransactionReceipt } from 'viem';
 import { useLaunchpad } from '@/lib/launchpad';
@@ -15,8 +15,9 @@ import type { TradeFormModel } from '@/features/launches';
 import { useBaseLaunchReads } from './use-base-launch-reads';
 
 const activeTrades = new Set<string>();
+export type BaseTradeInputs = { entry: string; setEntry: Dispatch<SetStateAction<string>>; limitEntry: string; setLimitEntry: Dispatch<SetStateAction<string>> };
 
-export function useBaseTradeForm(launch: LaunchResult, side: 'buy' | 'sell', locked: boolean, setLocked: (locked: boolean) => void, refresh: () => Promise<void>) {
+export function useBaseTradeForm(launch: LaunchResult, side: 'buy' | 'sell', locked: boolean, setLocked: (locked: boolean) => void, refresh: () => Promise<void>, inputs?: BaseTradeInputs) {
   const { address, account, accountReady, baseSigningSupported } = useLaunchpad();
   const connection = useConnection();
   const { switchChainAsync } = useSwitchChain();
@@ -28,8 +29,9 @@ export function useBaseTradeForm(launch: LaunchResult, side: 'buy' | 'sell', loc
   const live = useBaseLaunchReads(launch, scopeKey);
   const { chainId, asset, pair, curve } = live;
   const buying = side === 'buy';
-  const [entry, setEntry] = useState('');
-  const [limitEntry, setLimitEntry] = useState('');
+  const [localEntry, setLocalEntry] = useState('');
+  const [localLimit, setLocalLimit] = useState('');
+  const { entry, setEntry, limitEntry, setLimitEntry } = inputs ?? { entry: localEntry, setEntry: setLocalEntry, limitEntry: localLimit, setLimitEntry: setLocalLimit };
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');

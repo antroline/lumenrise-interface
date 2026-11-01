@@ -3,6 +3,43 @@
 @import 'shadcn/tailwind.css';
 @import './brand-colors.css';
 
+/* Limit this face to digits so mixed text keeps the brand's body font. */
+@font-face {
+  font-family: 'LumenRise Numerals';
+  src: url('/fonts/BarlowSemiCondensed-Regular.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0030-0039;
+}
+
+@font-face {
+  font-family: 'LumenRise Numerals';
+  src: url('/fonts/BarlowSemiCondensed-Medium.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  unicode-range: U+0030-0039;
+}
+
+@font-face {
+  font-family: 'LumenRise Numerals';
+  src: url('/fonts/BarlowSemiCondensed-SemiBold.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  unicode-range: U+0030-0039;
+}
+
+@font-face {
+  font-family: 'LumenRise Numerals';
+  src: url('/fonts/BarlowSemiCondensed-Bold.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  unicode-range: U+0030-0039;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /* Short viewports: compact density for tall sticky UI like the create stepper. */
@@ -17,8 +54,8 @@
 
 @theme {
   --font-sans:
-    var(--font-bricolage), Inter, ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-sans);
+    'LumenRise Numerals', var(--font-bricolage), Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-barlow), var(--font-sans);
   --font-heading: var(--font-sans);
 
   /* Brand constants: identical in light and dark. The official brand lime is
@@ -102,6 +139,8 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-faint: var(--faint);
+  /* Ghost hover sits one step below the resting secondary fill in both themes. */
+  --color-ghost-hover: color-mix(in srgb, var(--secondary) 50%, transparent);
   /* Soft surfaces, controls, and their supporting colors. */
   --color-soft-background: var(--soft-background);
   --color-soft-foreground: var(--soft-foreground);
@@ -213,7 +252,7 @@
   --warn-soft: var(--lr-warn-soft);
   --bad: var(--lr-bad);
   --bad-soft: var(--lr-bad-soft);
-  --bad-line: color-mix(in srgb, var(--bad) 24%, var(--background));
+  --bad-line: color-mix(in srgb, var(--bad) 40%, var(--background));
   --info: var(--lr-info);
   --info-soft: var(--lr-info-soft);
 
@@ -290,7 +329,7 @@
   --warn-soft: var(--lr-warn-soft);
   --bad: var(--lr-bad);
   --bad-soft: var(--lr-bad-soft);
-  --bad-line: color-mix(in srgb, var(--bad) 35%, transparent);
+  --bad-line: color-mix(in srgb, var(--bad) 50%, transparent);
   --info: var(--lr-info);
   --info-soft: var(--lr-info-soft);
 
@@ -494,7 +533,7 @@
 
 /* Uppercase caption used for field labels, table heads and nav groups. */
 @utility caps {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: var(--text-2xs);
   font-weight: 500;
   letter-spacing: var(--tracking-caps);
@@ -755,8 +794,7 @@
 
 @media (hover: hover) {
   .trade-panel-neutral
-    [data-trade-control]:not(:disabled):not([aria-disabled='true']):hover,
-  .trade-panel-neutral [data-slot='tabs-trigger']:not([data-active]):hover {
+    [data-trade-control]:not(:disabled):not([aria-disabled='true']):hover {
     background-color: var(--trade-control-hover);
   }
 }
