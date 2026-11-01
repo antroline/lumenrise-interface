@@ -28,6 +28,7 @@ export function LaunchActionCard({
   trade,
   walletFeedback,
   loading,
+  description = 'Buy or sell on the bonding curve.',
 }: {
   identity: ReactNode;
   name: string;
@@ -36,6 +37,7 @@ export function LaunchActionCard({
   trade?: ReactNode;
   walletFeedback?: ReactNode;
   loading: boolean;
+  description?: string;
 }) {
   const wide = useWideLayout();
   const [open, setOpen] = useState(false);
@@ -108,7 +110,7 @@ export function LaunchActionCard({
               <div className="px-4 pt-4 pr-12 sm:px-5 sm:pt-5 sm:pr-12">
                 <SheetTitle>Trade {name}</SheetTitle>
                 <SheetDescription>
-                  Buy or sell on the bonding curve.
+                  {description}
                 </SheetDescription>
               </div>
               {form}

@@ -2,7 +2,7 @@ import { ApiError } from '../client';
 import { getTrades } from './market';
 import type { ApiNetwork } from './types';
 
-/** Rank the complete recorded history using the same estimated pair value as Activity. */
+/** Rank the complete recorded history using recorded pair amounts before creator fees. */
 export async function getTopTraders(
   slug: string,
   network: ApiNetwork,
@@ -12,7 +12,7 @@ export async function getTopTraders(
   const cursors = new Set<string>();
   let cursor: string | null = null;
   let pair: string | undefined;
-  let priceScale = 7;
+  let priceScale: number | undefined;
   do {
     signal?.throwIfAborted();
     const page = await getTrades(slug, network, { limit: 100, cursor: cursor ?? undefined }, signal);
@@ -23,8 +23,7 @@ export async function getTopTraders(
     priceScale = page.priceScale;
     for (const trade of page.items) {
       const total = traders.get(trade.trader) ?? { buy: BigInt(0), sell: BigInt(0), count: 0 };
-      // Keep the full product until display conversion, including sub-stroop estimates.
-      total[trade.side] += BigInt(trade.assetAmount) * BigInt(trade.executionPrice);
+      total[trade.side] += BigInt(trade.grossAmount);
       total.count += 1;
       traders.set(trade.trader, total);
     }
@@ -35,7 +34,6 @@ export async function getTopTraders(
     cursor = page.nextCursor;
   } while (cursor !== null);
 
-  const priceUnit = BigInt(10) ** BigInt(priceScale);
   const items = [...traders.entries()]
     .sort(([a, left], [b, right]) => {
       const leftVolume = left.buy + left.sell, rightVolume = right.buy + right.sell;
@@ -44,10 +42,10 @@ export async function getTopTraders(
     .slice(0, 10)
     .map(([trader, total]) => ({
       trader,
-      buyVolume: (total.buy / priceUnit).toString(),
-      sellVolume: (total.sell / priceUnit).toString(),
-      volume: ((total.buy + total.sell) / priceUnit).toString(),
+      buyVolume: total.buy.toString(),
+      sellVolume: total.sell.toString(),
+      volume: (total.buy + total.sell).toString(),
       tradeCount: total.count,
     }));
-  return { pair, items };
+  return { pair, priceScale, items };
 }

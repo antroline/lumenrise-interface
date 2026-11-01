@@ -25,7 +25,7 @@ const baseConfiguration = {
   },
   features: { registration: true, imageUploads: true, githubConnection: false, xConnection: false },
 };
-const trade = { trader: ADDRESS, tradedAt: DATE, asset: ADDRESS, side: 'buy', assetAmount: '100000000000000000001', executionPrice: '10000001' };
+const trade = { trader: ADDRESS, tradedAt: DATE, asset: ADDRESS, side: 'buy', assetAmount: '100000000000000000001', grossAmount: '2000000000', executionPrice: '10000001' };
 const registered = { registered: true, userId: DID, identityId: 'identity-base', name: 'Alice', avatarUrl: null };
 const response = (result, status = 200, retryAfter) => new Response(JSON.stringify({
   status: status === 202 ? 'pending' : status >= 400 ? 'error' : 'success',
@@ -399,4 +399,35 @@ test('a repaired Base slug recovers by persisted contract identity in the origin
   assert.equal(recorded, 1); assert.equal(queue.readTradeQueue().length, 0);
   assert.ok(h.calls.some(call => call.url.includes('/token-repaired/trades')));
   for (const call of h.calls) assert.equal(call.init.headers['X-Chain'], 'base');
+});
+
+test('Base launch snapshots preserve graduation integers and pool state without floating point', () => {
+  const h = harness(), api = h.load('lib/api/launches/market.ts');
+  const graduationState = { settled: true, pool_id: HASH, token_id: '900719925474099312345', liquidity: '340490822233631430', asset_deposited: '18954085201000000000000000',
+    pair_deposited: '2000000000', creator_payout: '0', platform_fee: '0', asset_dust: '0', pair_dust: '0' };
+  const pool = { poolId: HASH, poolManager: ADDRESS, stateView: ADDRESS, positionManager: ADDRESS, currency0: ADDRESS, currency1: ADDRESS,
+    fee: 3000, tickSpacing: 60, hooks: '0x' + '0'.repeat(40), sqrtPriceX96: '5505400448681967349566181336224857653', tick: -123, protocolFee: 0, swapFee: 3000, liquidity: '123456789012345678901' };
+  const launch = { network: 'testnet', factoryContractId: ADDRESS, factoryIndex: '1', slug: 'pool-token', contractId: ADDRESS, owner: ADDRESS, asset: ADDRESS, pair: ADDRESS,
+    assetDecimals: 18, pairDecimals: 6, metadata: { name: 'Token', symbol: 'TOK', description: '', logo: '' }, config: {}, state: { graduated: true }, bonding: null,
+    asOfLedger: 1, observedAt: DATE, createdAt: DATE, creationLedger: 1, creationTransactionHash: HASH, stateAsOfLedger: 2, stateObservedAt: DATE, graduationState, pool };
+  const decoded = api.decodeLaunch(launch);
+  assert.deepEqual(JSON.parse(JSON.stringify(decoded.graduationState)), graduationState);
+  assert.deepEqual(JSON.parse(JSON.stringify(decoded.pool)), pool);
+  assert.equal(decoded.stateAsOfLedger, 2);
+  assert.equal(api.decodeLaunch({ ...launch, pool: null, graduationState: null }).pool, null);
+  for (const patch of [{ token_id: 123 }, { settled: 'true' }, { liquidity: '-1' }, { pool_id: 'bad' }, { pair_dust: '1\n' }])
+    assert.throws(() => api.decodeLaunch({ ...launch, graduationState: { ...graduationState, ...patch } }), { code: 'invalid-response' });
+  for (const patch of [{ sqrtPriceX96: 123 }, { tick: 1.5 }, { liquidity: '-1' }, { currency0: 'bad' }, { poolId: 'bad' }])
+    assert.throws(() => api.decodeLaunch({ ...launch, pool: { ...pool, ...patch } }), { code: 'invalid-response' });
+});
+
+test('Base config validates the new per-network Uniswap deployments and retains them', () => {
+  const h = harness(), api = h.load('lib/api/config.ts');
+  const config = structuredClone(baseConfiguration);
+  for (const network of ['testnet', 'public']) config.network.configurations[network].uniswapV4 = { poolManager: ADDRESS, stateView: ADDRESS, positionManager: ADDRESS };
+  assert.equal(api.decodeConfiguration(config, 'base').network.configurations.public.uniswapV4.poolManager, ADDRESS);
+  for (const key of ['poolManager', 'stateView', 'positionManager']) for (const invalid of [undefined, '', '0x' + '0'.repeat(40), 123, 'bad']) {
+    const broken = structuredClone(config); broken.network.configurations.testnet.uniswapV4[key] = invalid;
+    assert.throws(() => api.decodeConfiguration(broken, 'base'), { code: 'invalid-response' });
+  }
 });

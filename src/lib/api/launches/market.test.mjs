@@ -70,6 +70,7 @@ const trade = {
   asset: ASSET,
   side: 'buy',
   assetAmount: '9223372036854775807',
+  grossAmount: '9223372036854775807',
   executionPrice: '10000001',
 };
 const recorded = { trade, pair: PAIR, amountScale: 7, priceScale: 7 };
@@ -268,7 +269,7 @@ test('all public GETs carry explicit network and no account header; list uses pa
     'opaque/+==',
   );
 });
-test('decoders retain null, exact large amounts and six trade fields', () => {
+test('decoders retain null, exact large amounts and seven trade fields', () => {
   const h = harness();
   assert.equal(h.api.decodeLaunch(launch).bonding, null);
   assert.equal(h.api.decodeMarket(market).currentPrice, null);
@@ -280,7 +281,7 @@ test('decoders retain null, exact large amounts and six trade fields', () => {
     Object.keys(
       h.api.decodeTrade({ ...trade, transactionHash: 'not-in-contract' }),
     ),
-    ['trader', 'tradedAt', 'asset', 'side', 'assetAmount', 'executionPrice'],
+    ['trader', 'tradedAt', 'asset', 'side', 'assetAmount', 'grossAmount', 'executionPrice'],
   );
   assert.throws(() => h.api.decodeMarket({ ...market, priceScale: 0 }));
   assert.throws(() => h.api.decodeChart({ ...chart, timeframes: [{ ...frame, timezone: 'local' }] }));
@@ -641,13 +642,17 @@ test('holders unwrap the public response, preserve opaque cursors and use the la
   assert.equal(h.calls[2].url, `http://api.example/v1/launches/${SLUG}/holders?network=public&limit=20`);
 });
 
-test('holder balances remain exact above MAX_SAFE_INTEGER and appended rows retain server order', () => {
+test('holder balances round to three decimals without precision loss and appended rows retain server order', () => {
   const { formatHolderBalance, appendHolders } = harness().holders;
   for (const [raw, expected] of [
-    ['0', '0'], ['1', '0.0000001'], ['123456789', '12.3456789'],
-    ['9007199254740993', '900719925.4740993'],
-    ['9223372036854775807', '922337203685.4775807'],
+    ['0', '0.000'], ['1', '0.000'], ['123456789', '12.346'],
+    ['9007199254740993', '900719925.474'],
+    ['9223372036854775807', '922337203685.478'],
+    ['9995000', '1.000'], ['12345000', '1.235'],
   ]) assert.equal(formatHolderBalance(raw, 7), expected);
+  assert.equal(formatHolderBalance('12', 0), '12.000');
+  assert.equal(formatHolderBalance('1234', 2), '12.340');
+  assert.equal(formatHolderBalance('1234567890123456789', 18), '1.235');
   const second = { address: ID, balance: '1', observedAt: DATE };
   same(appendHolders(holderResult.items, [...holderResult.items, second, second]), [...holderResult.items, second]);
 });
@@ -937,12 +942,12 @@ test('final candle renders through server asOf without changing samples or exten
   same(timestamps, [first, second]);
 });
 
-test('top traders reads every page, combines buys and sells and ranks the top ten by exact estimated volume', async () => {
+test('top traders reads every page, combines buys and sells and ranks the top ten by exact recorded volume', async () => {
   const cursor = 'older/+==';
-  const rows = Array.from({ length: 12 }, (_, index) => ({ ...trade, trader: `trader-${index}`, assetAmount: String((index + 1) * 10000000), executionPrice: '10000000' }));
+  const rows = Array.from({ length: 12 }, (_, index) => ({ ...trade, trader: `trader-${index}`, grossAmount: String((index + 1) * 10000000), assetAmount: String((index + 1) * 10000000), executionPrice: '10000000' }));
   const h = harness(url => ({ result: { ...common,
     items: new URL(url).searchParams.has('cursor')
-      ? [{ ...trade, trader: 'trader-0', side: 'sell', assetAmount: '9007199254740993', executionPrice: '20000000' }]
+      ? [{ ...trade, trader: 'trader-0', side: 'sell', grossAmount: '18014398509481986', assetAmount: '9007199254740993', executionPrice: '20000000' }]
       : rows,
     nextCursor: new URL(url).searchParams.has('cursor') ? null : cursor,
   } }));
@@ -963,12 +968,12 @@ test('top traders reads every page, combines buys and sells and ranks the top te
   assert.equal(result.pair, PAIR);
 });
 
-test('top traders preserves sub-stroop contributions until total conversion and accepts empty history', async () => {
+test('top traders sums individual pair base units without rounding and accepts empty history', async () => {
   const h = harness(() => ({ result: { ...common, items: [
-    { ...trade, assetAmount: '5000000', executionPrice: '1' },
-    { ...trade, assetAmount: '5000000', executionPrice: '1' },
+    { ...trade, assetAmount: '5000000', grossAmount: '1', executionPrice: '1' },
+    { ...trade, assetAmount: '5000000', grossAmount: '1', executionPrice: '1' },
   ], nextCursor: null } }));
-  assert.equal((await h.topTraders.getTopTraders(SLUG, 'testnet')).items[0].volume, '1');
+  assert.equal((await h.topTraders.getTopTraders(SLUG, 'testnet')).items[0].volume, '2');
   h.setHandler(() => ({ result: { ...common, items: [], nextCursor: null } }));
   assert.equal((await h.topTraders.getTopTraders(SLUG, 'public')).items.length, 0);
   assert.equal(new URL(h.calls.at(-1).url).searchParams.get('network'), 'public');
@@ -1286,4 +1291,143 @@ for (const chain of ['stellar', 'base']) test(`${chain} public confirmation uses
   assert.equal(h.calls[0].init.headers['X-Chain'], chain);
   same(JSON.parse(h.calls[0].init.body), { transactionHash: hash });
   if (chain === 'base') assert.equal(h.calls[0].init.headers['X-Stellar-Network'], undefined);
+});
+
+test('recorded trade amounts retain exact API values across scales 0 through 18', async () => {
+  const fixture = { ...trade, assetAmount: '18954085201000000000000000', grossAmount: '2000000000', executionPrice: '106' };
+  const scales = { amountScale: 18, priceScale: 6 };
+  const h = harness(() => ({ result: { ...common, ...scales, trade: fixture, items: [fixture], nextCursor: null } }));
+  const decoded = await h.api.getTrades(SLUG, 'testnet', {});
+  assert.equal(decoded.items[0].grossAmount, '2000000000');
+  assert.equal(h.display.displayAmount(fixture.grossAmount, undefined, decoded.priceScale), '2000');
+  assert.equal(h.display.displayAmount(fixture.assetAmount, 3, decoded.amountScale), '18954085.201');
+  assert.equal(h.display.displayAmount(fixture.executionPrice, undefined, decoded.priceScale), '0.000106');
+  const ranked = await h.topTraders.getTopTraders(SLUG, 'testnet');
+  assert.equal(ranked.items[0].volume, '2000000000');
+  assert.equal(ranked.priceScale, 6);
+  const jsx = (type, props) => ({ type, props });
+  const { IndexedTradeRow } = load('../../../features/launches/trading/indexed-trade-row.tsx', {
+    require: name => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
+      : name === '@/lib/api/launches/display' ? h.display
+      : { TableRow: 'row', TableCell: 'cell', TradeTooltipText: 'tooltip' },
+  });
+  const cells = IndexedTradeRow({ trade: fixture, ...scales, asOf: Date.parse(DATE) }).props.children;
+  assert.equal(cells[2].props.children, '2000');
+  assert.equal(cells[2].props.title, 'Recorded pair amount before creator fees.');
+  assert.equal(cells[3].props.children, '18954085.201');
+  assert.equal(cells[4].props.children, '0.000106');
+  h.client.setApiUserId('42');
+  assert.equal((await h.api.recordTrade(SLUG, 'testnet', 'a'.repeat(64))).trade.grossAmount, fixture.grossAmount);
+  assert.deepEqual(JSON.parse(h.calls.at(-1).init.body), { transactionHash: 'a'.repeat(64) });
+  for (let scale = 0; scale <= 18; scale++) {
+    const result = h.api.decodeTrades({ ...common, amountScale: scale, priceScale: scale, items: [{ ...fixture, grossAmount: '0' }], nextCursor: null });
+    assert.equal(result.priceScale, scale);
+    assert.equal(h.display.displayAmount(result.items[0].grossAmount, undefined, scale), '0');
+    const zero = IndexedTradeRow({ trade: { ...fixture, assetAmount: '0', grossAmount: '0', executionPrice: '0' }, amountScale: scale, priceScale: scale, asOf: Date.parse(DATE) });
+    assert.equal(zero.props.children[2].props.children, '0');
+    assert.equal(zero.props.children[3].props.children, '0');
+    assert.equal(zero.props.children[4].props.children, '0');
+    const large = '900719925474099312345678901234567891';
+    assert.equal(h.display.displayAmount(large, undefined, scale).replace('.', ''), large);
+  }
+  for (const scale of [-1, 19, 1.5, '6', null]) {
+    for (const key of ['amountScale', 'priceScale']) {
+      assert.throws(() => h.api.decodeTrades({ ...common, [key]: scale, items: [fixture], nextCursor: null }), { code: 'invalid-response' });
+    }
+  }
+});
+
+test('trade list and submission reject missing or malformed gross amounts', async () => {
+  for (const grossAmount of [undefined, null, '', '-1', '1.5', '1e3', '+1', ' 1', '1\n', 0, {}, 'NaN']) {
+    const invalid = { ...trade, grossAmount };
+    const h = harness(() => ({ result: { ...common, trade: invalid, items: [invalid], nextCursor: null } }));
+    h.client.setApiUserId('42');
+    assert.throws(() => h.api.decodeTrade(invalid), { code: 'invalid-response' });
+    await assert.rejects(h.api.getTrades(SLUG, 'testnet', {}), { code: 'invalid-response' });
+    await assert.rejects(h.api.recordTrade(SLUG, 'testnet', 'a'.repeat(64)), { code: 'invalid-response' });
+  }
+});
+
+test('recent trades paginate ten rows, fetch older history, preserve failed pages and reset filters', async () => {
+  const jsx = (type, props) => ({ type, props });
+  let pagination, fail = false, fetches = 0;
+  const items = Array.from({ length: 20 }, (_, index) => ({ ...trade, trader: `wallet-${index}`, amountScale: 7, priceScale: 7 }));
+  const data = {
+    side: 'all', size: 'all', period: 'all', asOf: Date.parse(DATE), filtered: items,
+    query: { data: {}, hasNextPage: true, isFetching: false, async fetchNextPage() {
+      fetches++;
+      if (fail) return { isError: true };
+      data.filtered = [...items, ...items.slice(0, 3)];
+      data.query.hasNextPage = false;
+      return { isError: false };
+    } },
+  };
+  const { IndexedTrades } = load('../../../features/launches/trading/indexed-trades.tsx', {
+    require: name => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
+      : name === 'react' ? { useState(initial) {
+        pagination ??= initial;
+        return [pagination, value => { pagination = typeof value === 'function' ? value(pagination) : value; }];
+      } }
+      : name === './use-indexed-trades' ? { useIndexedTrades: () => data }
+      : name === '@/lib/utils' ? { cn: (...values) => values.join(' ') }
+      : name === './trade-table-style' ? { tradeTableClass: '' }
+      : Object.fromEntries(['Button', 'Table', 'TableHeader', 'TableHead', 'TableBody', 'TableRow', 'TableCell', 'IndexedTradeRow', 'TradeFilter', 'TradeTooltipText'].map(key => [key, key])),
+  });
+  function nodes(value) {
+    if (Array.isArray(value)) return value.flatMap(nodes);
+    if (!value || typeof value !== 'object') return [];
+    return [value, ...nodes(value.props?.children)];
+  }
+  const render = () => nodes(IndexedTrades({ slug: SLUG, network: 'testnet', ticker: 'TOK', pair: 'USDC' }));
+  const button = (tree, label) => tree.find(node => node.type === 'Button' && node.props.children === label);
+  const rows = tree => tree.filter(node => node.type === 'IndexedTradeRow');
+  let tree = render();
+  assert.equal(rows(tree).length, 10);
+  assert.equal(button(tree, 'Previous').props.disabled, true);
+  await button(tree, 'Next').props.onClick();
+  tree = render();
+  assert.equal(rows(tree)[0].props.trade.trader, 'wallet-10');
+  assert.equal(fetches, 0);
+  fail = true;
+  await button(tree, 'Next').props.onClick();
+  assert.equal(rows(render())[0].props.trade.trader, 'wallet-10');
+  fail = false;
+  await button(render(), 'Next').props.onClick();
+  tree = render();
+  assert.equal(rows(tree).length, 3);
+  assert.equal(button(tree, 'Next').props.disabled, true);
+  button(tree, 'Previous').props.onClick();
+  assert.equal(rows(render())[0].props.trade.trader, 'wallet-10');
+  data.side = 'buy';
+  assert.equal(rows(render())[0].props.trade.trader, 'wallet-0');
+});
+
+test('trade quantity filters use each response scale and exact BigInt boundaries', () => {
+  for (let scale = 0; scale <= 18; scale++) {
+    const threshold = 1000n * 10n ** BigInt(scale);
+    const page = { amountScale: scale, priceScale: 6, items: [
+      { ...trade, assetAmount: (threshold - 1n).toString() },
+      { ...trade, assetAmount: threshold.toString() },
+      { ...trade, assetAmount: (threshold + 1n).toString() },
+    ] };
+    let size = 'small', stateIndex = 0;
+    const { useIndexedTrades } = load('../../../features/launches/trading/use-indexed-trades.ts', {
+      require: name => name === 'react' ? {
+        useEffect() {},
+        useState(initial) { const index = stateIndex++; return [index === 1 ? size : typeof initial === 'function' ? initial() : initial, () => {}]; },
+      } : name === '@tanstack/react-query' ? {
+        useInfiniteQuery: () => ({ data: { pages: [page] }, dataUpdatedAt: Date.parse(DATE) }),
+        useQueryClient: () => ({}),
+      } : name === '@/features/launches/hooks/queries' ? { launchKey: () => [], usePageVisible: () => true } : {},
+    });
+    let result = useIndexedTrades(SLUG, 'testnet');
+    assert.equal(result.filtered.length, 1);
+    assert.equal(result.filtered[0].assetAmount, (threshold - 1n).toString());
+    assert.equal(result.filtered[0].amountScale, scale);
+    assert.equal(result.filtered[0].priceScale, 6);
+    size = 'large'; stateIndex = 0;
+    result = useIndexedTrades(SLUG, 'testnet');
+    assert.equal(result.filtered.length, 2);
+    assert.equal(result.filtered[0].assetAmount, threshold.toString());
+  }
 });

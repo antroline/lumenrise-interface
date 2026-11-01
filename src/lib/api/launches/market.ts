@@ -34,12 +34,24 @@ export type Bonding = {
   };
   progressBps: number;
 };
+export type GraduationState = {
+  settled: boolean; pool_id: string; token_id: string; liquidity: string;
+  asset_deposited: string; pair_deposited: string; creator_payout: string;
+  platform_fee: string; asset_dust: string; pair_dust: string;
+};
+export type IndexedV4Pool = {
+  poolId: string; poolManager: string; stateView: string; positionManager: string;
+  currency0: string; currency1: string; fee: number; tickSpacing: number; hooks: string;
+  sqrtPriceX96: string; tick: number; protocolFee: number; swapFee: number; liquidity: string;
+};
 export type LaunchResult = {
   network: ApiNetwork;
   factoryContractId: string;
   factoryIndex: number | string;
   assetDecimals?: number;
   pairDecimals?: number;
+  graduationState?: GraduationState | null;
+  pool?: IndexedV4Pool | null;
   slug: string | null;
   contractId: string;
   owner: string;
@@ -175,6 +187,7 @@ export type TradeResult = {
   asset: string;
   side: 'buy' | 'sell';
   assetAmount: string;
+  grossAmount: string;
   executionPrice: string;
 };
 export type TradesResult = {
@@ -201,7 +214,7 @@ function string(v: unknown): string {
 }
 function raw(v: unknown): string {
   const s = string(v);
-  return /^\d+$/.test(s) ? s : invalid();
+  return s.length > 0 && !/\D/.test(s) ? s : invalid();
 }
 function number(v: unknown): number {
   return typeof v === 'number' && Number.isSafeInteger(v) && v >= 0
@@ -230,6 +243,38 @@ function network(v: unknown): ApiNetwork {
 }
 function priceType(v: unknown): 'marginal_before_fee' {
   return v === 'marginal_before_fee' ? v : invalid();
+}
+function tradeScale(v: unknown) {
+  const n = number(v);
+  return n <= 18 ? n : invalid();
+}
+function evmAddress(v: unknown): string {
+  const s = string(v);
+  return s.length === 42 && /^0x[\da-fA-F]{40}$/.test(s) ? s : invalid();
+}
+function bytes32(v: unknown): string {
+  const s = string(v);
+  return s.length === 66 && /^0x[\da-fA-F]{64}$/.test(s) ? s : invalid();
+}
+function signedInteger(v: unknown): number {
+  return typeof v === 'number' && Number.isSafeInteger(v) && v >= -8388608 && v <= 8388607 ? v : invalid();
+}
+function decodeGraduation(v: unknown): GraduationState {
+  const g = object(v);
+  return {
+    settled: boolean(g.settled), pool_id: bytes32(g.pool_id), token_id: raw(g.token_id), liquidity: raw(g.liquidity),
+    asset_deposited: raw(g.asset_deposited), pair_deposited: raw(g.pair_deposited), creator_payout: raw(g.creator_payout),
+    platform_fee: raw(g.platform_fee), asset_dust: raw(g.asset_dust), pair_dust: raw(g.pair_dust),
+  };
+}
+function decodePool(v: unknown): IndexedV4Pool {
+  const p = object(v);
+  return {
+    poolId: bytes32(p.poolId), poolManager: evmAddress(p.poolManager), stateView: evmAddress(p.stateView), positionManager: evmAddress(p.positionManager),
+    currency0: evmAddress(p.currency0), currency1: evmAddress(p.currency1), hooks: evmAddress(p.hooks),
+    fee: number(p.fee), tickSpacing: signedInteger(p.tickSpacing), sqrtPriceX96: raw(p.sqrtPriceX96), tick: signedInteger(p.tick),
+    protocolFee: number(p.protocolFee), swapFee: number(p.swapFee), liquidity: raw(p.liquidity),
+  };
 }
 function scale(v: unknown) {
   const n = number(v);
@@ -300,6 +345,10 @@ export function decodeLaunch(v: unknown): LaunchResult {
     factoryIndex: getApiChain() === 'base' ? (typeof l.factoryIndex === 'string' ? raw(l.factoryIndex) : number(l.factoryIndex)) : number(l.factoryIndex),
     assetDecimals: getApiChain() === 'base' && l.assetDecimals != null ? scale(l.assetDecimals) : undefined,
     pairDecimals: getApiChain() === 'base' && l.pairDecimals != null ? scale(l.pairDecimals) : undefined,
+    ...(getApiChain() === 'base' ? {
+      graduationState: l.graduationState == null ? null : decodeGraduation(l.graduationState),
+      pool: l.pool == null ? null : decodePool(l.pool),
+    } : {}),
     owner: string(l.owner),
     team: l.team == null ? [] : array(l.team, decodePublicTeamMember),
     asset: string(l.asset),
@@ -408,6 +457,7 @@ export function decodeTrade(v: unknown): TradeResult {
     asset: string(t.asset),
     side: t.side,
     assetAmount: raw(t.assetAmount),
+    grossAmount: raw(t.grossAmount),
     executionPrice: raw(t.executionPrice),
   };
 }
@@ -417,8 +467,8 @@ export function decodeTrades(v: unknown): TradesResult {
     items: array(t.items, decodeTrade),
     nextCursor: nullable(t.nextCursor, string),
     pair: string(t.pair),
-    amountScale: scale(t.amountScale),
-    priceScale: scale(t.priceScale),
+    amountScale: tradeScale(t.amountScale),
+    priceScale: tradeScale(t.priceScale),
   };
 }
 const path = (slug: string, n: ApiNetwork, section = '') => {
@@ -647,8 +697,8 @@ export async function recordTrade(
     trade: decodeTrade(r.trade),
     trades: r.trades == null ? [decodeTrade(r.trade)] : array(r.trades, decodeTrade),
     pair: string(r.pair),
-    amountScale: scale(r.amountScale),
-    priceScale: scale(r.priceScale),
+    amountScale: tradeScale(r.amountScale),
+    priceScale: tradeScale(r.priceScale),
   };
 }
 

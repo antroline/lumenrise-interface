@@ -43,6 +43,7 @@ export type BasePublicConfiguration = Omit<PublicConfiguration, 'network'> & {
     supported: ApiNetwork[];
     configurations: Record<ApiNetwork, {
       network: ApiNetwork; chainId: 8453 | 84532; factoryContractId: string; launchConfigured: boolean;
+      uniswapV4?: { poolManager: string; stateView: string; positionManager: string } | null;
     }>;
   };
 };
@@ -95,6 +96,11 @@ export function decodeConfiguration(value: unknown, selectedChain?: 'stellar' | 
       if (entry.network !== name || entry.chainId !== (name === 'testnet' ? 84532 : 8453) ||
           (entry.factoryContractId !== '' && !/^0x[a-fA-F0-9]{40}$/.test(String(entry.factoryContractId))) ||
           (entry.launchConfigured && !entry.factoryContractId)) invalid(`network.${name}`);
+      if (entry.uniswapV4 != null) {
+        const deployment = fields(entry.uniswapV4, `network.${name}.uniswapV4`, '', 'poolManager stateView positionManager');
+        for (const key of ['poolManager', 'stateView', 'positionManager'])
+          if (String(deployment[key]).length !== 42 || !/^0x[a-fA-F0-9]{40}$/.test(String(deployment[key])) || /^0x0{40}$/i.test(String(deployment[key]))) invalid(`network.${name}.uniswapV4.${key}`);
+      }
       continue;
     }
     const entry = fields(configurations[name], `network.${name}`, '', 'network rpcUrl horizonUrl networkPassphrase factoryContractId homeDomain', 'launchConfigured');

@@ -8,13 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CopyAddress } from '@/features/launches/components/launch-project-links';
-import { explorerUrl } from '@/lib/chain-address';
 import type { LaunchResult } from '@/lib/api/launches/market';
 import { pairLabel } from '@/lib/api/launches/display';
 import { formatBaseAmount } from '@/lib/base/amount';
 import { formatV4Price, graduationAbi } from '@/lib/base/uniswap-v4';
 import { sameEvmAddress } from '@/lib/base/wallet';
+import { tradeTableClass } from '@/features/launches/trading/trade-table-style';
 import { useBaseV4Pool } from '../use-base-v4-pool';
 
 export function BasePoolTable({ launch }: { launch: LaunchResult }) {
@@ -42,50 +41,56 @@ export function BasePoolTable({ launch }: { launch: LaunchResult }) {
   if (!settlement.data?.settled || !pool.data)
     return <PoolNotice title="Pool not created yet">The Uniswap V4 pool becomes available after this token graduates and settlement completes.</PoolNotice>;
 
-  const { key, graduation, slot0, liquidity, blockNumber } = pool.data;
+  const { key, graduation, slot0 } = pool.data;
   const ticker = launch.metadata.symbol, pair = pairLabel(launch.pair, launch.network);
-  const symbol = (currency: string) => sameEvmAddress(currency, launch.asset) ? ticker : pair;
   const assetIs0 = sameEvmAddress(key.currency0, launch.asset);
   const square = slot0[0] * slot0[0], q192 = BigInt(1) << BigInt(192);
   const price = formatV4Price(assetIs0 ? square : q192, assetIs0 ? q192 : square, launch.assetDecimals, launch.pairDecimals);
-  const copy = (value: string, label: string) => <CopyAddress address={value} label={label} />;
-  const contract = (value: string, label: string) => <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
-    {copy(value, label)}
-    <a href={explorerUrl(value, launch.network)} target="_blank" rel="noopener noreferrer" className="rounded-sm underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">BaseScan</a>
-  </div>;
-  const rows: [string, ReactNode][] = [
-    ['Protocol', 'Uniswap V4'],
-    ['Network', launch.network === 'testnet' ? 'Base Sepolia' : 'Base Mainnet'],
-    ['Pair', `${ticker} / ${pair}`],
-    ['Pool ID', copy(graduation.pool_id, 'pool ID')],
-    ['PoolManager', contract(pool.deployment.manager, 'PoolManager')],
-    ['LP NFT', <a key="position" href={explorerUrl(pool.deployment.positions, launch.network)} target="_blank" rel="noopener noreferrer" className="rounded-sm underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">#{graduation.token_id.toString()}</a>],
-    [`Currency 0 · ${symbol(key.currency0)}`, contract(key.currency0, 'currency 0')],
-    [`Currency 1 · ${symbol(key.currency1)}`, contract(key.currency1, 'currency 1')],
-    ['Price', `1 ${ticker} ≈ ${price} ${pair}`],
-    ['LP fee', `${formatBaseAmount(BigInt(slot0[3]), 4)}%`],
-    ['Tick spacing', key.tickSpacing.toString()],
-    ['Current tick', slot0[1].toString()],
-    ['Active liquidity (L)', liquidity.toString()],
-    ['Hooks', 'None'],
-    [`${ticker} deposited at graduation`, `${formatBaseAmount(graduation.asset_deposited, launch.assetDecimals)} ${ticker}`],
-    [`${pair} deposited at graduation`, `${formatBaseAmount(graduation.pair_deposited, launch.pairDecimals)} ${pair}`],
-  ];
   return <section aria-label="Uniswap V4 liquidity pool" className="flex min-w-0 flex-col gap-3">
     {error && <div role="status" className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
       <span>Refresh failed. Showing the last verified pool snapshot.</span>
       <Button variant="outline" disabled={settlement.isFetching || pool.isFetching} onClick={() => void retry()}>Retry</Button>
     </div>}
-    <Table>
+    <Table className={`${tradeTableClass} [&_th]:h-9 [&_th]:bg-muted [&_th]:py-2 [&_th]:text-xs [&_th]:font-medium [&_th]:normal-case [&_th]:tracking-normal [&_th]:text-muted-foreground [&_th:first-child]:rounded-l-lg [&_th:last-child]:rounded-r-lg [&_tbody_td]:rounded-none`}>
       <caption className="sr-only">Verified Uniswap V4 pool details for {ticker}</caption>
-      <TableHeader><TableRow><TableHead>Pool detail</TableHead><TableHead className="text-right">Value</TableHead></TableRow></TableHeader>
-      <TableBody>{rows.map(([label, value]) => <TableRow key={label}>
-        <TableCell className="w-2/5 text-muted-foreground">{label}</TableCell>
-        <TableCell className="break-all text-right tabular-nums">{value}</TableCell>
-      </TableRow>)}</TableBody>
+      <TableHeader>
+        <TableRow>
+          <TableHead scope="col">Pool</TableHead>
+          <TableHead scope="col" className="text-right">Price</TableHead>
+          <TableHead scope="col" className="text-right">LP fee</TableHead>
+          <TableHead scope="col" className="text-right">Initial {ticker}</TableHead>
+          <TableHead scope="col" className="text-right">Initial {pair}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow>
+          <TableCell className="whitespace-nowrap">
+            <p className="font-medium">{ticker} / {pair}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Uniswap V4 · {launch.network === 'testnet' ? 'Base Sepolia' : 'Base Mainnet'}
+            </p>
+          </TableCell>
+          <TableCell className="text-right tabular-nums whitespace-nowrap">
+            <span className="sr-only">1 {ticker} ≈ </span>{price} {pair}
+          </TableCell>
+          <TableCell className="text-right tabular-nums whitespace-nowrap">{formatPoolNumber(formatBaseAmount(BigInt(slot0[3]), 4))}%</TableCell>
+          <TableCell className="text-right tabular-nums whitespace-nowrap">{formatPoolNumber(formatBaseAmount(graduation.asset_deposited, launch.assetDecimals))}</TableCell>
+          <TableCell className="text-right tabular-nums whitespace-nowrap">{formatPoolNumber(formatBaseAmount(graduation.pair_deposited, launch.pairDecimals))}</TableCell>
+        </TableRow>
+      </TableBody>
     </Table>
-    <p className="text-xs text-muted-foreground">Verified at block {blockNumber.toString()}. Graduation deposits are initial amounts, not current pool balances.</p>
+    <p className="text-xs text-muted-foreground">Graduation deposits are initial amounts, not current pool balances.</p>
   </section>;
+}
+
+function formatPoolNumber(value: string): string {
+  if (value.startsWith('<')) return '<0.001';
+  const [whole, fraction = ''] = value.split('.');
+  const thousand = BigInt(1000);
+  const rounded = BigInt(whole) * thousand + BigInt(fraction.padEnd(3, '0').slice(0, 3))
+    + (Number(fraction[3] ?? '0') >= 5 ? BigInt(1) : BigInt(0));
+  if (rounded === BigInt(0) && /[1-9]/.test(value)) return '<0.001';
+  return `${rounded / thousand}.${(rounded % thousand).toString().padStart(3, '0')}`;
 }
 
 function PoolNotice({ title, children }: { title: string; children: ReactNode }) {

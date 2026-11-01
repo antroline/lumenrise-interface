@@ -11,10 +11,12 @@ import { tradeTransition } from './trade-transition';
 export function TradeQuoteDetails({
   host,
   visible,
+  summary,
   children,
 }: {
   host?: HTMLElement | null;
   visible: boolean;
+  summary: ReactNode;
   children: ReactNode;
 }) {
   const reduced = useTradeReducedMotion();
@@ -29,7 +31,7 @@ export function TradeQuoteDetails({
           transition={{ ...tradeTransition, duration: reduced ? 0 : 0.22 }}
           className="overflow-hidden"
         >
-          <TradeDisclosure title="Quote details" variant="attached">
+          <TradeDisclosure title={summary} variant="attached">
             {children}
           </TradeDisclosure>
         </motion.div>
