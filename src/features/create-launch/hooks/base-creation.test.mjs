@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 import ts from 'typescript';
-import { encodeAbiParameters, encodeEventTopics } from 'viem';
+import { encodeAbiParameters, encodeEventTopics, erc20Abi } from 'viem';
 import { configuration } from '../../../lib/api/config.fixture.mjs';
 
 const require = createRequire(import.meta.url);
@@ -33,18 +33,20 @@ function harness(options = {}, storage = new Map()) {
   const wallet = {
     get identity() { return identity; }, owner,
     async ensureChain() { calls.push('chain'); },
-    async code(address) { return address === owner ? options.ownerCode : address === factory && options.missingFactory ? undefined : address === token ? (options.badCode ? '0x1234' : load('lib/base/tokenDeployment.ts').launchTokenDeployment.deployedBytecode) : '0x01'; },
+    async code(address) { return address === owner ? options.ownerCode : address === factory && options.missingFactory ? undefined : address === token ? ('tokenCode' in options ? options.tokenCode : '0x1234') : '0x01'; },
     async gasBalance() { return options.noGas ? 0n : 10n ** 18n; },
     async estimate() { return 100n; },
     async read(requests) { return requests.map(call => {
+      if (call.address === token || call.address === pair) assert.deepEqual(call.abi, erc20Abi);
+      if (call.address === token && options.invalidErc20) throw new Error('ERC20 contract read failed.');
       switch (call.functionName) {
         case 'settings': return { pair, graduation: curve, platform: owner, platform_fee_bps: 100 };
         case 'getChainId': return BigInt(options.wrongChain ? 1 : chainId);
         case 'pair': return pair;
-        case 'decimals': return call.address === pair ? 6 : 18;
-        case 'symbol': return call.address === pair ? 'USDC' : 'EX';
-        case 'name': return image.name;
-        case 'totalSupply': return deposit;
+        case 'decimals': return call.address === pair ? 6 : options.tokenDecimals ?? 18;
+        case 'symbol': return call.address === pair ? 'USDC' : options.tokenSymbol ?? 'EX';
+        case 'name': return options.tokenName ?? image.name;
+        case 'totalSupply': return options.tokenSupply ?? deposit;
         case 'balanceOf': return options.changedBalance ? deposit - 1n : deposit;
         case 'allowance': return allowance;
         case 'get_config': return { factory, total_supply: deposit, params: { owner, asset: token, pair } };
@@ -56,6 +58,7 @@ function harness(options = {}, storage = new Map()) {
     async write(call, onHash) {
       calls.push(call);
       if (call.functionName === 'approve') {
+        assert.deepEqual(call.abi, erc20Abi);
         if (options.rejectApproval) throw Object.assign(new Error('Rejected'), { code: 4001 });
         if (options.unknownApproval) throw new Error('Provider disconnected before returning a hash');
         assert.equal(call.address, token); assert.equal(call.args[0], factory); assert.equal(call.args[1], deposit);
@@ -121,7 +124,7 @@ test('Base creation deploys fixed supply, approves full asset balance, and creat
   assert.equal(writes[1].args[0].vesting.schedule, 1);
   assert.equal([...h.storage.keys()].filter(key => key.startsWith('lumenrise:base')).length, 0);
 });
-for (const [option, message] of [['changedBalance', /balance/], ['badCode', /artifact/], ['missingFactory', /not deployed/], ['noGas', /ETH/], ['rejectApproval', /Rejected/], ['revertedApproval', /approval reverted/], ['conflict', /already taken/], ['wrongChain', /RPC chain/], ['notConfigured', /not configured/], ['wrongContext', /context changed/]]) {
+for (const [option, message] of [['changedBalance', /balance/], ['invalidErc20', /ERC20 contract read failed/], ['missingFactory', /not deployed/], ['noGas', /ETH/], ['rejectApproval', /Rejected/], ['revertedApproval', /approval reverted/], ['conflict', /already taken/], ['wrongChain', /RPC chain/], ['notConfigured', /not configured/], ['wrongContext', /context changed/]]) {
   test(`${option} prevents the factory write`, async () => {
     const h = harness({ [option]: true }); const result = await h.launch();
     assert.equal(result.status, 'error'); assert.match(result.message, message);
@@ -129,6 +132,35 @@ for (const [option, message] of [['changedBalance', /balance/], ['badCode', /art
     if (['noGas', 'conflict', 'wrongChain', 'notConfigured', 'wrongContext', 'missingFactory'].includes(option)) assert.equal(h.calls.includes('upload'), false);
   });
 }
+
+test('empty launch-token code prevents approval and factory signing', async () => {
+  for (const tokenCode of [undefined, '0x']) {
+    const h = harness({ tokenCode });
+    const result = await h.launch();
+    assert.equal(result.status, 'error');
+    assert.match(result.message, /launch token is not deployed/);
+    assert.equal(h.calls.some(call => call?.functionName), false);
+  }
+});
+
+test('ERC20 metadata and full-supply checks still prevent depositing a different token', async () => {
+  for (const options of [{ tokenDecimals: 6 }, { tokenSymbol: 'OTHER' }, { tokenName: 'Other' }, { tokenSupply: deposit + 1n }]) {
+    const h = harness(options);
+    const result = await h.launch();
+    assert.equal(result.status, 'error');
+    assert.match(result.message, /balance or metadata/);
+    assert.equal(h.calls.some(call => call?.functionName), false);
+  }
+});
+
+test('Mainnet retry accepts a standard ERC20 with different runtime code and reuses the saved deployment', async () => {
+  const h = harness({ mainnet: true, tokenCode: undefined });
+  assert.match((await h.launch()).message, /launch token is not deployed/);
+  const resumed = harness({ mainnet: true, tokenCode: '0x363d3d373d3d3d363d73' + '6'.repeat(40) + '5af43d82803e903d91602b57fd5bf3' }, h.storage);
+  assert.equal((await resumed.launch()).status, 'success');
+  assert.equal(resumed.calls.includes('deploy'), false);
+  assert.deepEqual(resumed.calls.filter(call => call?.functionName).map(call => call.functionName), ['approve', 'create_bonding_curve']);
+});
 test('sufficient asset allowance skips approval', async () => {
   const h = harness({ allowance: deposit }); assert.equal((await h.launch()).status, 'success');
   assert.equal(h.calls.some(call => call?.functionName === 'approve'), false);

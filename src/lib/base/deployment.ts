@@ -6,5 +6,5 @@ export const BASE_TOKEN_DEPLOYMENT_BLOCK_REASON = 'Base token creation is unavai
 export const BASE_WRITE_BLOCK_REASON = BASE_TOKEN_DEPLOYMENT_BLOCK_REASON;
 export function requireBaseWrites(operation: 'creation' | 'trading' = 'creation', network: ApiNetwork = 'testnet') {
   if (operation === 'trading' && network !== 'testnet') throw new Error(BASE_MAINNET_BLOCK_REASON);
-  if (operation === 'creation' && (!/^0x[0-9a-f]+$/i.test(launchTokenDeployment.bytecode) || launchTokenDeployment.bytecode.length <= 2 || !/^0x[0-9a-f]+$/i.test(launchTokenDeployment.deployedBytecode))) throw new Error(BASE_TOKEN_DEPLOYMENT_BLOCK_REASON);
+  if (operation === 'creation' && (!/^0x[0-9a-f]+$/i.test(launchTokenDeployment.bytecode) || launchTokenDeployment.bytecode.length <= 2)) throw new Error(BASE_TOKEN_DEPLOYMENT_BLOCK_REASON);
 }
