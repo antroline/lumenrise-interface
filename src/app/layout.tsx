@@ -26,13 +26,45 @@ const barlow = localFont({
   preload: false,
 })
 
+const siteTitle = 'LumenRise Platform: Launch your token'
+const siteDescription =
+  'Set up and run a token launch with a bonding curve, presale or auction, from setup to graduation.'
+
 export const metadata: Metadata = {
+  metadataBase: new URL('https://platform.lumenrise.app'),
   title: {
-    default: 'LumenRise — Identity, reputation, and launch infrastructure for Stellar',
+    default: siteTitle,
     template: '%s · LumenRise',
   },
-  description:
-    'Identity, reputation, and launch infrastructure for Stellar. Transparent, reputation-gated launches — from discovery to settlement.',
+  description: siteDescription,
+  openGraph: {
+    type: 'website',
+    siteName: 'LumenRise',
+    locale: 'en_US',
+    url: './',
+    title: siteTitle,
+    description: siteDescription,
+    images: [
+      {
+        url: '/og/lumenrise-og-site-platform-1200x630.jpg',
+        type: 'image/jpeg',
+        width: 1200,
+        height: 630,
+        alt: siteTitle,
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: siteTitle,
+    description: siteDescription,
+    images: [
+      {
+        url: '/og/lumenrise-x-site-platform-1200x600.jpg',
+        alt: siteTitle,
+      },
+    ],
+  },
   icons: { icon: { url: '/assets/logo/lumenrise-favicon-adaptive.svg', type: 'image/svg+xml', sizes: 'any' } },
 }
 
