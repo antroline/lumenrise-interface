@@ -5,6 +5,25 @@ import { loadNetworkRegistry } from './registry.fixture.mjs';
 
 const { parseNetworkId, availableNetworks, resolveNetwork, networkSwitchHref, initialNetworkSelection } = loadNetworkRegistry();
 
+for (const value of ['false', '', undefined, 'TRUE', '1']) {
+  test(`development mode is opt-in: ${String(value)}`, () => {
+    const registry = loadNetworkRegistry(value === undefined ? null : value);
+    assert.equal(registry.IS_DEV_MODE, false);
+    assert.deepEqual(registry.availableNetworks(configuration).map(n => n.id), ['stellar-mainnet', 'base-mainnet']);
+    assert.equal(registry.resolveNetwork(null, configuration).id, 'stellar-mainnet');
+    for (const id of ['testnet', 'stellar-testnet', 'base-sepolia']) {
+      assert.throws(() => registry.resolveNetwork(id, configuration), /disabled/);
+    }
+    assert.equal(registry.initialNetworkSelection(null, 'stellar-testnet', '/'), 'stellar-mainnet');
+    assert.equal(registry.initialNetworkSelection(null, 'testnet', '/'), 'stellar-mainnet');
+    assert.equal(registry.initialNetworkSelection(null, 'base-sepolia', '/'), 'base-mainnet');
+  });
+}
+
+test('development mode enables both supported test networks', () => {
+  assert.deepEqual(availableNetworks(configuration).map(n => n.id), ['stellar-testnet', 'stellar-mainnet', 'base-mainnet', 'base-sepolia']);
+});
+
 test('legacy links normalize to explicit chain and environment IDs', () => {
   for (const [input, expected] of [
     ['mainnet', 'stellar-mainnet'], ['public', 'stellar-mainnet'],
@@ -28,14 +47,14 @@ test('Stellar defaults, available environments, and launch capability follow ser
   assert.deepEqual(availableNetworks(config).map(n => n.id), ['stellar-mainnet', 'base-mainnet', 'base-sepolia']);
 });
 
-test('Base exposes trading on both networks and creation on Sepolia', () => {
+test('Base exposes trading and creation on both networks', () => {
   for (const [id, chainId] of [['base-mainnet', 8453], ['base-sepolia', 84532]]) {
     const network = resolveNetwork(id);
     assert.equal(network.blockchain, 'base');
     assert.equal(network.chainId, chainId);
     assert.equal(network.capabilities.wallet, true);
     assert.equal(network.capabilities.projects, true);
-    assert.equal(network.capabilities.creation, chainId === 84532);
+    assert.equal(network.capabilities.creation, true);
     assert.equal(network.capabilities.trading, true);
     assert.equal(network.apiNetwork, chainId === 8453 ? 'public' : 'testnet');
   }

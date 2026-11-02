@@ -9,7 +9,7 @@ import { ApiError, getApiBaseUrl, getApiChain, getApiNetwork, getApiUserId } fro
 import { getLaunchList } from '@/lib/api/launches/market';
 import { enqueueLaunch, waitForLaunchRegistration } from '@/lib/api/launches/trade-queue';
 import { fileFromDataUrl, getLaunchImage, uploadLaunchImage, launchImageErrorMessage } from '@/lib/api/launches/images';
-import { requireBaseWrites, BASE_MAINNET_BLOCK_REASON } from '@/lib/base/deployment';
+import { requireBaseWrites } from '@/lib/base/deployment';
 import { factoryAbi } from '@/lib/base/factoryAbi';
 import { launchAbi } from '@/lib/base/launchAbi';
 import { launchTokenDeployment } from '@/lib/base/tokenDeployment';
@@ -22,7 +22,6 @@ import { validateLaunchStage, launchStages } from '../lib/launch-stages';
 import { baseAddress, baseCreationKey, baseInteger, baseLaunchStart, baseObject, baseReceipt, buildBaseBondingParams, createdBaseCurve, isWalletRejection, readBaseCreationRecord, type BaseCreationRecord } from '../lib/base-creation';
 import { useBaseCreationWallet, type BaseCreationCall } from './use-base-creation-wallet';
 const activeCreations = new Set<string>();
-export const BASE_AUTH_RETURN_KEY = 'launchpad:bonding-auth-return:base:testnet';
 const rpcChainCall = { address: '0xcA11bde05977b3631167028862bE2a173976CA11', abi: [{ type: 'function', name: 'getChainId', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' }], functionName: 'getChainId' } as const;
 export function useBaseBondingLaunch() {
   const account = useLaunchpad(), configuration = useConfiguration(), { activeNetwork } = useNetwork();
@@ -34,18 +33,21 @@ export function useBaseBondingLaunch() {
   const latest = useRef({ account, wallet });
   useLayoutEffect(() => { latest.current = { account, wallet }; });
   useLayoutEffect(() => { epoch.current = {}; return () => { epoch.current = {}; }; }, [wallet.identity]);
-  const networkConfiguration = 'chain' in configuration ? configuration.network.configurations.testnet : undefined;
-  const isReady = activeNetwork.id === 'base-sepolia' && !!networkConfiguration?.launchConfigured && !!configuration.auth.appId.trim();
-  const unavailable = activeNetwork.id !== 'base-sepolia' ? BASE_MAINNET_BLOCK_REASON : !networkConfiguration?.launchConfigured ? 'Launching is not configured by the server for Base Sepolia.' : !configuration.auth.appId.trim() ? 'Base sign-in is not configured by the server.' : undefined;
+  const network = activeNetwork.apiNetwork;
+  const chainId = activeNetwork.blockchain === 'base' ? activeNetwork.chainId : undefined;
+  const networkName = activeNetwork.label;
+  const authReturnKey = `launchpad:bonding-auth-return:base:${network}`;
+  const networkConfiguration = 'chain' in configuration ? configuration.network.configurations[network] : undefined;
+  const isReady = chainId !== undefined && !!networkConfiguration?.launchConfigured && !!configuration.auth.appId.trim();
+  const unavailable = !networkConfiguration?.launchConfigured ? `Launching is not configured by the server for ${networkName}.` : !configuration.auth.appId.trim() ? 'Base sign-in is not configured by the server.' : undefined;
   function report(step: LaunchOperationStep, message: string, phase: LaunchOperation['phase'] = 'working', hash?: string) {
     setOperation(current => ({ step, message, phase, hash, status: 'running', transactionHashes: { ...current?.transactionHashes, ...(hash ? { [step]: hash } : {}) } }));
   }
   async function launch(draft: LaunchDraft) {
     if (running.current || draft.method !== 'bonding') return;
     if (!account.isSignedIn) {
-      if (activeNetwork.id !== 'base-sepolia') { account.notify(BASE_MAINNET_BLOCK_REASON, { tone: 'error' }); return; }
-      sessionStorage.setItem(BASE_AUTH_RETURN_KEY, JSON.stringify(draft));
-      await account.login('/create?network=base-sepolia'); return;
+      sessionStorage.setItem(authReturnKey, JSON.stringify(draft));
+      await account.login(`/create?network=${activeNetwork.id}`); return;
     }
     const selectedOwner = wallet.owner;
     const userId = account.account.status === 'registered' ? account.account.profile.userId : undefined;
@@ -54,12 +56,12 @@ export function useBaseBondingLaunch() {
     }
     const owner = selectedOwner;
     const identity = wallet.identity, generation = epoch.current, origin = getApiBaseUrl();
-    const key = baseCreationKey(origin, userId, owner);
+    const key = baseCreationKey(origin, userId, owner, network);
     if (activeCreations.has(key)) return;
     activeCreations.add(key); running.current = true; setWorking(true); setNameConflict(null);
     let saved: BaseCreationRecord | undefined;
     const guard = () => {
-      if (epoch.current !== generation || latest.current.wallet.identity !== identity || getApiBaseUrl() !== origin || getApiChain() !== 'base' || getApiNetwork() !== 'testnet' || getApiUserId() !== userId)
+      if (epoch.current !== generation || latest.current.wallet.identity !== identity || getApiBaseUrl() !== origin || getApiChain() !== 'base' || getApiNetwork() !== network || getApiUserId() !== userId)
         throw new Error('Your account, wallet, or application context changed. Return to the original account to resume this launch.');
     };
     const save = () => {
@@ -74,7 +76,7 @@ export function useBaseBondingLaunch() {
       const factory = baseAddress(networkConfiguration?.factoryContractId);
       const [settingsValue, chain] = await wallet.read([{ address: factory, abi: factoryAbi, functionName: 'settings' }, rpcChainCall]); guard();
       const settings = baseObject(settingsValue), pair = baseAddress(settings.pair), graduation = baseAddress(settings.graduation);
-      if (chain !== BigInt(84532) || typeof settings.platform_fee_bps !== 'number' || settings.platform_fee_bps !== 100) throw new Error('The RPC chain or factory fees differ from the reviewed Base Sepolia configuration.');
+      if (chainId === undefined || chain !== BigInt(chainId) || typeof settings.platform_fee_bps !== 'number' || settings.platform_fee_bps !== 100) throw new Error(`The RPC chain or factory fees differ from the reviewed ${networkName} configuration.`);
       baseAddress(settings.platform);
       for (const address of [factory, pair, graduation]) { const code = await wallet.code(address); guard(); if (!code || code === '0x') throw new Error('The factory, payment token or graduation contract is not deployed.'); }
       const [decimals, symbol, graduationPair] = await wallet.read([
@@ -85,13 +87,13 @@ export function useBaseBondingLaunch() {
       requireBaseTokenDecimals(decimals);
       const ownerCode = writing ? await wallet.code(owner) : undefined; guard();
       if (!canOriginateBaseTransaction(ownerCode)) throw new Error('Smart-wallet deployment is not supported. Select the linked EOA wallet.');
-      if (writing && await wallet.gasBalance() <= BigInt(0)) throw new Error('Fund your wallet with Base Sepolia ETH for network gas.'); guard();
+      if (writing && await wallet.gasBalance() <= BigInt(0)) throw new Error(`Fund your wallet with ${networkName} ETH for network gas.`); guard();
       return { factory, pair, pairDecimals: decimals, platformFeeBps: settings.platform_fee_bps };
     }
     async function checkGas(data: `0x${string}`, to?: Address) {
       const needed = await wallet.estimate(data, to); guard();
       const balance = await wallet.gasBalance(); guard();
-      if (balance < needed) throw new Error('Insufficient Base Sepolia ETH for this transaction’s estimated gas.');
+      if (balance < needed) throw new Error(`Insufficient ${networkName} ETH for this transaction’s estimated gas.`);
     }
     async function sign(kind: 'token' | 'approval' | 'factory', action: (onHash: (hash: Hash) => void) => Promise<unknown>) {
       guard(); if (!saved) throw new Error('Launch recovery is unavailable.');
@@ -136,7 +138,7 @@ export function useBaseBondingLaunch() {
         const error = Object.values(validateLaunchStage(draft, stage))[0]; if (error) throw new Error(error);
       }
       if (!saved) saved = { version: 1, identity, fingerprint, startsAt: baseLaunchStart(draft) };
-      save(); sessionStorage.setItem(BASE_AUTH_RETURN_KEY, JSON.stringify(draft));
+      save(); sessionStorage.setItem(authReturnKey, JSON.stringify(draft));
       setOperation(current => current ? { ...current, transactionHashes: { setup: saved?.tokenHash, deploy: saved?.approvalHash, curve: saved?.factoryHash } } : current);
       const env = await environment(!saved.factoryHash); guard();
       const deposit = parseBaseAmount(draft.supply, 18);
@@ -144,11 +146,11 @@ export function useBaseBondingLaunch() {
         const normalizeName = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
         for (const search of new Set([draft.symbol, draft.name])) {
           for (let page = 1; ; page++) {
-            const result = await getLaunchList('testnet', page, configuration.rules.launches.defaultLimit, undefined, undefined, { search }); guard();
+            const result = await getLaunchList(network, page, configuration.rules.launches.defaultLimit, undefined, undefined, { search }); guard();
             const symbolTaken = result.launches.some(item => item.metadata.symbol.toUpperCase() === draft.symbol.toUpperCase());
             const nameTaken = result.launches.some(item => normalizeName(item.metadata.name) === normalizeName(draft.name));
             if (nameTaken || symbolTaken) {
-              const message = nameTaken ? 'This project name is already taken on Base Sepolia.' : 'This token symbol is already used on Base Sepolia.';
+              const message = nameTaken ? `This project name is already taken on ${networkName}.` : `This token symbol is already used on ${networkName}.`;
               setNameConflict({ name: draft.name, symbol: draft.symbol, field: nameTaken ? 'project-name' : 'launch-symbol', message });
               throw new Error(message);
             }
@@ -157,7 +159,7 @@ export function useBaseBondingLaunch() {
         }
         report('logo', 'Reserving your project name and uploading its image.');
         try {
-          saved.image = await uploadLaunchImage({ name: draft.name, description: draft.description, network: 'testnet', ownerAddress: owner, image: fileFromDataUrl(draft.logo), website: draft.website, xAccount: draft.xAccount });
+          saved.image = await uploadLaunchImage({ name: draft.name, description: draft.description, network, ownerAddress: owner, image: fileFromDataUrl(draft.logo), website: draft.website, xAccount: draft.xAccount });
         } catch (error) {
           if (error instanceof ApiError && error.status === 409) setNameConflict({ name: draft.name, message: launchImageErrorMessage(error) });
           throw error;
@@ -166,14 +168,14 @@ export function useBaseBondingLaunch() {
       }
       let image = saved.image;
       let info = await getLaunchImage(image.imageId); guard();
-      if (info.network !== 'testnet' || !sameEvmAddress(info.ownerAddress, owner) || info.name !== image.name || info.publicUrl !== image.publicUrl) throw new Error('The project reservation does not match this wallet and launch.');
+      if (info.network !== network || !sameEvmAddress(info.ownerAddress, owner) || info.name !== image.name || info.publicUrl !== image.publicUrl) throw new Error('The project reservation does not match this wallet and launch.');
       if (!saved.factoryHash && info.status === 'expired') {
         report('logo', 'Renewing the expired project reservation. Your saved token deployment will be reused.');
-        const renewed = await uploadLaunchImage({ name: draft.name, description: draft.description, network: 'testnet', ownerAddress: owner, image: fileFromDataUrl(draft.logo), website: draft.website, xAccount: draft.xAccount }); guard();
+        const renewed = await uploadLaunchImage({ name: draft.name, description: draft.description, network, ownerAddress: owner, image: fileFromDataUrl(draft.logo), website: draft.website, xAccount: draft.xAccount }); guard();
         if (renewed.name !== image.name) throw new Error('The renewed project name differs from the saved token. No transaction was submitted.');
         saved.image = image = renewed; save();
         info = await getLaunchImage(image.imageId); guard();
-        if (info.network !== 'testnet' || !sameEvmAddress(info.ownerAddress, owner) || info.name !== image.name || info.publicUrl !== image.publicUrl) throw new Error('The renewed reservation does not match this wallet and launch.');
+        if (info.network !== network || !sameEvmAddress(info.ownerAddress, owner) || info.name !== image.name || info.publicUrl !== image.publicUrl) throw new Error('The renewed reservation does not match this wallet and launch.');
       }
       for (const field of ['name', 'symbol', 'description', 'logo'] as const) {
         const value = field === 'name' ? image.name : field === 'logo' ? image.publicUrl : draft[field].trim();
@@ -189,7 +191,7 @@ export function useBaseBondingLaunch() {
         await sign('token', onHash => wallet.deploy(image.name, draft.symbol, deposit, onHash)); guard();
       }
       if (saved.tokenHash && !saved.tokenAddress) {
-        report('setup', 'Confirming your token deployment on Base Sepolia.', 'confirming', saved.tokenHash);
+        report('setup', `Confirming your token deployment on ${networkName}.`, 'confirming', saved.tokenHash);
         const receipt = baseReceipt(await wallet.receipt(saved.tokenHash)); guard();
         if (receipt.status !== 'success') { saved.tokenHash = undefined; save(); throw new Error('Token deployment reverted. Retry checks before a new deployment.'); }
         if (!receipt.contractAddress) throw new Error('The mined deployment did not return a token address. Keep the transaction hash.');
@@ -232,10 +234,10 @@ export function useBaseBondingLaunch() {
         await sign('factory', onHash => wallet.write(call, onHash)); guard();
       }
       if (!saved.factoryHash) throw new Error('The launch transaction hash is unavailable.');
-      report('curve', 'Confirming your launch on Base Sepolia.', 'confirming', saved.factoryHash);
+      report('curve', `Confirming your launch on ${networkName}.`, 'confirming', saved.factoryHash);
       const mined = baseReceipt(await wallet.receipt(saved.factoryHash)); guard();
       if (mined.status !== 'success') { saved.factoryHash = undefined; save(); throw new Error('The launch transaction reverted. Your token deployment is saved for retry.'); }
-      const confirmationRecord = enqueueLaunch({ chain: 'base', network: 'testnet', userId, apiBaseUrl: origin,
+      const confirmationRecord = enqueueLaunch({ chain: 'base', network, userId, apiBaseUrl: origin,
         transactionHash: saved.factoryHash, traderAddress: owner, contractId: '' });
       const curve = createdBaseCurve(mined.logs, env.factory, owner, token, deposit);
       saved.curveAddress = curve; save();
@@ -247,7 +249,7 @@ export function useBaseBondingLaunch() {
       if (!registered) throw new Error('Your launch is confirmed on Base. Backend registration is pending and will retry automatically for the original account and network. Do not deploy or deposit again.');
       if (!sameEvmAddress(registered.contractId, curve)) throw new Error('The registered project does not match the mined launch. Keep the Factory transaction hash.');
       setOperation({ step: 'index', status: 'success', phase: 'confirming', message: 'Your Base launch is confirmed and its project page is ready.', curveAddress: curve, slug: registered.slug, hash: saved.factoryHash, transactionHashes: { setup: saved.tokenHash, deploy: saved.approvalHash, curve: saved.factoryHash } });
-      localStorage.removeItem(key); sessionStorage.removeItem(BASE_AUTH_RETURN_KEY); records.current.delete(key);
+      localStorage.removeItem(key); sessionStorage.removeItem(authReturnKey); records.current.delete(key);
       router.refresh(); return;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'The launch could not be completed.';

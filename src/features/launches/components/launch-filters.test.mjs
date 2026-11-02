@@ -63,6 +63,7 @@ function harness(request = defaults, apply = async () => {}) {
       Error,
       require: (name) => {
         if (name === '@/lib/api/config') return configurationModule;
+        if (name === '@/lib/networks/registry') return { IS_DEV_MODE: true };
         if (name === '@/lib/api/client') return { ...apiContextModule, ApiError: typeof ApiError === 'function' ? ApiError : Error };
         if (name === '@/lib/chain-address') return chainAddressModule;
         if (name === '@/lib/stellar/network') return networkModule;

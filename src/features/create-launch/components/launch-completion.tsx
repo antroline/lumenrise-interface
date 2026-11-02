@@ -153,7 +153,7 @@ export function LaunchCompletion({
   onBack: () => void;
 }) {
   const base = getApiChain() === 'base';
-  const networkName = base ? 'Base Sepolia' : 'Stellar';
+  const networkName = base ? (getApiNetwork() === 'public' ? 'Base Mainnet' : 'Base Sepolia') : 'Stellar';
   const steps = base ? [
     { id: 'setup', title: 'Create token', detail: 'Deploy your fixed-supply token to your wallet.' },
     { id: 'deploy', title: 'Approve token deposit', detail: 'Allow the factory to deposit the reviewed full supply.' },

@@ -52,7 +52,8 @@ test('returning from Base without Stellar configuration keeps an explicit enviro
   assert.deepEqual(destinations, ['/projects?network=stellar-mainnet']);
 });
 
-function harness(network, { supported = ['testnet', 'public'], compact = false, wallet = false, showNetwork = true } = {}) {
+function harness(network, { supported = ['testnet', 'public'], compact = false, wallet = false, showNetwork = true, devMode = true } = {}) {
+  const registry = loadNetworkRegistry(String(devMode));
   const config = { ...configuration, network: { ...configuration.network, supported } };
   const activeNetwork = registry.resolveNetwork(network, config);
   const switches = [], chainSwitches = [];
@@ -61,6 +62,7 @@ function harness(network, { supported = ['testnet', 'public'], compact = false, 
     'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'Fragment' },
     'next/link': { default: 'Link' },
     '@/lib/stellar/network': { API_NETWORK: activeNetwork.apiNetwork },
+    '@/lib/networks/registry': registry,
     '@/lib/networks/context': { useNetwork: () => ({
       activeNetwork, networks: registry.availableNetworks(config),
       switchNetwork: id => switches.push(id), switchBlockchain: chain => chainSwitches.push(chain),
@@ -112,6 +114,14 @@ for (const id of ['stellar-testnet', 'stellar-mainnet', 'base-mainnet', 'base-se
     assert.deepEqual(h.switches, [next]);
   });
 }
+
+test('mainnet mode shows only Stellar and Base without environment controls', () => {
+  for (const id of ['stellar-mainnet', 'base-mainnet']) {
+    const h = harness(id, { devMode: false });
+    assert.deepEqual(h.nodes.filter(node => node.type === 'DropdownMenuRadioItem').map(node => node.props.value), ['stellar', 'base']);
+    assert.ok(!h.nodes.some(node => node.props?.['aria-label'] === 'Network environment'));
+  }
+});
 
 test('Stellar environment choices respect server support', () => {
   const h = harness('stellar-testnet', { supported: ['testnet'] });

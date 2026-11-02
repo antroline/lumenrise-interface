@@ -39,6 +39,7 @@ function harness(options = {}) {
   const source = ts.transpileModule(readFileSync(new URL('./use-base-creation-wallet.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   runInNewContext(source, { module, exports: module.exports, Error, require(name) {
     if (name === 'react') return react;
+    if (name === '@/lib/networks/context') return { useNetwork: () => ({ activeNetwork: { blockchain: 'base', apiNetwork: options.mainnet ? 'public' : 'testnet', chainId: options.mainnet ? 8453 : 84532, label: options.mainnet ? 'Base Mainnet' : 'Base Sepolia' } }) };
     if (name === 'wagmi') return mockWagmi;
     if (name === '@/lib/launchpad') return { useLaunchpad: () => account };
     if (name === '@/lib/base/wallet') return { sameEvmAddress: (a, b) => a.toLowerCase() === b.toLowerCase() };
@@ -89,4 +90,12 @@ test('malformed bytecode results still stop execution', async () => {
     await assert.rejects(h.adapter.code(owner), /Invalid deployed bytecode/);
     assert.equal(h.mutations.length, 0);
   }
+});
+
+test('mainnet wallet switches to 8453 and submits deployment and approval on 8453', async () => {
+  const h = harness({ mainnet: true });
+  await h.adapter.ensureChain();
+  await h.adapter.deploy('Example', 'EX', 123n, () => {});
+  await h.adapter.write({ address: owner, abi: [], functionName: 'approve' }, () => {});
+  assert.deepEqual(h.mutations.map(call => call.chainId), [8453, 8453, 8453]);
 });

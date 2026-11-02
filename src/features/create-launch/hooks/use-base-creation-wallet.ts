@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useBalance, useBytecode, useConnection, useDeployContract, useEstimateFeesPerGas, useEstimateGas, useReadContracts, useSimulateContract, useSwitchChain, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { isAddress, isHex, type Abi, type Address, type Hash, type Hex } from 'viem';
 import { launchTokenDeployment } from '@/lib/base/tokenDeployment';
+import { useNetwork } from '@/lib/networks/context';
 import { useLaunchpad } from '@/lib/launchpad';
 import { sameEvmAddress } from '@/lib/base/wallet';
 export type BaseCreationCall = { address: Address; abi: Abi; functionName: string; args?: readonly unknown[] };
@@ -20,27 +21,31 @@ type Request = { id: number; command: Command; owner: Address; identity: string 
 type Pending = Request & { resolve: (value: unknown) => void; reject: (error: Error) => void };
 export function useBaseCreationWallet() {
   const account = useLaunchpad(), connection = useConnection();
+  const { activeNetwork } = useNetwork();
+  const chainId = activeNetwork.blockchain === 'base' ? activeNetwork.chainId : undefined;
+  const networkName = activeNetwork.label;
   const owner = account.address && isAddress(account.address) ? account.address : undefined;
   const userId = account.account.status === 'registered' ? account.account.profile.userId : '';
-  const identity = `${userId}:${owner ?? ''}:${account.account.status}:${account.baseSigningSupported === true}`;
+  // Preserve existing Sepolia recovery identities while isolating Mainnet operations.
+  const identity = `${userId}:${owner ?? ''}:${account.account.status}:${account.baseSigningSupported === true}${activeNetwork.apiNetwork === 'public' ? ':public' : ''}`;
   const latest = useRef({ identity, owner, connection });
   useLayoutEffect(() => { latest.current = { identity, owner, connection }; });
   const [request, setRequest] = useState<Request>();
   const pending = useRef<Pending | null>(null), sequence = useRef(0);
   const command = request?.command;
-  const scopeKey = `base:testnet:creation:${request?.identity ?? identity}:${request?.id ?? 0}`;
+  const scopeKey = `base:${activeNetwork.apiNetwork}:creation:${request?.identity ?? identity}:${request?.id ?? 0}`;
   const query = { retry: false, gcTime: 0, staleTime: 0 } as const;
-  const reads = useReadContracts({ contracts: command?.kind === 'read' ? command.calls.map(call => ({ ...call, chainId: 84532 })) : [], allowFailure: false,
+  const reads = useReadContracts({ contracts: command?.kind === 'read' ? command.calls.map(call => ({ ...call, chainId })) : [], allowFailure: false,
     scopeKey, query: { ...query, enabled: command?.kind === 'read' } });
-  const code = useBytecode({ chainId: 84532, address: command?.kind === 'code' ? command.address : undefined, scopeKey, query: { ...query, enabled: command?.kind === 'code' } });
-  const balance = useBalance({ chainId: 84532, address: request?.owner, scopeKey, query: { ...query, enabled: command?.kind === 'balance' } });
-  const gas = useEstimateGas({ chainId: 84532, account: request?.owner, to: command?.kind === 'estimate' ? command.to : undefined,
+  const code = useBytecode({ chainId, address: command?.kind === 'code' ? command.address : undefined, scopeKey, query: { ...query, enabled: command?.kind === 'code' } });
+  const balance = useBalance({ chainId, address: request?.owner, scopeKey, query: { ...query, enabled: command?.kind === 'balance' } });
+  const gas = useEstimateGas({ chainId, account: request?.owner, to: command?.kind === 'estimate' ? command.to : undefined,
     data: command?.kind === 'estimate' ? command.data : undefined, scopeKey, query: { ...query, enabled: command?.kind === 'estimate' } });
-  const fees = useEstimateFeesPerGas({ chainId: 84532, scopeKey, query: { ...query, enabled: command?.kind === 'estimate' } });
-  const simulated = useSimulateContract({ chainId: 84532, account: request?.owner,
+  const fees = useEstimateFeesPerGas({ chainId, scopeKey, query: { ...query, enabled: command?.kind === 'estimate' } });
+  const simulated = useSimulateContract({ chainId, account: request?.owner,
     ...(command?.kind === 'simulate' ? command.call : { abi: launchTokenDeployment.abi, functionName: 'approve', address: undefined }),
     scopeKey, query: { ...query, enabled: command?.kind === 'simulate' } });
-  const receipt = useWaitForTransactionReceipt({ chainId: 84532, hash: command?.kind === 'receipt' ? command.hash : undefined, confirmations: 1, timeout: 180000,
+  const receipt = useWaitForTransactionReceipt({ chainId, hash: command?.kind === 'receipt' ? command.hash : undefined, confirmations: 1, timeout: 180000,
     query: { ...query, enabled: command?.kind === 'receipt' } });
   const { mutateAsync: write } = useWriteContract();
   const { mutateAsync: deploy } = useDeployContract();
@@ -53,6 +58,7 @@ export function useBaseCreationWallet() {
   }
   useEffect(() => {
     if (!request || !command) return;
+    if (request.identity !== identity) { settle(undefined, new Error('The selected network or account changed. Resume on the original network.')); return; }
     const required = command.kind === 'read' ? [reads] : command.kind === 'code' ? [code] : command.kind === 'balance' ? [balance]
       : command.kind === 'estimate' ? [gas, fees] : command.kind === 'simulate' ? [simulated] : command.kind === 'receipt' ? [receipt] : [];
     const failed = required.find(result => result.isError);
@@ -74,21 +80,22 @@ export function useBaseCreationWallet() {
     started.current.add(request.id);
     const selected = request;
     async function run() {
+      if (chainId === undefined) throw new Error('Select a Base network before launching.');
       const current = latest.current;
       if (current.identity !== selected.identity || !current.connection.connector || !current.connection.address || !sameEvmAddress(current.connection.address, selected.owner)) throw new Error('Your linked wallet or account changed. Review the launch again.');
       const connector = current.connection.connector;
       if (command!.kind === 'switch') {
-        if (await connector.getChainId() !== 84532) await switchChain({ chainId: 84532 });
-        if (latest.current.identity !== selected.identity || await connector.getChainId() !== 84532) throw new Error('The wallet could not switch to Base Sepolia.');
+        if (await connector.getChainId() !== chainId) await switchChain({ chainId });
+        if (latest.current.identity !== selected.identity || await connector.getChainId() !== chainId) throw new Error(`The wallet could not switch to ${networkName}.`);
         return;
       }
-      if (await connector.getChainId() !== 84532 || latest.current.identity !== selected.identity) throw new Error('The wallet must be on Base Sepolia before signing.');
+      if (await connector.getChainId() !== chainId || latest.current.identity !== selected.identity) throw new Error(`The wallet must be on ${networkName} before signing.`);
       if (command!.kind === 'deploy') {
-        const hash = await deploy({ abi: launchTokenDeployment.abi, bytecode: launchTokenDeployment.bytecode, args: [command!.name, command!.symbol, command!.supply, selected.owner], account: selected.owner, chainId: 84532 });
+        const hash = await deploy({ abi: launchTokenDeployment.abi, bytecode: launchTokenDeployment.bytecode, args: [command!.name, command!.symbol, command!.supply, selected.owner], account: selected.owner, chainId });
         command!.onHash(hash); return hash;
       }
       if (command!.kind === 'write') {
-        const hash = await write({ ...command!.call, account: selected.owner, chainId: 84532 });
+        const hash = await write({ ...command!.call, account: selected.owner, chainId });
         command!.onHash(hash); return hash;
       }
     }
@@ -97,6 +104,7 @@ export function useBaseCreationWallet() {
   useEffect(() => () => { pending.current?.reject(new Error('Launch tracking was interrupted. Resume the saved transaction before signing again.')); pending.current = null; }, []);
   function execute(command: Command): Promise<unknown> {
     const current = latest.current;
+    if (chainId === undefined) return Promise.reject(new Error('Select a Base network before launching.'));
     if (!current.owner || !userId) return Promise.reject(new Error('Finish signing in and registering your Base account first.'));
     if (pending.current) return Promise.reject(new Error('A wallet operation is already pending.'));
     return new Promise((resolve, reject) => {

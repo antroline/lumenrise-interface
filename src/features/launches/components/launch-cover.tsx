@@ -11,7 +11,7 @@ import { launchElevationRaised } from './launch-panel';
 import { LaunchProjectLinks, type LaunchLinks } from './launch-project-links';
 
 const projectBadge =
-  'inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium';
+  'inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-md px-2 text-[11px] leading-none font-medium';
 
 function StatusPill({
   status,
@@ -97,14 +97,6 @@ export function LaunchCover({
           : ['rounded-2xl', launchElevationRaised],
       )}
     >
-      {compact && (
-        <div className="mb-4 flex flex-wrap items-center gap-1.5">
-          <LaunchTypeBadge className={cn(projectBadge, 'bg-secondary py-0 text-muted-foreground dark:bg-secondary dark:text-muted-foreground')}>
-            Bonding curve launch
-          </LaunchTypeBadge>
-          <StatusPill status={status} unified />
-        </div>
-      )}
       <div
         className={cn(
           'flex flex-col gap-4',
@@ -115,18 +107,26 @@ export function LaunchCover({
           ref={identityRef}
           className="flex min-w-0 flex-1 items-center gap-3"
         >
-          <div className="size-16 shrink-0">
+          <div className={cn('shrink-0', compact ? 'size-20' : 'size-16')}>
             {!docked && (
               <LaunchLogoMark
                 logo={logo}
                 name={name}
                 seed={seed}
-                size={64}
+                size={compact ? 80 : 64}
                 className="ring-1 ring-border"
               />
             )}
           </div>
-          <div className="min-w-0">
+          <div className={cn('min-w-0 flex-1', compact && 'flex min-h-20 flex-col justify-center')}>
+            {compact && (
+              <div className="mb-1 flex flex-wrap items-center gap-1">
+                <LaunchTypeBadge className={cn(projectBadge, 'bg-secondary py-0 text-muted-foreground dark:bg-secondary dark:text-muted-foreground')}>
+                  Bonding curve launch
+                </LaunchTypeBadge>
+                <StatusPill status={status} unified />
+              </div>
+            )}
             <h1
               className={cn(
                 'leading-tight font-semibold tracking-[-0.03em] break-words',
@@ -135,7 +135,7 @@ export function LaunchCover({
             >
               {name}
             </h1>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
+            <div className={cn('flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground', compact ? 'mt-0' : 'mt-1.5')}>
               <span className="font-medium text-foreground">${ticker}</span>
               {!compact && (
                 <LaunchTypeBadge>Bonding curve launch</LaunchTypeBadge>

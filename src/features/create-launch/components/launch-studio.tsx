@@ -247,7 +247,7 @@ function LaunchStudioContent({ onCompletedExit, bondingLaunch }: {
                 key={`${currentStep}-${draft.method}`}
                 direction={direction}
                 heading={currentStage.heading}
-                description={getApiChain() === 'base' && currentStep === 'project' ? 'Create a bonding-curve launch on Base Sepolia.' : stepDescriptions[currentStep]}
+                description={getApiChain() === 'base' && currentStep === 'project' ? `Create a bonding-curve launch on ${getApiNetwork() === 'public' ? 'Base Mainnet' : 'Base Sepolia'}.` : stepDescriptions[currentStep]}
               >
                 <LaunchStepContent
                   stage={currentStage}

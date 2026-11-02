@@ -5,6 +5,7 @@ import type { AppNetwork, NetworkId } from './types';
 
 export const NETWORK_STORAGE_KEY = 'lumenrise:network-id';
 export const LEGACY_NETWORK_STORAGE_KEY = 'lumenrise:network';
+export const IS_DEV_MODE = process.env.IS_DEV_MODE === 'true';
 
 /** Legacy URLs remain valid at the boundary; domain state uses explicit IDs. */
 export function parseNetworkId(value: string | null): NetworkId | null {
@@ -15,20 +16,25 @@ export function parseNetworkId(value: string | null): NetworkId | null {
     case 'mainnet':
     case 'stellar-mainnet': return 'stellar-mainnet';
     case 'testnet':
-    case 'stellar-testnet': return 'stellar-testnet';
+    case 'stellar-testnet':
+      if (!IS_DEV_MODE) throw new Error('Test networks are disabled.');
+      return 'stellar-testnet';
     case 'base':
     case 'base-mainnet': return 'base-mainnet';
-    case 'base-sepolia': return 'base-sepolia';
+    case 'base-sepolia':
+      if (!IS_DEV_MODE) throw new Error('Test networks are disabled.');
+      return 'base-sepolia';
     default: throw new Error('Unsupported network.');
   }
 }
 
 export function availableNetworks(config?: PublicConfiguration): readonly AppNetwork[] {
-  return [...(config ? stellarNetworks(config) : []), ...BASE_NETWORKS];
+  return [...(config ? stellarNetworks(config) : []), ...BASE_NETWORKS]
+    .filter(network => IS_DEV_MODE || network.environment === 'mainnet');
 }
 
 export function resolveNetwork(value: string | null, config?: PublicConfiguration): AppNetwork {
-  const id = parseNetworkId(value) ?? (config?.network.default === 'public' ? 'stellar-mainnet' : 'stellar-testnet');
+  const id = parseNetworkId(value) ?? (!IS_DEV_MODE || config?.network.default === 'public' ? 'stellar-mainnet' : 'stellar-testnet');
   const network = availableNetworks(config).find(entry => entry.id === id);
   if (!network) throw new Error('The selected network is not supported by the server.');
   return network;
@@ -46,6 +52,10 @@ export function isProjectRoute(pathname: string): boolean {
 /** A project link cannot silently replace a visitor's selected network. */
 export function initialNetworkSelection(requested: string | null, saved: string | null, pathname: string): string | null {
   parseNetworkId(requested);
+  if (!IS_DEV_MODE) {
+    if (saved === 'testnet' || saved === 'stellar-testnet') saved = 'stellar-mainnet';
+    if (saved === 'base-sepolia') saved = 'base-mainnet';
+  }
   return isProjectRoute(pathname) && saved !== null ? saved : requested ?? saved;
 }
 

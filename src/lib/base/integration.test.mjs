@@ -333,7 +333,7 @@ test('Base per-token decimals, uint256 prices and operation boundaries are exact
   const deployment = h.load('lib/base/deployment.ts');
   assert.throws(() => deployment.requireBaseWrites('trading', 'public'), /Mainnet/);
   assert.doesNotThrow(() => deployment.requireBaseWrites('creation', 'testnet'));
-  assert.throws(() => deployment.requireBaseWrites('creation', 'public'), /Mainnet/);
+  assert.doesNotThrow(() => deployment.requireBaseWrites('creation', 'public'));
   assert.doesNotThrow(() => deployment.requireBaseWrites('trading', 'testnet'));
 });
 

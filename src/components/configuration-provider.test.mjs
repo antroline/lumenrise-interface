@@ -9,7 +9,7 @@ import { loadNetworkRegistry } from '../lib/networks/registry.fixture.mjs';
 const code = ts.transpileModule(readFileSync(new URL('./configuration-provider.tsx', import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
 }).outputText;
-function harness({ initializationError, waitForClients = false, storedNetwork, storedNetworkId, pathname = '/projects' } = {}) {
+function harness({ initializationError, waitForClients = false, storedNetwork, storedNetworkId, pathname = '/projects', devMode = true } = {}) {
   const states = [], effects = [], events = [], storage = new Map(storedNetwork ? [['lumenrise:network', storedNetwork]] : []);
   if (storedNetworkId) storage.set('lumenrise:network-id', storedNetworkId);
   const timers = new Map();
@@ -54,7 +54,7 @@ function harness({ initializationError, waitForClients = false, storedNetwork, s
     './app-loading': { AppLoading: 'AppLoading' },
     '@/components/ui/button': { Button: 'Button' },
     '@/lib/configuration': { ConfigurationContext: { Provider: 'Config' } },
-    '@/lib/networks/registry': loadNetworkRegistry(),
+    '@/lib/networks/registry': loadNetworkRegistry(String(devMode)),
     './network-provider': { NetworkProvider: 'Network' },
   };
   const module = { exports: {} };
@@ -92,6 +92,25 @@ function harness({ initializationError, waitForClients = false, storedNetwork, s
   };
 }
 const settle = () => new Promise(resolve => setImmediate(resolve));
+
+test('mainnet mode overrides the server testnet default and migrates saved test selections', async () => {
+  for (const storedNetworkId of [undefined, 'stellar-testnet', 'base-sepolia']) {
+    const h = harness({ devMode: false, storedNetworkId });
+    h.render(); h.resolve(); await settle(); h.advance(500);
+    assert.equal(h.render().type, 'Config');
+    assert.equal(h.storage.get('lumenrise:network-id'), storedNetworkId === 'base-sepolia' ? 'base-mainnet' : 'stellar-mainnet');
+    assert.ok(!h.events.some(event => event.endsWith(':testnet')));
+  }
+});
+
+test('mainnet mode rejects explicit testnet URLs before configuration or wallet initialization', async () => {
+  for (const network of ['testnet', 'stellar-testnet', 'base-sepolia']) {
+    const h = harness({ devMode: false });
+    h.select(network); h.render(); await settle();
+    assert.equal(h.render().type, 'main');
+    assert.deepEqual(h.events, ['api-origin']);
+  }
+});
 
 for (const selected of ['public', 'testnet']) test(`initial network=${selected} overrides a previously saved network`, async () => {
   const h = harness({ storedNetwork: selected === 'public' ? 'testnet' : 'public' });

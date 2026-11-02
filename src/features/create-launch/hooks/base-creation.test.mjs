@@ -23,10 +23,12 @@ function harness(options = {}, storage = new Map()) {
   const modules = new Map(), calls = [], states = [], refs = [];
   let cursor = 0, refCursor = 0, controller, allowance = options.allowance ?? 0n, mined = false;
   let clock = Date.now(), identity = 'did:privy:creation:' + owner;
-  const config = { ...configuration, chain: 'base', auth: { appId: 'test' }, network: { configurations: { testnet: { launchConfigured: true, factoryContractId: factory } } } };
+  const network = options.mainnet ? 'public' : 'testnet';
+  const chainId = options.mainnet ? 8453 : 84532;
+  const config = { ...configuration, chain: 'base', auth: { appId: 'test' }, network: { configurations: { [network]: { launchConfigured: !options.notConfigured, factoryContractId: factory } } } };
   const account = { address: owner, accountReady: true, baseSigningSupported: true, isSignedIn: true, account: { status: 'registered', profile: { userId: 'did:privy:creation' } }, notify() {} };
   const image = { name: 'Example', slug: 'example', imageId: 'image', publicUrl: 'https://example.test/logo.png', status: 'pending' };
-  const imageInfo = () => ({ ...image, ownerAddress: owner, network: 'testnet', ...(options.expired && !calls.includes('upload') ? { status: 'expired' } : {}), ...(mined && !options.pendingIndex ? { status: 'finalized', launchContractId: curve, assetContractId: token } : {}) });
+  const imageInfo = () => ({ ...image, ownerAddress: owner, network, ...(options.expired && !calls.includes('upload') ? { status: 'expired' } : {}), ...(mined && !options.pendingIndex ? { status: 'finalized', launchContractId: curve, assetContractId: token } : {}) });
   const localStorage = { getItem: k => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) };
   const wallet = {
     get identity() { return identity; }, owner,
@@ -37,7 +39,7 @@ function harness(options = {}, storage = new Map()) {
     async read(requests) { return requests.map(call => {
       switch (call.functionName) {
         case 'settings': return { pair, graduation: curve, platform: owner, platform_fee_bps: 100 };
-        case 'getChainId': return 84532n;
+        case 'getChainId': return BigInt(options.wrongChain ? 1 : chainId);
         case 'pair': return pair;
         case 'decimals': return call.address === pair ? 6 : 18;
         case 'symbol': return call.address === pair ? 'USDC' : 'EX';
@@ -78,15 +80,15 @@ function harness(options = {}, storage = new Map()) {
     'next/navigation': { useRouter: () => ({ refresh() { calls.push('refresh'); } }) },
     '@/lib/launchpad': { useLaunchpad: () => account },
     '@/lib/configuration': { useConfiguration: () => config },
-    '@/lib/networks/context': { useNetwork: () => ({ activeNetwork: { id: options.mainnet ? 'base-mainnet' : 'base-sepolia', apiNetwork: options.mainnet ? 'public' : 'testnet' } }) },
-    '@/lib/api/client': { getApiBaseUrl: () => 'https://api.test', getApiChain: () => 'base', getApiNetwork: () => 'testnet', getApiUserId: () => 'did:privy:creation', ApiError: class extends Error {} },
+    '@/lib/networks/context': { useNetwork: () => ({ activeNetwork: { id: options.mainnet ? 'base-mainnet' : 'base-sepolia', apiNetwork: network, blockchain: 'base', chainId, label: options.mainnet ? 'Base Mainnet' : 'Base Sepolia' } }) },
+    '@/lib/api/client': { getApiBaseUrl: () => 'https://api.test', getApiChain: () => 'base', getApiNetwork: () => options.wrongContext ? (network === 'public' ? 'testnet' : 'public') : network, getApiUserId: () => 'did:privy:creation', ApiError: class extends Error {} },
 
     '@/lib/api/launches/trade-queue': {
       enqueueLaunch(record) { calls.push({ confirmation: record }); return record; },
       async waitForLaunchRegistration(record) { assert.equal(record.transactionHash, hash(3)); return options.pendingIndex ? undefined : { slug: 'persisted-server-slug', contractId: curve }; },
     },
-    '@/lib/api/launches/market': { async getLaunchList() { return { launches: options.conflict ? [{ metadata: { name: 'Example', symbol: 'EX' } }] : [], total: 0, limit: 20 }; } },
-    '@/lib/api/launches/images': { async uploadLaunchImage() { calls.push('upload'); return image; }, async getLaunchImage() { return imageInfo(); }, fileFromDataUrl: () => ({}), launchImageErrorMessage: e => e.message },
+    '@/lib/api/launches/market': { async getLaunchList(selectedNetwork) { assert.equal(selectedNetwork, network); return { launches: options.conflict ? [{ metadata: { name: 'Example', symbol: 'EX' } }] : [], total: 0, limit: 20 }; } },
+    '@/lib/api/launches/images': { async uploadLaunchImage(input) { assert.equal(input.network, network); calls.push('upload'); return image; }, async getLaunchImage() { return imageInfo(); }, fileFromDataUrl: () => ({}), launchImageErrorMessage: e => e.message },
   };
   function load(name) {
     const path = resolve(root, name);
@@ -119,12 +121,12 @@ test('Base creation deploys fixed supply, approves full asset balance, and creat
   assert.equal(writes[1].args[0].vesting.schedule, 1);
   assert.equal([...h.storage.keys()].filter(key => key.startsWith('lumenrise:base')).length, 0);
 });
-for (const [option, message] of [['changedBalance', /balance/], ['badCode', /artifact/], ['missingFactory', /not deployed/], ['noGas', /ETH/], ['rejectApproval', /Rejected/], ['revertedApproval', /approval reverted/], ['conflict', /already taken/], ['mainnet', /Mainnet|mainnet/]]) {
+for (const [option, message] of [['changedBalance', /balance/], ['badCode', /artifact/], ['missingFactory', /not deployed/], ['noGas', /ETH/], ['rejectApproval', /Rejected/], ['revertedApproval', /approval reverted/], ['conflict', /already taken/], ['wrongChain', /RPC chain/], ['notConfigured', /not configured/], ['wrongContext', /context changed/]]) {
   test(`${option} prevents the factory write`, async () => {
     const h = harness({ [option]: true }); const result = await h.launch();
     assert.equal(result.status, 'error'); assert.match(result.message, message);
     assert.equal(h.calls.some(call => call?.functionName === 'create_bonding_curve'), false);
-    if (['noGas', 'conflict', 'mainnet', 'missingFactory'].includes(option)) assert.equal(h.calls.includes('upload'), false);
+    if (['noGas', 'conflict', 'wrongChain', 'notConfigured', 'wrongContext', 'missingFactory'].includes(option)) assert.equal(h.calls.includes('upload'), false);
   });
 }
 test('sufficient asset allowance skips approval', async () => {
@@ -190,4 +192,28 @@ test('the bundled literal deploys creation bytecode.object with the supplied con
   assert.notEqual(literal.bytecode, artifact.deployedBytecode.object);
   assert.deepEqual(JSON.parse(JSON.stringify(literal.abi)), artifact.abi);
   assert.deepEqual(artifact.abi.find(entry => entry.type === 'constructor').inputs.map(input => input.type), ['string', 'string', 'uint256', 'address']);
+});
+
+for (const mainnet of [false, true]) {
+  test('launch uses selected network through upload and registration: ' + (mainnet ? 'Mainnet' : 'Sepolia'), async () => {
+    const h = harness({ mainnet });
+    assert.equal((await h.launch()).status, 'success');
+    assert.equal(h.calls.find(call => call?.confirmation).confirmation.network, mainnet ? 'public' : 'testnet');
+  });
+}
+test('mainnet recovery resumes without signing another deployment', async () => {
+  const h = harness({ mainnet: true, receiptPending: true });
+  await h.launch();
+  assert.ok([...h.storage.keys()].some(key => key.startsWith('lumenrise:base:public:creation:')));
+  const resumed = harness({ mainnet: true }, h.storage);
+  assert.equal((await resumed.launch()).status, 'success');
+  assert.equal(resumed.calls.includes('deploy'), false);
+  assert.equal(resumed.calls.some(call => call?.functionName), false);
+});
+test('mainnet and Sepolia recovery remain separate for the same wallet', async () => {
+  const h = harness({ receiptPending: true }); await h.launch();
+  const mainnet = harness({ mainnet: true }, h.storage);
+  assert.equal((await mainnet.launch()).status, 'success');
+  assert.equal(mainnet.calls.includes('deploy'), true);
+  assert.ok([...h.storage.keys()].some(key => key.startsWith('lumenrise:base:testnet:creation:')));
 });
