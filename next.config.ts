@@ -1,6 +1,9 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  env: {
+    IS_DEV_MODE: process.env.IS_DEV_MODE === 'true' ? 'true' : 'false',
+  },
   async redirects() {
     return [
       { source: '/launches/:path*', destination: '/projects/:path*', permanent: true },

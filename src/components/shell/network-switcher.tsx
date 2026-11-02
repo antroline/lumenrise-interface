@@ -8,6 +8,7 @@ import {
   DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useNetwork } from '@/lib/networks/context';
+import { IS_DEV_MODE } from '@/lib/networks/registry';
 import type { Blockchain } from '@/lib/networks/types';
 import { cn } from '@/lib/utils';
 
@@ -74,36 +75,38 @@ export function NetworkMenuItems() {
           >
             <span className="flex flex-col gap-1">
               <NetworkBrand blockchain={blockchain} />
-              <span className="text-xs text-muted-foreground">{activeNetwork.environment === 'testnet' ? (blockchain === 'base' ? 'Sepolia · Test funds' : 'Testnet · Test funds') : 'Mainnet · Real funds'}</span>
+              <span className="text-xs text-muted-foreground">{activeNetwork.environment === 'testnet' ? (blockchain === 'base' ? 'Sepolia · Test funds' : 'Testnet · Test funds') : 'Mainnet'}</span>
             </span>
           </DropdownMenuRadioItem>
         ))}
       </DropdownMenuRadioGroup>
     </DropdownMenuGroup>
-    <DropdownMenuSeparator className="mx-1 my-2" />
-    <DropdownMenuGroup>
-      <DropdownMenuLabel className="px-3 pb-2 pt-1">Environment</DropdownMenuLabel>
-      <DropdownMenuRadioGroup className="flex flex-col gap-1" aria-label="Network environment" value={activeNetwork.id} onValueChange={value => {
-        const network = networks.find(entry => entry.id === value && entry.blockchain === activeNetwork.blockchain);
-        if (network) switchNetwork(network.id);
-      }}>
-        {networks.filter(entry => entry.blockchain === activeNetwork.blockchain).map(network => (
-          <DropdownMenuRadioItem
-            key={network.id}
-            value={network.id}
-            label={network.environment === 'mainnet' ? 'Mainnet' : 'Testnet'}
-            aria-label={`${network.label} · ${network.environment === 'mainnet' ? 'Real funds' : 'Test funds'}`}
-            className="min-h-14 cursor-pointer rounded-lg py-2 pl-3 pr-9 data-checked:bg-secondary hover:bg-muted focus:bg-muted focus:text-foreground"
-          >
-            <span className="flex min-w-0 flex-col gap-0.5">
-              <span className="font-medium">{network.environment === 'mainnet' ? 'Mainnet' : 'Testnet'}</span>
-              <span className="text-xs text-muted-foreground">
-                {network.environment === 'mainnet' ? 'Real funds' : network.blockchain === 'base' ? 'Sepolia · Test funds' : 'Test funds'}
+    {IS_DEV_MODE && <>
+      <DropdownMenuSeparator className="mx-1 my-2" />
+      <DropdownMenuGroup>
+        <DropdownMenuLabel className="px-3 pb-2 pt-1">Environment</DropdownMenuLabel>
+        <DropdownMenuRadioGroup className="flex flex-col gap-1" aria-label="Network environment" value={activeNetwork.id} onValueChange={value => {
+          const network = networks.find(entry => entry.id === value && entry.blockchain === activeNetwork.blockchain);
+          if (network) switchNetwork(network.id);
+        }}>
+          {networks.filter(entry => entry.blockchain === activeNetwork.blockchain).map(network => (
+            <DropdownMenuRadioItem
+              key={network.id}
+              value={network.id}
+              label={network.environment === 'mainnet' ? 'Mainnet' : 'Testnet'}
+              aria-label={network.environment === 'mainnet' ? network.label : `${network.label} · Test funds`}
+              className="min-h-14 cursor-pointer rounded-lg py-2 pl-3 pr-9 data-checked:bg-secondary hover:bg-muted focus:bg-muted focus:text-foreground"
+            >
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="font-medium">{network.environment === 'mainnet' ? 'Mainnet' : 'Testnet'}</span>
+                {network.environment === 'testnet' && <span className="text-xs text-muted-foreground">
+                  {network.blockchain === 'base' ? 'Sepolia · Test funds' : 'Test funds'}
+                </span>}
               </span>
-            </span>
-          </DropdownMenuRadioItem>
-        ))}
-      </DropdownMenuRadioGroup>
-    </DropdownMenuGroup>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuGroup>
+    </>}
   </>;
 }

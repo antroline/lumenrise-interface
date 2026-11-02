@@ -3,7 +3,7 @@ import { factoryAbi } from '@/lib/base/factoryAbi';
 import { encodeBaseCreation, type BaseLaunchParams } from '@/lib/base/creation';
 import { parseBaseAmount } from '@/lib/base/amount';
 import { sameEvmAddress } from '@/lib/base/wallet';
-import type { UploadedLaunchImage } from '@/lib/api/launches/types';
+import type { ApiNetwork, UploadedLaunchImage } from '@/lib/api/launches/types';
 import type { LaunchDraft } from './launch-draft';
 import { bondingStartDate, isLaunchScheduled } from './launch-draft';
 import { calculateDraftLaunch } from './calculate-launch';
@@ -26,8 +26,8 @@ export type BaseCreationRecord = {
   tokenHash?: Hash; approvalHash?: Hash; factoryHash?: Hash;
   pendingSignature?: 'token' | 'approval' | 'factory';
 };
-export function baseCreationKey(origin: string, userId: string, owner: string) {
-  return `lumenrise:base:testnet:creation:${encodeURIComponent(origin)}:${encodeURIComponent(userId)}:${owner.toLowerCase()}`;
+export function baseCreationKey(origin: string, userId: string, owner: string, network: ApiNetwork = 'testnet') {
+  return `lumenrise:base:${network}:creation:${encodeURIComponent(origin)}:${encodeURIComponent(userId)}:${owner.toLowerCase()}`;
 }
 export function readBaseCreationRecord(value: string | null, identity: string): BaseCreationRecord | undefined {
   if (!value) return;

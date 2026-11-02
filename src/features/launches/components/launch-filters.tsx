@@ -1,6 +1,7 @@
 'use client';
 
 import { getConfiguration } from '@/lib/api/config';
+import { IS_DEV_MODE } from '@/lib/networks/registry';
 import { useState } from 'react';
 import { Asset } from '@stellar/stellar-sdk';
 import { isContractAddress } from '@/lib/chain-address';
@@ -133,6 +134,7 @@ export function LaunchFilters({
   }
   function changeNetwork(value: string) {
     if (value !== 'testnet' && value !== 'public') return;
+    if (value === 'testnet' && !IS_DEV_MODE) return;
     const nativePair =
       assets[0] && draft.pair === assets[0].value ? paymentAssets(value)[0]?.value ?? '' : '';
     setState((current) => ({
@@ -327,12 +329,12 @@ export function LaunchFilters({
                     >
                       Mainnet
                     </ToggleGroupItem>
-                    <ToggleGroupItem
+                    {IS_DEV_MODE && <ToggleGroupItem
                       value="testnet" disabled={!getConfiguration().network.supported.includes('testnet')}
                       className="flex-1 pointer-coarse:min-h-11"
                     >
                       Testnet
-                    </ToggleGroupItem>
+                    </ToggleGroupItem>}
                   </ToggleGroup>
                 </FieldSet>
                 <FieldSet className="gap-2">

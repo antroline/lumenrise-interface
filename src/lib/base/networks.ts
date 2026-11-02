@@ -5,7 +5,7 @@ export const BASE_NETWORKS: readonly BaseNetwork[] = [
   {
     id: 'base-mainnet', blockchain: 'base', label: 'Base Mainnet',
     environment: 'mainnet', apiNetwork: 'public', chainId: 8453, nativeCurrency: 'ETH',
-    capabilities: { wallet: true, projects: true, trading: true, creation: false },
+    capabilities: { wallet: true, projects: true, trading: true, creation: true },
   },
   {
     id: 'base-sepolia', blockchain: 'base', label: 'Base Sepolia',
