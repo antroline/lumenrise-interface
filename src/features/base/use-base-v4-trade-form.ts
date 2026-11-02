@@ -219,7 +219,7 @@ export function useBaseV4TradeForm(launch: LaunchResult, side: 'buy' | 'sell', l
     entry, setEntry, limitEntry, setLimitEntry, working, message, error, confirmation, dialogOpen, awaitingApproval,
     dismissConfirmation: () => { if (!working || submittedHash) setDialogOpen(false); },
     finishDialogClose: () => { if (!dialogOpen && !working && confirmation) { setSubmittedHash(undefined); setConfirmation(undefined); } },
-    trustHash: undefined, registrationNotice, submittedHash, buying, pair: live.pairSymbol ?? 'Pair token', permitted: permitted && !submittedHash,
+    trustHash: undefined, registrationNotice, submittedHash, buying, pair: live.pairSymbol ?? 'USDC', permitted: permitted && !submittedHash,
     inputError, amount, quote, quoteError: quoteRead.isError ? 'The pool quote is unavailable.' : '', slippage, minimumReceived,
     limit: buying ? minimumReceived === undefined ? undefined : amount : minimumReceived, limitError, sellable: held.data,
     unavailable: owner && baseSigningSupported !== true ? 'Select a linked EOA wallet to trade.' : unavailable,

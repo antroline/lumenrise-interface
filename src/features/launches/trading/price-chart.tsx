@@ -46,7 +46,7 @@ export function ChartTimeframeSelector({ range, onRangeChange, timeframe, onTime
 
 export function PriceChart({
   ticker,
-  quoteSymbol = 'Pair token',
+  quoteSymbol = 'USDC',
   history,
   embedded = false,
 }: {

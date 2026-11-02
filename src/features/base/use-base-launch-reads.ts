@@ -1,7 +1,7 @@
 'use client';
 import { useReadContract, useBytecode } from 'wagmi';
 import { erc20Abi, isAddress, type Address, type ContractFunctionReturnType } from 'viem';
-import { baseSepolia } from 'viem/chains';
+import { base, baseSepolia } from 'viem/chains';
 import { factoryAbi } from '@/lib/base/factoryAbi';
 import { launchAbi } from '@/lib/base/launchAbi';
 import { sameEvmAddress } from '@/lib/base/wallet';
@@ -11,7 +11,8 @@ import type { LaunchResult } from '@/lib/api/launches/market';
 export type BaseConfig = ContractFunctionReturnType<typeof launchAbi, 'view', 'get_config'>;
 const address = (value?: string): Address | undefined => value && isAddress(value) ? value : undefined;
 export function useBaseLaunchReads(launch: LaunchResult, scopeKey: string, mode: 'curve' | 'pool' = 'curve') {
-  const chainId = launch.network === 'testnet' ? 84532 : 8453;
+  const chain = launch.network === 'testnet' ? baseSepolia : base;
+  const chainId = chain.id;
   const configuration = getConfiguration();
   const configured = 'chain' in configuration ? configuration.network.configurations[launch.network] : undefined;
   const factory = address(configured?.factoryContractId), curve = address(launch.contractId);
@@ -31,7 +32,7 @@ export function useBaseLaunchReads(launch: LaunchResult, scopeKey: string, mode:
   const assetCode = useBytecode({ chainId, address: asset, scopeKey, query });
   const pairCode = useBytecode({ chainId, address: pair, scopeKey, query });
   // CHAINID executed on the RPC, independently of the configured transport's label.
-  const rpcChain = useReadContract({ chainId, address: baseSepolia.contracts.multicall3.address,
+  const rpcChain = useReadContract({ chainId, address: chain.contracts.multicall3.address,
     abi: [{ type: 'function', name: 'getChainId', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' }],
     functionName: 'getChainId', scopeKey, query });
   const queries = { config, state, status, price, settings, member, assetDecimals, pairDecimals, factoryCode, curveCode, assetCode, pairCode, rpcChain };

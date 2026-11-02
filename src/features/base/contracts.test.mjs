@@ -68,15 +68,17 @@ function deployment(patch = {}) {
     useBytecode(options) { return { data: options.address === patch.emptyCode ? undefined : '0x1234', isError: false, refetch: async () => ({ data: options.address === patch.emptyCode ? undefined : '0x1234', isError: false }) }; },
   };
   const load = loader({ wagmi: hooks, '@/lib/api/config': { getConfiguration: () => ({ chain: 'base', network: { configurations: { [launch.network]: { factoryContractId: F, launchConfigured: true } } } }) } });
-  return { runtime: load('features/base/use-base-launch-reads.ts').useBaseLaunchReads(launch, 'base:testnet:test-wallet', patch.mode), calls };
+  return { runtime: load('features/base/use-base-launch-reads.ts').useBaseLaunchReads(launch, `base:${launch.network}:test-wallet`, patch.mode), calls };
 }
-test('live deployment verification uses explicitly scoped hooks and uint256 launch membership', async () => {
-  const h = deployment(); assert.equal(h.runtime.unavailable, undefined); await h.runtime.revalidate();
+for (const network of ['testnet', 'public']) test(`live ${network} curve verification uses explicitly scoped hooks and uint256 launch membership`, async () => {
+  const chainId = network === 'testnet' ? 84532 : 8453;
+  const h = deployment({ launch: { network }, values: { getChainId: BigInt(chainId) } });
+  assert.equal(h.runtime.unavailable, undefined); await h.runtime.revalidate();
   assert.equal(h.calls.find(call => call.functionName === 'launch_at').args[0], 9007199254740993n);
-  for (const call of h.calls) { assert.equal(call.chainId, 84532); assert.equal(call.scopeKey, 'base:testnet:test-wallet'); assert.equal(call.query.enabled, true); }
+  for (const call of h.calls) { assert.equal(call.chainId, chainId); assert.equal(call.scopeKey, `base:${network}:test-wallet`); assert.equal(call.query.enabled, true); }
 });
 for (const [name, patch] of [
-  ['mainnet copied settings', { launch: { network: 'public' } }], ['actual RPC mismatch', { values: { getChainId: 8453n } }],
+  ['Mainnet RPC points to Sepolia', { launch: { network: 'public' } }], ['actual RPC mismatch', { values: { getChainId: 8453n } }],
   ['missing bytecode', { emptyCode: C }], ['wrong launch member', { values: { launch_at: F } }],
   ['decimal mismatch', { launch: { pairDecimals: 18 } }], ['missing decimals', { launch: { assetDecimals: undefined } }],
   ['busy', { values: { get_state: { busy: true, graduated: false } } }], ['scheduled', { values: { status: 0 } }],

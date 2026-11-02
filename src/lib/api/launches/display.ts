@@ -53,10 +53,13 @@ export function compactAmount(raw: string | null | undefined, scale: number | nu
 }
 
 export function pairLabel(pair: string | undefined, network: ApiNetwork) {
-  if (!pair) return 'Pair token';
+  if (!pair) return 'USDC';
   const config = getConfiguration();
   if ('chain' in config) {
-    if (network === 'testnet' && pair.toLowerCase() === '0x1670503bc03d1d5a0ca14a07c005cf48e2d27f15') return 'USDC';
+    const usdc = network === 'public'
+      ? '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+      : '0x1670503bc03d1d5a0ca14a07c005cf48e2d27f15';
+    if (pair.toLowerCase() === usdc) return 'USDC';
     return `${pair.slice(0, 6)}…${pair.slice(-4)}`;
   }
   if (pair === USDC_CONTRACTS[network])
