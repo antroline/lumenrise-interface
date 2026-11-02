@@ -250,7 +250,7 @@ export function IndexedLaunchOverview({
   const pair =
     label === 'XLM'
       ? 'XLM'
-      : tokens?.pairSymbol || (label === 'USDC' ? 'USDC' : 'quote tokens');
+      : tokens?.pairSymbol || 'USDC';
   const name = metadata?.name || 'Bonding curve launch';
   const ticker = metadata?.symbol || tokens?.assetSymbol || 'TOKEN';
   const description = launch?.metadata.description?.trim();

@@ -125,7 +125,7 @@ export function BondingTechnicalDetails({
       : tokens.pairSymbol
     : pairLabel(p?.pair ?? launch?.pair, network) === 'XLM'
       ? 'XLM'
-      : 'quote tokens';
+      : 'USDC';
   const ticker = p?.metadata.symbol ?? launch?.metadata.symbol ?? 'tokens';
   const tokenAmount = (value: string | undefined) =>
     value === undefined ? 'Unavailable' : `${detailAmount(value)} ${ticker}`;
@@ -203,9 +203,9 @@ export function BondingTechnicalDetails({
                         `${tokenAmount(b.buckets.team)} · ${b.allocations.teamBps / 100}% configured`,
                       ],
                       ['Token identity', tokens?.assetName],
-                      ['Quote token identity', tokens?.pairName],
+                      ['USDC identity', tokens?.pairName],
                       ['Token decimals', tokens?.assetDecimals.toString()],
-                      ['Quote token decimals', tokens?.pairDecimals.toString()],
+                      ['USDC decimals', tokens?.pairDecimals.toString()],
                       ['Logo URL', p?.metadata.logo ?? launch?.metadata.logo],
                       [
                         'Distinct buyers recorded',
@@ -311,7 +311,7 @@ export function BondingTechnicalDetails({
                           : undefined,
                       ],
                       [
-                        'Quote tokens earmarked for pool',
+                        'USDC earmarked for pool',
                         snapshot
                           ? pairAmount(
                               snapshot.preview.pool_pair_amount.toString(),

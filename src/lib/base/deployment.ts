@@ -1,10 +1,17 @@
 import { launchTokenDeployment } from './tokenDeployment';
 import type { ApiNetwork } from '../api/launches/types';
-export const BASE_MAINNET_BLOCK_REASON = 'Base Mainnet supports trading after graduation through Uniswap V4. Curve trading is unavailable.';
-export const BASE_TOKEN_DEPLOYMENT_BLOCK_REASON = 'Base token creation is unavailable: a verified LaunchToken deployment artifact with creation bytecode is required. The factory only deposits an existing token’s full owner balance.';
+export const BASE_TOKEN_DEPLOYMENT_BLOCK_REASON =
+  'Base token creation is unavailable: a verified LaunchToken deployment artifact with creation bytecode is required. The factory only deposits an existing token’s full owner balance.';
 // Retained for the existing Create status; trading validates its own runtime prerequisites.
 export const BASE_WRITE_BLOCK_REASON = BASE_TOKEN_DEPLOYMENT_BLOCK_REASON;
-export function requireBaseWrites(operation: 'creation' | 'trading' = 'creation', network: ApiNetwork = 'testnet') {
-  if (operation === 'trading' && network !== 'testnet') throw new Error(BASE_MAINNET_BLOCK_REASON);
-  if (operation === 'creation' && (!/^0x[0-9a-f]+$/i.test(launchTokenDeployment.bytecode) || launchTokenDeployment.bytecode.length <= 2)) throw new Error(BASE_TOKEN_DEPLOYMENT_BLOCK_REASON);
+export function requireBaseWrites(
+  operation: 'creation' | 'trading' = 'creation',
+  _network: ApiNetwork = 'testnet',
+) {
+  if (
+    operation === 'creation' &&
+    (!/^0x[0-9a-f]+$/i.test(launchTokenDeployment.bytecode) ||
+      launchTokenDeployment.bytecode.length <= 2)
+  )
+    throw new Error(BASE_TOKEN_DEPLOYMENT_BLOCK_REASON);
 }

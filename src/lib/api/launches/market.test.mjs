@@ -1122,7 +1122,7 @@ test('legacy queued hashes wait for an API slug and then register against the re
   assert.equal(h.queue.readTradeQueue().length, 0);
 });
 
-test('Base pair labels recognize the supplied testnet USDC address case-insensitively', () => {
+test('Base pair labels recognize Mainnet and supplied testnet USDC addresses case-insensitively', () => {
   const module = { exports: {} };
   runInNewContext(ts.transpileModule(readFileSync(resolve(directory, 'display.ts'), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
@@ -1135,6 +1135,10 @@ test('Base pair labels recognize the supplied testnet USDC address case-insensit
   assert.equal(module.exports.pairLabel(pair, 'testnet'), 'USDC');
   assert.equal(module.exports.pairLabel(pair.toLowerCase(), 'testnet'), 'USDC');
   assert.notEqual(module.exports.pairLabel(pair, 'public'), 'USDC');
+  const mainnetPair = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+  assert.equal(module.exports.pairLabel(mainnetPair, 'public'), 'USDC');
+  assert.equal(module.exports.pairLabel(mainnetPair.toLowerCase(), 'public'), 'USDC');
+  assert.notEqual(module.exports.pairLabel(mainnetPair, 'testnet'), 'USDC');
   assert.notEqual(module.exports.pairLabel('0x' + '1'.repeat(40), 'testnet'), 'USDC');
 });
 

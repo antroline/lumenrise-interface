@@ -11,12 +11,13 @@ const viem = require('viem');
 const OWNER = '0x' + '1'.repeat(40), CURVE = '0x' + '2'.repeat(40), ASSET = '0x' + '3'.repeat(40), PAIR = '0x' + '4'.repeat(40);
 const APPROVAL = '0x' + 'a'.repeat(64), TRADE = '0x' + 'b'.repeat(64);
 function harness(options = {}) {
-  const state = { chain: 84532, held: 10n ** 20n, pairHeld: 100000000n, rights: 10n ** 20n, allowance: 0n, gas: 10n ** 18n, owner: OWNER, ready: true, ...options };
+  const network = options.network ?? 'testnet', chainId = network === 'testnet' ? 84532 : 8453;
+  const state = { chain: chainId, held: 10n ** 20n, pairHeld: 100000000n, rights: 10n ** 20n, allowance: 0n, gas: 10n ** 18n, owner: OWNER, ready: true, ...options };
   const events = [], queue = [], values = [], refs = [], effects = [], cache = new Map();
   let index = 0, refIndex = 0, effectIndex = 0, rendering = false, scheduled = false, current;
   const connector = { getChainId: async () => state.chain };
   const connection = { address: OWNER, connector };
-  const launch = { contractId: CURVE, network: 'testnet', slug: 'actual-suffixed-slug', asset: ASSET, pair: PAIR, assetDecimals: 18, pairDecimals: 6, metadata: { symbol: 'TOK' } };
+  const launch = { contractId: CURVE, network, slug: 'actual-suffixed-slug', asset: ASSET, pair: PAIR, assetDecimals: 18, pairDecimals: 6, metadata: { symbol: 'TOK' } };
   const quote = options.side === 'sell' ? { gross: 20000000n, creator_fee: 100000n, user_amount: 19900000n, amount_received: 19900000n } : { gross: 20000000n, creator_fee: 100000n, user_amount: 20100000n, amount_received: 10n ** 18n };
   const refresh = () => { events.push('refresh'); return Promise.resolve(); };
   const react = {
@@ -34,7 +35,7 @@ function harness(options = {}) {
   function schedule() { if (!scheduled) { scheduled = true; queueMicrotask(() => { scheduled = false; render(); }); } }
   const result = data => ({ data, isError: false, isFetching: false, refetch: async () => result(typeof data === 'function' ? data() : data) });
   function read(options) {
-    assert.equal(options.chainId, 84532); assert.match(options.scopeKey, /^base:testnet:/);
+    assert.equal(options.chainId, chainId); assert.ok(options.scopeKey.startsWith(`base:${network}:`));
     const get = () => options.functionName === 'balanceOf' ? options.address === PAIR ? state.pairHeld : state.held
       : options.functionName === 'allowance' ? state.allowance : options.functionName === 'sellable_balance' ? state.rights : { ...quote, ...(state.changedQuote ? { amount_received: 2n } : {}) };
     return { ...result(get()), refetch: async () => { events.push('read:' + options.functionName); return result(get()); } };
@@ -43,7 +44,7 @@ function harness(options = {}) {
     useConnection: () => { connection.address = state.owner; return connection; },
     useSwitchChain: () => ({ switchChainAsync: async ({ chainId }) => { events.push('switch'); if (state.failedSwitch) throw new Error('Switch rejected'); state.chain = chainId; } }),
     useWriteContract: () => ({ writeContractAsync: async request => {
-      events.push('write:' + request.functionName); assert.equal(request.account, OWNER); assert.equal(request.chainId, 84532); assert.equal('value' in request, false);
+      events.push('write:' + request.functionName); assert.equal(request.account, OWNER); assert.equal(request.chainId, chainId); assert.equal('value' in request, false);
       if (request.functionName === 'approve') {
         assert.equal(request.address, options.side === 'sell' ? ASSET : PAIR); assert.equal(request.args[0], CURVE);
         if (state.approvalRejected) throw new Error('Approval rejected');
@@ -79,7 +80,7 @@ function harness(options = {}) {
     runInNewContext(code, { module, exports: module.exports, Error, TextEncoder,
       require: name => name === 'react' ? react : name === 'wagmi' ? wagmi
         : name === '@/lib/launchpad' ? { useLaunchpad: () => ({ address: state.owner, accountReady: state.ready, baseSigningSupported: true, account: state.ready ? { status: 'registered', profile: { userId: 'did:privy:test' } } : { status: 'signed-out' } }) }
-        : name === './use-base-launch-reads' ? { useBaseLaunchReads: () => ({ chainId: 84532, curve: CURVE, asset: ASSET, pair: PAIR, pairSymbol: 'USDC', unavailable: state.unavailable, revalidate: async () => { if (state.unavailable) throw new Error(state.unavailable); } }) }
+        : name === './use-base-launch-reads' ? { useBaseLaunchReads: () => ({ chainId, curve: CURVE, asset: ASSET, pair: PAIR, pairSymbol: 'USDC', unavailable: state.unavailable, revalidate: async () => { if (state.unavailable) throw new Error(state.unavailable); } }) }
         : name === '@/lib/api/client' ? { getApiBaseUrl: () => 'https://original.api/v1' }
         : name === '@/lib/api/launches/trade-queue' ? { releaseTradeReceipt() {}, enqueueTrade: (...args) => { events.push('queue'); queue.push(args); return true; } }
         : name.startsWith('@/') ? load(name.slice(2) + '.ts') : name.startsWith('.') ? load(resolve(dirname(file), name + '.ts')) : require(name),
@@ -95,18 +96,33 @@ function harness(options = {}) {
   render();
   return { state, events, queue, launch, render, get model() { return current.model; }, async enter(value) { current.model.setEntry(value); await new Promise(resolve => setImmediate(resolve)); }, async submit() { await current.model.submit({ preventDefault() {} }); await new Promise(resolve => setImmediate(resolve)); } };
 }
-for (const allowance of [0n, 10n ** 30n]) test(`buy uses the launch pair spender; allowance ${allowance === 0n ? 'requires approval' : 'skips approval'}`, async () => {
-  const h = harness({ allowance }); await h.enter('20.1'); await h.submit();
+for (const network of ['testnet', 'public']) for (const allowance of [0n, 10n ** 30n]) test(`${network} buy uses the launch pair spender; allowance ${allowance === 0n ? 'requires approval' : 'skips approval'}`, async () => {
+  const h = harness({ network, allowance }); await h.enter('20.1'); await h.submit();
   assert.equal(h.state.request?.functionName, 'buy'); assert.deepEqual(Array.from(h.state.request.args), [OWNER, 20100000n, 995000000000000000n]);
   assert.equal(h.events.filter(x => x === 'write:approve').length, allowance === 0n ? 1 : 0);
   if (allowance === 0n) assert.ok(h.events.indexOf('receipt:approval') < h.events.indexOf('write:buy'));
   assert.equal(h.events.filter(x => x === 'write:buy').length, 1); assert.equal(h.queue.length, 1);
   assert.equal(h.queue[0][4], 'actual-suffixed-slug'); assert.equal(h.queue[0][5].userId, 'did:privy:test');
+  assert.equal(h.queue[0][0], network);
   assert.equal(h.model.confirmation?.token.decimals, 18);
 });
-test('sell approves the asset, limits original-buyer rights, and applies slippage to net pair output', async () => {
-  const h = harness({ side: 'sell' }); await h.enter('1'); await h.submit();
+for (const network of ['testnet', 'public']) test(`${network} sell approves the asset, limits original-buyer rights, and applies slippage to net pair output`, async () => {
+  const h = harness({ network, side: 'sell' }); await h.enter('1'); await h.submit();
   assert.equal(h.state.request?.functionName, 'sell'); assert.equal(h.state.request.args[2], 19800500n); assert.equal(h.model.confirmation?.token.amount, 10n ** 18n);
+  assert.equal(h.queue[0][0], network);
+});
+
+test('Mainnet curve trading switches from Sepolia before approvals and trade signing', async () => {
+  const h = harness({ network: 'public', chain: 84532 }); await h.enter('20.1'); await h.submit();
+  assert.equal(h.state.chain, 8453);
+  assert.equal(h.state.request?.functionName, 'buy');
+  assert.ok(h.events.indexOf('switch') < h.events.indexOf('write:approve'));
+});
+
+for (const gas of [0n, 1n]) test(`Mainnet curve gas errors name the selected network (${gas})`, async () => {
+  const h = harness({ network: 'public', gas }); await h.enter('20.1'); await h.submit();
+  assert.match(h.model.error, /Base Mainnet ETH/);
+  assert.equal(h.state.request, undefined);
 });
 test('a linked EIP-7702 EOA can submit a normal trade without changing delegation', async () => {
   const h = harness({ ownerCode: '0xef0100' + '6'.repeat(40) });

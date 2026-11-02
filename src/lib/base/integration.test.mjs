@@ -331,7 +331,7 @@ test('Base per-token decimals, uint256 prices and operation boundaries are exact
   assert.equal(amounts.parseBaseAmount('9'.repeat(50), 0), BigInt('9'.repeat(50)));
   for (const input of ['0', '-1', '1e18']) assert.throws(() => amounts.parseBaseAmount(input, 18));
   const deployment = h.load('lib/base/deployment.ts');
-  assert.throws(() => deployment.requireBaseWrites('trading', 'public'), /Mainnet/);
+  assert.doesNotThrow(() => deployment.requireBaseWrites('trading', 'public'));
   assert.doesNotThrow(() => deployment.requireBaseWrites('creation', 'testnet'));
   assert.doesNotThrow(() => deployment.requireBaseWrites('creation', 'public'));
   assert.doesNotThrow(() => deployment.requireBaseWrites('trading', 'testnet'));

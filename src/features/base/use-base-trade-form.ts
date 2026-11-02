@@ -28,6 +28,7 @@ export function useBaseTradeForm(launch: LaunchResult, side: 'buy' | 'sell', loc
   const scopeKey = `base:${launch.network}:${identity}:${launch.contractId}`;
   const live = useBaseLaunchReads(launch, scopeKey);
   const { chainId, asset, pair, curve } = live;
+  const networkName = launch.network === 'testnet' ? 'Base Sepolia' : 'Base Mainnet';
   const buying = side === 'buy';
   const [localEntry, setLocalEntry] = useState('');
   const [localLimit, setLocalLimit] = useState('');
@@ -131,7 +132,7 @@ export function useBaseTradeForm(launch: LaunchResult, side: 'buy' | 'sell', loc
         throw new Error('Network gas could not be estimated. No transaction was submitted.');
       // Reserve a margin for changes between estimation and wallet confirmation.
       if (balance.data.value < (estimate.data * gasPrice * BigInt(120) + BigInt(99)) / BigInt(100))
-        throw new Error('Insufficient Base Sepolia ETH for network gas.');
+        throw new Error(`Insufficient ${networkName} ETH for network gas.`);
     }
     async function checkFundsAndQuote() {
       await latest.current.live.revalidate(); assertCurrent();
@@ -142,9 +143,9 @@ export function useBaseTradeForm(launch: LaunchResult, side: 'buy' | 'sell', loc
       assertCurrent();
       if ([h, p, r, a, g, q].some(result => result.isError) || h.data === undefined || p.data === undefined || r.data === undefined || a.data === undefined || !g.data || !q.data)
         throw new Error('Wallet balances, allowance, or the contract quote could not be verified.');
-      if (g.data.value <= BigInt(0)) throw new Error('Fund this wallet with Base Sepolia ETH for network gas.');
+      if (g.data.value <= BigInt(0)) throw new Error(`Fund this wallet with ${networkName} ETH for network gas.`);
       if (buying ? p.data < amount! : sellableBaseBalance(h.data, r.data) < amount!)
-        throw new Error(buying ? 'Insufficient pair-token balance for the total payment.' : 'Insufficient asset balance or original-buyer sell rights.');
+        throw new Error(buying ? 'Insufficient USDC balance for the total payment.' : 'Insufficient asset balance or original-buyer sell rights.');
       if (q.data.gross !== expected.gross || q.data.creator_fee !== expected.creator_fee || q.data.amount_received !== expected.amount_received || q.data.user_amount !== expected.user_amount)
         throw new Error('The quote changed. Review the updated quote and retry.');
       return a.data;
@@ -163,7 +164,7 @@ export function useBaseTradeForm(launch: LaunchResult, side: 'buy' | 'sell', loc
         const simulated = await approvalSimulation.refetch(); assertCurrent(); await verifyWalletChain();
         if (simulated.isError || !simulated.data || simulated.data.result === false) throw new Error('Token approval simulation failed.');
         await verifyGas(true); await verifyWalletChain();
-        setAwaitingApproval(true); setMessage(`Approve ${buying ? 'pair tokens' : 'asset tokens'} for this launch in your wallet…`);
+        setAwaitingApproval(true); setMessage(`Approve ${buying ? 'USDC' : launch.metadata.symbol} for this launch in your wallet…`);
         const approvalHash = await writeContractAsync({ ...simulated.data.request, chainId, account: owner });
         setAwaitingApproval(false); setMessage('Waiting for token approval confirmation…');
         const mined = await waitForReceipt(approvalHash);
@@ -207,7 +208,7 @@ export function useBaseTradeForm(launch: LaunchResult, side: 'buy' | 'sell', loc
     entry, setEntry, limitEntry, setLimitEntry, working, message, error, confirmation, dialogOpen, awaitingApproval,
     dismissConfirmation: () => { if (!working || submittedHash) setDialogOpen(false); },
     finishDialogClose: () => { if (!dialogOpen && !working && confirmation) { setSubmittedHash(undefined); setConfirmation(undefined); } },
-    trustHash: undefined, registrationNotice, submittedHash, buying, pair: live.pairSymbol ?? 'Pair token', permitted: permitted && !submittedHash,
+    trustHash: undefined, registrationNotice, submittedHash, buying, pair: live.pairSymbol ?? 'USDC', permitted: permitted && !submittedHash,
     inputError, amount, quote, quoteError: '', slippage, minimumReceived, limit, limitError, sellable, unavailable: owner && baseSigningSupported !== true ? 'Smart-wallet transaction execution is not supported. Select a linked EOA wallet.' : live.unavailable,
     quoteRead, submit,
   };
