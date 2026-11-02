@@ -3,7 +3,7 @@ import { FeaturedLaunch } from './_home/featured-launch';
 import { LaunchBrowser } from './_home/launch-browser';
 import { QuickActions } from './_home/quick-actions';
 
-export const metadata: Metadata = { title: 'Home' };
+export const metadata: Metadata = { alternates: { canonical: '/' } };
 
 export default function HomePage() {
   return (
