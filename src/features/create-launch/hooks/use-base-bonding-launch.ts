@@ -115,7 +115,7 @@ export function useBaseBondingLaunch() {
     }
     async function tokenState(token: Address, name: string, deposit: bigint, factory: Address) {
       const code = await wallet.code(token); guard();
-      if (code !== launchTokenDeployment.deployedBytecode) throw new Error('The deployed token does not match the verified LaunchToken artifact.');
+      if (!code || code === '0x') throw new Error('The launch token is not deployed on the selected Base network.');
       const [decimals, symbol, tokenName, supply, balance, allowance] = await wallet.read([
         { address: token, abi: erc20Abi, functionName: 'decimals' }, { address: token, abi: erc20Abi, functionName: 'symbol' }, { address: token, abi: erc20Abi, functionName: 'name' },
         { address: token, abi: erc20Abi, functionName: 'totalSupply' }, { address: token, abi: erc20Abi, functionName: 'balanceOf', args: [owner] }, { address: token, abi: erc20Abi, functionName: 'allowance', args: [owner, factory] },

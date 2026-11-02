@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useBalance, useBytecode, useConnection, useDeployContract, useEstimateFeesPerGas, useEstimateGas, useReadContracts, useSimulateContract, useSwitchChain, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
-import { isAddress, isHex, type Abi, type Address, type Hash, type Hex } from 'viem';
+import { erc20Abi, isAddress, isHex, type Abi, type Address, type Hash, type Hex } from 'viem';
 import { launchTokenDeployment } from '@/lib/base/tokenDeployment';
 import { useNetwork } from '@/lib/networks/context';
 import { useLaunchpad } from '@/lib/launchpad';
@@ -43,7 +43,7 @@ export function useBaseCreationWallet() {
     data: command?.kind === 'estimate' ? command.data : undefined, scopeKey, query: { ...query, enabled: command?.kind === 'estimate' } });
   const fees = useEstimateFeesPerGas({ chainId, scopeKey, query: { ...query, enabled: command?.kind === 'estimate' } });
   const simulated = useSimulateContract({ chainId, account: request?.owner,
-    ...(command?.kind === 'simulate' ? command.call : { abi: launchTokenDeployment.abi, functionName: 'approve', address: undefined }),
+    ...(command?.kind === 'simulate' ? command.call : { abi: erc20Abi, functionName: 'approve', address: undefined }),
     scopeKey, query: { ...query, enabled: command?.kind === 'simulate' } });
   const receipt = useWaitForTransactionReceipt({ chainId, hash: command?.kind === 'receipt' ? command.hash : undefined, confirmations: 1, timeout: 180000,
     query: { ...query, enabled: command?.kind === 'receipt' } });

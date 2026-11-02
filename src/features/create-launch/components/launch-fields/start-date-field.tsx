@@ -1,7 +1,7 @@
 'use client';
 
 import { Info } from 'lucide-react';
-import { FieldLabel } from '@/components/ui/field';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { Switch } from '@/components/ui/switch';
 import {
   Tooltip,
@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/tooltip';
 import { launchStartError } from '../../lib/launch-validation';
 import { DateTimePicker } from './date-time-picker';
-import { FieldSurface } from './field-controls';
+import { LaunchReveal } from '../launch-motion';
 
 export function StartDateField({
   value,
@@ -26,16 +26,14 @@ export function StartDateField({
   error?: string;
 }) {
   return (
-    <FieldSurface
-      className={`min-w-0 ${!enabled ? 'bg-muted hover:bg-muted dark:bg-card dark:hover:bg-card' : ''}`}
-    >
-      <div className="flex min-h-7 min-w-0 items-center justify-between gap-3">
+    <Field className="min-w-0 gap-1">
+      <div className="flex min-h-9 min-w-0 items-center gap-4">
         <div className="flex min-w-0 items-center gap-1">
           <FieldLabel
             htmlFor="schedule-launch"
-            className="text-small text-muted-foreground"
+            className="cursor-pointer text-sm leading-5 font-medium text-foreground"
           >
-            Schedule
+            Scheduled
           </FieldLabel>
           <Tooltip>
             <TooltipTrigger
@@ -55,28 +53,29 @@ export function StartDateField({
           id="schedule-launch"
           checked={enabled}
           onCheckedChange={onEnabledChange}
-          aria-controls="scheduled-launch-date"
-          className="h-7 w-12 after:inset-x-0 [&>[data-slot=switch-thumb]]:size-6 [&>[data-slot=switch-thumb][data-checked]]:translate-x-[22px]"
+          aria-controls={enabled ? 'scheduled-launch-date' : undefined}
+          className="after:-inset-y-3"
         />
       </div>
-      <div
-        id="scheduled-launch-date"
-        className={`min-w-0 ${!enabled ? '[&_button]:cursor-not-allowed [&_button]:opacity-100 [&_button_span]:text-muted-foreground [&_button_svg]:text-muted-foreground dark:[&_button_span]:text-muted-foreground dark:[&_button_svg]:text-muted-foreground' : ''}`}
+      <LaunchReveal
+        show={enabled}
+        className="min-w-0"
       >
-        <DateTimePicker
-          id="bonding-start"
-          label="Choose date & time"
-          triggerLabel="Start Date"
-          value={value}
-          onChange={onChange}
-          disabled={!enabled}
-          error={enabled ? error || launchStartError(value) : undefined}
-          compact
-          trailingCalendar
-          showActions={false}
-          embedded
-        />
-      </div>
-    </FieldSurface>
+        <div id="scheduled-launch-date">
+          <DateTimePicker
+            id="bonding-start"
+            label="Choose date & time"
+            triggerLabel="Select time"
+            value={value}
+            onChange={onChange}
+            disabled={!enabled}
+            error={enabled ? error || launchStartError(value) : undefined}
+            compact
+            trailingCalendar
+            showActions={false}
+          />
+        </div>
+      </LaunchReveal>
+    </Field>
   );
 }

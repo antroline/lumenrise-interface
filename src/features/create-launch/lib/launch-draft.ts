@@ -13,6 +13,8 @@ type LaunchSchedule = {
 
 export type LaunchDraft = {
   method: LaunchMethod;
+  // Presentation choice only; all selectable methods currently execute as bonding.
+  methodChoice?: LaunchMethod;
   methodSelected: boolean;
   name: string;
   symbol: string;

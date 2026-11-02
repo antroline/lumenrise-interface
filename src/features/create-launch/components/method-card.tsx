@@ -7,14 +7,15 @@ export function MethodCard({
   method,
   detail,
   selected,
+  disabled = false,
   onChoose,
 }: {
   method: LaunchMethod;
   detail: string;
   selected: boolean;
+  disabled?: boolean;
   onChoose?: () => void;
 }) {
-  const disabled = method !== 'bonding';
   return (
     <button
       type="button"
@@ -23,12 +24,10 @@ export function MethodCard({
       onClick={onChoose}
       className={cn(
         'flex min-h-16 studio-compact:min-h-14 studio-compact:gap-2 studio-compact:p-2 min-w-0 items-center gap-3 rounded-xl border p-2.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-foreground motion-reduce:transition-none',
-        disabled
-          ? 'cursor-not-allowed border-border text-muted-foreground/60'
-          : 'cursor-pointer text-foreground hover:border-foreground',
+        disabled ? 'cursor-not-allowed text-muted-foreground/60' : 'cursor-pointer text-foreground hover:border-foreground',
         selected
           ? 'border-border bg-primary/10 shadow-[inset_0_0_0_1px_var(--color-lime)] hover:border-lime'
-          : !disabled && 'border-border bg-card',
+          : 'border-border bg-card',
       )}
     >
       <span
@@ -46,12 +45,7 @@ export function MethodCard({
         <strong className="text-sm font-medium leading-snug">
           {methodLabels[method]}
         </strong>
-        <span
-          className={cn(
-            'text-xs leading-snug',
-            disabled && 'studio-compact:hidden',
-          )}
-        >
+        <span className="text-xs leading-snug">
           {detail}
         </span>
         {disabled && <span className="text-xs">Coming soon</span>}

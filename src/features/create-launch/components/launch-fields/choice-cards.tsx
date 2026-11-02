@@ -116,7 +116,7 @@ export function ChoiceCards<T extends string>({
                 disabled={option.disabled}
                 value={option.value}
                 aria-label={option.title}
-                className={cn('mt-0.5 focus-visible:ring-ring data-checked:border-emphasis data-checked:bg-primary-foreground [&_[data-slot=radio-group-indicator]]:bg-primary', compact && 'mt-0.5 size-4.5 shrink-0 data-disabled:cursor-not-allowed data-disabled:border-dashed data-disabled:bg-background data-disabled:opacity-40 data-checked:border-foreground data-checked:bg-primary [&_[data-slot=radio-group-indicator]]:bg-foreground')}
+                className={cn('mt-0.5 focus-visible:ring-ring data-checked:border-emphasis data-checked:bg-primary-foreground [&_[data-slot=radio-group-indicator]]:bg-primary', compact && 'mt-0.5 size-4.5 shrink-0 data-disabled:cursor-not-allowed data-disabled:border-dashed data-disabled:bg-background data-disabled:opacity-40 data-checked:border-emphasis data-checked:bg-primary [&_[data-slot=radio-group-indicator]]:bg-primary-foreground')}
               />
             </Field>
           </FieldLabel>

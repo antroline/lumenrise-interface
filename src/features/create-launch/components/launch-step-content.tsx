@@ -28,11 +28,12 @@ export function LaunchStepContent({
       return (
         <div className="flex min-w-0 flex-col gap-5">
           <MethodChoice
-            selected={fields.draft.methodSelected ? fields.draft.method : null}
-            onChoose={() =>
+            selected={fields.draft.methodSelected ? fields.draft.methodChoice ?? fields.draft.method : null}
+            onChoose={(methodChoice) =>
               fields.setDraft((draft) => ({
                 ...draft,
                 method: 'bonding',
+                methodChoice,
                 methodSelected: true,
               }))
             }
