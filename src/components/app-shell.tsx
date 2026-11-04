@@ -34,7 +34,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const stellarOnly = isBase && /^\/(?:missions|developers|cli|polic(?:y|ies))(?:\/|$)/.test(pathname);
 
   return (
-    <div className={cn('relative isolate min-h-svh bg-page pb-[calc(5.5rem+max(0.75rem,env(safe-area-inset-bottom)))] lg:flex lg:pb-0', pathname === '/projects' && 'bg-muted dark:bg-page', isLaunchDetails && 'dark:bg-page')}>
+    <div className={cn('relative isolate min-h-svh bg-page pb-[calc(5.5rem+max(0.75rem,env(safe-area-inset-bottom)))] lg:flex lg:pb-0', isLaunchDetails && 'dark:bg-page')}>
       <SideNavigation />
 
       <div className={cn('min-w-0 flex-1', isLaunchDetails && 'dark:bg-card')}>
