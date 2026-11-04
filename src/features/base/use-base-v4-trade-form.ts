@@ -5,7 +5,7 @@ import { useConnection, useReadContract, useSwitchChain, useWriteContract } from
 import { encodeFunctionData, erc20Abi, isAddress, type Address, type Hash, type Hex } from 'viem';
 import { useLaunchpad } from '@/lib/launchpad';
 import { getApiBaseUrl } from '@/lib/api/client';
-import { enqueueTrade, releaseTradeReceipt, readTradeQueue, QUEUE_EVENT } from '@/lib/api/launches/trade-queue';
+import { enqueueTrade, releaseTradeReceipt, readTradeQueue, isTradeRecorded, QUEUE_EVENT } from '@/lib/api/launches/trade-queue';
 import type { LaunchResult } from '@/lib/api/launches/market';
 import type { TradeConfirmation, TradeFormModel } from '@/features/launches';
 import { MAX_BASE_AMOUNT, parseBaseAmount } from '@/lib/base/amount';
@@ -59,7 +59,9 @@ export function useBaseV4TradeForm(launch: LaunchResult, side: 'buy' | 'sell', l
       setRegistrationNotice(record ? record.state === 'invalid' || record.state === 'identity'
         ? `Swap confirmed. Activity synchronization needs attention: ${record.error ?? 'Sign in with the original account.'}`
         : 'Swap confirmed. Activity synchronization is pending; retrying the same transaction hash automatically.'
-        : 'Swap confirmed and recorded in activity.');
+        : confirmation.registration && isTradeRecorded(confirmation.registration)
+          ? 'Swap confirmed and recorded in activity.'
+          : 'Swap confirmed. Activity synchronization is pending.');
     };
     update();
     window.addEventListener(QUEUE_EVENT, update);
@@ -208,7 +210,8 @@ export function useBaseV4TradeForm(launch: LaunchResult, side: 'buy' | 'sell', l
       const executed = v4ExecutedAmounts(mined.logs, deployment.manager, deployment.router, selectedPool.graduation.pool_id, selectedPool.key, input);
       if (executed.paid > amount || executed.received < minimumReceived) throw new Error('Unexpected swap amounts. Keep the transaction hash.');
       if (epoch.current !== started) return;
-      setConfirmation({ hash, side, token: { symbol: launch.metadata.symbol, amount: buying ? executed.received : executed.paid, decimals: launch.assetDecimals } });
+      setConfirmation({ hash, side, token: { symbol: launch.metadata.symbol, amount: buying ? executed.received : executed.paid, decimals: launch.assetDecimals },
+        registration: { ...context, network: launch.network, contractId: launch.contractId, transactionHash: hash } });
       setMessage('Swap confirmed on-chain.'); setRegistrationNotice('Swap confirmed. Activity synchronization is pending.'); setEntry('');
       await refreshWallet();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'The swap could not be completed.'); }

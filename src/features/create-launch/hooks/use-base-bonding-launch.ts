@@ -17,19 +17,27 @@ import { parseBaseAmount, requireBaseTokenDecimals } from '@/lib/base/amount';
 import { baseMetadataError, encodeBaseCreation } from '@/lib/base/creation';
 import { canOriginateBaseTransaction, sameEvmAddress } from '@/lib/base/wallet';
 import type { LaunchDraft } from '../lib/launch-draft';
-import type { LaunchOperation, LaunchOperationStep } from '../lib/launch-operation';
+import { LaunchRegistrationPendingError, type LaunchOperation, type LaunchOperationStep } from '../lib/launch-operation';
 import { validateLaunchStage, launchStages } from '../lib/launch-stages';
 import { baseAddress, baseCreationKey, baseInteger, baseLaunchStart, baseObject, baseReceipt, buildBaseBondingParams, createdBaseCurve, isWalletRejection, readBaseCreationRecord, type BaseCreationRecord } from '../lib/base-creation';
 import { useBaseCreationWallet, type BaseCreationCall } from './use-base-creation-wallet';
+import { useLaunchOperation } from './use-launch-operation';
 const activeCreations = new Set<string>();
 const rpcChainCall = { address: '0xcA11bde05977b3631167028862bE2a173976CA11', abi: [{ type: 'function', name: 'getChainId', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' }], functionName: 'getChainId' } as const;
 export function useBaseBondingLaunch() {
   const account = useLaunchpad(), configuration = useConfiguration(), { activeNetwork } = useNetwork();
   const wallet = useBaseCreationWallet(), router = useRouter();
   const [working, setWorking] = useState(false);
-  const [operation, setOperation] = useState<LaunchOperation | null>(null);
   const [nameConflict, setNameConflict] = useState<{ name: string; message: string; field?: 'project-name' | 'launch-symbol'; symbol?: string } | null>(null);
   const running = useRef(false), records = useRef(new Map<string, BaseCreationRecord>()), epoch = useRef<object>({});
+  const [operation, setOperation] = useLaunchOperation(completed => {
+    const record = completed.registration;
+    if (!record?.userId) return;
+    const key = baseCreationKey(record.apiBaseUrl, record.userId, record.traderAddress, record.network);
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(`launchpad:bonding-auth-return:base:${record.network}`);
+    records.current.delete(key);
+  });
   const latest = useRef({ account, wallet });
   useLayoutEffect(() => { latest.current = { account, wallet }; });
   useLayoutEffect(() => { epoch.current = {}; return () => { epoch.current = {}; }; }, [wallet.identity]);
@@ -245,15 +253,16 @@ export function useBaseBondingLaunch() {
       const config = baseObject(curveConfig), curveParams = baseObject(config.params);
       if (!sameEvmAddress(baseAddress(config.factory), env.factory) || !sameEvmAddress(baseAddress(curveParams.owner), owner) || !sameEvmAddress(baseAddress(curveParams.asset), token) || !sameEvmAddress(baseAddress(curveParams.pair), env.pair) || baseInteger(config.total_supply) !== deposit) throw new Error('The mined launch configuration could not be verified. Do not submit a second launch.');
       report('index', 'Launch mined. Waiting for your project page to be indexed.', 'confirming', saved.factoryHash);
+      setOperation(current => current ? { ...current, registration: { ...confirmationRecord, contractId: curve } } : current);
       const registered = await waitForLaunchRegistration(confirmationRecord); guard();
-      if (!registered) throw new Error('Your launch is confirmed on Base. Backend registration is pending and will retry automatically for the original account and network. Do not deploy or deposit again.');
+      if (!registered) throw new LaunchRegistrationPendingError();
       if (!sameEvmAddress(registered.contractId, curve)) throw new Error('The registered project does not match the mined launch. Keep the Factory transaction hash.');
       setOperation({ step: 'index', status: 'success', phase: 'confirming', message: 'Your Base launch is confirmed and its project page is ready.', curveAddress: curve, slug: registered.slug, hash: saved.factoryHash, transactionHashes: { setup: saved.tokenHash, deploy: saved.approvalHash, curve: saved.factoryHash } });
       localStorage.removeItem(key); sessionStorage.removeItem(authReturnKey); records.current.delete(key);
       router.refresh(); return;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'The launch could not be completed.';
-      setOperation(current => ({ ...(current ?? { step: 'check', transactionHashes: {} }), status: 'error', phase: 'working', message }));
+      setOperation(current => ({ ...(current ?? { step: 'check', transactionHashes: {} }), status: error instanceof LaunchRegistrationPendingError ? 'pending' : 'error', phase: 'working', message }));
     } finally { activeCreations.delete(key); running.current = false; setWorking(false); }
   }
   return { launch, working, operation, nameConflict, isReady, unavailable };

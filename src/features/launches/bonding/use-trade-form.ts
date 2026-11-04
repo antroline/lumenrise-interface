@@ -299,7 +299,9 @@ export function useTradeForm({
       recordSubmission(result.hash);
 
       await confirmTransaction(result.hash);
-      setConfirmation({ hash: result.hash, side, token: { symbol: tokens.assetSymbol, amount: executionAmount } });
+      setConfirmation({ hash: result.hash, side, token: { symbol: tokens.assetSymbol, amount: executionAmount },
+        registration: { chain: 'stellar', network, contractId: address, transactionHash: result.hash,
+          userId: originalUserId, apiBaseUrl: originalApiBaseUrl } });
       setMessage(`${buying ? 'Buy' : 'Sell'} confirmed.`);
       setEntry('');
       setLimitEntry('');

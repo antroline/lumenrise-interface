@@ -29,6 +29,18 @@ const inFlight = new Set<string>();
 const awaitingReceipts = new Set<string>();
 const volatile = new Map<string, QueuedTrade>();
 const launchResults = new Map<string, ConfirmedLaunch>();
+const completedTrades = new Set<string>();
+export type RegistrationIdentity = Pick<QueuedTrade, 'chain' | 'network' | 'contractId' | 'transactionHash' | 'userId' | 'action' | 'apiBaseUrl'>;
+const tradeResultKey = (record: RegistrationIdentity) => `lumenrise:trade-recorded:${tradeQueueKey(record)}`;
+export function isTradeRecorded(record: RegistrationIdentity): boolean {
+  if (completedTrades.has(tradeResultKey(record))) return true;
+  try { return localStorage.getItem(tradeResultKey(record)) === 'completed'; }
+  catch { return false; }
+}
+function saveTradeResult(record: QueuedTrade) {
+  completedTrades.add(tradeResultKey(record));
+  try { localStorage.setItem(tradeResultKey(record), 'completed'); } catch { /* Keep the session result. */ }
+}
 const resultKey = (record: QueuedTrade) => `lumenrise:launch-confirmed:${tradeQueueKey(record)}`;
 function saveLaunchResult(record: QueuedTrade, launch: ConfirmedLaunch) {
   launchResults.set(resultKey(record), launch);
@@ -59,23 +71,32 @@ export function registrationRecorded(record: QueuedTrade, launches?: ConfirmedLa
 /** Only backend registration is retried here; wallet work is never invoked. */
 export async function waitForLaunchRegistration(record: QueuedTrade, timeoutMs = 20_000) {
   const deadline = Date.now() + timeoutMs;
+  const key = tradeQueueKey(record);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   const current = () => getApiUserId() === record.userId && getApiChain() === record.chain &&
     getApiNetwork() === record.network && getApiBaseUrl() === record.apiBaseUrl;
-  do {
-    if (!current()) break;
-    const result = readLaunchConfirmation(record);
-    if (result) return result;
-    await flushTradeQueue({ network: record.network, contractId: record.contractId,
-      traderAddress: record.traderAddress, signal: new AbortController().signal, onRecorded: registrationRecorded });
-    if (!current()) break;
-    const registered = readLaunchConfirmation(record);
-    if (registered) return registered;
-    const queued = readTradeQueue().find(item => tradeQueueKey(item) === tradeQueueKey(record));
-    if (queued?.state === 'invalid') throw new Error(`Your launch is confirmed on-chain, but backend registration needs attention: ${queued.error ?? 'The server rejected confirmation.'} Keep the Factory hash; automatic event indexing remains available.`);
-    if (queued?.state === 'identity' || Date.now() >= deadline) break;
-    await new Promise(resolve => setTimeout(resolve, Math.min(1000, Math.max(0, deadline - Date.now()))));
-  } while (Date.now() <= deadline);
-  return undefined;
+  try {
+    while (!controller.signal.aborted && Date.now() < deadline) {
+      if (!current()) break;
+      const result = readLaunchConfirmation(record);
+      if (result) return result;
+      const queued = readTradeQueue().find(item => tradeQueueKey(item) === key);
+      // A previous rejection must not end a new check of a confirmed launch.
+      if (queued && queued.state !== 'pending') save({ ...queued, state: 'pending', nextAttemptAt: 0 });
+      await flushTradeQueue({ network: record.network, contractId: record.contractId,
+        traderAddress: record.traderAddress, signal: controller.signal, onRecorded: registrationRecorded,
+        launchPollingKey: key });
+      if (!current()) break;
+      const registered = readLaunchConfirmation(record);
+      if (registered) return registered;
+      if (controller.signal.aborted || Date.now() >= deadline) break;
+      await new Promise(resolve => setTimeout(resolve, Math.min(2000, Math.max(0, deadline - Date.now()))));
+    }
+    return undefined;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 const sameAddress = (left: string, right: string, chain: ApiChain) =>
   chain === 'base' ? left.toLowerCase() === right.toLowerCase() : left === right;
@@ -83,7 +104,7 @@ const canonicalHash = (hash: string, chain: ApiChain) =>
   chain === 'base' ? `0x${hash.replace(/^0x/i, '').toLowerCase()}` : hash.replace(/^0x/i, '').toLowerCase();
 export const tradeQueueKey = (
   trade: Pick<QueuedTrade, 'chain' | 'network' | 'contractId' | 'transactionHash' | 'userId' | 'action' | 'apiBaseUrl'>,
-) => `${PREFIX}${encodeURIComponent(trade.apiBaseUrl)}:${trade.chain ?? 'stellar'}:${trade.network}:${encodeURIComponent(trade.userId ?? '')}:${trade.action ?? 'trade'}:${trade.action === 'launch' ? '' : trade.chain === 'base' ? trade.contractId.toLowerCase() : trade.contractId}:${trade.transactionHash}`;
+) => `${PREFIX}${encodeURIComponent(trade.apiBaseUrl)}:${trade.chain ?? 'stellar'}:${trade.network}:${encodeURIComponent(trade.userId ?? '')}:${trade.action ?? 'trade'}:${trade.action === 'launch' ? '' : trade.chain === 'base' ? trade.contractId.toLowerCase() : trade.contractId}:${canonicalHash(trade.transactionHash, trade.chain ?? 'stellar')}`;
 function changed() {
   if (typeof window !== 'undefined')
     window.dispatchEvent(new Event(QUEUE_EVENT));
@@ -179,6 +200,7 @@ export function enqueueTrade(
   );
   const identity = { chain: context?.chain ?? getApiChain(), network, contractId, transactionHash,
     userId: context?.userId ?? getApiUserId(), apiBaseUrl: context?.apiBaseUrl ?? getApiBaseUrl(), action: 'trade' as const };
+  if (isTradeRecorded(identity)) return true;
   if (context?.awaitingReceipt) awaitingReceipts.add(tradeQueueKey(existing ?? identity));
   const persisted = existing
     ? save({ ...existing, slug: slug ?? existing.slug })
@@ -252,6 +274,7 @@ export async function flushTradeQueue(options: {
   traderAddress?: string;
   signal: AbortSignal;
   onRecorded: (record: QueuedTrade, launches?: ConfirmedLaunch[]) => void;
+  launchPollingKey?: string;
 }) {
   const userId = getApiUserId();
   const chain = getApiChain();
@@ -272,6 +295,7 @@ export async function flushTradeQueue(options: {
     )
       continue;
     const key = tradeQueueKey(original);
+    if (options.launchPollingKey && key !== options.launchPollingKey) continue;
     if (inFlight.has(key) || awaitingReceipts.has(key)) continue;
     const run = async () => {
       const trade = readTradeQueue().find((t) => tradeQueueKey(t) === key);
@@ -314,12 +338,14 @@ export async function flushTradeQueue(options: {
           bound.slug = currentSlug; save(bound);
           await report(currentSlug);
         }
+        saveTradeResult(bound);
         remove(bound);
         options.onRecorded(bound);
       } catch (error) {
         if (options.signal.aborted) return;
         const status = error instanceof ApiError ? error.status : undefined;
-        const state =
+        const pollingLaunch = trade.action === 'launch' && options.launchPollingKey === key;
+        const state = pollingLaunch ? 'pending' :
           status === 401 || (error instanceof ApiError && error.code === 'unauthenticated')
             ? 'identity'
             : (status !== undefined && status !== 202 && status !== 429 && status < 500) ||
@@ -331,7 +357,9 @@ export async function flushTradeQueue(options: {
           attempts: trade.attempts + 1,
           state,
           error: error instanceof Error ? error.message : 'Backend confirmation is unavailable.',
-          nextAttemptAt: Date.now() + retryDelay(error, trade.attempts),
+          nextAttemptAt: Date.now() + (pollingLaunch
+            ? Math.max(2000, error instanceof ApiError ? error.retryAfterMs ?? 0 : 0)
+            : retryDelay(error, trade.attempts)),
         });
       } finally {
         inFlight.delete(key);

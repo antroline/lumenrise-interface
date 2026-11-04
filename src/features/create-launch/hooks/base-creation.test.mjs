@@ -79,6 +79,7 @@ function harness(options = {}, storage = new Map()) {
       useState(initial) { const index = cursor++; if (!(index in states)) states[index] = initial; return [states[index], value => { states[index] = typeof value === 'function' ? value(states[index]) : value; }]; },
       useRef(initial) { const index = refCursor++; return refs[index] ??= { current: initial }; },
       useLayoutEffect() {},
+      useEffect() {},
     },
     'next/navigation': { useRouter: () => ({ refresh() { calls.push('refresh'); } }) },
     '@/lib/launchpad': { useLaunchpad: () => account },
@@ -185,7 +186,10 @@ test('pending factory receipt survives reload and never repeats token deployment
   assert.equal(resumed.calls.some(call => call?.functionName), false);
 });
 test('pending indexing retries the saved receipt without repeating signatures', async () => {
-  const h = harness({ pendingIndex: true }); assert.match((await h.launch()).message, /registration is pending/);
+  const h = harness({ pendingIndex: true });
+  const pending = await h.launch();
+  assert.equal(pending.status, 'pending');
+  assert.match(pending.message, /confirmed on the network.*few minutes/);
   const resumed = harness({}, h.storage); assert.equal((await resumed.launch()).status, 'success');
   assert.equal(resumed.calls.includes('deploy'), false);
   assert.equal(resumed.calls.some(call => call?.functionName), false);

@@ -11,9 +11,12 @@ import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogClose } fro
 import { AppDialogContent } from '@/components/app-dialog';
 import { TransactionHash } from './transaction-hash';
 import styles from './trade-result-dialog.module.css';
+import { useTradeRegistration } from '../hooks/use-trade-registration';
+import type { RegistrationIdentity } from '@/lib/api/launches/trade-queue';
 
 export type TradeConfirmation = {
   hash: string;
+  registration?: RegistrationIdentity;
   side?: 'buy' | 'sell';
   /** The submitted token quantity; supported SAC assets use seven decimals. */
   token?: { symbol: string; amount: bigint; decimals?: number };
@@ -52,15 +55,21 @@ export function TradeResultDialog({
   tokenLogo?: string;
   tokenSeed?: string;
 }) {
+  const registration = useTradeRegistration(confirmation?.registration);
+  const recorded = !!confirmation && registration === 'completed';
+  const processing = !!confirmation && !recorded;
   const busy = working && !confirmation;
   const approval = busy && awaitingApproval;
   const dismissible = !busy || !!submittedHash;
   const failed = !busy && !confirmation;
   const confirmedSide = confirmation?.side ?? side;
-  const title = confirmation
+  const title = processing ? registration === 'attention' ? 'Trade recording needs attention' : 'Recording your trade'
+    : confirmation
     ? confirmedSide === 'buy' ? 'Buy confirmed' : confirmedSide === 'sell' ? 'Sell confirmed' : 'Transaction confirmed'
     : busy ? approval ? 'Approve in your wallet' : 'Completing transaction' : 'Trade not completed';
-  const description = confirmation
+  const description = processing
+    ? 'Your transaction is confirmed on-chain. Activity will be ready after server processing completes.'
+    : confirmation
     ? 'Your transaction was successful.'
     : busy ? approval ? 'Open your wallet and approve the transaction to continue.' : 'Your transaction is being processed.'
       : error || 'The trade could not be completed. Please try again.';
@@ -88,9 +97,9 @@ export function TradeResultDialog({
         <div className={cn('flex min-w-0 flex-col items-center justify-center text-center', failed ? 'gap-3 pt-7' : confirmation ? 'min-h-[270px] gap-4' : 'min-h-[210px] gap-4')}>
           <div aria-hidden="true" className={cn(
             'grid shrink-0 place-items-center rounded-full',
-            busy ? 'size-14 bg-ink text-primary' : confirmation ? 'size-16 bg-primary text-primary-foreground' : 'size-13 bg-bad-soft text-bad',
+            busy || processing ? 'size-14 bg-ink text-primary' : confirmation ? 'size-16 bg-primary text-primary-foreground' : 'size-13 bg-bad-soft text-bad',
           )}>
-            {busy
+            {busy || processing
               ? <Spinner aria-hidden="true" role={undefined} aria-label={undefined} className="size-11 motion-reduce:animate-none" />
               : confirmation ? <Check className="size-9" /> : <CircleAlert className="size-8" />}
           </div>
@@ -99,7 +108,7 @@ export function TradeResultDialog({
               <span>{title}</span>
             </DialogTitle>
             <DialogDescription
-              role={busy ? 'status' : failed ? 'alert' : undefined}
+              role={busy || processing ? 'status' : failed ? 'alert' : undefined}
               aria-atomic="true"
               className={cn('w-full break-words leading-5 text-muted-foreground', failed ? 'text-xs' : 'text-sm')}
             >
