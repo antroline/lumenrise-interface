@@ -10,8 +10,8 @@ export type HoldersResult = {
   contractId: string;
   asset: string;
   amountScale: number;
-  balanceSource: 'token_contract';
-  coverage: 'trade_participants' | 'indexed_trades_and_transfers';
+  balanceSource: 'recorded_trades';
+  coverage: 'recorded_trades';
   totalHolders: number;
   nextCursor: string | null;
   items: Holder[];
@@ -48,8 +48,8 @@ export async function getHolders(
     result.network !== network ||
     !isContractAddress(result.asset) ||
     (getApiChain() === 'base' ? !Number.isInteger(result.amountScale) || result.amountScale < 0 || result.amountScale > 18 : result.amountScale !== 7) ||
-    result.balanceSource !== 'token_contract' ||
-    result.coverage !== (getApiChain() === 'base' ? 'indexed_trades_and_transfers' : 'trade_participants') ||
+    result.balanceSource !== 'recorded_trades' ||
+    result.coverage !== 'recorded_trades' ||
     !Number.isSafeInteger(result.totalHolders) ||
     result.totalHolders < 0 ||
     (result.nextCursor !== null && typeof result.nextCursor !== 'string') ||

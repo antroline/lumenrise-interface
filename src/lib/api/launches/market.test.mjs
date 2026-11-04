@@ -6,6 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
+import { setImmediate as nextTurn } from 'node:timers/promises';
 import ts from 'typescript';
 import { QueryClient, QueryObserver } from '@tanstack/react-query';
 
@@ -234,6 +235,42 @@ const drain = (h) =>
     signal: new AbortController().signal,
     onRecorded() {},
   });
+
+for (const chain of ['stellar', 'base']) for (const network of ['testnet', 'public']) {
+  test(`${chain}/${network} a pending trade persists its delay and only validated completion prevents duplicate registration`, async () => {
+    const store = storage();
+    const h = harness(() => ({ status: 202, retryAfter: new Date(Date.now() + 120000).toUTCString(), result: recorded }), store);
+    const setup = client => {
+      client.configureApiContext({ chain, network });
+      client.setApiUserId(chain === 'base' ? 'did:privy:original' : '42');
+      if (chain === 'base') client.setBaseAuthentication({ userId: 'did:privy:original', getAccessToken: async () => 'token', onExpired() {} });
+    };
+    setup(h.client);
+    const context = { chain, userId: h.client.getApiUserId(), apiBaseUrl: h.client.getApiBaseUrl() };
+    const hash = (chain === 'base' ? '0x' : '') + 'c'.repeat(64);
+    h.queue.enqueueTrade(network, ID, hash, OWNER, SLUG, context);
+    const identity = h.queue.readTradeQueue()[0];
+    const flush = target => target.queue.flushTradeQueue({ network, signal: new AbortController().signal, onRecorded() {} });
+    await flush(h);
+    assert.equal(h.queue.isTradeRecorded(identity), false);
+    const pending = h.queue.readTradeQueue()[0];
+    assert.ok(pending.nextAttemptAt > Date.now() + 118000);
+    const reload = harness(() => ({ result: recorded }), store); setup(reload.client);
+    await flush(reload); assert.equal(reload.calls.length, 0);
+    store.setItem(h.queue.tradeQueueKey(pending), JSON.stringify({ ...pending, nextAttemptAt: 0 }));
+    await flush(reload);
+    assert.equal(reload.calls.length, 1);
+    assert.equal(reload.queue.isTradeRecorded(identity), true);
+    assert.equal(reload.queue.readTradeQueue().length, 0);
+    same(JSON.parse(reload.calls[0].init.body), { transactionHash: hash });
+    assert.equal(reload.calls[0].init.headers['X-Chain'], chain);
+    assert.equal(reload.calls[0].init.headers[chain === 'base' ? 'X-Network' : 'X-Stellar-Network'], network);
+    const again = harness(undefined, store); setup(again.client);
+    assert.equal(again.queue.isTradeRecorded(identity), true);
+    again.queue.enqueueTrade(network, ID, hash.toUpperCase(), OWNER, SLUG, context);
+    await flush(again); assert.equal(again.calls.length, 0);
+  });
+}
 
 test('all public GETs carry explicit network and no account header; list uses page and limit', async () => {
   const h = harness((url) => ({
@@ -623,7 +660,7 @@ test('compact token amounts retain exact rounding and promote suffixes at bounda
 
 const holderResult = {
   network: 'testnet', contractId: ID, slug: SLUG, asset: ASSET, amountScale: 7,
-  balanceSource: 'token_contract', coverage: 'trade_participants',
+  balanceSource: 'recorded_trades', coverage: 'recorded_trades',
   totalHolders: 42, nextCursor: 'opaque/+==',
   items: [{ address: OWNER, balance: '9007199254740993', observedAt: DATE }],
 };
@@ -641,6 +678,33 @@ test('holders unwrap the public response, preserve opaque cursors and use the la
   await h.holders.getHolders(SLUG, 'public');
   assert.equal(h.calls[2].url, `http://api.example/v1/launches/${SLUG}/holders?network=public&limit=20`);
 });
+
+for (const chain of ['stellar', 'base']) for (const network of ['testnet', 'public']) {
+  test(`${chain}/${network} holders accept the new recorded-trades contract and reject obsolete or missing metadata`, async () => {
+    const evmAddress = '0x' + '1'.repeat(40);
+    const result = { ...holderResult, network,
+      contractId: chain === 'base' ? evmAddress : ID,
+      asset: chain === 'base' ? evmAddress : ASSET,
+      amountScale: chain === 'base' ? 18 : 7,
+      items: [{ ...holderResult.items[0], address: chain === 'base' ? evmAddress : OWNER }],
+    };
+    const h = harness(() => ({ result }));
+    h.client.configureApiContext({ chain, network });
+    same(await h.holders.getHolders(SLUG, network), result);
+    assert.equal(h.calls[0].init.headers['X-Chain'], chain);
+    assert.equal(h.calls[0].init.headers[chain === 'base' ? 'X-Network' : 'X-Stellar-Network'], network);
+    assert.equal(h.calls[0].init.headers['X-User-Id'], undefined);
+    for (const patch of [
+      { balanceSource: 'token_contract' }, { balanceSource: undefined },
+      { coverage: 'trade_participants' }, { coverage: 'indexed_trades_and_transfers' }, { coverage: undefined },
+    ]) {
+      h.setHandler(() => ({ result: { ...result, ...patch } }));
+      await assert.rejects(h.holders.getHolders(SLUG, network), { code: 'invalid-response' });
+    }
+    h.setHandler(() => ({ result: { ...result, items: [], totalHolders: 0, nextCursor: null } }));
+    assert.equal((await h.holders.getHolders(SLUG, network)).items.length, 0);
+  });
+}
 
 test('holder balances round to three decimals without precision loss and appended rows retain server order', () => {
   const { formatHolderBalance, appendHolders } = harness().holders;
@@ -818,7 +882,7 @@ test('holder UI distinguishes loading, empty, failures and populated balances wi
     assert.ok(tree.some((node) => node === expected || node?.props?.['aria-label'] === expected));
   }
   const populated = nodes(IndexedHolders({ holders: base, ticker: 'TOK' }));
-  assert.ok(populated.includes('900719925.4740993'));
+  assert.ok(populated.includes('900719925.474'));
   assert.ok(!populated.some((node) => typeof node === 'string' && node.includes('known holders.')));
   assert.ok(!populated.some((node) => node?.type === 'Button' && node.props.children === 'Refresh'));
   assert.ok(populated.some((node) => node?.props?.content === OWNER));
@@ -1244,6 +1308,60 @@ for (const chain of ['stellar', 'base']) {
     const h = confirmationHarness(() => ({ status: 403 }));
     h.queue.enqueueLaunch(h.input); await h.flush(); await h.flush();
     assert.equal(h.calls.length, 1); assert.equal(h.queue.readTradeQueue()[0].state, 'invalid');
+  });
+  test(`${chain} the completion check retries rejected registration every two seconds until ready`, async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+    let attempts = 0;
+    const h = confirmationHarness(() => ++attempts < 3 ? { status: 400 } : {
+      result: { launches: [{ contractId: ID, slug: 'finally-ready' }] },
+    });
+    const record = h.queue.enqueueLaunch(h.input);
+    const waiting = h.queue.waitForLaunchRegistration(record);
+    await nextTurn();
+    assert.equal(h.calls.length, 1);
+    t.mock.timers.tick(1999); await nextTurn();
+    assert.equal(h.calls.length, 1);
+    t.mock.timers.tick(1); await nextTurn();
+    assert.equal(h.calls.length, 2);
+    t.mock.timers.tick(2000); await nextTurn();
+    assert.equal((await waiting).slug, 'finally-ready');
+    assert.equal(h.calls.length, 3);
+  });
+  test(`${chain} repeated registration errors wait the full twenty seconds and preserve recovery`, async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+    const h = confirmationHarness(() => ({ status: 400 }));
+    const record = h.queue.enqueueLaunch(h.input);
+    let finished = false;
+    const waiting = h.queue.waitForLaunchRegistration(record).then(result => { finished = true; return result; });
+    await nextTurn();
+    for (let second = 2; second < 20; second += 2) {
+      t.mock.timers.tick(2000); await nextTurn();
+      assert.equal(finished, false);
+    }
+    assert.equal(h.calls.length, 10);
+    t.mock.timers.tick(2000); await nextTurn();
+    assert.equal(await waiting, undefined);
+    assert.equal(h.calls.length, 10);
+    assert.equal(h.queue.readTradeQueue()[0].transactionHash, h.input.transactionHash);
+    assert.equal(h.queue.readTradeQueue()[0].state, 'pending');
+  });
+  test(`${chain} the twenty-second deadline cancels a slow registration request`, async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+    let attempts = 0;
+    let lastSignal;
+    const h = confirmationHarness((url, init) => {
+      if (++attempts < 10) return { status: 400 };
+      lastSignal = init.signal;
+      return new Promise((resolve, reject) => init.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true }));
+    });
+    const waiting = h.queue.waitForLaunchRegistration(h.queue.enqueueLaunch(h.input));
+    await nextTurn();
+    for (let second = 2; second <= 20; second += 2) {
+      t.mock.timers.tick(2000); await nextTurn();
+    }
+    assert.equal(await waiting, undefined);
+    assert.equal(lastSignal.aborted, true);
+    assert.equal(h.calls.length, 10);
   });
   test(`${chain} unauthorized confirmation pauses until the same identity signs in with fresh auth`, async () => {
     const h = confirmationHarness(() => ({ status: 401 }));
