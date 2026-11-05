@@ -28,7 +28,7 @@ export function MobileProjectList({
   figureLabel?: string;
 }) {
   return (
-    <ul aria-label="Projects" className="w-full min-w-0 divide-y divide-border">
+    <ul aria-label="Projects" className="w-full min-w-0 divide-y divide-border dark:divide-border/50">
       {rows.map((row) => (
         <li key={row.id} className="min-w-0">
           <Link
@@ -78,7 +78,7 @@ export function MobileProjectList({
 
 export function MobileProjectListSkeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <div aria-hidden="true" className="divide-y divide-border">
+    <div aria-hidden="true" className="divide-y divide-border dark:divide-border/50">
       {Array.from({ length: rows }, (_, index) => (
         <div key={index} className="flex min-w-0 items-center gap-2.5 px-4 py-3 sm:px-5">
           <Skeleton className="size-11 shrink-0 rounded-xl motion-reduce:animate-none" />

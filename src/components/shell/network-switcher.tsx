@@ -11,6 +11,7 @@ import { useNetwork } from '@/lib/networks/context';
 import { IS_DEV_MODE } from '@/lib/networks/registry';
 import type { Blockchain } from '@/lib/networks/types';
 import { cn } from '@/lib/utils';
+import { ControlTooltip } from '@/components/control-tooltip';
 
 function NetworkBrand({ blockchain, symbolOnly = false }: { blockchain: Blockchain; symbolOnly?: boolean }) {
   const label = blockchain === 'stellar' ? 'Stellar' : 'Base';
@@ -31,37 +32,46 @@ function NetworkBrand({ blockchain, symbolOnly = false }: { blockchain: Blockcha
   </>;
 }
 
-export function NetworkSwitcher({ compact = false, className }: { compact?: boolean; className?: string }) {
+export function NetworkSwitcher({ compact = false, mobileHeader = false, className }: { compact?: boolean; mobileHeader?: boolean; className?: string }) {
   const { activeNetwork } = useNetwork();
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={
-        <Button variant="secondary"
-          className={cn('relative h-11 w-full justify-start gap-2 px-3', compact && 'size-10 justify-center px-0', className)}
-          aria-label={`Network: ${activeNetwork.label}`}
-          title={activeNetwork.label}
-        >
-          <NetworkBrand blockchain={activeNetwork.blockchain} symbolOnly={compact} />
-          {compact && <span aria-hidden="true" className="absolute -right-1 -top-1 rounded border border-border bg-card px-1 text-[10px] font-semibold leading-4 text-card-foreground">{activeNetwork.environment === 'testnet' ? 'T' : 'M'}</span>}
-          {!compact && <>
-            <span className="ml-auto rounded border border-border bg-card px-2 py-0.5 text-xs font-semibold text-card-foreground">{activeNetwork.environment === 'testnet' ? 'Testnet' : 'Mainnet'}</span>
-            <ChevronDown data-icon="inline-end" aria-hidden="true" className="text-muted-foreground transition-transform duration-150 in-aria-expanded:rotate-180 motion-reduce:transition-none" />
-          </>}
-        </Button>
-      } />
-      <DropdownMenuContent side={compact ? 'right' : 'bottom'} align="start" sideOffset={8} className="w-64 min-w-0 max-w-[calc(100vw-2rem)] overscroll-contain p-2">
-        <NetworkMenuItems />
+      <ControlTooltip enabled={compact} label={`${activeNetwork.label}${activeNetwork.environment === 'testnet' ? ' · Test funds' : ''}`}>
+        <DropdownMenuTrigger render={
+          <Button variant="secondary"
+            className={cn('relative h-11 w-full justify-start gap-2 px-3', compact && 'size-10 justify-center px-0', mobileHeader && 'h-10! w-auto gap-1.5 rounded-full border-transparent bg-secondary px-2.5 hover:bg-muted aria-expanded:bg-muted', className)}
+            aria-label={`Network: ${activeNetwork.label}`}
+            title={activeNetwork.label}
+          >
+            {mobileHeader ? <>
+              <span aria-hidden="true" className="grid size-4 shrink-0 place-items-center [&_img]:max-h-4 [&_img]:max-w-4">
+                <NetworkBrand blockchain={activeNetwork.blockchain} symbolOnly />
+              </span>
+              <span translate="no" className="text-xs font-semibold">{activeNetwork.blockchain === 'stellar' ? 'Stellar' : 'Base'}</span>
+              {activeNetwork.environment === 'testnet' && <span className="text-caption font-medium text-muted-foreground">Test</span>}
+              <ChevronDown aria-hidden="true" className="size-3 text-muted-foreground transition-transform duration-150 in-aria-expanded:rotate-180 motion-reduce:transition-none" />
+            </> : <NetworkBrand blockchain={activeNetwork.blockchain} symbolOnly={compact} />}
+            {compact && <span aria-hidden="true" className="absolute -bottom-0.5 inset-x-0 mx-auto w-fit rounded border border-border bg-card px-1 text-xs font-semibold leading-4 text-card-foreground">{activeNetwork.environment === 'testnet' ? 'Test' : 'Main'}</span>}
+            {!compact && !mobileHeader && <>
+              <span className="ml-auto rounded border border-border bg-card px-2 py-0.5 text-xs font-semibold text-card-foreground">{activeNetwork.environment === 'testnet' ? 'Testnet' : 'Mainnet'}</span>
+              <ChevronDown data-icon="inline-end" aria-hidden="true" className="text-muted-foreground transition-transform duration-150 in-aria-expanded:rotate-180 motion-reduce:transition-none" />
+            </>}
+          </Button>
+        } />
+      </ControlTooltip>
+      <DropdownMenuContent side={compact ? 'right' : 'bottom'} align={mobileHeader ? 'end' : 'start'} sideOffset={8} className={cn('w-64 min-w-0 max-w-[calc(100vw-2rem)] overscroll-contain p-2', mobileHeader && 'w-56 p-1.5')}>
+        <NetworkMenuItems dense={mobileHeader} />
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
 /** The sidebar, mobile drawer, and wallet menu share one set of choices. */
-export function NetworkMenuItems() {
+export function NetworkMenuItems({ dense = false }: { dense?: boolean } = {}) {
   const { activeNetwork, networks, switchNetwork, switchBlockchain } = useNetwork();
   return <>
     <DropdownMenuGroup>
-      <DropdownMenuLabel className="px-3 pb-2 pt-1">Blockchain</DropdownMenuLabel>
+      <DropdownMenuLabel className={cn('px-3 pb-2 pt-1', dense && 'px-2.5 pb-1 text-caption')}>Blockchain</DropdownMenuLabel>
       <DropdownMenuRadioGroup className="flex flex-col gap-1" aria-label="Blockchain" value={activeNetwork.blockchain} onValueChange={value => {
         if (value === 'stellar' || value === 'base') switchBlockchain(value);
       }}>
@@ -70,21 +80,21 @@ export function NetworkMenuItems() {
             key={blockchain}
             value={blockchain}
             label={blockchain === 'stellar' ? 'Stellar' : 'Base'}
-            className="min-h-14 cursor-pointer rounded-lg py-2 pl-3 pr-9 data-checked:bg-secondary hover:bg-muted focus:bg-muted focus:text-foreground"
+            className={cn('min-h-14 cursor-pointer rounded-lg py-2 pl-3 pr-9 data-checked:bg-secondary hover:bg-muted focus:bg-muted focus:text-foreground', dense && 'min-h-11 pl-2.5 pr-8')}
             aria-label={blockchain === 'stellar' ? 'Stellar' : 'Base'}
           >
             <span className="flex flex-col gap-1">
               <NetworkBrand blockchain={blockchain} />
-              <span className="text-xs text-muted-foreground">{activeNetwork.environment === 'testnet' ? (blockchain === 'base' ? 'Sepolia · Test funds' : 'Testnet · Test funds') : 'Mainnet'}</span>
+              {!dense && <span className="text-xs text-muted-foreground">{activeNetwork.environment === 'testnet' ? (blockchain === 'base' ? 'Sepolia · Test funds' : 'Testnet · Test funds') : 'Mainnet'}</span>}
             </span>
           </DropdownMenuRadioItem>
         ))}
       </DropdownMenuRadioGroup>
     </DropdownMenuGroup>
     {IS_DEV_MODE && <>
-      <DropdownMenuSeparator className="mx-1 my-2" />
+      <DropdownMenuSeparator className={cn('mx-1 my-2', dense && 'my-1')} />
       <DropdownMenuGroup>
-        <DropdownMenuLabel className="px-3 pb-2 pt-1">Environment</DropdownMenuLabel>
+        <DropdownMenuLabel className={cn('px-3 pb-2 pt-1', dense && 'px-2.5 pb-1 text-caption')}>Environment</DropdownMenuLabel>
         <DropdownMenuRadioGroup className="flex flex-col gap-1" aria-label="Network environment" value={activeNetwork.id} onValueChange={value => {
           const network = networks.find(entry => entry.id === value && entry.blockchain === activeNetwork.blockchain);
           if (network) switchNetwork(network.id);
@@ -95,11 +105,11 @@ export function NetworkMenuItems() {
               value={network.id}
               label={network.environment === 'mainnet' ? 'Mainnet' : 'Testnet'}
               aria-label={network.environment === 'mainnet' ? network.label : `${network.label} · Test funds`}
-              className="min-h-14 cursor-pointer rounded-lg py-2 pl-3 pr-9 data-checked:bg-secondary hover:bg-muted focus:bg-muted focus:text-foreground"
+              className={cn('min-h-14 cursor-pointer rounded-lg py-2 pl-3 pr-9 data-checked:bg-secondary hover:bg-muted focus:bg-muted focus:text-foreground', dense && 'min-h-11 pl-2.5 pr-8')}
             >
               <span className="flex min-w-0 flex-col gap-0.5">
                 <span className="font-medium">{network.environment === 'mainnet' ? 'Mainnet' : 'Testnet'}</span>
-                {network.environment === 'testnet' && <span className="text-xs text-muted-foreground">
+                {!dense && network.environment === 'testnet' && <span className="text-xs text-muted-foreground">
                   {network.blockchain === 'base' ? 'Sepolia · Test funds' : 'Test funds'}
                 </span>}
               </span>

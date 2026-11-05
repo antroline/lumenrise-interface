@@ -56,12 +56,12 @@ const nameClass = 'flex min-w-0 items-center gap-3';
 const directoryTableClass =
   'min-w-[1200px] table-fixed bg-card text-sm text-foreground dark:bg-card dark:text-foreground';
 const directoryHeadClass =
-  'h-12 border-0 bg-muted px-3 py-0 align-middle font-sans! text-xs! font-medium! tracking-normal! whitespace-nowrap text-muted-foreground first:pl-4 last:pr-4 dark:bg-muted dark:text-muted-foreground';
+  'h-12 border-0 bg-muted px-3 py-0 align-middle font-sans! text-xs! font-medium! tracking-normal! whitespace-nowrap text-muted-foreground first:pl-4 last:pr-4 dark:bg-secondary dark:text-muted-foreground';
 const directoryCellClass =
-  'border-border bg-card px-3 py-3 whitespace-nowrap first:pl-4 last:pr-4 dark:border-border dark:bg-card';
+  'border-border bg-card px-3 py-3 whitespace-nowrap first:pl-4 last:pr-4 dark:border-border/50 dark:bg-card';
 const directoryColumns = projectColumns.map((column) => ({
   ...column,
-  label: column.key === 'phase' ? 'Graduation' : column.label,
+  label: column.key === 'phase' ? 'Graduation' : column.key === 'category' ? 'Launch type' : column.label,
 }));
 
 function ProjectColumns({ directory = false }: { directory?: boolean }) {

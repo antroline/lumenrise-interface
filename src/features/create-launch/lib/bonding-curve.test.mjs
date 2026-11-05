@@ -254,6 +254,7 @@ function harness({ factoryHash, confirmationSlug = 'server-project', network = n
   const exports = loadSource('../hooks/use-bonding-launch.ts', {
     ...runtimeMocks,
     react: {
+      useEffect() {},
       useState: (value) => {
         let current = value;
         return [value, (next) => {
@@ -321,6 +322,7 @@ function harness({ factoryHash, confirmationSlug = 'server-project', network = n
     '@/lib/api/launches/trade-queue': {
       enqueueLaunch: record => record,
       waitForLaunchRegistration: async (record) => {
+        assert.ok(record.transactionHash);
         indexedSlugs.push('server-project'); events.push('index'); indexChecks++;
         return indexed === 'ready' ? { slug: confirmationSlug, contractId: curve } : undefined;
       },
@@ -686,9 +688,9 @@ test('a pending server index keeps the confirmed hash and retries without anothe
   const h = harness({ indexResult: 'pending' });
   await h.flow.launch(draft());
   const stalled = h.progress.at(-1);
-  assert.equal(stalled.status, 'error');
+  assert.equal(stalled.status, 'pending');
   assert.equal(stalled.step, 'index');
-  assert.match(stalled.message, /registration is pending/);
+  assert.match(stalled.message, /confirmed on the network.*few minutes/);
   assert.equal(stalled.transactionHashes.curve, 'factory-1');
   assert.equal(h.refreshes.length, 0);
   // Retrying only re-checks the index: no new signature, factory call, or upload.
@@ -1002,7 +1004,7 @@ test('Stellar reload recovery verifies the saved Factory hash and never repeats 
   const hash = 'c'.repeat(64);
   const h = harness({ factoryHash: hash, indexResult: 'pending' });
   await h.flow.launch(draft());
-  assert.match(h.progress.at(-1).message, /registration is pending/);
+  assert.match(h.progress.at(-1).message, /confirmed on the network.*few minutes/);
   const sends = h.sends.length;
   h.setIndexResult('ready');
   const reloaded = h.reload();

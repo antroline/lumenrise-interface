@@ -33,6 +33,8 @@ function load(filename, mocks = {}, globals = {}) {
     require: (name) => name.endsWith('.module.css') ? { __esModule: true, default: { status: 'trade-status-popup', failed: 'trade-failed-popup' } } : name === '@/components/token-logo' ? { TokenLogo: 'TokenLogo' } : name === '@/lib/stellar/amount' ? load('../../../lib/stellar/amount.ts') : name === '@/lib/api/config' ? configurationModule : name === '@/lib/stellar/network' ? networkModule : name === '@/lib/base/amount' ? load('../../../lib/base/amount.ts') : name === '@/lib/api/client' ? { getApiNetwork: () => networkModule.API_NETWORK, getApiUserId: () => '42', getApiBaseUrl: () => 'http://api.test' } : name === '@/lib/chain-address' ? { explorerUrl: (hash, network) => `https://stellar.expert/explorer/${network}/tx/${hash}` } :
       name in mocks
         ? mocks[name]
+        : name === '../hooks/use-trade-registration'
+          ? { useTradeRegistration: () => 'completed' }
         : name.startsWith('.')
           ? load(resolve(dirname(path), `${name}${name === './transaction-hash' ? '.tsx' : '.ts'}`), mocks, globals)
           : require(name),
@@ -592,6 +594,34 @@ test('unresolved confirmation ends with an error and no manual recheck', async (
   assert.equal(dialog.onCheckPending, undefined);
   assert.equal(h.storage.size, 0);
   assert.equal(h.writes(), 1);
+});
+
+test('trade dialog waits for API completion before presenting success', () => {
+  const jsx = (type, props) => ({ type, props });
+  let registration = 'pending';
+  const names = ['Dialog', 'DialogHeader', 'DialogTitle', 'DialogDescription', 'DialogClose'];
+  const { TradeResultDialog } = load('trade-result-dialog.tsx', {
+    '../hooks/use-trade-registration': { useTradeRegistration: () => registration },
+    'react/jsx-runtime': { jsx, jsxs: jsx },
+    '@/components/app-dialog': { AppDialogContent: 'AppDialogContent' },
+    '@/components/ui/dialog': Object.fromEntries(names.map(name => [name, name])),
+    '@/components/ui/button': { Button: 'Button' },
+    '@/components/ui/spinner': { Spinner: 'Spinner' },
+    '@/lib/utils': { cn: (...values) => values.filter(Boolean).join(' ') },
+    './transaction-hash': { TransactionHash: 'TransactionHash' },
+  });
+  const props = { confirmation: { hash: 'mined-hash', side: 'buy' }, onClose() {} };
+  const pending = TradeResultDialog(props);
+  assert.ok(content(pending).includes('Recording your trade'));
+  assert.ok(!content(pending).includes('Your transaction was successful.'));
+  assert.equal(elements(pending).filter(node => node.type === 'Spinner').length, 1);
+  registration = 'attention';
+  assert.ok(content(TradeResultDialog(props)).includes('Trade recording needs attention'));
+  registration = 'completed';
+  const completed = TradeResultDialog(props);
+  assert.ok(content(completed).includes('Buy confirmed'));
+  assert.ok(content(completed).includes('Your transaction was successful.'));
+  assert.equal(elements(completed).filter(node => node.type === 'Spinner').length, 0);
 });
 
 test('dialog supports loading, Blux focus, unresolved confirmation, failure and safe dismissal', () => {

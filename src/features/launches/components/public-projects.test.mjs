@@ -267,23 +267,27 @@ test('backend order and total survive combined filters, null bonding and unknown
   assert.equal(params.get('owner'), 'owner');
   assert.equal(h.options.queryKey[1].sort, 'almostGraduated');
 });
-test('cached data shows skeletons during fetching for every request parameter', () => {
+test('background refresh keeps cached rows visible for every request parameter', () => {
   const data = { launches: [launch('a')], total: 1 };
   const h = harness(status(data));
   assert.equal(h.options.refetchOnMount, 'always');
   for (const changes of [
+    {},
     { search: 'token' }, { category: 'bonding-curve' }, { sort: 'name' },
     { direction: 'asc' }, { owner: 'owner' }, { pair: 'asset' },
     { network: 'public' }, { limit: 50 }, { page: 2 },
   ]) {
     h.render(changes, status(data, { isFetching: true }));
-    assert.ok(h.find('ProjectsTableSkeleton'));
-    assert.ok(h.find('MobileProjectListSkeleton'));
-    assert.ok(!h.find('ProjectsTable'));
+    assert.ok(!h.find('ProjectsTableSkeleton'));
+    assert.ok(!h.find('MobileProjectListSkeleton'));
+    assert.ok(h.find('ProjectsTable'));
+    assert.ok(h.find('MobileProjectList'));
+    assert.equal(h.find('section').props['aria-busy'], true);
   }
   h.render({ page: 1 }, status(data));
   assert.ok(h.find('ProjectsTable'));
   assert.ok(!h.find('ProjectsTableSkeleton'));
+  assert.equal(h.find('section').props['aria-busy'], false);
 });
 test('drawer Apply shows skeletons until its request completes', async () => {
   const h = harness(status({ launches: [launch('a')], total: 1 }));

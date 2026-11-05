@@ -58,3 +58,13 @@ test('success retains the three completed steps and links to the confirmed launc
   assert.equal((html.match(/>Complete</g) ?? []).length, 3);
   assert.doesNotMatch(html, /animate-spin|Back to review|Try again/);
 });
+
+test('pending registration confirms the launch without an error and offers a check action', () => {
+  const message = 'Your launch is confirmed on the network. Please wait while we finish preparing your project page. This may take a few minutes.';
+  const html = render({ step: 'index', phase: 'working', status: 'pending', message });
+  assert.match(html, /Your launch is confirmed/);
+  assert.match(html, /few minutes/);
+  assert.match(html, /Check again/);
+  assert.equal((html.match(/>Complete</g) ?? []).length, 3);
+  assert.doesNotMatch(html, /role="alert"|needs attention|animate-spin|Try again|View launch/);
+});

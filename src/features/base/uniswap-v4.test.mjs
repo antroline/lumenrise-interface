@@ -164,7 +164,7 @@ function tradeHarness(options = {}) {
     './use-base-launch-reads': { useBaseLaunchReads: (l, scope, mode) => { assert.equal(mode, 'pool'); return { chainId: state.chainId, asset, pair, curve: C, revalidate: async () => { if (state.invalidPool) throw new Error('Invalid pool'); } }; } },
     './use-base-v4-pool': { useBaseV4Pool: () => ({ data: pool, client, chainId: state.chainId, deployment, refetch: async () => ({ data: pool }) }) },
     '@/lib/api/client': { getApiBaseUrl: () => 'https://api.test' },
-    '@/lib/api/launches/trade-queue': { enqueueTrade: (...args) => { queue.push(args); return true; }, releaseTradeReceipt() {}, QUEUE_EVENT: 'queued', readTradeQueue: () => state.recorded ? [] : queue.map(([network, contractId, transactionHash, traderAddress, slug, context]) => ({ ...context, network, contractId, transactionHash, traderAddress, slug, state: state.syncState ?? 'pending', error: state.syncError })) },
+    '@/lib/api/launches/trade-queue': { enqueueTrade: (...args) => { queue.push(args); return true; }, releaseTradeReceipt() {}, QUEUE_EVENT: 'queued', isTradeRecorded: () => !!state.recorded, readTradeQueue: () => state.recorded ? [] : queue.map(([network, contractId, transactionHash, traderAddress, slug, context]) => ({ ...context, network, contractId, transactionHash, traderAddress, slug, state: state.syncState ?? 'pending', error: state.syncError })) },
   });
   const hook = load('features/base/use-base-v4-trade-form.ts').useBaseV4TradeForm;
   function render() {

@@ -37,7 +37,7 @@ export default async function ProjectsPage({
             Projects
           </h1>
           <p className="mt-3 text-body text-muted-foreground sm:text-base">
-            Explore bonding-curve launches and indexed markets on the selected network.
+            Explore bonding-curve launches and indexed markets.
           </p>
         </div>
         <div className="mx-auto w-full min-w-0 max-w-[1400px]">

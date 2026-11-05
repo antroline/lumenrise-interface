@@ -162,10 +162,11 @@ export function LaunchCompletion({
   const headingRef = useRef<HTMLHeadingElement>(null);
   const reduced = useLaunchReducedMotion();
   const failed = operation?.status === 'error';
+  const pending = operation?.status === 'pending';
   const success = operation?.status === 'success';
-  const approval = !failed && !success && operation?.phase === 'approval';
+  const approval = !failed && !success && !pending && operation?.phase === 'approval';
   const idle = !operation && !working;
-  const running = !failed && !success && !idle;
+  const running = !failed && !success && !pending && !idle;
   const currentIndex = operation ? operationOrder.indexOf(operation.step) : -1;
   const activeSignature = steps.find(
     (step) => step.id === operation?.step,
@@ -175,23 +176,27 @@ export function LaunchCompletion({
     ? 'success'
     : failed
       ? 'error'
-      : approval
-        ? 'approval'
-        : idle
-          ? 'idle'
-          : 'running';
+      : pending
+        ? 'pending'
+        : approval
+          ? 'approval'
+          : idle
+            ? 'idle'
+            : 'running';
 
   const title = success
     ? 'Your launch is ready'
     : failed
       ? 'Your launch needs attention'
-      : idle
-        ? 'Complete your launch'
-        : 'Bringing your launch to life';
+      : pending
+        ? 'Your launch is confirmed'
+        : idle
+          ? 'Complete your launch'
+          : 'Bringing your launch to life';
 
   const status = success
     ? `Confirmed on ${networkName}. Your project page is ready.`
-    : failed
+    : failed || pending
       ? operation.message
       : idle
         ? 'Connect your wallet and continue when you are ready.'
@@ -203,7 +208,7 @@ export function LaunchCompletion({
               ? `Confirming your transaction on ${networkName}…`
               : 'Preparing your launch. Your wallet will ask for approval when needed.';
 
-  const { message: displayedStatus, onEntered: onStatusEntered } = useCompletionMessage(status, approval || failed || success || idle, reduced ? 0 : 440);
+  const { message: displayedStatus, onEntered: onStatusEntered } = useCompletionMessage(status, approval || failed || pending || success || idle, reduced ? 0 : 440);
 
   useEffect(() => {
     // Do not take focus from a wallet approval that has already opened.
@@ -253,12 +258,12 @@ export function LaunchCompletion({
             <span
               className={cn(
                 'absolute right-0 bottom-0 grid size-9 place-items-center rounded-full border-4 border-card bg-foreground text-background sm:right-6 sm:bottom-6 sm:size-10',
-                success && 'bg-primary text-primary-foreground',
+                (success || pending) && 'bg-primary text-primary-foreground',
                 failed && 'bg-bad-soft text-bad',
               )}
             >
-              <CompletionChange changeKey={success ? 'success' : failed ? 'error' : 'wallet'}>
-              {success ? (
+              <CompletionChange changeKey={success || pending ? 'success' : failed ? 'error' : 'wallet'}>
+              {success || pending ? (
                 <Check className="size-5" />
               ) : failed ? (
                 <CircleAlert className="size-5" />
@@ -402,7 +407,7 @@ export function LaunchCompletion({
               )}
               {!success && (
                 <Button size="lg" onClick={onRetry} disabled={working}>
-                  {idle ? 'Connect wallet to continue' : 'Try again'}
+                  {idle ? 'Connect wallet to continue' : pending ? 'Check again' : 'Try again'}
                 </Button>
               )}
               {success && operation.slug && (

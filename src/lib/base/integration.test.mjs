@@ -254,14 +254,14 @@ test('Base list decodes verified event/receipt coverage without a chain discrimi
   assert.equal(addresses.explorerUrl(HASH, 'public', true), 'https://basescan.org/tx/' + HASH);
 });
 
-test('Base holders show transfer coverage and deduplicate wallet casing', async () => {
+test('Base holders accept recorded-trade coverage and deduplicate wallet casing', async () => {
   const result = { network: 'testnet', contractId: ADDRESS, asset: ADDRESS, amountScale: 7,
-    balanceSource: 'token_contract', coverage: 'indexed_trades_and_transfers', totalHolders: 1, nextCursor: null,
+    balanceSource: 'recorded_trades', coverage: 'recorded_trades', totalHolders: 1, nextCursor: null,
     items: [{ address: ADDRESS, balance: '100000000000000000001', observedAt: DATE }] };
   const h = harness(url => response(url.endsWith('/config') ? baseConfiguration : result));
   await h.load('lib/api/config.ts').loadConfiguration();
   const holders = h.load('lib/api/launches/holders.ts');
-  assert.equal((await holders.getHolders('project', 'testnet')).coverage, 'indexed_trades_and_transfers');
+  assert.equal((await holders.getHolders('project', 'testnet')).coverage, 'recorded_trades');
   assert.equal(holders.appendHolders(result.items, [{ ...result.items[0], address: ADDRESS.toUpperCase().replace('0X', '0x') }]).length, 1);
 });
 
@@ -286,6 +286,8 @@ test('202/503 preserve the original hash, chain and identity; one receipt can re
   const reported = await h.load('lib/api/launches/market.ts').recordTrade('project', 'testnet', HASH);
   assert.equal(reported.trades.length, 2); // The compatibility trade is not appended twice.
   queue.enqueueTrade('testnet', ADDRESS, HASH, ADDRESS, 'project');
+  assert.equal(queue.readTradeQueue().length, 0, 'A completed hash is not queued twice');
+  queue.enqueueTrade('testnet', ADDRESS, '0x' + 'e'.repeat(64), ADDRESS, 'project');
   h.client.configureApiContext({ chain: 'base', network: 'public' });
   await drain();
   assert.equal(h.calls.length, 4);

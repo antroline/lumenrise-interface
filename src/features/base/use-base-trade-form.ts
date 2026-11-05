@@ -195,7 +195,8 @@ export function useBaseTradeForm(launch: LaunchResult, side: 'buy' | 'sell', loc
       const executed = events.filter(event => event.side === side);
       if (!executed.length) throw new Error('The transaction mined, but its trade event could not be verified. Keep the hash and wait for indexing.');
       const assetAmount = executed.reduce((total, event) => total + event.amount, BigInt(0));
-      setConfirmation({ hash, side, token: { symbol: launch.metadata.symbol, amount: assetAmount, decimals: launch.assetDecimals } });
+      setConfirmation({ hash, side, token: { symbol: launch.metadata.symbol, amount: assetAmount, decimals: launch.assetDecimals },
+        registration: { ...context, network: launch.network, contractId: launch.contractId, transactionHash: hash } });
       setMessage('Mined. Indexed activity may still be pending.'); setRegistrationNotice('Activity will update after indexing.'); setEntry('');
       await refreshWallet();
     } catch (cause) {
