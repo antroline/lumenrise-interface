@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { Accordion } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
@@ -213,8 +212,7 @@ export function LaunchFilters({
               render={
                 <Button
                   variant="ghost"
-                  size="icon-sm"
-                  className="relative pointer-coarse:size-11"
+                  className="h-8! gap-1.5 rounded-full border-border/40 bg-secondary px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground aria-expanded:bg-muted sm:h-9! sm:px-3 sm:text-ui"
                 />
               }
             />
@@ -224,15 +222,14 @@ export function LaunchFilters({
           }
         >
           <SlidersHorizontal aria-hidden="true" />
+          <span className="sr-only sm:not-sr-only">Filters</span>
           {activeCount > 0 && (
-            <Badge
-              variant="lime"
-              size="sm"
+            <span
               aria-hidden="true"
-              className="pointer-events-none absolute -top-1 -right-1 h-4 min-w-4 px-1 tabular-nums"
+              className="rounded bg-muted px-1.5 py-0.5 text-xs leading-none tabular-nums"
             >
               {activeCount}
-            </Badge>
+            </span>
           )}
         </TooltipTrigger>
         <TooltipContent>Filters</TooltipContent>

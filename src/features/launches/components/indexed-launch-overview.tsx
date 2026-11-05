@@ -534,9 +534,7 @@ export function IndexedLaunchOverview({
                     ]}
                   />
                   <p className="sr-only">
-                    {holders.query.data?.coverage === 'indexed_trades_and_transfers'
-                      ? 'Known holders cover indexed trades and transfers; indexing may be delayed or replayed.'
-                      : 'Known holders are derived from recorded trades and may be delayed. They are not a complete on-chain holder index.'}
+                    Known holders are derived from recorded trades and may be delayed. They are not a complete on-chain holder index.
                   </p>
                   {market.isError && (
                     <p role="alert" className="mt-3 text-sm text-destructive">

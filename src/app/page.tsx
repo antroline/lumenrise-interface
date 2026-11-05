@@ -7,7 +7,7 @@ export const metadata: Metadata = { alternates: { canonical: '/' } };
 
 export default function HomePage() {
   return (
-    <div className="mx-auto flex w-full min-w-0 max-w-[1320px] flex-col gap-8 dark:[--card:var(--surface)]">
+    <div className="mx-auto flex w-full min-w-0 max-w-[1320px] flex-col gap-8">
       <FeaturedLaunch />
       <LaunchBrowser />
       <QuickActions />

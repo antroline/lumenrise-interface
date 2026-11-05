@@ -20,6 +20,7 @@ import { useBlux } from '@bluxcc/react';
 import { settingsItem } from './navigation';
 import { NetworkMenuItems } from './network-switcher';
 import type { WalletControlProps } from '@/lib/wallet-control';
+import { ControlTooltip } from '@/components/control-tooltip';
 
 export function WalletButton({
   compact = false,
@@ -40,16 +41,18 @@ export function WalletButton({
         : 'Connecting…'
       : 'Connect wallet';
     return (
-      <Button
-        variant="ghost"
-        className={cn('h-10 rounded-full bg-muted text-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring dark:bg-muted dark:text-foreground dark:hover:bg-muted dark:hover:text-foreground dark:focus-visible:ring-ring', compact && 'w-10 px-0', className)}
-        onClick={() => void login()}
-        loading={loginPending}
-        aria-label={compact ? label : undefined}
-      >
-        <Wallet data-icon="inline-start" aria-hidden="true" />
-        {!compact && label}
-      </Button>
+      <ControlTooltip enabled={compact} label={label}>
+        <Button
+          variant="ghost"
+          className={cn('h-10 rounded-full bg-muted text-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring dark:bg-muted dark:text-foreground dark:hover:bg-muted dark:hover:text-foreground dark:focus-visible:ring-ring', compact && 'w-10 px-0', className)}
+          onClick={() => void login()}
+          loading={loginPending}
+          aria-label={compact ? label : undefined}
+        >
+          <Wallet data-icon="inline-start" aria-hidden="true" />
+          {!compact && label}
+        </Button>
+      </ControlTooltip>
     );
   }
 
@@ -69,29 +72,31 @@ export function WalletButton({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            variant="ghost"
-            className={cn(
-              'h-10 gap-2 rounded-full bg-muted px-2.5 font-mono text-small font-medium text-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring aria-expanded:bg-secondary dark:bg-muted dark:text-foreground dark:hover:bg-muted dark:hover:text-foreground dark:focus-visible:ring-ring dark:aria-expanded:bg-muted',
-              compact && 'w-10 px-0',
-              className,
-            )}
-          >
-            <ProfileAvatar seed={address} avatarUrl={avatarUrl} size={24} radius={6} />
-            {!compact && (
-              <span>{shortAddress(address)}</span>
-            )}
-            <span className={compact ? 'sr-only' : 'sr-only sm:hidden'}>
-              Wallet menu
-            </span>
-            {!compact && (
-              <ChevronDown className="size-3.5 text-muted-foreground dark:text-muted-foreground" />
-            )}
-          </Button>
-        }
-      />
+      <ControlTooltip enabled={compact} label={`Wallet menu · ${shortAddress(address)}`}>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              className={cn(
+                'h-10 gap-2 rounded-full bg-muted px-2.5 font-mono text-small font-medium text-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring aria-expanded:bg-secondary dark:bg-muted dark:text-foreground dark:hover:bg-muted dark:hover:text-foreground dark:focus-visible:ring-ring dark:aria-expanded:bg-muted',
+                compact && 'w-10 px-0',
+                className,
+              )}
+            >
+              <ProfileAvatar seed={address} avatarUrl={avatarUrl} size={24} radius={6} />
+              {!compact && (
+                <span>{shortAddress(address)}</span>
+              )}
+              <span className={compact ? 'sr-only' : 'sr-only sm:hidden'}>
+                Wallet menu
+              </span>
+              {!compact && (
+                <ChevronDown className="size-3.5 text-muted-foreground dark:text-muted-foreground" />
+              )}
+            </Button>
+          }
+        />
+      </ControlTooltip>
       <DropdownMenuContent
         side={menuSide}
         align={menuSide === 'top' ? 'start' : 'end'}

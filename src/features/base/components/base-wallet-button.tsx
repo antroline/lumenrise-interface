@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import type { WalletControlProps } from '@/lib/wallet-control';
 import { linkedEvmAddresses, selectLinkedWallet, sameEvmAddress } from '@/lib/base/wallet';
 import { useLaunchpad } from '@/lib/launchpad';
+import { ControlTooltip } from '@/components/control-tooltip';
 
 export function BaseWalletButton({ compact = false, className, menuSide = 'bottom', showNetwork = true }: WalletControlProps) {
   const { ready, authenticated, user } = usePrivy();
@@ -55,10 +56,14 @@ export function BaseWalletButton({ compact = false, className, menuSide = 'botto
 
   if (loading || !authenticated) {
     const label = loading ? 'Loading wallet…' : 'Connect wallet';
-    return <Button variant="ghost" className={controlClass} disabled={loading} onClick={() => login()} aria-label={compact ? label : undefined}>
-      <Wallet data-icon="inline-start" aria-hidden="true" />
-      {!compact && label}
-    </Button>;
+    return (
+      <ControlTooltip enabled={compact} label={label}>
+        <Button variant="ghost" className={controlClass} disabled={loading} onClick={() => login()} aria-label={compact ? label : undefined}>
+          <Wallet data-icon="inline-start" aria-hidden="true" />
+          {!compact && label}
+        </Button>
+      </ControlTooltip>
+    );
   }
 
   const chainId = activeNetwork.blockchain === 'base' ? activeNetwork.chainId : null;
@@ -66,14 +71,16 @@ export function BaseWalletButton({ compact = false, className, menuSide = 'botto
   const wrongNetwork = wallet && chainId !== null && wallet.chainId !== `eip155:${chainId}`;
 
   return <DropdownMenu>
-    <DropdownMenuTrigger render={
-      <Button variant="ghost" className={cn(controlClass, 'gap-2', !compact && 'min-w-0 px-2.5')} disabled={actionPending}
-        aria-label={wallet ? `Base wallet ${shortAddress(wallet.address)}` : 'Connect a Base wallet'}>
-        {wallet ? <ProfileAvatar seed={wallet.address} avatarUrl={avatarUrl} size={24} radius={6} /> : <Wallet data-icon="inline-start" aria-hidden="true" />}
-        {!compact && <span className={wallet ? 'truncate font-mono' : 'truncate'}>{wallet ? shortAddress(wallet.address) : 'Connect wallet'}</span>}
-        {!compact && <ChevronDown data-icon="inline-end" aria-hidden="true" />}
-      </Button>
-    } />
+    <ControlTooltip enabled={compact} label={wallet ? `Base wallet · ${shortAddress(wallet.address)}` : 'Connect a Base wallet'}>
+      <DropdownMenuTrigger render={
+        <Button variant="ghost" className={cn(controlClass, 'gap-2', !compact && 'min-w-0 px-2.5')} disabled={actionPending}
+          aria-label={wallet ? `Base wallet ${shortAddress(wallet.address)}` : 'Connect a Base wallet'}>
+          {wallet ? <ProfileAvatar seed={wallet.address} avatarUrl={avatarUrl} size={24} radius={6} /> : <Wallet data-icon="inline-start" aria-hidden="true" />}
+          {!compact && <span className={wallet ? 'truncate font-mono' : 'truncate'}>{wallet ? shortAddress(wallet.address) : 'Connect wallet'}</span>}
+          {!compact && <ChevronDown data-icon="inline-end" aria-hidden="true" />}
+        </Button>
+      } />
+    </ControlTooltip>
     <DropdownMenuContent side={menuSide} align={menuSide === 'top' ? 'start' : 'end'} sideOffset={8}
       className="w-62 max-w-[calc(100vw-1.5rem)] rounded-2xl bg-card p-2 text-card-foreground ring-border">
       {wallet && <>

@@ -87,8 +87,8 @@ export function BondingProjectCard({ launch, href, status, className }: {
           </div>
         </dl>
         {!targetAvailable && <p className="mt-3 text-xs font-medium">Target unavailable</p>}
-        {targetAvailable && <div role="progressbar" aria-label="Graduation progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value * 100} aria-valuetext={progressLabel + ' filled'} className="relative mt-3 flex h-10 items-center justify-center overflow-hidden rounded-full border border-border bg-white text-ink">
-          <div aria-hidden="true" className="absolute inset-y-0 left-0 rounded-full bg-linear-to-r from-lime to-white" style={{ width: value * 100 + '%' }} />
+        {targetAvailable && <div role="progressbar" aria-label="Graduation progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value * 100} aria-valuetext={progressLabel + ' filled'} className="relative mt-3 flex h-10 items-center justify-center overflow-hidden rounded-full border border-border bg-white text-ink dark:border-border/50 dark:bg-muted/50 dark:text-foreground">
+          <div aria-hidden="true" className="absolute inset-y-0 left-0 rounded-full bg-linear-to-r from-lime to-white dark:from-lime/25 dark:to-lime/10" style={{ width: value * 100 + '%' }} />
           <span className="relative px-3 text-sm font-medium tabular-nums"><span className="font-mono text-base font-semibold">{progressLabel}</span> filled</span>
         </div>}
         {(status === 'Scheduled' || (status === 'Open' && b.endsAt !== null)) && (

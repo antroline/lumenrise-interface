@@ -73,11 +73,11 @@ const phases = {
   Failed: 'failed',
 } satisfies Record<string, ProjectPhase>;
 const controlClass =
-  'inline-flex h-8 min-w-0 shrink-0 items-center justify-center rounded-md px-2 text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-foreground';
+  'inline-flex h-8! min-w-0 shrink-0 items-center justify-center gap-1.5 rounded-full border px-2.5 text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none sm:h-9! sm:px-3 sm:text-ui';
 const activeClass =
-  'bg-card text-foreground dark:bg-muted dark:text-foreground';
+  'border-transparent bg-foreground text-background hover:bg-foreground/90';
 const inactiveClass =
-  'text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground';
+  'border-border/40 bg-secondary text-muted-foreground hover:bg-muted hover:text-foreground';
 const statsHelp =
   'Rolling 24-hour statistics cover verified client-submitted trades recorded by the backend; they may not include all on-chain activity.';
 const totalVolumeHelp =
@@ -283,7 +283,6 @@ export function PublicProjects({
       participants: b?.state.buyerCount ?? null,
       date: date.short,
       dateTitle: date.full,
-      dateLabel: l.createdAt ? 'created · UTC' : undefined,
     };
   });
   const sortColumns: Partial<Record<DirectorySort, ProjectColumn>> = {
@@ -326,8 +325,9 @@ export function PublicProjects({
     pair ||
     sort === 'almostGraduated'
   );
-  const busy = applyingFilters || navigationPending ||
-    (!needsPair && (query.isPending || query.isFetching));
+  const showSkeleton = applyingFilters || navigationPending ||
+    (!needsPair && query.isPending);
+  const busy = showSkeleton || (!needsPair && query.isFetching);
   const errorTitle =
     query.error instanceof ApiError && query.error.status === 400
       ? 'Invalid launch filters'
@@ -341,13 +341,13 @@ export function PublicProjects({
       aria-label="Project directory"
       aria-busy={busy}
     >
-      <div className="-mx-2 flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 sm:-mx-3 lg:mx-0">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
           <nav
             aria-label="Launch category"
-            className="min-w-0 rounded-lg bg-secondary/60 p-1 dark:bg-muted"
+            className="min-w-0"
           >
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {categories.map((item) => (
                 <ResultsLink
                   key={item}
@@ -364,6 +364,11 @@ export function PublicProjects({
                   )}
                 >
                   {item}
+                  {directoryCategory(item) === category && query.data && (
+                    <span className="rounded bg-background/15 px-1.5 py-0.5 text-xs leading-none tabular-nums">
+                      {total.toLocaleString('en-US')}
+                    </span>
+                  )}
                 </ResultsLink>
               ))}
             </div>
@@ -381,14 +386,14 @@ export function PublicProjects({
                   <Button
                     nativeButton={false}
                     variant="ghost"
-                    size="icon-sm"
-                    className="pointer-coarse:size-11"
+                    className={cn(controlClass, inactiveClass)}
                     render={<ResultsLink href={clearFiltersHref} scroll={false} />}
                   />
                 }
                 aria-label="Clear filters"
               >
-                <X aria-hidden="true" />
+                <X aria-hidden="true" className="size-4" />
+                <span className="sr-only sm:not-sr-only">Clear</span>
               </TooltipTrigger>
               <TooltipContent>Clear filters</TooltipContent>
             </Tooltip>
@@ -398,10 +403,7 @@ export function PublicProjects({
           aria-label="Project sorting"
           className="w-full min-w-0 max-w-full lg:ml-auto lg:w-auto"
         >
-          <div className="grid grid-cols-[auto_auto_auto_auto] items-stretch gap-1 rounded-md bg-secondary/60 p-1 lg:flex lg:flex-wrap lg:items-center lg:bg-transparent lg:p-0 dark:bg-muted lg:dark:bg-transparent">
-            <span className="mr-1 hidden shrink-0 text-xs whitespace-nowrap text-muted-foreground lg:inline">
-              Sort by:
-            </span>
+          <div className="grid grid-cols-[1fr_1fr_1fr_1.2fr] gap-0.5 rounded-xl border border-border/40 bg-secondary p-1 sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0">
             {directorySorts.filter(sort => rules.sorts.includes(sort)).map((item) => (
               <ResultsLink
                 key={item}
@@ -415,13 +417,16 @@ export function PublicProjects({
                       : 'Open, ungraduated curves ranked by reserve / target'
                 }
                 aria-current={sort === item ? 'page' : undefined}
+                aria-label={sortLabels[item]}
                 className={cn(
                   controlClass,
-                  'px-1 text-center text-[11px] whitespace-nowrap min-[390px]:text-xs lg:px-2',
                   sort === item ? activeClass : inactiveClass,
+                  'max-sm:rounded-lg max-sm:border-0 max-sm:px-1 max-sm:text-caption',
+                  sort !== item && 'max-sm:bg-transparent',
                 )}
               >
-                {sortLabels[item]}
+                <span className="sm:hidden">{item === 'topVolume' ? 'Volume' : item === 'almostGraduated' ? 'Near target' : sortLabels[item]}</span>
+                <span className="hidden sm:inline">{sortLabels[item]}</span>
               </ResultsLink>
             ))}
           </div>
@@ -441,7 +446,7 @@ export function PublicProjects({
               Choose payment asset
             </Button>
           </Empty>
-        ) : busy ? (
+        ) : showSkeleton ? (
           <>
             <div className="lg:hidden">
               <MobileProjectListSkeleton rows={5} />

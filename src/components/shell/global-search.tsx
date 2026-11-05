@@ -98,10 +98,10 @@ export function GlobalSearchDialog({
       onOpenChange={onOpenChange}
       title="Search LumenRise"
       description="Find a page or project"
-      className="gap-0"
+      className="gap-0 p-0! sm:max-w-2xl [&>[data-slot=dialog-viewport]]:[scrollbar-gutter:auto]!"
     >
       <Command
-        className="h-auto min-h-0 bg-card p-0 text-card-foreground [&_[data-slot=command-input-wrapper]]:p-0 [&_[data-slot=input-group]]:h-13! [&_[data-slot=input-group]]:rounded-none! [&_[data-slot=input-group]]:border-0 [&_[data-slot=input-group]]:bg-transparent [&_[data-slot=input-group-addon]]:pl-3.5! [&_[data-slot=input-group-addon]>svg]:opacity-100"
+        className="h-auto min-h-0 rounded-none! bg-card p-0 pb-[env(safe-area-inset-bottom)] text-card-foreground sm:pb-0 [&_[data-slot=command-input-wrapper]]:p-0 [&_[data-slot=input-group]]:h-13! [&_[data-slot=input-group]]:rounded-none! [&_[data-slot=input-group]]:border-0 [&_[data-slot=input-group]]:bg-transparent [&_[data-slot=input-group-addon]]:pl-3.5! [&_[data-slot=input-group-addon]>svg]:opacity-100"
         filter={(value, search) =>
           value.toLowerCase().includes(search.trim().toLowerCase()) ? 1 : 0
         }

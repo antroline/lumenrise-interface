@@ -343,7 +343,7 @@
   --chart-5: var(--lr-chart-5);
   --chart-6: var(--lr-chart-6);
 
-  --sidebar: var(--lr-bg);
+  --sidebar: var(--page);
   --sidebar-foreground: var(--lr-fg);
   --sidebar-primary: var(--color-lime);
   --sidebar-primary-foreground: var(--lr-ink);
